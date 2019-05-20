@@ -1,0 +1,8 @@
+# make sure to clean all ove vars after unsource
+bash -c "OVE_TEST_STRING; ove-unsource; set | grep -i ^ove"
+>>>= 1
+# make sure that unsource properly clean up the shell
+bash -c "set > before; OVE_TEST_STRING; set > after; ove-unsource; set > unsource; diff -y --suppress-common-lines before unsource | wc -l"
+>>>
+2
+>>>= 0

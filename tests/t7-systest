@@ -1,0 +1,10 @@
+bash -c "OVE_TEST_STRING; ove systest ok1"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove systest nok1"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove systest all"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove list-systests | wc -l"
+>>>
+nbr_of_systests
+>>>= 0

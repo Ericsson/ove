@@ -1,0 +1,6 @@
+bash -c "OVE_TEST_STRING; ove buildme"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove buildme-parallel"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove buildme p1"
+>>>= 0

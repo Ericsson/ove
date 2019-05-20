@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+#
+# MIT License
+#
+# Copyright (c) 2019 Ericsson
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is furnished
+# to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice (including the next
+# paragraph) shall be included in all copies or substantial portions of the
+# Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+# OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+# OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+import argparse
+import yaml
+import sys
+
+def tree_walk(yd, groups, match):
+    if isinstance(yd, list):
+        for subtree in yd:
+            tree_walk(subtree, groups, match)
+
+    if isinstance(yd, dict):
+        for subtree in yd:
+            if args.verbose:
+                print("[group] {}".format(subtree))
+
+            if match and args.recursive:
+                tree_walk(yd[subtree], groups, 1)
+            elif (groups is not None) and (not subtree in groups):
+                tree_walk(yd[subtree], groups, 0)
+            else:
+                tree_walk(yd[subtree], groups, 1)
+
+    if isinstance(yd, str):
+        if match:
+            if args.space:
+                print("{} ".format(yd), end="")
+            else:
+                print(yd)
+
+parser = argparse.ArgumentParser(description='YAML extractor')
+parser.add_argument('filename')
+parser.add_argument('--groups', nargs = '*', dest = 'groups', help='space separated list of groups')
+parser.add_argument('-r', '--recursive', action="store_true", help='recursive')
+parser.add_argument('-s', '--space', action = 'store_true', help='space as delimiter')
+parser.add_argument('-v', '--verbose', action = 'store_true', help='verbose output')
+
+args = parser.parse_args()
+
+yamldata = yaml.load(open(args.filename, 'r'));
+
+if args.groups is None:
+    sys.stderr.write("Empty search criteria, extracting content from all groups\n")
+
+if args.verbose and (args.groups is not None):
+    print("Parsing {} looing for groups: {}".format(args.filename, " ".join(map(str, args.groups))))
+
+tree_walk(yamldata, args.groups, 0)
+
+if args.space:
+    print()
+
+sys.exit(0)

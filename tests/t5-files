@@ -1,0 +1,4 @@
+bash -c "OVE_TEST_STRING; ove ls-files | wc -l"
+>>>
+nbr_of_files
+>>>= 0
