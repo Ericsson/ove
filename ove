@@ -4065,7 +4065,9 @@ function ove_determine_dist_version_and_pack_manager {
 	elif [[ $OVE_OS == *"CentOS"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="yum"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
-	elif [[ $OVE_OS == *"Debian"* ]] || [[ $OVE_OS == *"Ubuntu"* ]]; then
+	elif [[ $OVE_OS == *"Debian"* ]] || \
+		[[ $OVE_OS == *"Raspbian"* ]] || \
+		[[ $OVE_OS == *"Ubuntu"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="apt"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
 	elif [[ $OVE_OS == *"Fedora"* ]]; then
