@@ -2103,8 +2103,6 @@ function ove-export {
 	> $OVE_PROJECT_TMP/export/projs
 	[ -d $OVE_PROJECT_TMP/export/projects ] && rm -rf $OVE_PROJECT_TMP/export/projects
 
-	# YAML header
-	echo "---" > $OVE_PROJECT_TMP/export/projs
 	while true; do
 		if [ $# -ge 1 ]; then
 			if ! [[ -v ove_projects_name2index[$1] ]]; then
@@ -2160,6 +2158,9 @@ function ove-export {
 	done
 
 	! [ -s $OVE_PROJECT_TMP/export/projs ] && return 1
+
+	# YAML header
+	sed -i '1i ---' $OVE_PROJECT_TMP/export/projs
 
 	for b in $(echo $repos | \
 		tr ' ' '\n' | \
