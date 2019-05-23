@@ -2070,11 +2070,21 @@ function ove_install_packages {
 		return
 	fi
 
+	if [ "$OVE_OS_PACKAGE_MANAGER" == "unknown" ]; then
+		ove_echo_error_noprefix "$FUNCNAME: fatal: package manager is not set"
+		return 1
+	fi
+
+	if ! command -v $OVE_OS_PACKAGE_MANAGER > /dev/null; then
+		ove_echo_error_noprefix "$FUNCNAME: fatal: '$OVE_OS_PACKAGE_MANAGER' not found"
+		return 2
+	fi
+
 	ove_echo_yellow "NOTE: Installing package(s): $missing_packages_sorted"
 	cmd="$OVE_OS_PACKAGE_MANAGER $OVE_OS_PACKAGE_MANAGER_ARGS $missing_packages_sorted"
 	if ! $cmd; then
 		ove_echo_error_noprefix "$FUNCNAME: fatal: '$cmd' failed"
-		return 1
+		return 3
 	fi
 }
 
@@ -4079,10 +4089,6 @@ function ove_determine_dist_version_and_pack_manager {
 	else
 		OVE_OS_PACKAGE_MANAGER="unknown"
 		OVE_OS_PACKAGE_MANAGER_ARGS=""
-	fi
-
-	if ! command -v $OVE_OS_PACKAGE_MANAGER > /dev/null; then
-		echo "warning: unable to determine package manager for $OVE_OS"
 	fi
 
 	export OVE_OS
