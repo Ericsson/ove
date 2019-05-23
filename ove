@@ -270,7 +270,7 @@ function ove {
 				unset OVE_ANALYZE_EXECVE
 			fi
 
-			SHELL=/bin/bash \
+			SHELL=$(command -v bash) \
 				$OVE_ANALYZE_EXECVE script $script_opts -q -c \
 				"source $OVE_BASE_DIR/ove; ove_init quick && ove-$1 $args" \
 				$OVE_LAST_COMMAND
