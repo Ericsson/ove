@@ -4056,13 +4056,16 @@ function ove_packages_not_installed {
 }
 
 function ove_determine_dist_version_and_pack_manager {
-	if ! [ -e /etc/os-release ]; then
-		ove_echo_warning_noprefix "warning: unable to determine distro"
-		OVE_OS=$(uname -s)
-		OVE_VER=$(uname -r)
-	else
+	if [ -e /etc/os-release ]; then
 		OVE_OS=$(source /etc/os-release; echo $NAME)
 		OVE_OS_VER=$(source /etc/os-release; echo $VERSION_ID)
+	elif command -v lsb_release > /dev/null; then
+		OVE_OS=$(lsb_release --id --short)
+		OVE_OS_VER=$(lsb_release --release --short)
+	else
+		ove_echo_warning_noprefix "unable to determine distro"
+		OVE_OS=$(uname -s)
+		OVE_OS_VER=$(uname -r)
 	fi
 
 
