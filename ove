@@ -2178,6 +2178,9 @@ function ove-export {
 	done
 
 	tree $OVE_PROJECT_TMP/export
+	tar -C "$OVE_PROJECT_TMP/export" -cjf "$OVE_PROJECT_TMP/export.tar.bz2" .
+	echo
+	echo "$OVE_PROJECT_TMP/export.tar.bz2"
 
 	return 0
 }
