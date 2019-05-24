@@ -765,6 +765,7 @@ function ove_revtab_news {
 function ove_revtab_list {
 	local count
 	local str
+	local url
 
 	count=0
 
@@ -777,6 +778,9 @@ function ove_revtab_list {
 		str+="${ove_revtab_git_name[$count]} ${ove_revtab_fetch_url[$count]} ${ove_revtab_push_url[$count]} ${ove_revtab_rev[$count]}\n"
 		let count+=1
 	done
+
+	url=$(git -C "$OVE_PROJECT_DIR" config --get remote.origin.url)
+	str+="$OVE_PROJECT_NAME $url $url $(git -C "$OVE_PROJECT_DIR" rev-parse --abbrev-ref HEAD)\n"
 
 	printf "$str" | \
 		sort | \
