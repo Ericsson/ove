@@ -2094,8 +2094,8 @@ function ove-export {
 	local b
 	local deps
 	local index
+	local paths
 	local projs
-	local repos
 	local tmp_var
 
 	mkdir -p $OVE_PROJECT_TMP/export $OVE_PROJECT_TMP/export/projects
@@ -2139,7 +2139,7 @@ function ove-export {
 					sort -u | \
 					sed -e 's|^|    |g')\n"
 
-				repos+="${ove_projects_path[$index]%%/*} "
+				paths+="$OVE_BASE_DIR/${ove_projects_path[$index]} "
 			done
 			str+="\n"
 		done
@@ -2162,10 +2162,15 @@ function ove-export {
 	# YAML header
 	sed -i '1i ---' $OVE_PROJECT_TMP/export/projs
 
-	for b in $(echo $repos | \
-		tr ' ' '\n' | \
-		sort -u); do
-		ove-list-repositories | grep "^$b " >> $OVE_PROJECT_TMP/export/revtab
+	for b in $(echo $paths | tr ' ' '\n' | sort -u); do
+		while true; do
+			[ "$b" == "" ] && break
+			if echo $OVE_REPO_LIST | xargs -n 1 2> /dev/null | grep -q ^$b$; then
+				ove-list-repositories | grep "^$(ove_git2shortpath $b) " >> $OVE_PROJECT_TMP/export/revtab
+				break
+			fi
+			b="${b%/*}"
+		done
 	done
 
 	tree $OVE_PROJECT_TMP/export
