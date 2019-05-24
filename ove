@@ -2185,6 +2185,27 @@ function ove-export {
 	return 0
 }
 
+# import:[file]:import projects exported with 'export'
+function ove-import {
+	local f
+
+	if [ $# -eq 0 ]; then
+		f="$OVE_PROJECT_TMP/export.tar.bz2"
+	elif [ $# -eq 1 ]; then
+		f="$1"
+	else
+		echo "error: too many args"
+		return 1
+	fi
+
+	if ! [ -s "$f" ]; then
+		echo "error: file '$f' is not found or file size is 0"
+		return 2
+	fi
+
+	tar -C "$OVE_PROJECT_DIR" -xf "$f"
+}
+
 function ove_build_pre {
 	# create directories if needed
 	[ ! -d "$OVE_STAGE_DIR" ] && mkdir -p "$OVE_STAGE_DIR"
