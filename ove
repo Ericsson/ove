@@ -3436,6 +3436,14 @@ function ove_bash_complete {
 		fi
 	done
 
+	# scripts
+	for cmd in $OVE_SCRIPTS_LIST; do
+		if [ "${cmd}" == "${subcommand}" ] && [ -e "${ove_scripts_name2path[${cmd}]}/${cmd}.complete" ]; then
+			source "${ove_scripts_name2path[${cmd}]}/${cmd}.complete"
+			return
+		fi
+	done
+
 	# commands without arguments: do nothing
 	if [ $size -eq 2 ]; then
 		if echo $OVE_BUILT_INS_WITHOUT_ARGS | tr ' ' '\n' | grep -q ^$subcommand$; then
@@ -3615,6 +3623,8 @@ function ove_add_script_func() {
 	script_dir=$1
 	script=$2
 
+	ove_scripts_name2path[$script]=$script_dir
+
 	if [ -f $script_dir/$script.help ]; then
 		htext=$(<$script_dir/$script.help)
 		eval "ove-$script() {
@@ -3635,6 +3645,7 @@ function ove_scripts_init {
 	local repo
 	local script
 	local script_list
+	declare -A -g ove_scripts_name2path
 
 	# project scripts
 	if [ -d "$OVE_PROJECT_DIR/scripts" ]; then
