@@ -2071,7 +2071,8 @@ function ove_install_packages {
 		xargs /bin/echo)"
 
 	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
-		ove_echo_yellow "Would install this/these package(s): $missing_packages_sorted"
+		ove_echo_yellow "Would install this/these package(s):"
+		echo "$(echo $missing_packages_sorted | xargs -n1)"
 		return
 	fi
 
