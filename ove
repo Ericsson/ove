@@ -196,25 +196,31 @@ function ove_main {
 	fi
 }
 
-# $1: strace file
-function ove_analyse_strace {
+# $1: directory with strace pid files
+function ove_analyze_strace {
+	local cmd
+	local diff
+	local f
 	local line
+	local t0
+	local t1
 
-	sed -e 's|\[\/\* [0-9]\+ vars \*/\]||g'  $1 | \
-	grep -E 'execve\(.* = 0$|execve.*unfinished|exited with [0-9]+' | \
-		sort | \
-		grep --no-group-separator execve -A1 | \
-		paste -d " "  - - | \
-		sed -e 's/^[0-9]\+\s\+\(.*\) execve(.*, \[\(.*\)\]\(.* \)\([0-9]\+\.[0-9]\+\) +++ exited with [0-9]\+ +++/\4:\1:\2/g' | \
-		tr -d '"' | \
-		tr -d "," | \
-		while read line; do
-			t1=$(echo $line | cut -d: -f1)
-			t0=$(echo $line | cut -d: -f2)
-			cmd=$(echo $line | cut -d: -f3-)
-			diff=$(awk "BEGIN{printf \"%.6f\n\", ($t1-$t0)}")
+	! [ -d "$1" ] && return 1
+
+	set -o noglob
+	for f in $(find $1 -type f); do
+		line=$(head -1 $f)
+		if [[ "$line" == *"execve"* ]]; then
+			cmd=$(echo $line | grep -o '\[.*')
+			t0=${line%% *}
+			t1=$(tail -1 $f | awk '{print $1}')
+			diff=$(awk "BEGIN{printf \"%.6f\n\", ($t1 - $t0)}")
 			echo "$diff:$cmd"
-		done | sort -nr
+		fi
+	done | \
+		sed -e 's|:\[|: |g' -e 's|\].*=||g' | \
+		tr -d '",' | \
+		sort -nr
 }
 
 function ove {
@@ -266,7 +272,10 @@ function ove {
 			fi
 
 			if [ $OVE_LOGLEVEL -eq 3 ]; then
-				OVE_ANALYZE_EXECVE="strace -s 1024 -q -o ${OVE_LOG_DIR}/strace-$1 -f -e execve -ttt"
+				[ -e ${OVE_LOG_DIR}/strace-$1 ] && \
+					rm -rf ${OVE_LOG_DIR}/strace-$1
+				mkdir -p ${OVE_LOG_DIR}/strace-$1
+				OVE_ANALYZE_EXECVE="strace -s 1024 -q -o ${OVE_LOG_DIR}/strace-$1/strace-$1 -ff -e execve -ttt"
 			else
 				unset OVE_ANALYZE_EXECVE
 			fi
@@ -278,7 +287,7 @@ function ove {
 			ret=$?
 
 			if ! [ -z "${OVE_ANALYZE_EXECVE+x}" ]; then
-				ove_analyse_strace ${OVE_LOG_DIR}/strace-$1 | tee -a $OVE_LAST_COMMAND
+				ove_analyze_strace ${OVE_LOG_DIR}/strace-$1 | tee -a $OVE_LAST_COMMAND
 			fi
 
 			sed -i -e 's/\r$//' -e 's/\x0//' $OVE_LAST_COMMAND
