@@ -101,6 +101,12 @@ function ove_welcome_msg {
 	echo "This script will do a few things:"
 	echo
 
+	echo "* add $(set | grep -c ^ove-) bash functions:"
+	set | \
+		grep ^ove- | \
+		cut -d' ' -f1 | \
+		column
+	echo
 	( set -o posix ; set ) | \
 		cut -d= -f1 > $OVE_TMP/bash-vars-after
 
@@ -111,12 +117,6 @@ function ove_welcome_msg {
 		column
 	unset ove_bash_vars_diff
 
-	echo
-	echo "* add $(set | grep -c ^ove-) bash functions:"
-	set | \
-		grep ^ove- | \
-		cut -d' ' -f1 | \
-		column
 	echo
 	echo "* enable tab completion for ove"
 
@@ -418,7 +418,7 @@ function ove_projects_parse {
 	for m in $OVE_PROJECT_COMMANDS; do
 		eval "ove-$m-parallel() {
 			local count
-			local helptext=\"$m-parallel:[PROJECT...]:run the '$m' step for all or individual projects in (parallel)\"
+			local helptext=\"$m-parallel:[PROJECT...]:run the '$m' step for all or individual projects (in parallel)\"
 			local p
 
 			ove_build_pre
@@ -3648,7 +3648,7 @@ function ove_add_script_func() {
 		eval "ove-$script() {
 		local helptext=\"$htext\"
 		\"$script_dir\"/$script \$*
-	}"
+		}"
 	else
 		eval "ove-$script() {
 		local helptext=\"$script: :run '$script_dir/$script'\"

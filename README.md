@@ -126,10 +126,10 @@ OVE is also dependent on 'sed/grep/tail/awk/...' but they are not (yet) checked 
     OVE [SHA-1: ... @ Ubuntu 19.10]
     This script will do a few things:
 
-    * add 39 bash variables:
+    * add 75 bash functions:
     ...
 
-    * add 75 bash functions:
+    * add 39 bash variables:
     ...
 
     * enable tab completion for ove
