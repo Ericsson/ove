@@ -242,6 +242,7 @@ function ove {
 		return 1
 	elif [ "$1" == "!" ] || \
 		[ "$1" == "cd" ] || \
+		[ "$1" == "dry-run" ] || \
 		[ "$1" == "loglevel" ] || \
 		[ "$1" == "switch" ] || \
 		[ "$1" == "unsource" ]; then
@@ -3358,6 +3359,23 @@ function ove-loglevel {
 			set -x
 		fi
 	fi
+}
+
+# dry-run:[0|1]:toggle or set OVE_DRY_RUN
+function ove-dry-run {
+	if [ $# -eq 1 ] && ! [[ "$1" =~ ^[0-1]$ ]]; then
+		echo "usage:"
+		ove-help ^${FUNCNAME/ove-/}
+		return 1
+	fi
+
+	if [ $# -eq 0 ]; then
+		OVE_DRY_RUN=$((OVE_DRY_RUN ^= 1))
+	else
+		OVE_DRY_RUN=$1
+	fi
+
+	ove-env | grep ^OVE_DRY_RUN
 }
 
 # lastlog:[cmin]:list logs created within last 60 min or cmin min
