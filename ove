@@ -4029,6 +4029,12 @@ function ove_command_to_package {
 	# locate
 	elif [ "$1" == "locate" ]; then
 		package="mlocate"
+	# pgrep
+	elif [ "$1" == "pgrep" ]; then
+		if [[ $OVE_OS == *"Ubuntu"* ]] || \
+			[[ $OVE_OS == *"Debian"* ]]; then
+			package="procps"
+		fi
 	# script
 	elif [ "$1" == "script" ]; then
 		if [[ $OVE_OS == *"Ubuntu"* ]] || \
