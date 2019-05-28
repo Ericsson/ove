@@ -931,18 +931,15 @@ function ove_revtab_pull_one {
 	if [ "$loc" = "$remote" ]; then
 		# up-to-date
 		:
-	elif [ "$loc" = "$base" ]; then
+	elif [ "$remote" = "$base" ]; then
+		# need to push
+		:
+	else
 		ove_echo_yellow_noprefix "$git"
 		cmd="git -C $git_fullpath pull --rebase"
 		if ! $cmd; then
 			ove_echo_error_noprefix "$cmd"
 		fi
-	elif [ "$remote" = "$base" ]; then
-		# need to push
-		:
-	else
-		# diverged
-		:
 	fi
 }
 
