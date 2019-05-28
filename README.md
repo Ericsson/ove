@@ -7,6 +7,9 @@ The OVE environment justification: To have a localized yet versioned top
 source view to enable fast modify-build-test loops for developers or anyone
 that prefers a see-the-big-picture approach or simply want to take quick peek.
 
+## Tutorial
+We have a tutorial [here](https://github.com/Ericsson/ove-tutorial). Go there and get up to speed on OVE in a few minutes.
+
 ## Terminology
 OVE is dependent on one top git repository (OWEL). This top repository keep track of three things:
 
