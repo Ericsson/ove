@@ -4136,7 +4136,12 @@ function ove_packages_not_installed {
 		comm -2 -3 <(echo $* | xargs -n1 | sort) <(pacman -Q | awk '{print $1}')
 	elif [[ $OVE_OS == *"Alpine"* ]]; then
 		comm -2 -3 <(echo $* | xargs -n1 | sort) <(apk info | sort)
-	elif [[ $OVE_OS == *"Ubuntu"* ]] || [[ $OVE_OS == *"Debian"* ]]; then
+	elif [[ $OVE_OS == *"CentOS"* ]] || \
+		[[ $OVE_OS == *"Fedora"* ]] || \
+		[[ $OVE_OS == *"RedHatEnterpriseServer"* ]]; then
+		comm -2 -3 <(echo $* | xargs -n1 | sort) <(rpm -qa --qf "%{NAME}\n"| sort)
+	elif [[ $OVE_OS == *"Ubuntu"* ]] || \
+		[[ $OVE_OS == *"Debian"* ]]; then
 		dpkg-query -W -f='${Package}:${Status}\n' $* 2>&1 | \
 			grep -v ":install ok installed" | \
 			sed -e 's/dpkg-query: no packages found matching //g' -e 's/:.*//g' | \
