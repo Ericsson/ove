@@ -4197,18 +4197,21 @@ function ove_unittest_preparations {
 	local nbr_of_projs
 	local nbr_of_repos
 	local nbr_of_systests
+	local unittest_path
 
 	nbr_of_files=$1
 	nbr_of_projs=$2
 	nbr_of_repos=$3
 	nbr_of_systests=$4
 
-	echo -n "Preparing $OVE_PROJECT_TMP/unittest..."
-	[ -d $OVE_PROJECT_TMP/unittest ] && \
-		rm -rf $OVE_PROJECT_TMP/unittest
-	mkdir -p $OVE_PROJECT_TMP/unittest/.ove
+	unittest_dir="$OVE_PROJECT_TMP/unittest"
 
-	cd $OVE_PROJECT_TMP/unittest
+	echo -n "Preparing $unittest_dir..."
+	[ -d $unittest_dir ] && \
+		rm -rf $unittest_dir
+	mkdir -p $unittest_dir/.ove
+
+	cd $unittest_dir
 	ln -s $OVE_DIR/$OVE_BASENAME ove
 	ln -s $OVE_DIR/tests
 
@@ -4216,33 +4219,33 @@ function ove_unittest_preparations {
 	mkdir -p remotes
 
 	# create some remote bare repos
-	for a in $(seq 1 $nbr_of_repos); do
-		mkdir -p remotes/git-$a
-		cd remotes/git-$a
+	for a in $(seq 1 $nbr_of_repos) top; do
+		mkdir -p $unittest_dir/remotes/git-$a
 		if ! [ -d .git ]; then
-			git init -q --bare .
+			git init -q --bare $unittest_dir/remotes/git-$a
 			echo -n .
 		fi
-		cd ../..
 	done
 
-	# clone the repos
+	# clone all repositories
 	mkdir -p testing/src
 	for a in $(seq 1 $nbr_of_repos); do
 		if [ $((a%2)) -eq 0 ]; then
-			git clone -q remotes/git-$a testing/src/git-$a &> /dev/null
+			git clone -q remotes/git-$a $unittest_dir/testing/src/git-$a &> /dev/null
 		else
-			git clone -q remotes/git-$a git-$a &> /dev/null
+			git clone -q remotes/git-$a $unittest_dir/git-$a &> /dev/null
 		fi
 		echo -n .
 	done
+	git clone -q $unittest_dir/remotes/git-top &> /dev/null
+	ln -s git-top .owel
 
 	# add some files
 	for a in $(seq 1 $nbr_of_repos); do
 		if [ $((a%2)) -eq 0 ]; then
-			cd testing/src/git-$a
+			cd $unittest_dir/testing/src/git-$a
 		else
-			cd git-$a
+			cd $unittest_dir/git-$a
 		fi
 
 		for i in $(seq 1 $nbr_of_files); do
@@ -4255,54 +4258,48 @@ function ove_unittest_preparations {
 			git push -q origin master
 			git push -q --tags
 		done
-		if [ $((a%2)) -eq 0 ]; then
-			cd ../../..
-		else
-			cd ..
-		fi
 	done
 
-	mkdir -p .owel
 	# create revtab
 	for a in $(seq 1 $nbr_of_repos); do
 		if [ $((a%2)) -eq 0 ]; then
-			echo "testing/src/git-$a $OVE_PROJECT_TMP/unittest/remotes/git-1 $OVE_PROJECT_TMP/unittest/remotes/git-1 master" >> .owel/revtab
+			echo "testing/src/git-$a $unittest_dir/remotes/git-1 $unittest_dir/remotes/git-1 master" >> $unittest_dir/git-top/revtab
 		else
-			echo "git-$a $OVE_PROJECT_TMP/unittest/remotes/git-1 $OVE_PROJECT_TMP/unittest/remotes/git-1 master" >> .owel/revtab
+			echo "git-$a $unittest_dir/remotes/git-1 $unittest_dir/remotes/git-1 master" >> $unittest_dir/git-top/revtab
 		fi
 	done
 
 	# create projs
 	for a in $(seq 1 $nbr_of_projs); do
-		echo "p$a:" >> .owel/projs
-		echo "  path: .owel" >> .owel/projs
+		echo "p$a:" >> $unittest_dir/git-top/projs
+		echo "  path: .owel" >> $unittest_dir/git-top/projs
 		if [ $a -lt $nbr_of_projs ]; then
-			echo "  deps: p$((a+1))" >> .owel/projs
+			echo "  deps: p$((a+1))" >> $unittest_dir/git-top/projs
 		fi
-		echo >> .owel/projs
-		mkdir -p .owel/projects/p$a
+		echo >> $unittest_dir/git-top/projs
+		mkdir -p $unittest_dir/git-top/projects/p$a
 		for b in bootstrap configure build install; do
-			echo "echo $b p$a" > .owel/projects/p$a/$b
-			chmod +x .owel/projects/p$a/$b
+			echo "echo $b p$a" > $unittest_dir/git-top/projects/p$a/$b
+			chmod +x $unittest_dir/git-top/projects/p$a/$b
 		done
 	done
 
 	# create systests
 	for a in $(seq 1 $nbr_of_systests); do
-		echo "ok$a 10 0 \"\" true" >> .owel/systests
-		echo "nok$a 10 0 \"\" false" >> .owel/systests
+		echo "ok$a 10 0 \"\" true" >> $unittest_dir/git-top/systests
+		echo "nok$a 10 0 \"\" false" >> $unittest_dir/git-top/systests
 	done
 	# create systests-groups
-	echo "all:" >> .owel/systests-groups
+	echo "all:" >> $unittest_dir/git-top/systests-groups
 	for a in $(seq 1 $nbr_of_systests); do
-		echo "- ok$a" >> .owel/systests-groups
-		echo "- nok$a" >> .owel/systests-groups
+		echo "- ok$a" >> $unittest_dir/git-top/systests-groups
+		echo "- nok$a" >> $unittest_dir/git-top/systests-groups
 	done
 
-	# create OWEL repo
-	git -C .owel init -q .
-	git -C .owel add .
-	git -C .owel commit -q -m "test"
+	# commit and push
+	git -C $unittest_dir/git-top add .
+	git -C $unittest_dir/git-top commit -q -m "test"
+	git -C $unittest_dir/git-top push -q origin master
 
 	echo -n "..done"
 	echo
@@ -4365,8 +4362,8 @@ function ove-unittest {
 		--diff \
 		-DOVE_TEST_STRING="source ove > /dev/null; ove_init > /dev/null" \
 		-Dnbr_of_systests=$(((nbr_of_systests * 2) + 1)) \
-		-Dnbr_of_repos=$nbr_of_repos \
-		-Dnbr_of_files=$((nbr_of_files * nbr_of_repos)) \
+		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
+		-Dnbr_of_files=$((nbr_of_files * nbr_of_repos + (4 * nbr_of_projs) + 4)) \
 		-DOVE_TEST_BASE="$(echo $OVE_PROJECT_TMP/unittest| sed -e 's|/|\\/|g')"
 }
 
