@@ -4192,6 +4192,66 @@ function ove_determine_dist_version_and_pack_manager {
 	export OVE_OS_PACKAGE_MANAGER_ARGS
 }
 
+# replicate:HOST:replicate workspace on HOST
+function ove-replicate {
+	local d
+	local host
+	local p
+	local s
+
+	if [ $# -ne 1 ]; then
+		ove_echo_error_noprefix "usage:"
+		ove-help ^${FUNCNAME/ove-/}
+		return 1
+	fi
+
+	s="$(ove-setup)"
+	if [ "$s" == "" ]; then
+		ove_echo_error_noprefix "'$OVE_PROJECT_DIR/SETUP' file found"
+		return 2
+	fi
+
+	host="$1"
+	if ! ssh -q $host exit; then
+		ove_echo_error_noprefix "'$host' is not reachable via ssh"
+		return 3
+	fi
+
+	# remote directory
+	d=$(ssh $host mktemp -d)
+
+	# only diffs relative to the index is included (for now)
+	p=$(mktemp -p $OVE_PROJECT_TMP)
+	ove-diff > $p
+	if [ -s "$p" ]; then
+		p_remote="$d/$OVE_PROJECT_NAME.patch"
+		if ! scp -q $p $host:$p_remote; then
+			ove_echo_error_noprefix "not possible to transfer patch file to '$host'"
+			rm $p
+			return 4
+		fi
+	fi
+
+	if ! ssh $host "
+		echo $ ssh $host;
+		echo $ cd $d; cd $d;
+		echo $ '$s'; eval $s;
+		cd *;
+		echo $ pwd; pwd;
+		echo $ source ove; source ove;
+		ove_init;
+		echo $ ove fetch; ove-fetch;
+		[ -e $p_remote ] && echo '$ ove apply $p_remote' && ove-apply $p_remote;
+		echo $ ove status; ove-status"; then
+		ove_echo_error_noprefix "trying to replicate workspace on '$host'"
+	else
+		echo
+		echo "Workspace has been replicated to '$host:$d'"
+	fi
+
+	rm $p
+}
+
 function ove_unittest_preparations {
 	local nbr_of_files
 	local nbr_of_projs
