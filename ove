@@ -1979,6 +1979,20 @@ function ove-diff-cached {
 	fi
 }
 
+# reset:[GIT...]:git reset -p for all/specified repositories
+function ove-reset {
+	local cmd
+
+	cmd='git --no-pager diff-index --quiet --cached HEAD -- || \
+		(ove_echo_yellow_noprefix $PWD && git reset -p)'
+
+	if [ $# -eq 0 ]; then
+		ove_revtab_forall "$cmd"
+	else
+		ove_revtab_forsome "$cmd" "$*"
+	fi
+}
+
 # add:[GIT...]:git add -p for all/specified repositories
 function ove-add {
 	local cmd
@@ -3536,7 +3550,8 @@ function ove_bash_complete {
 		[ "${subcommand}" == "diff-cached" ] ||
 		[ "${subcommand}" == "heads2revtab" ] ||
 		[ "${subcommand}" == "list-stash" ] ||
-		[ "${subcommand}" == "remote" ]; then
+		[ "${subcommand}" == "remote" ] ||
+		[ "${subcommand}" == "reset" ]; then
 		if [ $size -ge 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
 			wordlist+=" $OVE_PROJECT_NAME"
