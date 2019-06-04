@@ -3581,9 +3581,7 @@ function ove_bash_complete {
 			wordlist=$OVE_PROJECT_LIST
 		fi
 	elif [ "${subcommand}" == "apply" ]; then
-		if [ $size -eq 2 ]; then
-			wordlist=$(find $(readlink -f $PWD) -maxdepth 1 -exec file {} \; | grep 'unified diff output' | cut -d: -f1 | xargs -n1 basename)
-		else
+		if [ $size -ge 2 ]; then
 			return
 		fi
 	elif [ "${subcommand}" == "unittest" ]; then
