@@ -56,6 +56,11 @@ if [ -d "$path" ]; then
 	exit 1
 fi
 
+if ! command -v git > /dev/null; then
+	echo "error: 'git' is not found"
+	exit 2
+fi
+
 mkdir -vp "$path"
 cd "$path"
 git clone "$url" &
