@@ -980,7 +980,7 @@ function ove_get_base_dir {
 	searchdir=$PWD
 	while [ "$searchdir" != "" ]; do
 		cd "$searchdir"
-		if [ -d .ove ] || [ -d owel ]; then
+		if [[ -L ove && -L .owel && ( -d .ove || -d owel ) ]]; then
 			echo "$searchdir"
 			found="TRUE"
 			break
