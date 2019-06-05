@@ -2091,7 +2091,7 @@ function ove_install_packages {
 		xargs /bin/echo)"
 
 	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
-		ove_echo_yellow "Would install this/these package(s):"
+		ove_echo_yellow "Would prompt to install this/these package(s):"
 		echo "$(echo $missing_packages_sorted | xargs -n1)"
 		return
 	fi
@@ -2106,12 +2106,15 @@ function ove_install_packages {
 		return 2
 	fi
 
-	ove_echo_yellow "NOTE: Installing package(s): $missing_packages_sorted"
 	cmd="$OVE_OS_PACKAGE_MANAGER $OVE_OS_PACKAGE_MANAGER_ARGS $missing_packages_sorted"
-	if ! $cmd; then
-		ove_echo_error_noprefix "$FUNCNAME: fatal: '$cmd' failed"
-		return 3
-	fi
+
+	echo "missing package(s):"
+	echo
+	echo "To fix this, run the following command:"
+	echo
+	echo -e "\t$cmd"
+	echo
+	return 1
 }
 
 # export:[PROJECT...]:export project(s)
@@ -2270,7 +2273,7 @@ function ove-buildme {
 	# install packages
 	if [ "$pack_list" != "" ]; then
 		if ! ove_install_packages $pack_list; then
-			ove_echo_error_noprefix "$FUNCNAME: could not install packages '$pack_list'"
+			ove_echo_error_noprefix "$FUNCNAME: missing package(s)"
 			return 1
 		fi
 	fi
