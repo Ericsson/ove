@@ -37,8 +37,8 @@ Regardless of how much features goes into tools or frameworks trying to handle s
 
 Enough said, let's dig into details! We start with versioning:
 
-### revtab
-To make it transparent and intuitive for the developer to quickly grasp what revision state a certain workspace or project is in, OVE tries to be as short and clear as possible about it. Therefore, the baseline for a project is defined by a plain, line-by-line, text file in the OWEL called 'revtab' that contains only four fields:
+### The 'revtab' file
+To make it transparent and intuitive for the developer to quickly grasp what revision state a certain workspace or project is in, OVE tries to be as short and clear as possible about it. Therefore, the baseline for a project is defined by a plain, line-by-line, text file in the OWEL. It is called 'revtab' and only contains four fields:
 
 * name: Unique identifier of the git repository. Characters allowed: a-z, A-Z and underscore
 * fetch URL: The fetch URL.
@@ -52,10 +52,11 @@ Example:
     repoX         ssh://xyz/repoX    ssh://xyz/repoX    master
     deps/repoY    ssh://xyz/repoY    ssh://xyz/repoY    master
 
-Thats it! This is how OVE keeps track of git revisions. Please note that there is no intermediate representation for git revisioning in OVE. What you put in the 'revision' collumn travels untouched to git, which means you can safely put anything there that git understands. Now, let's move on to top-view builds:
+Thats it! This is how OVE keeps track of git revisions. Please note that there is no intermediate representation for revisioning in OVE. What you put in the 'revision' collumn travels untouched to git, which means you can safely put anything there that git understands. Now, let's move on to top-view builds:
 
-### projs
-A YAML file that contains a list of projects with the following syntax:
+### The 'projs' file
+
+How does OVE keep track of dependencies? Well, to start with there are (at least) two types: First, there are prerequisites for most projects to build, usually installed using a package manager. Secondly, within a top project handled by ove the sub-projects almost always have dependencies to each other. To specify these two types, you use a YAML file in the OWEL, 'projs', that contains a list of projects with the following syntax:
 
     name:
       deps:    list of projects that need to be built before myself
@@ -80,6 +81,10 @@ Example:
     projC:
       needs: build-essential
       path:  repoY
+
+Thats how OVE resolves external and internal dependencies for builds. Please note that the 'version:' keyword creates an environment variable that is passed to all build steps. What are those exactly? We cover that in the next section:
+
+### The 'projects' folder
 
 ### systests and systests-groups
 'systests' is a text file that contains a list of tests. One row is one test:
