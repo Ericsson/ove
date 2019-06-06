@@ -5,7 +5,7 @@ OVE is gathering git repositories and the knowledge how to build and test them. 
 
 ## Justification
 
-### *"To have a localized, yet versioned, top project source view to enable fast modify-build-test loops in parallel devlopment. For developers. For anyone that prefers a see-the-big-picture approach. And for those who just want to take quick peek."*
+### *"To have a localized, yet versioned, top project source view to enable fast modify-build-test loops in parallel development. For developers. For anyone that prefers a see-the-big-picture approach. And for those who just want to take a quick peek."*
 
 OVE is built with the developer in focus. We embrace the fact that while computers (e.g. CI/CD hosts) generally do not get easily frustrated, developers do.
 
@@ -31,7 +31,9 @@ For OVE, a project is something that produces output (e.g. an executable, a libr
 
 In order for OVE to build at the top level, independent of any toolchain used by sub-projects, a contract must be set up between OVE and any included project. This is a one-sided contract. Nothing needs to (nor should) go into a sub-project on OVEs account. To set up this contract, some typical build steps (bootstrap, configure, build, install) are specified for added sub projects.
 
-System tests tend to be quite tricky to generalize around, so we simply do not. What is provided is a way of keeping track of entry points and groups of entry points to system tests. However, this creates a template for keeping track of tests as well as a way to pass information that OVE tracks down to test suites.
+System tests tend to be quite tricky to generalize around, so we simply do not. What is provided is a way of keeping track of entry points and groups of entry points to system tests. However, this creates a template for keeping track of tests as well as a way to pass information that OVE holds down to test suites.
+
+Regardless of how much features goes into tools or frameworks trying to handle software projects, there is never enough. There are always per-project specific needs. OVE is made with a less-is-more approach. Rather than trying to collect as many feature requests as possible, we wanted to provide a solid functional base together with a simple, intuitive way of adding project-specific features. It is therefore possible to to expose customized ove commands from an OWEL, a workspace or from any git that OVE knows about. These commands are called plugins. They are basically just a bunch of executables (most often small bash scripts) that can leverage on the project information held by OVE.
 
 Enough said, let's dig into details! We start with versioning:
 
