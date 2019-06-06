@@ -38,7 +38,7 @@ Regardless of how much features goes into tools or frameworks trying to handle s
 Enough said, let's dig into details! We start with versioning:
 
 ### revtab
-A text file that contains four fields:
+To make it transparent and intuitive for the developer to quickly grasp what revision state a certain workspace or project is in, OVE tries to be as short and clear as possible about it. Therefore, the baseline for a project is defined by a plain, line-by-line, text file in the OWEL called 'revtab' that contains only four fields:
 
 * name: Unique identifier of the git repository. Characters allowed: a-z, A-Z and underscore
 * fetch URL: The fetch URL.
