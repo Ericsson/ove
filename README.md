@@ -13,7 +13,7 @@ OVE is built with the developer in focus. We embrace the fact that while compute
 Eager to get going? We have a tutorial [here](https://github.com/Ericsson/ove-tutorial). Try OVE out with a pre-made tutorial project and get up to speed on OVE in just a few minutes.
 
 ## Overview
-OVE provides a top project, and therefore need to handle four major functionality areas:
+OVE provides a top project, and on this top level OVE therefore needs to handle four major functionality areas:
 
 * **Versioning**
 
@@ -23,7 +23,7 @@ OVE provides a top project, and therefore need to handle four major functionalit
 
 * **Project specific tasks**
 
-To do this, OVE uses a top git repository (OWEL) containing information related to these tasks. Before we dig into details, let us just elaborate on a few things:
+To do this, OVE uses a top git repository (OWEL) containing information related to these tasks. Before we dig into details, let us just elaborate on a few subjects:
 
 Versioning is handled entirely through git. The top repo and whatever sub repos are added are all git repos.
 
@@ -116,7 +116,7 @@ You now know how to build sub projects together, but what about testing from a s
 
 ### The 'systests' and 'systests-groups' files
 
-We have already covered how OVE keeps track of repos, how sub-project build methods can be included and how they can all form a larger, top view project. We also showed how these parts gets built together using OVE's staging area. On the same note, it also makes sense to provide a way to execute system tests, test that needs more than one sub-project or repo to execute. As stipulated earlier, OVE takes a rather defensive approach here. Quite often, test systems already exist for most functionality you want to develop, at least partly. And you want to re-use them. Luckily, OVE will be able to launch any tests as long as they can execute from prompt. Two files, 'systests' and 'systests-groups' tells OVE what tests are available and how to execute them:
+We have already covered how OVE keeps track of repos, how sub-project build methods can be included and how they can all form a larger, top view project. We also showed how these parts gets built together using OVE's staging area. On the same note, it also makes sense to provide a way to execute system tests, tests that need more than one sub-project or repo to execute. As stipulated earlier, OVE takes a rather defensive approach here. Quite often, test systems already exist for most functionality you want to develop, at least partly. And you want to re-use them. Luckily, OVE will be able to launch any tests as long as they can execute from prompt. Two files, 'systests' and 'systests-groups' give OVE information about what tests are available and how to execute them:
 
 'systests' is a text file that contains a list of tests. One row is one test:
 
@@ -157,6 +157,15 @@ Using the above structure, you would be able to execute either one test (t1, t2 
 Thats it for system tests! Now lets go ahead and look at plugins:
 
 ## Plugins
+As discussed in the Overview, in most larger projects there is a strong need for flexibility when it comes to what a developer or CI/CD machinery wants to be able to do with it. To accomodate these needs, OVE provides a way of extending the ove command list with customized commands. We call them plugins, and they can be exposed to your OVE project in three ways: From your workspace, from your OWEL (top repo) or from any repo included in the revtab. What are they really then? They are executables, optionally accompanied with a help text and/or a tab completion script. OVE looks for plugins at the following locations:
+
+    $OVE_BASE_DIR/scripts/
+    $OVE_PROJECT_DIR/scripts/
+    <all repositories>/.ove/scripts/
+
+Any executable found in any of these locations will become an OVE command. And provided that tab completion scripts and help texts exist at the same location, they will also be part of the OVE help and support tab completion for their arguments.
+
+We now covered the four main functionality areas of OVE. Next we will go through how to make life easy for developers or CI/CD machines when it comes to setting up an OVE project:
 
 ## Setup
 One OVE project is typically setup using the following oneliner:
