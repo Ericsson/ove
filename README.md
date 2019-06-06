@@ -1,7 +1,7 @@
 ![OVE](ove.png)
 
 # What is OVE?
-OVE is gathering git repositories and the knowledge how to build and test them. Well sort of. It is up to you to feed this information to OVE since it is highly depending on included projects. However, OVE provides a well-defined structure for using and sharing this information. OVE also provides a number of commands for common tasks, flexible ways of including all sorts of projects as well as expanding OVE on the go! We like to see this particular part of OVE as a shortcut removing not-updated-lately wikis, and let the code speak for itself.
+OVE is gathering git repositories and the knowledge how to build and test them. Well sort of, it is up to you to feed this information to OVE. However, OVE provides a well-defined structure for using and sharing this information with others. OVE also provides a number of commands for common tasks, flexible ways of including all sorts of projects as well as expanding OVE on the go! We like to see this particular part of OVE as a shortcut removing not-updated-lately wikis, and let the code speak for itself.
 
 ## Justification
 
@@ -104,11 +104,13 @@ OVE is agnostic when it comes to build systems. Well, not entirely true. You nee
     │       ├── configure
     │       └── install
 
-When OVE builds the top project the following happens: First OVE sorts out the build order as explained in the previous section. Secondly, each projects' build steps are executed (bootstrap, build, configure, install). When done, you should be able to find the final output of the build in the staging area. In most cases, these are then picked up by an OVE plugin that creates deliverable packages of some kind (.rpm, .deb or similar).
+When OVE builds the top project the following happens: First, OVE sorts out the build order as explained in the previous section. Secondly, each projects' build steps are executed (bootstrap, build, configure, install). When done, you should be able to find the final output of the build in the staging area. In most cases, these are then picked up by an OVE plugin that creates deliverable packages of some kind (.rpm, .deb or similar).
 
-Particularly interesting here are the "configure" and "install" steps. In order for OVE to get intermediate build results into the staging area, typically
-	--prefix=$OVE_STAGE_DIR/usr
-is added to the configure command of the sub project and this way, the install step will install any built items into '$OVE_STAGE_DIR/usr'. Of course the way to do this depends on what build system is used, but the same goes for any project you put into an OVE project: You need to be able to get the build results into the staging area.
+Particularly interesting here are the "configure" and "install" steps. In order for OVE to get intermediate build results into the staging area, typically this kind of construct is used from within the 'configure' script:
+
+	./configure --prefix=$OVE_STAGE_DIR/usr
+
+This way, the install step will install any built items into '$OVE_STAGE_DIR/usr'. Of course the way to do this depends on what build system is used, but the same goes for any project you put into an OVE project: You need to be able to get the build results into the staging area.
 
 You now know how to build sub projects together, but what about testing from a system perspective? We cover that in the next section:
 
