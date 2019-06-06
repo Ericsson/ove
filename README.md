@@ -114,7 +114,10 @@ This way, the install step will install any built items into '$OVE_STAGE_DIR/usr
 
 You now know how to build sub projects together, but what about testing from a system perspective? We cover that in the next section:
 
-### systests and systests-groups
+### The 'systests' and 'systests-groups' files
+
+We have already covered how OVE keeps track of repos, how sub-project build methods can be included and how they can all form a larger, top view project. We also showed how these parts gets built together using OVE's staging area. On the same note, it also makes sense to provide a way to execute system tests, test that needs more than one sub-project or repo to execute. As stipulated earlier, OVE takes a rather defensive approach here. Quite often, test systems already exist for most functionality you want to develop, at least partly. And you want to re-use them. Luckily, OVE will be able to launch any tests as long as they can execute from prompt. Two files, 'systests' and 'systests-groups' tells OVE what tests are available and how to execute them:
+
 'systests' is a text file that contains a list of tests. One row is one test:
 
 * name: Unique identifier for the test
@@ -141,6 +144,19 @@ Example:
       - t3
     sanity:
       - t1
+
+Using the above structure, you would be able to execute either one test (t1, t2 or t3), a series of them (t1 t2) or a test group ("all" or "sanity"). Asking ove what test are avilable in this case would look like this:
+
+    $ ove list-systests
+    all
+    sanity
+    t1
+    t2
+    t3
+
+Thats it for system tests! Now lets go ahead and look at plugins:
+
+## Plugins
 
 ## Setup
 One OVE project is typically setup using the following oneliner:
