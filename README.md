@@ -85,6 +85,32 @@ Example:
 Thats how OVE resolves external and internal dependencies for builds. Please note that the 'version:' keyword creates an environment variable that is passed to all build steps. What are those exactly? We cover that in the next section:
 
 ### The 'projects' folder
+OVE is agnostic when it comes to build systems. Well, not entirely true. You need to be in an UNIX-like environment. That said, there are still a multitude of ways to build and install software that needs to be taken care of. OVE handles this by providing a way of defining, for each sub project, how that particular project is built. In the OWEL, there is a folder called 'projects'. Within this projects folder, sub directories needs to be present for each sub project containing executables (normally tiny bash scripts) for each build step. The projects structure typically look like this (output from tree):
+
+    ├── projects/
+    │   ├── projA/
+    │   │   ├── bootstrap
+    │   │   ├── build
+    │   │   ├── configure
+    │   │   └── install
+    │   ├── projB/
+    │   │   ├── bootstrap
+    │   │   ├── build
+    │   │   ├── configure
+    │   │   └── install
+    │   └── projC/
+    │       ├── bootstrap
+    │       ├── build
+    │       ├── configure
+    │       └── install
+
+When OVE builds the top project the following happens: First OVE sorts out the build order as explained in the previous section. Secondly, each projects' build steps are executed (bootstrap, build, configure, install). When done, you should be able to find the final output of the build in the staging area. In most cases, these are then picked up by an OVE plugin that creates deliverable packages of some kind (.rpm, .deb or similar).
+
+Particularly interesting here are the "configure" and "install" steps. In order for OVE to get intermediate build results into the staging area, typically
+	--prefix=$OVE_STAGE_DIR/usr
+is added to the configure command of the sub project and this way, the install step will install any built items into '$OVE_STAGE_DIR/usr'. Of course the way to do this depends on what build system is used, but the same goes for any project you put into an OVE project: You need to be able to get the build results into the staging area.
+
+You now know how to build sub projects together, but what about testing from a system perspective? We cover that in the next section:
 
 ### systests and systests-groups
 'systests' is a text file that contains a list of tests. One row is one test:
