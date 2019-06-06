@@ -10,7 +10,7 @@ OVE is gathering git repositories and the knowledge how to build and test them. 
 OVE is built with the developer in focus. We embrace the fact that while computers (e.g. CI/CD hosts) generally do not get easily frustrated, developers do.
 
 ## Tutorial
-Eager to get going? We have a tutorial [here](https://github.com/Ericsson/ove-tutorial). Try OVE out with a pre-made tutorial project and get up to speed on OVE in a just a few minutes.
+Eager to get going? We have a tutorial [here](https://github.com/Ericsson/ove-tutorial). Try OVE out with a pre-made tutorial project and get up to speed on OVE in just a few minutes.
 
 ## Overview
 OVE provides a top project, and therefore need to handle four major functionality areas:
@@ -50,7 +50,7 @@ Example:
     repoX         ssh://xyz/repoX    ssh://xyz/repoX    master
     deps/repoY    ssh://xyz/repoY    ssh://xyz/repoY    master
 
-Thats it! This is how OVE keeps track of git revisions. Please note that there is no intermediate representation for git revisioning in OVE. What you put in the 'revision' collumn travels untouched to git, which means you can safely put anything there that git understands. Let's move on to top-view builds:
+Thats it! This is how OVE keeps track of git revisions. Please note that there is no intermediate representation for git revisioning in OVE. What you put in the 'revision' collumn travels untouched to git, which means you can safely put anything there that git understands. Now, let's move on to top-view builds:
 
 ### projs
 A YAML file that contains a list of projects with the following syntax:
