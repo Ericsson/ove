@@ -1,11 +1,12 @@
 ![OVE](ove.png)
 
-# OVE
-OVE is gathering git repositories and the knowledge how to build and test them.
+# What is OVE?
+OVE is gathering git repositories and the knowledge how to build and test them. Well sort of. It is up to you to feed this information to OVE since it is highly depending on included projects. However, OVE provides a well-defined structure for using and sharing this information. OVE also provides a number of commands for common tasks, flexible ways of including all sorts of projects as well as expanding OVE on the go! We like to see this particular part of OVE as a short cut removing not-updated-lately wikis, and let the code speak for itself.
 
-The OVE environment justification: To have a localized yet versioned top
-source view to enable fast modify-build-test loops for developers or anyone
-that prefers a see-the-big-picture approach or simply want to take quick peek.
+## Justification
+### *"To have a localized, yet versioned, top project source view to enable fast modify-build-test loops in parallel devlopment. For developers. For anyone that prefers a see-the-big-picture approach. And for those who just want to take quick peek."*
+
+OVE is built with the developer in focus. We embrace the fact that while computers (e.g. CI/CD hosts) generally do not get easily frustrated, developers do.
 
 ## Tutorial
 We have a tutorial [here](https://github.com/Ericsson/ove-tutorial). Go there and get up to speed on OVE in a few minutes.
