@@ -1,26 +1,39 @@
 ![OVE](ove.png)
 
 # What is OVE?
-OVE is gathering git repositories and the knowledge how to build and test them. Well sort of. It is up to you to feed this information to OVE since it is highly depending on included projects. However, OVE provides a well-defined structure for using and sharing this information. OVE also provides a number of commands for common tasks, flexible ways of including all sorts of projects as well as expanding OVE on the go! We like to see this particular part of OVE as a short cut removing not-updated-lately wikis, and let the code speak for itself.
+OVE is gathering git repositories and the knowledge how to build and test them. Well sort of. It is up to you to feed this information to OVE since it is highly depending on included projects. However, OVE provides a well-defined structure for using and sharing this information. OVE also provides a number of commands for common tasks, flexible ways of including all sorts of projects as well as expanding OVE on the go! We like to see this particular part of OVE as a shortcut removing not-updated-lately wikis, and let the code speak for itself.
 
 ## Justification
+
 ### *"To have a localized, yet versioned, top project source view to enable fast modify-build-test loops in parallel devlopment. For developers. For anyone that prefers a see-the-big-picture approach. And for those who just want to take quick peek."*
 
 OVE is built with the developer in focus. We embrace the fact that while computers (e.g. CI/CD hosts) generally do not get easily frustrated, developers do.
 
 ## Tutorial
-We have a tutorial [here](https://github.com/Ericsson/ove-tutorial). Go there and get up to speed on OVE in a few minutes.
+Eager to get going? We have a tutorial [here](https://github.com/Ericsson/ove-tutorial). Try OVE out with a pre-made tutorial project and get up to speed on OVE in a just a few minutes.
 
-## Terminology
-OVE is dependent on one top git repository (OWEL). This top repository keep track of three things:
+## Overview
+OVE provides a top project, and therefore need to handle four major functionality areas:
 
-* Git repositories and revisions. Specified in a text file '**revtab**'.
+* **Versioning**
 
-* Projects. A project is typically something that creates a library or executable. Projects has their own build system - OVE does not care which one. It's up to you to decide how to define the project structure. OVE keep track of project dependencies and know in what order to build individual projects. Projects are defined in a YAML file '**projs**'. Individual build steps (bootstrap, configure, build, install) is defined in separate executable files at this location: '**projects/<name/**'.
+* **Build chain**
 
-* System tests. Tests are defined in a text file **systests** and groups of tests (test suites) are defined in **systest-groups**.
+* **System tests**
 
-The next section will explain the above in more detail.
+* **Project specific tasks**
+
+To do this, OVE uses a top git repository (OWEL) containing information related to these tasks. Before we dig into details, let us just elaborate on a few things:
+
+Versioning is handled entirely through git. The top repo and whatever sub repos are added are all git repos.
+
+For OVE, a project is something that produces output (e.g. an executable, a library or anything else machine-made). Even though projects are normally contained within a corresponding git repo, OVE treats projects and repos independently. Multiple projects can be configured using code and build systems from the same repo, and one project can use code and build systems from multiple repos.
+
+In order for OVE to build at the top level, independent of any toolchain used by sub-projects, a contract must be set up between OVE and any included project. This is a one-sided contract. Nothing needs to (nor should) go into a sub-project on OVEs account. To set up this contract, some typical build steps (bootstrap, configure, build, install) are specified for added sub projects.
+
+System tests tend to be quite tricky to generalize around, so we simply do not. What is provided is a way of keeping track of entry points and groups of entry points to system tests. However, this creates a template for keeping track of tests as well as a way to pass information that OVE tracks down to test suites.
+
+Enough said, let's dig into details! We start with versioning:
 
 ### revtab
 A text file that contains four fields:
@@ -36,6 +49,8 @@ Example:
     # name        fetch URL          push URL           revision
     repoX         ssh://xyz/repoX    ssh://xyz/repoX    master
     deps/repoY    ssh://xyz/repoY    ssh://xyz/repoY    master
+
+Thats it! This is how OVE keeps track of git revisions. Please note that there is no intermediate representation for git revisioning in OVE. What you put in the 'revision' collumn travels untouched to git, which means you can safely put anything there that git understands. Let's move on to top-view builds:
 
 ### projs
 A YAML file that contains a list of projects with the following syntax:
