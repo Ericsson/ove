@@ -29,7 +29,7 @@ Versioning is handled entirely through git. The top repo and whatever sub repos 
 
 For OVE, a project is something that produces output (e.g. an executable, a library or anything else machine-made). Even though projects are normally contained within a corresponding git repo, OVE treats projects and repos independently. Multiple projects can be configured using code and build systems from the same repo, and one project can use code and build systems from multiple repos.
 
-In order for OVE to build at the top level, independent of any toolchain used by sub-projects, a contract must be set up between OVE and any included project. This is a one-sided contract. Nothing needs to (nor should) go into a sub-project on OVEs account. To set up this contract, some typical build steps (bootstrap, configure, build, install) are specified for added sub projects.
+In order for OVE to build at the top level, independent of any toolchain used by sub-projects, a contract must be set up between OVE and any included project. This is a one-sided contract. Nothing needs to (nor should) go into a sub-project on OVE's account. To set up this contract, some typical build steps (bootstrap, configure, build, install) are specified for added sub projects.
 
 System tests tend to be quite tricky to generalize around, so we simply do not. What is provided is a way of keeping track of entry points and groups of entry points to system tests. However, this creates a template for keeping track of tests as well as a way to pass information that OVE holds down to test suites.
 
@@ -52,7 +52,7 @@ Example:
     repoX         ssh://xyz/repoX    ssh://xyz/repoX    master
     deps/repoY    ssh://xyz/repoY    ssh://xyz/repoY    master
 
-Thats it! This is how OVE keeps track of git revisions. Please note that there is no intermediate representation for revisioning in OVE. What you put in the 'revision' collumn travels untouched to git, which means you can safely put anything there that git understands. Now, let's move on to top-view builds:
+Thats it! This is how OVE keeps track of git revisions. Please note that there is no intermediate representation for revisioning in OVE. What you put in the 'revision' column travels untouched to git, which means you can safely put anything there that git understands. Now, let's move on to top-view builds:
 
 ### The 'projs' file
 
@@ -145,7 +145,7 @@ Example:
     sanity:
       - t1
 
-Using the above structure, you would be able to execute either one test (t1, t2 or t3), a series of them (t1 t2) or a test group ("all" or "sanity"). Asking ove what test are avilable in this case would look like this:
+Using the above structure, you would be able to execute either one test (t1, t2 or t3), a series of them (t1 t2) or a test group ("all" or "sanity"). Asking ove what test are available in this case would look like this:
 
     $ ove list-systests
     all
@@ -157,7 +157,7 @@ Using the above structure, you would be able to execute either one test (t1, t2 
 Thats it for system tests! Now lets go ahead and look at plugins:
 
 ## Plugins
-As discussed in the Overview, in most larger projects there is a strong need for flexibility when it comes to what a developer or CI/CD machinery wants to be able to do with it. To accomodate these needs, OVE provides a way of extending the ove command list with customized commands. We call them plugins, and they can be exposed to your OVE project in three ways: From your workspace, from your OWEL (top repo) or from any repo included in the revtab. What are they really then? They are executables, optionally accompanied with a help text and/or a tab completion script. OVE looks for plugins at the following locations:
+As discussed in the Overview, in most larger projects there is a strong need for flexibility when it comes to what a developer or CI/CD machinery wants to be able to do with it. To accommodate these needs, OVE provides a way of extending the ove command list with customized commands. We call them plugins, and they can be exposed to your OVE project in three ways: From your workspace, from your OWEL (top repo) or from any repo included in the revtab. What are they really then? They are executables, optionally accompanied with a help text and/or a tab completion script. OVE looks for plugins at the following locations:
 
     $OVE_BASE_DIR/scripts/
     $OVE_PROJECT_DIR/scripts/
