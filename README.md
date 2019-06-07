@@ -328,6 +328,10 @@ Here's a list (not complete) of a few utility commands:
 | unsource                 | clean up all OVE vars/funcs from this shell                |
 | vi                       | open all modified files in 'vi'                            |
 
+### OVE command reference
+
+Please find the full command reference [here](ove-cmd-list.md)
+
 ## Supported Linux distributions
 
 We tell ourselves that we support the following distros at this point:
