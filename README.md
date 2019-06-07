@@ -42,7 +42,7 @@ To make it transparent and intuitive for the developer to quickly grasp what rev
 
 * name: Unique identifier of the git repository. Characters allowed: a-z, A-Z and underscore
 * fetch URL: The fetch URL.
-* push URL: The pull URL. Not used.
+* push URL: The push URL. Not used.
 * revision: The git revision. This is passed on to 'git checkout'.
 
 Example:
