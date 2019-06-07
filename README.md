@@ -168,19 +168,23 @@ Any executable found in any of these locations will become an OVE command. And p
 We now covered the four main functionality areas of OVE. Next we will go through how to make life easy for developers or CI/CD machines when it comes to setting up an OVE project:
 
 ## Setup
-One OVE project is typically setup using the following oneliner:
+An existing OVE project is typically setup (or downloaded if you will) by the developer or CI/CD machine using the following oneliner:
 
     $ curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s <name> <OWEL>
 
 * name: Path to the OVE workspace.
 * OWEL: URL of the top git repository
 
-The setup script will basically do two things:
+The setup script will do two things:
 
-* create the **name** directory
-* clone the OVE and OWEL git repositories
+* create the 'name' directory at your current location
+* clone the OVE (ove itself) and OWEL (top repo) git repos
 
-The '**setup**' script will now tell you to run the '**source ove**' command. Here, OVE will do a check that you have the required programs installed on your machine. This is the current list:
+The 'setup' script will then urge the developer to enter the OWEL directory and run
+
+    $ source ove
+
+Doing this, OVE will check that you have the required programs installed on your machine and prompt for installation otherwise. This is the current list:
 
 * column
 * file
@@ -194,7 +198,7 @@ The '**setup**' script will now tell you to run the '**source ove**' command. He
 
 OVE is also dependent on 'sed/grep/tail/awk/...' but they are not (yet) checked for.
 
-### Setup example
+After successfully sourcing ove, further instructions are given to enter the OVE workspace and fetch the rest of the repos. When the fetch is completed, everything is ready in order for man or machine to start working with the project! For the sake of clarity, lets look at an example:
 
     $ curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s abc ssh://github.com/Ericsson/ove-tutorial
     Cloning into '.ove'...
@@ -222,6 +226,8 @@ OVE is also dependent on 'sed/grep/tail/awk/...' but they are not (yet) checked 
     repoX ## master..origin/master
     repoY ## master..origin/master
     .ove  ## master..origin/master
+
+Done! As simple as that. Lets give a final example of what an OVE project file structure can look like when ready:
 
     $ tree
     ├── ove -> .ove/ove
@@ -264,6 +270,8 @@ OVE is also dependent on 'sed/grep/tail/awk/...' but they are not (yet) checked 
         ├── revtab
         ├── systests
         └── systests-groups
+
+Up until now we covered everything you need to know to get to the point where developers (or machines) can start working with your OVE project. However, we have mentioned the OVE commands several times already and it is now time to have a closer look at how those work:
 
 ## Commands
 OVE will enhance (or mess up?) your bash shell with some new commands. We divide them into three categories:
