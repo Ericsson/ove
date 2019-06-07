@@ -318,15 +318,15 @@ Note: For each project command there is a "<command>-parallel" version of that c
 ### Utility commands
 Here's a list (not complete) of a few utility commands:
 
-| Command                  | Description                                              |
-|--------------------------|----------------------------------------------------------|
-| forall/forall-parallel   | run an arbitrary command for all git repositories        |
-| forowel/forowel-parallel | run an arbitrary command in all OVE projects on the host |
-| locate                   | list OVE projects/workspaces on this host                |
-| news                     | view upstream news for each git repository               |
-| switch                   | switch to another OVE project                            |
-| unsource                 | clean up all OVE vars/funcs from this shell              |
-| vi                       | open all modified files in 'vi'                          |
+| Command                  | Description                                                |
+|--------------------------|------------------------------------------------------------|
+| forall/forall-parallel   | run an arbitrary command for all git repositories          |
+| forowel/forowel-parallel | run an arbitrary command in all OVE workspaces on the host |
+| locate                   | list OVE workspaces on this host                           |
+| news                     | view upstream news for each git repository                 |
+| switch                   | switch to another OVE workspace                            |
+| unsource                 | clean up all OVE vars/funcs from this shell                |
+| vi                       | open all modified files in 'vi'                            |
 
 ## Supported Linux distributions
 
