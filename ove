@@ -4449,4 +4449,31 @@ function ove-unittest {
 		-DOVE_TEST_BASE="$(echo $OVE_PROJECT_TMP/unittest| sed -e 's|/|\\/|g')"
 }
 
+# command-gen-md::generate md for ove commands
+function ove-command-gen-md {
+	local a
+	local b
+
+	a=$(grep -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
+		grep '\#' | \
+		cut -b3-| \
+		sort | \
+		envsubst)
+	b=$(set | \
+		grep helptext | \
+		grep -v '\$'| \
+		cut -d'"' -f2)
+
+	echo "Generating md for current ove commands as 'ove-cmd-list.md'"
+	header="| Command:| Parameters:| Description: | "
+	sorted=$(printf "${a}\n${b}" | \
+			sed -E 's/\|/\¶/g' | \
+			sed -E 's/:/:| /g' | \
+			sed -E 's/^/| /g' | \
+			sed -E 's/$/: |/g' | \
+			sort)
+
+	printf "${header}\n|-|-|-|\n${sorted}\n" | column -s: -t | sed -E 's/\¶/\\|/g' > ove-cmd-list.md
+}
+
 ove_main "$@"
