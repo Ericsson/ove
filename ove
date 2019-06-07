@@ -950,6 +950,7 @@ function ove_revtab_fetch {
 	ove_revtab_parse "$OVE_PROJECT_DIR"/revtab
 
 	if [ $# -ge 1 ]; then
+		ove_revtab_clone
 		ove_revtab_forsome_parallel 'git -C $git fetch --all --tags | sed -e "s|$| for $i|g"' $*
 		return $?
 	fi
