@@ -3906,6 +3906,7 @@ function ove_init {
 }
 
 function ove_post_checks() {
+	local corrupt_repos
 	local doublets
 	local script
 
@@ -3954,6 +3955,19 @@ function ove_post_checks() {
 		for script in $doublets; do
 			ove-list-scripts| grep -w "${script}$"
 		done
+	fi
+
+	# check for repos without a '.git' directory
+	corrupt_repos=$(ove_revtab_forall_parallel '[ -d .git ] || ove_git2shortpath $(pwd)' | xargs)
+	if [ "$corrupt_repos" != "" ]; then
+		echo
+		ove_echo_error_noprefix "corrupt repo(s): $corrupt_repos"
+		echo
+		ove_echo_red_noprefix "Fix this by running the following two commands:"
+		echo
+		echo -e "\t$ rm -rf $corrupt_repos"
+		echo -e "\t$ ove fetch $corrupt_repos"
+		echo
 	fi
 }
 
