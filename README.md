@@ -274,14 +274,15 @@ Done! As simple as that. Lets give a final example of what an OVE project file s
 Up until now we covered everything you need to know to get to the point where developers (or machines) can start working with your OVE project. However, we have mentioned the OVE commands several times already and it is now time to have a closer look at how those work:
 
 ## Commands
-OVE will enhance (or mess up?) your bash shell with some new commands. We divide them into three categories:
+OVE will enhance your bash shell with commands to manage your OVE based project. We divide them into four categories:
 
 * High level git commands
 * Build related commands
-* Misc commands
+* Utility commands
+* Plugins (covered by previous sections)
 
 ### High level git commands
-OVE implements a subset of the "high level" git commands. The OVE version of these commands executes these git commands on all (or selective) **revtab** repositories. Here's a list of implemented git commands:
+OVE implements a subset of the standard git commands as "high level" git commands. These commands executes the corresponding git command on all (or selective) **revtab** repositories.
 
 * add
 * apply
@@ -314,8 +315,8 @@ The above list will be dynamically populated with project commands found under t
 
 Note: For each project command there is a "<command>-parallel" version of that command.
 
-### Misc commands
-Here's a list (not complete) of a few Misc commands:
+### Utility commands
+Here's a list (not complete) of a few utility commands:
 
 | Command                  | Description                                              |
 |--------------------------|----------------------------------------------------------|
@@ -327,7 +328,10 @@ Here's a list (not complete) of a few Misc commands:
 | unsource                 | clean up all OVE vars/funcs from this shell              |
 | vi                       | open all modified files in 'vi'                          |
 
-## Tested Linux distributions
+## Supported Linux distributions
+
+We tell ourselves that we support the following distros at this point:
+
 * Alpine Linux 3.9.0
 * Arch Linux
 * Centos
@@ -338,5 +342,6 @@ Here's a list (not complete) of a few Misc commands:
 * Ubuntu 18.04
 * Ubuntu 19.10
 
-## Need more help?
-Try 'ove help'.
+Want to know more about OVE? Please check out the OVE [tutorial](https://github.com/Ericsson/ove-tutorial) or ask OVE:
+
+	$ ove help
