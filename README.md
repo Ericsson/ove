@@ -1,11 +1,11 @@
 ![OVE](ove.png)
 
 # What is OVE?
-OVE is gathering git repositories and the knowledge how to build and test them. Well sort of, it is up to you to feed this information to OVE. However, OVE provides a well-defined structure for using and sharing this information with others. OVE also provides a number of commands for common tasks, flexible ways of including all sorts of projects as well as expanding OVE on the go! We like to see this particular part of OVE as a shortcut removing not-updated-lately wikis, and let the code speak for itself.
+OVE is gathering git repositories and the knowledge how to build and test them. Well sort of, it is up to you to feed this information to OVE. However, OVE provides a well-defined structure for using and sharing this information with others. OVE also provides a number of commands for common tasks, flexible ways of including all sorts of projects as well as the ability to expand OVE on the go! OVE is not a one-entry-point tool, but rather a shell enhancer: All parts of the OVE workflow can be done manually from prompt. We like to view OVE as a way of removing not-updated-lately wikis, and instead share ready-to-use functionality.
 
 ## Justification
 
-### *"To have a localized, yet versioned, top project source view to enable fast modify-build-test loops in parallel development. For developers. For anyone that prefers a see-the-big-picture approach. And for those who just want to take a quick peek."*
+### *"To have a localized, yet versioned, top project source view to enable fast modify-build-test loops in parallel development. For developers, for anyone that prefers a see-the-big-picture approach and for those who just want to take a quick peek."*
 
 OVE is built with the developer in focus. We embrace the fact that while computers (e.g. CI/CD hosts) generally do not get easily frustrated, developers do.
 
@@ -29,13 +29,13 @@ Versioning is handled entirely through git. The top repo and whatever sub repos 
 
 For OVE, a project is something that produces output (e.g. an executable, a library or anything else machine-made). Even though projects are normally contained within a corresponding git repo, OVE treats projects and repos independently. Multiple projects can be configured using code and build systems from the same repo, and one project can use code and build systems from multiple repos.
 
-In order for OVE to build at the top level, independent of any toolchain used by sub-projects, a contract must be set up between OVE and any included project. This is a one-sided contract. Nothing needs to (nor should) go into a sub-project on OVE's account. To set up this contract, some typical build steps (bootstrap, configure, build, install) are specified for added sub projects.
+In order for OVE to build at the top level, independently of any toolchain used by sub-projects, a contract must be set up between OVE and any included project. This is a one-sided contract. Nothing needs to (nor should) go into a sub-project on OVE's account. To set up this contract, some typical build steps (bootstrap, configure, build, install) are specified for added sub projects.
 
-System tests tend to be quite tricky to generalize around, so we simply do not. What is provided is a way of keeping track of entry points and groups of entry points to system tests. However, this creates a template for keeping track of tests as well as a way to pass information that OVE holds down to test suites.
+System tests tend to be quite tricky to generalize, so we simply do not. What is provided is a way of keeping track of entry points and groups of entry points to system tests. This creates a template for keeping track of tests and a way to pass information that OVE holds down to test suites.
 
-Regardless of how much features goes into tools or frameworks trying to handle software projects, there is never enough. There are always per-project specific needs. OVE is made with a less-is-more approach. Rather than trying to collect as many feature requests as possible, we wanted to provide a solid functional base together with a simple, intuitive way of adding project-specific features. It is therefore possible to to expose customized ove commands from an OWEL, a workspace or from any git that OVE knows about. These commands are called plugins. They are basically just a bunch of executables (most often small bash scripts) that can leverage on the project information held by OVE.
+Regardless of how much features go into tools or frameworks for software projects, they are never complete. There are always per-project specific needs. OVE is made with a less-is-more approach. Rather than trying to implement as many feature requests as possible, we wanted to provide a solid functional base together with a simple, intuitive way of adding project-specific features. It is therefore possible to expose customized OVE commands from an OWEL, a workspace or from any git that OVE knows about. These commands are called plugins. They are basically just a bunch of executables (most often small bash scripts) that can leverage on the project information held by OVE.
 
-Enough said, let's dig into details! We start with versioning:
+Enough said, let us dig into details! We start with versioning:
 
 ### The 'revtab' file
 To make it transparent and intuitive for the developer to quickly grasp what revision state a certain workspace or project is in, OVE tries to be as short and clear as possible about it. Therefore, the baseline for a project is defined by a plain, line-by-line, text file in the OWEL. It is called 'revtab' and only contains four fields:
