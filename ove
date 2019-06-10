@@ -4504,8 +4504,8 @@ function ove-unittest {
 		-DOVE_TEST_BASE="$(echo $OVE_PROJECT_TMP/unittest| sed -e 's|/|\\/|g')"
 }
 
-# command-gen-md::generate md for ove commands
-function ove-command-gen-md {
+# generate-doc: :generate OVE documentation (e.g. $OVE_DIR/ove-cmd-list.md)
+function ove-generate-doc {
 	local a
 	local b
 	local header
@@ -4513,26 +4513,28 @@ function ove-command-gen-md {
 
 	a=$(grep -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
 		grep '\#' | \
-		cut -b3-| \
-		sort | \
-		envsubst)
+		cut -b3-)
 	b=$(set | \
 		grep helptext | \
 		grep -v '\$'| \
-		cut -d'"' -f2)
+		cut -d'"' -f2 | \
+		grep -v -f<(echo $OVE_SCRIPTS_LIST | xargs -n1))
 
-	echo "Generating md for current ove commands as 'ove-cmd-list.md'"
-	header="| Command:| Parameters:| Description: | "
+	header="| Command:| Arguments:| Description: |"
 	sorted=$(printf "${a}\n${b}" | \
-		sed -E 's/\|/\¶/g' | \
-		sed -E 's/:/:| /g' | \
-		sed -E 's/^/| /g' | \
-		sed -E 's/$/: |/g' | \
-		sort)
+		sed \
+		-e 's/|/@/g' \
+		-e 's/:/ :| /g' \
+		-e 's/^/| /g' \
+		-e 's/$/: |/g' | \
+		LC_ALL="C" sort)
 
 	printf "${header}\n|-|-|-|\n${sorted}\n" | \
 		column -s: -t | \
-		sed -E 's/\¶/\\|/g' > ove-cmd-list.md
+		sed -e 's/\@/\|/g' \
+		> $OVE_DIR/ove-cmd-list.md
+
+	return 0
 }
 
 ove_main "$@"
