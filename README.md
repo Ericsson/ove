@@ -271,7 +271,7 @@ Done! As simple as that. Lets give a final example of what an OVE project file s
         ├── systests
         └── systests-groups
 
-Up until now we covered everything you need to know to get to the point where developers (or machines) can start working with your OVE project. By now, you might have noticed that we have mentioned the OVE commands several times. It is time to have a closer look at how they work:
+Up until now we covered everything you need to know to get to the point where developers (or machines) can start working with your OVE project. Going through these steps, You might have noticed us mention OVE commands several times. It is time to have a closer look at how they work:
 
 ## Commands
 OVE will enhance your bash shell with commands to manage your OVE based project. We divide them into four categories:
