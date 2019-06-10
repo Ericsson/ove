@@ -1016,7 +1016,7 @@ function ove_get_base_dir {
 	elif [ -z "${OVE_BASE_DIR+x}" ]; then
 		:
 
-	# Have we moved to another workspace? source that project
+	# Have we moved to another OVE workspace? source that project
 	elif [ "$searchdir" != "$OVE_BASE_DIR" ] && [[ $- == *i* ]]; then
 		cd $searchdir && . ove > /dev/null && cd -
 	fi
@@ -4340,10 +4340,10 @@ function ove-replicate {
 		echo $ ove fetch; ove-fetch;
 		[ -e $p_remote ] && echo '$ ove apply $p_remote' && ove-apply $p_remote;
 		echo $ ove status; ove-status"; then
-		ove_echo_error_noprefix "trying to replicate workspace on '$host'"
+		ove_echo_error_noprefix "trying to replicate OVE workspace on '$host'"
 	else
 		echo
-		echo "Workspace has been replicated to '$host:$d'"
+		echo "OVE workspace has been replicated to '$host:$d'"
 	fi
 
 	rm $p
