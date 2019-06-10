@@ -2253,7 +2253,7 @@ function ove-export {
 	return 0
 }
 
-# import:[file]:import projects exported with 'export'
+# import:[file]:import project(s), see export
 function ove-import {
 	local f
 
@@ -2543,7 +2543,7 @@ function ove-buildme-parallel {
 	return 0
 }
 
-# diff-check:[OPTS]:git diff --check [OPTS]
+# diff-check:[OPTIONS]:git diff --check [OPTIONS]
 function ove-diff-check {
 	local cmd
 
@@ -2570,7 +2570,7 @@ function ove-list-repositories {
 	ove_revtab_list
 }
 
-# env: :show ove env
+# env: :show OVE env
 function ove-env {
 	local e
 	local str
@@ -2757,7 +2757,7 @@ function ove_verify_repository {
 	fi
 }
 
-# checkout:[REV[ [purge|autostash]]]:git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care
+# checkout:[rev[ [purge|autostash]]]:git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care
 function ove-checkout {
 	local cmd
 	local dirty_repos
@@ -2862,7 +2862,7 @@ function ove-list-commands {
 		column -s: -t
 }
 
-# help:[PATTERN]:this help
+# help:[PATTERN]:OVE help
 function ove-help {
 	local h
 	local longest_argument
@@ -2985,7 +2985,7 @@ EOF
 	fi
 }
 
-# ag:PATTERN:search using The Silver Searcher
+# ag:PATTERN:search OVE workspace using The Silver Searcher
 function ove-ag {
 	if ! command -v ag > /dev/null; then
 		echo "https://duckduckgo.com/?q=the+silver+searcher"
@@ -2997,7 +2997,7 @@ function ove-ag {
 	ove_revtab_forall_parallel 'ag --color "'"$*"'" | sed -e 's@^@\$PWD/@g''
 }
 
-# grep:PATTERN:grep project
+# grep:PATTERN:grep OVE workspace
 function ove-grep {
 	[ $# -eq 0 ] && echo "No pattern, try again" && return 1
 
@@ -3427,7 +3427,7 @@ function ove-cd {
 	cd "$OVE_BASE_DIR"
 }
 
-# version: :print ove version
+# version: :print OVE version
 function ove-version {
 	echo "OVE [SHA-1: $OVE_SHA @ $OVE_OS $OVE_OS_VER]"
 }
@@ -4289,7 +4289,7 @@ function ove_determine_dist_version_and_pack_manager {
 	export OVE_OS_PACKAGE_MANAGER_ARGS
 }
 
-# replicate:HOST:replicate workspace on HOST
+# replicate:HOST:replicate OVE workspace on HOST
 function ove-replicate {
 	local d
 	local host
