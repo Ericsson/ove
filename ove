@@ -4453,6 +4453,8 @@ function ove-unittest {
 function ove-command-gen-md {
 	local a
 	local b
+	local header
+	local sorted
 
 	a=$(grep -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
 		grep '\#' | \
@@ -4467,13 +4469,15 @@ function ove-command-gen-md {
 	echo "Generating md for current ove commands as 'ove-cmd-list.md'"
 	header="| Command:| Parameters:| Description: | "
 	sorted=$(printf "${a}\n${b}" | \
-			sed -E 's/\|/\¶/g' | \
-			sed -E 's/:/:| /g' | \
-			sed -E 's/^/| /g' | \
-			sed -E 's/$/: |/g' | \
-			sort)
+		sed -E 's/\|/\¶/g' | \
+		sed -E 's/:/:| /g' | \
+		sed -E 's/^/| /g' | \
+		sed -E 's/$/: |/g' | \
+		sort)
 
-	printf "${header}\n|-|-|-|\n${sorted}\n" | column -s: -t | sed -E 's/\¶/\\|/g' > ove-cmd-list.md
+	printf "${header}\n|-|-|-|\n${sorted}\n" | \
+		column -s: -t | \
+		sed -E 's/\¶/\\|/g' > ove-cmd-list.md
 }
 
 ove_main "$@"
