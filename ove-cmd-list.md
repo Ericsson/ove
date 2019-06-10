@@ -15,7 +15,7 @@
 | buildme                 | [PROJECT]                   | build projects from scratch (=bootstrap, configure, build, install)                                               |
 | buildme-parallel        | [PROJECT]                   | build projects from scratch (=bootstrap, configure, build, install)                                               |
 | cd                      |                             | helper for 'cd $OVE_BASE_DIR'                                                                                     |
-| checkout                | [rev[ [purge|autostash]]]   | git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care                |
+| checkout                | [rev[ [purge\|autostash]]]   | git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care                |
 | clean                   | [PROJECT...]                | run the 'clean' step for all or individual projects                                                               |
 | clean-parallel          | [PROJECT...]                | run the 'clean' step for all or individual projects (in parallel)                                                 |
 | commit                  | [GIT...]                    | git commit for all/specified git repositories                                                                     |
@@ -28,7 +28,7 @@
 | diff-check              | [OPTIONS]                   | git diff --check [OPTIONS]                                                                                        |
 | diff-project            | <rev> <rev>                 | git diff the '$OVE_PROJECT_NAME' project                                                                          |
 | do                      | GIT                         | run a command within GIT                                                                                          |
-| dry-run                 | [0|1]                       | toggle or set OVE_DRY_RUN                                                                                         |
+| dry-run                 | [0\|1]                       | toggle or set OVE_DRY_RUN                                                                                         |
 | env                     |                             | show OVE env                                                                                                      |
 | export                  | [PROJECT...]                | export project(s)                                                                                                 |
 | fetch                   | [GIT...]                    | git fetch --all for all/specified repositories, ends with ove status                                              |
@@ -61,7 +61,7 @@
 | ls-files                |                             | git ls-files for all git repositories                                                                             |
 | ls-remote               |                             | git ls-remote <URL> HEAD for all git repositories                                                                 |
 | make                    | [PROJECT[-nodeps]]          | build project(s)                                                                                                  |
-| mrproper                | [y|Y]                       | remove untracked files AND removes '$OVE_STAGE_DIR/*' AND removes '$OVE_ARCHIVE_DIR/*'                            |
+| mrproper                | [y\|Y]                       | remove untracked files AND removes '$OVE_STAGE_DIR/*' AND removes '$OVE_ARCHIVE_DIR/*'                            |
 | news                    | [GIT...]                    | list upstream changes for all/specified repositories                                                              |
 | pull                    | [GIT...]                    | git pull --rebase for all/specified repositories                                                                  |
 | refresh                 |                             | refresh projects found by ove-locate                                                                              |
@@ -69,14 +69,14 @@
 | remote-check            |                             | sanity check that all remotes are online                                                                          |
 | replicate               | HOST                        | replicate OVE workspace on HOST                                                                                   |
 | reset                   | [GIT...]                    | git reset -p for all/specified repositories                                                                       |
-| select-configuration    | [PATTERN|default]           | select build configuration for each project                                                                       |
+| select-configuration    | [PATTERN\|default]           | select build configuration for each project                                                                       |
 | setup                   |                             | print how to set this project up                                                                                  |
 | shortlog-project        | <rev> <rev>                 | git shortlog the project '$OVE_PROJECT_NAME'                                                                      |
-| show                    | [revision...]               | ove list-heads or search for 'revision' within all git repositories. If found run 'git show SHA-1|TAG'            |
+| show                    | [revision...]               | ove list-heads or search for 'revision' within all git repositories. If found run 'git show SHA-1\|TAG'            |
 | show-configuration      |                             | show current build configuration for each project                                                                 |
 | status                  | [GIT...]                    | git status -zbs -uno for all/specified repositories                                                               |
 | switch                  | [PATTERN]                   | switch to another OVE project                                                                                     |
-| systest                 | [TEST|GROUP...]             | run one or more system tests/groups described in $OVE_PROJECT_DIR/systests-groups and $OVE_PROJECT_DIR/systests   |
+| systest                 | [TEST\|GROUP...]             | run one or more system tests/groups described in $OVE_PROJECT_DIR/systests-groups and $OVE_PROJECT_DIR/systests   |
 | tag                     |                             | list all project tags                                                                                             |
 | unittest                | [TEST...]                   | run all/specific unit tests                                                                                       |
 | unsource                |                             | clean up all OVE vars/funcs from this shell                                                                       |

@@ -4531,7 +4531,7 @@ function ove-generate-doc {
 
 	printf "${header}\n|-|-|-|\n${sorted}\n" | \
 		column -s: -t | \
-		sed -e 's/\@/\|/g' \
+		sed -e 's/\@/\\|/g' \
 		> $OVE_DIR/ove-cmd-list.md
 
 	return 0
