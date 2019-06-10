@@ -402,7 +402,9 @@ function ove_projects_parse {
 			local helptext=\"$m:[PROJECT...]:run the '$m' step for all or individual projects\"
 			local p
 
-			ove_build_pre
+			if ! ove_build_pre \$*; then
+				return 1
+			fi
 
 			if [ \$# -eq 0 ]; then
 				count=0
@@ -430,7 +432,9 @@ function ove_projects_parse {
 			local helptext=\"$m-parallel:[PROJECT...]:run the '$m' step for all or individual projects (in parallel)\"
 			local p
 
-			ove_build_pre
+			if ! ove_build_pre \$*; then
+				return 1
+			fi
 
 			if [ \$# -eq 0 ]; then
 				count=0
@@ -513,6 +517,16 @@ function ove_list_projects_with_deps {
 		if [ "${ove_projects_deps[$i]}" != "" ]; then
 			echo -n "${ove_projects_name[$i]} "
 		fi
+		let i+=1
+	done
+}
+
+function ove_list_projects_paths {
+	local i
+
+	i=0
+	while ((i < ove_number_of_projects)); do
+		echo -n "$OVE_BASE_DIR/${ove_projects_path[$i]} "
 		let i+=1
 	done
 }
@@ -1046,8 +1060,6 @@ function ove-make {
 	local target
 	local withdeps
 
-	ove_build_pre
-
 	target=$*
 	withdeps="true"
 
@@ -1060,6 +1072,10 @@ function ove-make {
 
 	# build all?
 	if [ "$target" == "all" ]; then
+		if ! ove_build_pre; then
+			return 1
+		fi
+
 		for proj in $OVE_BUILD_ORDER; do
 			index=${ove_projects_name2index[$proj]}
 
@@ -1085,6 +1101,10 @@ function ove-make {
 			fi
 		done
 	else
+		if ! ove_build_pre $target; then
+			return 1
+		fi
+
 		if [ "$withdeps" == "false" ]; then
 			ove_projects_cmd "$target" build
 		else
@@ -2040,6 +2060,28 @@ function ove_get_deps_recursive {
 	done
 }
 
+# $1 = proj
+function ove_get_paths_recursive {
+	local dep
+	local index
+
+	if [ $# -ne 1 ]; then
+		ove_echo_error_noprefix "$FUNCNAME: need one arg"
+		return 1
+	fi
+
+	index=${ove_projects_name2index[$1]}
+	if [ "${ove_projects_deps[$index]}" == "" ]; then
+		echo -n "$OVE_BASE_DIR/${ove_projects_path[$index]} "
+		return
+	fi
+
+	for dep in ${ove_projects_deps[$index]}; do
+		echo -n "$OVE_BASE_DIR/${ove_projects_path[$index]} "
+		ove_get_paths_recursive $dep
+	done
+}
+
 function ove_validate_revtab {
 	local doublets
 
@@ -2233,9 +2275,38 @@ function ove-import {
 }
 
 function ove_build_pre {
-	# create directories if needed
+	local missing_repos
+	local p
+	local paths
+	local q
+
+	if [ $# -eq 0 ]; then
+		paths=$(ove_list_projects_paths)
+	else
+		paths=$(ove_get_paths_recursive $* | xargs -n1 | sort -u | xargs)
+	fi
+
+	for p in $paths; do
+		for q in $OVE_REPO_LIST; do
+			if [[ $p == *"$q"* ]] && ! [ -d "$q" ]; then
+				missing_repos+="$(ove_git2shortpath $q) "
+			fi
+		done
+	done
+
+	if [ "$missing_repos" != "" ]; then
+		ove_echo_error_noprefix "repo(s) '$(echo $missing_repos | xargs)' is not yet fetched, try:"
+		echo
+		echo -e "\t$ ove fetch $missing_repos"
+		echo
+		return 1
+	fi
+
+	# create stage/archive directories if needed
 	[ ! -d "$OVE_STAGE_DIR" ] && mkdir -p "$OVE_STAGE_DIR"
 	[ ! -d "$OVE_ARCHIVE_DIR" ] && mkdir -p "$OVE_ARCHIVE_DIR"
+
+	return 0
 }
 
 # buildme:[PROJECT]:build projects from scratch (=bootstrap, configure, build, install)
@@ -2246,8 +2317,6 @@ function ove-buildme {
 	local n
 	local pack_list
 
-	ove_build_pre
-
 	if [ $# -eq 1 ]; then
 		if ! [[ -v ove_projects_name2index[$1] ]]; then
 			ove_echo_error_noprefix "unknown project '$1'"
@@ -2255,6 +2324,10 @@ function ove-buildme {
 		fi
 
 		deps=$(ove_get_deps_recursive $1)
+	fi
+
+	if ! ove_build_pre $*; then
+		return 1
 	fi
 
 	for b in $OVE_BUILD_ORDER; do
@@ -2344,7 +2417,9 @@ function ove-buildme-parallel {
 	local project_dependency
 	local wait_for_deps
 
-	ove_build_pre
+	if ! ove_build_pre $*; then
+		return 1
+	fi
 
 	if [ $# -eq 1 ]; then
 		if ! [[ -v ove_projects_name2index[$1] ]]; then
