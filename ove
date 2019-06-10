@@ -3145,26 +3145,6 @@ function ove-vi {
 	vi -o $files_by_epoch -c "wincmd H"
 }
 
-# clean-and-rebuild: :clean+rebuild combo
-function ove-clean-and-rebuild {
-	if [ "$(type -t ove-clean)" != "function" ]; then
-		ove_echo_error_noprefix "ove clean not found"
-		return 1
-	fi
-	ove-clean
-	ove-rebuild
-}
-
-# rebuild: :buildme+dist combo
-function ove-rebuild {
-	ove-buildme
-	if [ "$(type -t ove-dist)" != "function" ]; then
-		ove_echo_error_noprefix "ove dist not found"
-		return 1
-	fi
-	ove-dist
-}
-
 # mrproper:[y|Y]:remove untracked files AND removes '$OVE_STAGE_DIR/*' AND removes '$OVE_ARCHIVE_DIR/*'
 function ove-mrproper {
 	local archive_dir_size
