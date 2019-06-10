@@ -85,7 +85,7 @@ Example:
 Thats how OVE resolves external and internal dependencies for builds. As you just read above, the 'version:' keyword creates an environment variable that is passed to all build steps. What are those steps exactly? We cover that in the next section:
 
 ### The 'projects' folder
-OVE is agnostic when it comes to build systems. Well, not entirely true. You need to be in an UNIX-like environment. That said, there are still a multitude of ways to build and install software that needs to be taken care of. OVE handles this by providing a way of defining, for each sub project, how that particular project is built. In the OWEL, there is a folder called 'projects'. Within this projects folder, sub directories needs to be present for each sub project containing executables (normally tiny bash scripts) for each build step. The projects structure typically look like this (output from tree):
+OVE is agnostic when it comes to build systems. Well, not entirely true. You need to be in a UNIX-like environment. That said, there are still a multitude of ways to build and install software that need to be taken care of. OVE handles this by providing a way of defining, for each sub project, how that particular project is built. In the OWEL, there is a folder called 'projects'. Within this projects folder, sub directories need to be present for each sub project containing executables (normally tiny bash scripts) for each build step. The projects structure typically look like this (output from tree):
 
     ├── projects/
     │   ├── projA/
@@ -106,7 +106,7 @@ OVE is agnostic when it comes to build systems. Well, not entirely true. You nee
 
 When OVE builds the top project the following happens: First, OVE sorts out the build order as explained in the previous section. Secondly, each projects' build steps are executed (bootstrap, build, configure, install). When done, you should be able to find the final output of the build in the staging area. In most cases, these are then picked up by an OVE plugin that creates deliverable packages of some kind (.rpm, .deb or similar).
 
-Particularly interesting here are the "configure" and "install" steps. In order for OVE to get intermediate build results into the staging area, typically this kind of construct is used from within the 'configure' script:
+Particularly interesting here are the "configure" and "install" steps. In order for OVE to get intermediate build results into the staging area, this kind of construct is typically used from within the 'configure' script:
 
 	./configure --prefix=$OVE_STAGE_DIR/usr
 
@@ -116,7 +116,7 @@ You now know how to build sub projects together, but what about testing from a s
 
 ### The 'systests' and 'systests-groups' files
 
-We have already covered how OVE keeps track of repos, how sub-project build methods can be included and how they can all form a larger, top view project. We also showed how these parts gets built together using OVE's staging area. On the same note, it also makes sense to provide a way to execute system tests, tests that need more than one sub-project or repo to execute. As stipulated earlier, OVE takes a rather defensive approach here. Quite often, test systems already exist for most functionality you want to develop, at least partly. And you want to re-use them. Luckily, OVE will be able to launch any tests as long as they can execute from prompt. Two files, 'systests' and 'systests-groups' give OVE information about what tests are available and how to execute them:
+We have already covered how OVE keeps track of repos, how sub-project build methods can be included and how they can all form a larger, top view project. We also showed how these parts are built together using OVE's staging area. On the same note, it also makes sense to provide a way to execute system tests, tests that need more than one sub-project or repo to execute. As stipulated earlier, OVE takes a rather defensive approach here. Quite often, test systems already exist for most functionality you want to develop, at least partly. And you want to re-use them. OVE is able to launch any tests as long as they can execute from prompt. Two files, 'systests' and 'systests-groups' give OVE information about what tests are available and how to execute them:
 
 'systests' is a text file that contains a list of tests. One row is one test:
 
@@ -157,7 +157,7 @@ Using the above structure, you would be able to execute either one test (t1, t2 
 Thats it for system tests! Now lets go ahead and look at plugins:
 
 ## Plugins
-As discussed in the Overview, in most larger projects there is a strong need for flexibility when it comes to what a developer or CI/CD machinery wants to be able to do with it. To accommodate these needs, OVE provides a way of extending the ove command list with customized commands. We call them plugins, and they can be exposed to your OVE project in three ways: From your workspace, from your OWEL (top repo) or from any repo included in the revtab. What are they really then? They are executables, optionally accompanied with a help text and/or a tab completion script. OVE looks for plugins at the following locations:
+As discussed in the Overview, in most larger projects there is a strong need for flexibility when it comes to what a developer or CI/CD machinery wants to be able to do with it. To accommodate these needs, OVE provides a way of extending the OVE command list with customized commands. We call them plugins, and they can be exposed to your OVE project in three ways: From your workspace, from your OWEL (top repo) or from any repo included in the revtab. What are they really then? They are executables, optionally accompanied with a help text and/or a tab completion script. OVE looks for plugins at the following locations:
 
     $OVE_BASE_DIR/scripts/
     $OVE_PROJECT_DIR/scripts/
@@ -196,11 +196,11 @@ Doing this, OVE will check that you have the required programs installed on your
 * tree
 * tsort
 
-OVE is also dependent on 'sed/grep/tail/awk/...' but they are not (yet) checked for.
+OVE is also dependent on 'sed/grep/tail/awk/...' but they are not checked for since it is quite uncommon to lack these.
 
-After successfully sourcing ove, further instructions are given to enter the OVE workspace and fetch the rest of the repos. When the fetch is completed, everything is ready in order for man or machine to start working with the project! For the sake of clarity, lets look at an example:
+After successfully sourcing OVE, further instructions are given to enter the OVE workspace and fetch the rest of the repos. When the fetch is completed, everything is ready in order for man or machine to start working with the project! For the sake of clarity, lets look at an example:
 
-    $ curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s abc ssh://github.com/Ericsson/ove-tutorial
+    $ curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s abc ssh://github.com/Ericsson/xyz
     Cloning into '.ove'...
     Cloning into 'xyz'...
     ...
@@ -271,7 +271,7 @@ Done! As simple as that. Lets give a final example of what an OVE project file s
         ├── systests
         └── systests-groups
 
-Up until now we covered everything you need to know to get to the point where developers (or machines) can start working with your OVE project. However, we have mentioned the OVE commands several times already and it is now time to have a closer look at how those work:
+Up until now we covered everything you need to know to get to the point where developers (or machines) can start working with your OVE project. By now, you might have noticed that we have mentioned the OVE commands several times. It is time to have a closer look at how they work:
 
 ## Commands
 OVE will enhance your bash shell with commands to manage your OVE based project. We divide them into four categories:
@@ -334,7 +334,7 @@ Please find the full command reference [here](ove-cmd-list.md)
 
 ## Supported Linux distributions
 
-We tell ourselves that we support the following distros at this point:
+OVE has been tested for the following distributions:
 
 * Alpine Linux 3.9.0
 * Arch Linux
