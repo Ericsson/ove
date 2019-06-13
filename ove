@@ -198,7 +198,7 @@ function ove_main {
 }
 
 # $1: directory with strace pid files
-function ove_analyze_strace {
+function ove_analyze_strace_execve_timing {
 	local cmd
 	local diff
 	local f
@@ -224,12 +224,79 @@ function ove_analyze_strace {
 		sort -nr
 }
 
+# $1: directory with strace pid files
+function ove_analyze_strace_connect {
+	local f
+	local execve
+	local ip
+	local ip_lookup
+	local line
+	local port
+	local port_lookup
+
+	! [ -d "$1" ] && return 1
+
+	if ! command -v dig > /dev/null; then
+		ove_echo_error_noprefix "error: 'dig' is not found"
+		return 1
+	fi
+
+	if ! command -v whois > /dev/null; then
+		ove_echo_error_noprefix "error: 'whois' is not found"
+		return 1
+	fi
+
+	for f in $(find $1 -type f); do
+		# IPv4 only for now
+		for line in $(grep -E -o 'port=htons\([0-9]+\).*[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' $f | tr ' ' '-'); do
+			ip=$(echo $line | \
+				grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
+
+			# ignore loopback
+			[[ $ip == 127* ]] && continue
+
+			ip_lookup=$(dig +short -x $ip | \
+				tr '\n' ' ' | \
+				xargs)
+			if [ "$ip_lookup" == "" ]; then
+				ip_lookup=$(whois $ip | \
+					grep OrgName | \
+					cut -d: -f2- | \
+					xargs)
+			fi
+
+			[ "$ip_lookup" == "" ] && ip_lookup="N/A"
+			execve=$(grep -m1 execve $f)
+			if [ "$execve" == "" ]; then
+				execve="$(grep -m1 connect $f | \
+					awk '{print $1}') pid $(basename $f | cut -d'.' -f2)"
+			fi
+
+			port=$(echo $line | \
+				cut -d'(' -f2- | \
+				cut -d')' -f1)
+
+			if [ -e /etc/services ]; then
+				port_lookup=$(grep -m1 -w $port /etc/services | \
+					awk '{print $1}')
+			fi
+
+			if [ "$port_lookup" == "" ]; then
+				port_lookup="N/A"
+			fi
+
+			echo "$execve @ $ip @ $ip_lookup @ $port @ $port_lookup"
+		done
+	done | sort -n | column -s'@' -t
+}
+
 function ove {
 	local args
 	local re
 	local ret
 	local script_help
 	local script_opts
+	local strace_expression
 
 	if [ "$#" -eq 0 ]; then
 		ove-help
@@ -272,11 +339,24 @@ function ove {
 				script_opts+="-e "
 			fi
 
-			if [ $OVE_LOGLEVEL -eq 3 ]; then
+			if [ $OVE_LOGLEVEL -eq 3 ] || [ $OVE_LOGLEVEL -eq 4 ]; then
 				[ -e ${OVE_LOG_DIR}/strace-$1 ] && \
 					rm -rf ${OVE_LOG_DIR}/strace-$1
 				mkdir -p ${OVE_LOG_DIR}/strace-$1
-				OVE_ANALYZE_EXECVE="strace -s 1024 -q -o ${OVE_LOG_DIR}/strace-$1/strace-$1 -ff -e execve -ttt"
+
+				if [ $OVE_LOGLEVEL -eq 3 ]; then
+					strace_expression="execve"
+				elif [ $OVE_LOGLEVEL -eq 4 ]; then
+					strace_expression="connect,execve"
+				fi
+
+				OVE_ANALYZE_EXECVE="strace \
+					-s 1024 \
+					-q \
+					-o ${OVE_LOG_DIR}/strace-$1/strace-$1 \
+					-ff \
+					-e $strace_expression \
+					-ttt"
 			else
 				unset OVE_ANALYZE_EXECVE
 			fi
@@ -288,7 +368,11 @@ function ove {
 			ret=$?
 
 			if ! [ -z "${OVE_ANALYZE_EXECVE+x}" ]; then
-				ove_analyze_strace ${OVE_LOG_DIR}/strace-$1 | tee -a $OVE_LAST_COMMAND
+				if [ $OVE_LOGLEVEL -eq 3 ]; then
+					ove_analyze_strace_execve_timing ${OVE_LOG_DIR}/strace-$1 | tee -a $OVE_LAST_COMMAND
+				elif [ $OVE_LOGLEVEL -eq 4 ]; then
+					ove_analyze_strace_connect ${OVE_LOG_DIR}/strace-$1 | tee -a $OVE_LAST_COMMAND
+				fi
 			fi
 
 			sed -i -e 's/\r$//' -e 's/\x0//' $OVE_LAST_COMMAND
@@ -3413,21 +3497,25 @@ function ove-version {
 	echo "OVE [SHA-1: $OVE_SHA @ $OVE_OS $OVE_OS_VER]"
 }
 
-# loglevel:[LEVEL] :show or change loglevel [0-3]
+# loglevel:[LEVEL] :show or change loglevel [0-4]
 function ove-loglevel {
 	set +x
-	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-3]$ ]]; then
-		echo "error: try 0-3"
+	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-4]$ ]]; then
+		echo "error: try 0-4"
 		return 1
 	elif [ $# -eq 1 ]; then
 		OVE_LOGLEVEL=$1
 		ove-config OVE_LOGLEVEL $1 > /dev/null
 	fi
 
-	echo "0: silence is golden" | grep -E --color "$|$OVE_LOGLEVEL"
-	echo "1: normal" | grep -E --color "$|$OVE_LOGLEVEL"
-	echo "2: debug" | grep -E --color "$|$OVE_LOGLEVEL"
-	echo "3: execve time analysis" | grep -E --color "$|$OVE_LOGLEVEL"
+	while true; do
+		echo "0: silence is golden"
+		echo "1: normal"
+		echo "2: debug"
+		echo "3: execve time analysis"
+		echo "4: connect analysis"
+		break
+	done | grep -E --color "$|$OVE_LOGLEVEL"
 
 	if [ $# -eq 1 ]; then
 		OVE_LOGLEVEL=$1
