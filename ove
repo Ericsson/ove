@@ -340,9 +340,9 @@ function ove {
 			fi
 
 			if [ $OVE_LOGLEVEL -eq 3 ] || [ $OVE_LOGLEVEL -eq 4 ]; then
-				[ -e ${OVE_LOG_DIR}/strace-$1 ] && \
-					rm -rf ${OVE_LOG_DIR}/strace-$1
-				mkdir -p ${OVE_LOG_DIR}/strace-$1
+				[ -e ${OVE_PROJECT_TMP}/strace-$1 ] && \
+					rm -rf ${OVE_PROJECT_TMP}/strace-$1
+				mkdir -p ${OVE_PROJECT_TMP}/strace-$1
 
 				if [ $OVE_LOGLEVEL -eq 3 ]; then
 					strace_expression="execve"
@@ -353,7 +353,7 @@ function ove {
 				OVE_ANALYZE_EXECVE="strace \
 					-s 1024 \
 					-q \
-					-o ${OVE_LOG_DIR}/strace-$1/strace-$1 \
+					-o ${OVE_PROJECT_TMP}/strace-$1/strace-$1 \
 					-ff \
 					-e $strace_expression \
 					-ttt"
@@ -369,9 +369,9 @@ function ove {
 
 			if ! [ -z "${OVE_ANALYZE_EXECVE+x}" ]; then
 				if [ $OVE_LOGLEVEL -eq 3 ]; then
-					ove_analyze_strace_execve_timing ${OVE_LOG_DIR}/strace-$1 | tee -a $OVE_LAST_COMMAND
+					ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP}/strace-$1 | tee -a $OVE_LAST_COMMAND
 				elif [ $OVE_LOGLEVEL -eq 4 ]; then
-					ove_analyze_strace_connect ${OVE_LOG_DIR}/strace-$1 | tee -a $OVE_LAST_COMMAND
+					ove_analyze_strace_connect ${OVE_PROJECT_TMP}/strace-$1 | tee -a $OVE_LAST_COMMAND
 				fi
 			fi
 
