@@ -913,20 +913,22 @@ function ove_revtab_check {
                name=${ove_revtab_git_name[$count]}
                rev=${ove_revtab_rev[$count]}
 
-               a=$(git -C $OVE_BASE_DIR/$name rev-list -n 1 --abbrev-commit HEAD)
-               b=$(git -C $OVE_BASE_DIR/$name rev-list -n 1 --abbrev-commit $rev)
-               if [ "$a" != "$b" ]; then
-                       echo
-                       ove_echo_cyan_noprefix "$name: HEAD ($a = $(git -C $OVE_BASE_DIR/$name describe --tags --always)) is different from the revtab revision ($b = $rev)"
+	       if [ -d "$OVE_BASE_DIR/$name" ]; then
+		       a=$(git -C $OVE_BASE_DIR/$name rev-list -n 1 --abbrev-commit HEAD)
+		       b=$(git -C $OVE_BASE_DIR/$name rev-list -n 1 --abbrev-commit $rev)
+		       if [ "$a" != "$b" ]; then
+			       echo
+			       ove_echo_cyan_noprefix "$name: HEAD ($a = $(git -C $OVE_BASE_DIR/$name describe --tags --always)) is different from the revtab revision ($b = $rev)"
 
-                       if test -z "$(git -C $OVE_BASE_DIR/$name --no-pager status --porcelain -uno)"; then
-                               ove_echo_cyan_noprefix "$name: checkout '$rev'"
-                               git -C $OVE_BASE_DIR/$name -c advice.detachedHead=false checkout $rev
-                       else
-                               ove_echo_yellow_noprefix "$name: cannot checkout '$rev' as repo is dirty:"
-                       fi
-                       ove-status "$name"
-               fi
+			       if test -z "$(git -C $OVE_BASE_DIR/$name --no-pager status --porcelain -uno)"; then
+				       ove_echo_cyan_noprefix "$name: checkout '$rev'"
+				       git -C $OVE_BASE_DIR/$name -c advice.detachedHead=false checkout $rev
+			       else
+				       ove_echo_yellow_noprefix "$name: cannot checkout '$rev' as repo is dirty:"
+			       fi
+			       ove-status "$name"
+		       fi
+	       fi
                let count+=1
        done
 }
