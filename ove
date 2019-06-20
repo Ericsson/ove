@@ -1965,7 +1965,7 @@ function ove_locate_owels {
 	fi
 
 	if command -v locate > /dev/null; then
-		owels=$(locate -r '\.owel$')
+		owels=$(locate -e -r '\.owel$')
 	else
 		owels=$(find $OVE_LOCATE_SEARCH_DIR -type l -name .owel 2> /dev/null)
 	fi
