@@ -1942,14 +1942,25 @@ function ove_locate_owels {
 	local a
 	local b
 	local diff
+	local invalidate_cache
+	local o
 	local owels
 
 	if [ -e "$OVE_TMP/owel.cache" ]; then
 		a=$(stat --format '%Y' "$OVE_TMP/owel.cache")
 	        b=$(date +%s)
 		if [ $((b-a)) -lt 600 ]; then
-			cat "$OVE_TMP/owel.cache"
-			return
+			for o in $(cat "$OVE_TMP/owel.cache"); do
+				if ! [ -d $o ]; then
+					invalidate_cache=true
+				fi
+
+			done
+
+			if ! [ "$invalidate_cache" = true ]; then
+				cat "$OVE_TMP/owel.cache"
+				return
+			fi
 		fi
 	fi
 
