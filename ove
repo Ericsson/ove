@@ -3538,9 +3538,9 @@ function ove-show {
 	for SHA in "$@"; do
 		# remove dirty tags
 		SHA=${SHA%-dirty}
-		ove_revtab_forall 'git --no-pager show '"$SHA"' &> /dev/null && \
+		ove_revtab_forall 'git --no-pager show '"$SHA"' -- &> /dev/null && \
 			ove_echo_yellow_noprefix $PWD && \
-			git show --color=always '"$SHA"' && \
+			git show --color=always '"$SHA"' -- && \
 			echo'
 	done
 }
