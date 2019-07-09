@@ -914,8 +914,13 @@ function ove_revtab_check {
                rev=${ove_revtab_rev[$count]}
 
 	       if [ -d "$OVE_BASE_DIR/$name" ]; then
-		       a=$(git -C $OVE_BASE_DIR/$name rev-list -n 1 --abbrev-commit HEAD)
-		       b=$(git -C $OVE_BASE_DIR/$name rev-list -n 1 --abbrev-commit $rev)
+		       a=$(git -C $OVE_BASE_DIR/$name rev-list -n 1 --abbrev-commit HEAD --)
+		       if ! git -C $OVE_BASE_DIR/$name rev-list -n 1 --abbrev-commit $rev -- &> /dev/null; then
+			       b=""
+		       else
+			       b=$(git -C $OVE_BASE_DIR/$name rev-list -n 1 --abbrev-commit $rev --)
+		       fi
+
 		       if [ "$a" != "$b" ]; then
 			       echo
 			       ove_echo_cyan_noprefix "$name: HEAD ($a = $(git -C $OVE_BASE_DIR/$name describe --tags --always)) is different from the revtab revision ($b = $rev)"
