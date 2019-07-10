@@ -292,35 +292,37 @@ function ove_analyze_strace_connect {
 
 function ove {
 	local args
+	local cmd
 	local re
 	local ret
 	local script_help
 	local script_opts
 	local strace_expression
 
+	cmd="$1"
 	if [ "$#" -eq 0 ]; then
 		ove-help
-	elif [ "$(type -t ove-"$1")" != "function" ]; then
-		ove_echo_red_noprefix "error: '$1' unknown command"
-		re=\\b$1
+	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
+		ove_echo_red_noprefix "error: '${cmd}' unknown command"
+		re=\\b${cmd}
 		if [[ "$OVE_ALL_COMMANDS" =~ $re ]]; then
 			echo
 			echo "Did you mean?"
 			ove-help $(echo $OVE_ALL_COMMANDS | \
 				xargs -n1 | \
-				grep --color=never ^$1 | \
+				grep --color=never ^${cmd} | \
 				sort | \
 				sed -e 's/^/^/g' -e 's/$/\\s/g')
 		fi
 
 		return 1
-	elif [ "$1" == "!" ] || \
-		[ "$1" == "cd" ] || \
-		[ "$1" == "dry-run" ] || \
-		[ "$1" == "loglevel" ] || \
-		[ "$1" == "switch" ] || \
-		[ "$1" == "unsource" ]; then
-		ove-$1 ${@:2}
+	elif [ "${cmd}" == "!" ] || \
+		[ "${cmd}" == "cd" ] || \
+		[ "${cmd}" == "dry-run" ] || \
+		[ "${cmd}" == "loglevel" ] || \
+		[ "${cmd}" == "switch" ] || \
+		[ "${cmd}" == "unsource" ]; then
+		ove-${cmd} ${@:2}
 	else
 		# sanity check
 		ove_get_base_dir > /dev/null
@@ -330,7 +332,7 @@ function ove {
 		(cd ${OVE_LOG_DIR} && ln -sfn ${OVE_SHA} current)
 		OVE_NOW=$(date '+%Y%m%d-%H%M%S%N')
 		export OVE_NOW
-		OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/${OVE_NOW}-ove-$1-$(hostname).log"
+		OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/${OVE_NOW}-ove-${cmd}-$(hostname)-${OVE_PROJECT_NAME}.log"
 
 		if [ -t 1 ]; then
 			script_help=$(2>&1 script --help)
@@ -340,9 +342,9 @@ function ove {
 			fi
 
 			if [ $OVE_LOGLEVEL -eq 3 ] || [ $OVE_LOGLEVEL -eq 4 ]; then
-				[ -e ${OVE_PROJECT_TMP}/strace-$1 ] && \
-					rm -rf ${OVE_PROJECT_TMP}/strace-$1
-				mkdir -p ${OVE_PROJECT_TMP}/strace-$1
+				[ -e ${OVE_PROJECT_TMP}/strace-${cmd} ] && \
+					rm -rf ${OVE_PROJECT_TMP}/strace-${cmd}
+				mkdir -p ${OVE_PROJECT_TMP}/strace-${cmd}
 
 				if [ $OVE_LOGLEVEL -eq 3 ]; then
 					strace_expression="execve"
@@ -353,7 +355,7 @@ function ove {
 				OVE_ANALYZE_EXECVE="strace \
 					-s 1024 \
 					-q \
-					-o ${OVE_PROJECT_TMP}/strace-$1/strace-$1 \
+					-o ${OVE_PROJECT_TMP}/strace-${cmd}/strace-${cmd} \
 					-ff \
 					-e $strace_expression \
 					-ttt"
@@ -363,15 +365,15 @@ function ove {
 
 			SHELL=$(command -v bash) \
 				$OVE_ANALYZE_EXECVE script $script_opts -q -c \
-				"source $OVE_BASE_DIR/ove; ove_init quick && ove-$1 $args" \
+				"source $OVE_BASE_DIR/ove; ove_init quick && ove-${cmd} $args" \
 				$OVE_LAST_COMMAND
 			ret=$?
 
 			if ! [ -z "${OVE_ANALYZE_EXECVE+x}" ]; then
 				if [ $OVE_LOGLEVEL -eq 3 ]; then
-					ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP}/strace-$1 | tee -a $OVE_LAST_COMMAND
+					ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP}/strace-${cmd} | tee -a $OVE_LAST_COMMAND
 				elif [ $OVE_LOGLEVEL -eq 4 ]; then
-					ove_analyze_strace_connect ${OVE_PROJECT_TMP}/strace-$1 | tee -a $OVE_LAST_COMMAND
+					ove_analyze_strace_connect ${OVE_PROJECT_TMP}/strace-${cmd} | tee -a $OVE_LAST_COMMAND
 				fi
 			fi
 
@@ -381,7 +383,7 @@ function ove {
 			return $ret
 		else
 			{
-				ove-"$1" $args
+				ove-"${cmd}" $args
 			} 2>&1 | tee -i $OVE_LAST_COMMAND
 			ret=${PIPESTATUS[0]}
 			sed -i 's/\x0//g' $OVE_LAST_COMMAND
@@ -3630,7 +3632,7 @@ function ove-lastlog {
 		sort -nr | \
 		cut -d: -f2 | \
 		grep -v $FUNCNAME | \
-		sed "s/\(^.*-ove-\(.*\)-$(hostname).log\)/\2@\1/g" | \
+		sed "s/\(^.*-ove-\(.*\)-$(hostname)-${OVE_PROJECT_NAME}.log\)/\2@\1/g" | \
 		column -t -s@
 }
 
