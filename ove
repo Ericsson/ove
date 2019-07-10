@@ -3259,9 +3259,17 @@ function ove-config {
 	fi
 }
 
-# ls-files: :git ls-files for all git repositories
+# ls-files:[PATTERN]:git ls-files for all git repositories
 function ove-ls-files {
-	ove_revtab_forall 'git ls-files | while read line; do echo -e "$PWD/$line"; done'
+	local cmd
+
+	if [ $# -eq 0 ]; then
+		cmd='git ls-files | while read line; do echo -e $PWD/$line; done'
+	else
+		cmd="re="$*"; git ls-files | while read line; do [[ \$PWD/\$line =~ \$re ]] && echo -e \$PWD/\$line; done"
+	fi
+
+	ove_revtab_forall "$cmd"
 }
 
 # list-modified-files: :list all modified files (not staged)

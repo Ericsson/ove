@@ -57,8 +57,8 @@
 | locate-all              |                             | print OVE workspaces on this host using either 'locate' or 'find $OVE_LOCATE_SEARCH_DIR'                          |
 | log                     |                             | project '$OVE_PROJECT_NAME' commit log for branch '$OVE_PROJECT_CI_BRANCH'                                        |
 | log-project             | <rev> <rev>                 | git log the project '$OVE_PROJECT_NAME'                                                                           |
-| loglevel                | [LEVEL]                     | show or change loglevel [0-3]                                                                                     |
-| ls-files                |                             | git ls-files for all git repositories                                                                             |
+| loglevel                | [LEVEL]                     | show or change loglevel [0-4]                                                                                     |
+| ls-files                | [PATTERN]                   | git ls-files for all git repositories                                                                             |
 | ls-remote               |                             | git ls-remote <URL> HEAD for all git repositories                                                                 |
 | make                    | [PROJECT[-nodeps]]          | build project(s)                                                                                                  |
 | mrproper                | [y\|Y]                       | remove untracked files AND removes '$OVE_STAGE_DIR/*' AND removes '$OVE_ARCHIVE_DIR/*'                            |
