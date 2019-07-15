@@ -292,6 +292,7 @@ function ove_analyze_strace_connect {
 
 function ove {
 	local args
+	local candidates
 	local cmd
 	local re
 	local ret
@@ -303,16 +304,25 @@ function ove {
 	if [ "$#" -eq 0 ]; then
 		ove-help
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
-		ove_echo_red_noprefix "error: '${cmd}' unknown command"
 		re=\\b${cmd}
 		if [[ "$OVE_ALL_COMMANDS" =~ $re ]]; then
-			echo
-			echo "Did you mean?"
-			ove-help $(echo $OVE_ALL_COMMANDS | \
+			candidates=$(ove-help $(echo $OVE_ALL_COMMANDS | \
 				xargs -n1 | \
 				grep --color=never ^${cmd} | \
-				sort | \
-				sed -e 's/^/^/g' -e 's/$/\\s/g')
+				sed -e 's/^/^/g' -e 's/$/\\s/g'))
+
+			if [ $OVE_AUTOCORRECT -eq 1 ] && [ $(printf "$candidates\n" | wc -l) -eq 1 ]; then
+				cmd=$(printf "$candidates\n" | \
+					sed -e "s/\x1B\[[0-9;]*[mK]//g" | \
+					awk '{print $1}')
+				ove $cmd ${*:2}
+				return $?
+			fi
+
+			ove_echo_red_noprefix "error: '$cmd' unknown command"
+			echo
+			echo "Did you mean?"
+			printf "$candidates\n"
 		fi
 
 		return 1
@@ -4072,12 +4082,15 @@ function ove_init {
 		OVE_PROJECT_CI_BRANCH="origin/master"
 		export OVE_PROJECT_CI_BRANCH
 	fi
-
 	if [ -z "${OVE_LOGLEVEL+x}" ]; then
 		OVE_LOGLEVEL=1
 		OVE_REDIRECT_OUTPUT="> /dev/null"
 		export OVE_REDIRECT_OUTPUT
 		export OVE_LOGLEVEL
+	fi
+	if [ -z "${OVE_AUTOCORRECT+x}" ]; then
+		OVE_AUTOCORRECT=0
+		export OVE_AUTOCORRECT
 	fi
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
 	export OVE_REPO_LIST
