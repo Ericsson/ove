@@ -4450,7 +4450,7 @@ function ove-replicate {
 
 	s="$(ove-setup)"
 	if [ "$s" == "" ]; then
-		ove_echo_error_noprefix "'$OVE_PROJECT_DIR/SETUP' file found"
+		ove_echo_error_noprefix "'$OVE_PROJECT_DIR/SETUP' file not found"
 		return 2
 	fi
 
