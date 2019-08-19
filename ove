@@ -305,25 +305,28 @@ function ove {
 		ove-help
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
 		re=\\b${cmd}
-		if [[ "$OVE_ALL_COMMANDS" =~ $re ]]; then
-			candidates=$(ove-help $(echo $OVE_ALL_COMMANDS | \
-				xargs -n1 | \
-				grep --color=never ^${cmd} | \
-				sed -e 's/^/^/g' -e 's/$/\\s/g'))
-
-			if [ $OVE_AUTOCORRECT -eq 1 ] && [ $(printf "$candidates\n" | wc -l) -eq 1 ]; then
-				cmd=$(printf "$candidates\n" | \
-					sed -e "s/\x1B\[[0-9;]*[mK]//g" | \
-					awk '{print $1}')
-				ove $cmd ${*:2}
-				return $?
-			fi
-
+		if ! [[ "$OVE_ALL_COMMANDS" =~ $re ]]; then
 			ove_echo_red_noprefix "error: '$cmd' unknown command"
-			echo
-			echo "Did you mean?"
-			printf "$candidates\n"
+			return 1
 		fi
+
+		candidates=$(ove-help $(echo $OVE_ALL_COMMANDS | \
+			xargs -n1 | \
+			grep --color=never ^${cmd} | \
+			sed -e 's/^/^/g' -e 's/$/\\s/g'))
+
+		if [ $OVE_AUTOCORRECT -eq 1 ] && [ $(printf "$candidates\n" | wc -l) -eq 1 ]; then
+			cmd=$(printf "$candidates\n" | \
+				sed -e "s/\x1B\[[0-9;]*[mK]//g" | \
+				awk '{print $1}')
+			ove $cmd ${*:2}
+			return $?
+		fi
+
+		ove_echo_red_noprefix "error: '$cmd' unknown command"
+		echo
+		echo "Did you mean?"
+		printf "$candidates\n"
 
 		return 1
 	elif [ "${cmd}" == "!" ] || \
