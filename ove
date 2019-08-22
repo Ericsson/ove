@@ -3296,7 +3296,7 @@ function ove-list-modified-files {
 
 	for git in $(ove_dirty_repos); do
 		ove_revtab_forsome "$cmd" "$git"
-	done
+	done | sort -u
 }
 
 # vi: :open modified files in vi
