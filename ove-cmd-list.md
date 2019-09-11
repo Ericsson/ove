@@ -81,5 +81,5 @@
 | unittest                | [TEST...]                   | run all/specific unit tests                                                                                       |
 | unsource                |                             | clean up all OVE vars/funcs from this shell                                                                       |
 | version                 |                             | print OVE version                                                                                                 |
-| vi                      |                             | open modified files in vi                                                                                         |
+| vi                      | [PATTERN]                   | open modified files in vi                                                                                         |
 | what-is                 | DIRECTORY...                | classify files using 'file' within a directory                                                                    |

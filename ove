@@ -3299,7 +3299,7 @@ function ove-list-modified-files {
 	done | sort -u
 }
 
-# vi: :open modified files in vi
+# vi:[PATTERN]:open modified files in vi
 function ove-vi {
 	local f
 	local files
@@ -3314,7 +3314,15 @@ function ove-vi {
 		sort -r | \
 		cut -d: -f2)
 
-	vi -o $files_by_epoch -c "wincmd H"
+	if [ $# -eq 1 ]; then
+		files_by_epoch=$(printf "$files_by_epoch" | \
+			sed -e "s|$OVE_BASE_DIR/||g" | \
+			grep -i $1 | \
+			sed -e "s|^|$OVE_BASE_DIR/|g")
+	fi
+
+	[ "$files_by_epoch" != "" ] &&
+		vi -o $files_by_epoch -c "wincmd H"
 }
 
 # mrproper:[y|Y]:remove untracked files AND removes '$OVE_STAGE_DIR/*' AND removes '$OVE_ARCHIVE_DIR/*'
