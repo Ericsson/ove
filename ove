@@ -3645,7 +3645,7 @@ function ove-lastlog {
 		sort -nr | \
 		cut -d: -f2 | \
 		grep -v $FUNCNAME | \
-		sed "s/\(^.*-ove-\(.*\)-$(hostname)-${OVE_PROJECT_NAME}.log\)/\2@\1/g" | \
+		sed "s/\(^.*-ove-\(.*\)-$(hostname)-\(.*\).log\)/\3@\2@\1/g" | \
 		column -t -s@
 }
 
