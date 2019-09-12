@@ -3306,6 +3306,18 @@ function ove-list-modified-files {
 	done | sort -u
 }
 
+# list-committed-files:[DAYS]:list committed files within 7 or DAYS day(s) {
+function ove-list-committed-files {
+	local cmd
+	local days
+
+	[ $# -eq 1 ] && days="$1" || days=7
+
+	cmd='git --no-pager -C $git log --no-merges --author="$(git config --get user.name)" --name-only --pretty=format:"" --since="'$days' days" | while read line; do [ -f $PWD/$line ] && echo -e $PWD/$line; done'
+
+	ove_revtab_forall "$cmd" | sort -u
+}
+
 # vi:[PATTERN]:open modified files in vi
 function ove-vi {
 	local f
