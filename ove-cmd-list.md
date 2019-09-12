@@ -29,7 +29,7 @@
 | diff-project            | <rev> <rev>                 | git diff the '$OVE_PROJECT_NAME' project                                                                          |
 | do                      | GIT                         | run a command within GIT                                                                                          |
 | dry-run                 | [0\|1]                       | toggle or set OVE_DRY_RUN                                                                                         |
-| env                     |                             | show OVE env                                                                                                      |
+| env                     | [PATTERN]                   | show OVE env                                                                                                      |
 | export                  | [PROJECT...]                | export project(s)                                                                                                 |
 | fetch                   | [GIT...]                    | git fetch --all for all/specified repositories, ends with ove status                                              |
 | forall                  | COMMAND                     | run 'COMMAND' for all git repositories                                                                            |

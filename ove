@@ -2729,12 +2729,19 @@ function ove-list-repositories {
 	ove_revtab_list
 }
 
-# env: :show OVE env
+# env:[PATTERN]:show OVE env
 function ove-env {
 	local e
 	local str
+	local v
 
-	for e in $(compgen -A variable | grep OVE_); do
+	if [ $# -eq 0 ]; then
+		v=$(compgen -A variable | grep OVE_)
+	else
+		v=$(compgen -A variable | grep OVE_ | grep -i $1)
+	fi
+
+	for e in $v; do
 		str+="$e:${!e}\n"
 	done
 
@@ -3825,6 +3832,12 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "apply" ]; then
 		if [ $size -ge 2 ]; then
+			return
+		fi
+	elif [ "${subcommand}" == "env" ]; then
+		if [ $size -eq 2 ]; then
+			wordlist=$(compgen -A variable | grep OVE_)
+		else
 			return
 		fi
 	elif [ "${subcommand}" == "unittest" ]; then
