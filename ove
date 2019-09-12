@@ -4141,7 +4141,7 @@ function ove_init {
 	export OVE_LDFLAGS
 	OVE_CPPFLAGS=" -I${OVE_STAGE_DIR}${OVE_PREFIX}/include"
 	export OVE_CPPFLAGS
-	OVE_SHA=$(git -C $OVE_DIR describe --always --dirty)
+	OVE_SHA=$(git -C $OVE_DIR rev-parse --short HEAD)
 	export OVE_SHA
 	OVE_LAST_COMMAND=
 	export OVE_LAST_COMMAND
