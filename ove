@@ -3367,12 +3367,12 @@ function ove-ls-files {
 	ove_revtab_forall "$cmd"
 }
 
-# list-modified-files: :list all modified files (not staged)
+# list-modified-files: :list modified files
 function ove-list-modified-files {
 	local cmd
 	local git
 
-	cmd='git --no-pager diff-files --quiet || git diff --name-only | sed -e "s|^|$git/|g"'
+	cmd='git --no-pager diff-index --quiet HEAD || git diff --name-only HEAD | sed -e "s|^|$git/|g"'
 
 	for git in $(ove_dirty_repos); do
 		ove_revtab_forsome "$cmd" "$git"

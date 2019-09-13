@@ -47,7 +47,7 @@
 | list-commands           |                             | list commands                                                                                                     |
 | list-committed-files    | [DAYS]                      | list committed files within 7 or DAYS day(s) {                                                                    |
 | list-heads              | [GIT...]                    | git log for all/specified git repositories                                                                        |
-| list-modified-files     |                             | list all modified files (not staged)                                                                              |
+| list-modified-files     |                             | list modified files                                                                                               |
 | list-projects           | [long]                      | list projects                                                                                                     |
 | list-repositories       |                             | display a list of tracked git repositories                                                                        |
 | list-scripts            |                             | list available scripts                                                                                            |
