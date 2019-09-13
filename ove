@@ -2123,6 +2123,93 @@ function ove_dirty_repos {
 	done
 }
 
+function ove_stashed_repos {
+	local repo
+
+	for repo in $(ove_revtab_forall_parallel 'test -z "$(git --no-pager stash show 2> /dev/null)" || echo $PWD'); do
+		ove_git2shortpath $repo
+	done
+}
+
+# $1: drop or pop
+function ove_stash_forsome {
+	local cmd
+
+	! [ -f $OVE_PROJECT_TMP/ove-stashed-repos ] && return
+	cmd="git stash $1 -q"
+	ove_revtab_forsome "$cmd" "$(cat $OVE_PROJECT_TMP/ove-stashed-repos | sed "s|$OVE_BASE_DIR/||g" | xargs)"
+	rm $OVE_PROJECT_TMP/ove-stashed-repos
+}
+
+function ove_stash_pop {
+	ove_stash_forsome pop
+}
+
+function ove_stash_drop {
+	ove_stash_forsome drop
+}
+
+function ove_stash_save {
+	local cmd
+	local dirty_repos
+	local git
+	local now
+
+	[ -f $OVE_PROJECT_TMP/ove-stashed-repos ] && return
+
+	dirty_repos=$(ove_dirty_repos)
+	[ "$dirty_repos" == "" ] && return
+
+	> $OVE_PROJECT_TMP/ove-stashed-repos
+	now=$(date '+%Y%m%d-%H%M%S')
+	cmd="git stash save -q stashed by OVE@$now && echo \$git >> $OVE_PROJECT_TMP/ove-stashed-repos"
+
+	for git in $dirty_repos; do
+		ove_revtab_forsome "$cmd" "$git"
+	done
+}
+
+function ove_stash_inspect {
+	local cmd
+	local stashed_repos
+
+	stashed_repos=$(ove_stashed_repos)
+	[ "$stashed_repos" == "" ] && return
+
+	cmd="git --no-pager stash"
+	if [ "$1" == "show" ]; then
+		cmd+=" show -p"
+	elif [ "$1" == "list" ]; then
+		cmd+=" list"
+	else
+		return
+	fi
+
+	ove_revtab_forsome "ove_echo_yellow_noprefix \$PWD: && $cmd" "$stashed_repos"
+}
+
+function ove_stash_show {
+	ove_stash_inspect show
+}
+
+function ove_stash_list {
+	ove_stash_inspect list
+}
+
+# stash:[drop|list|pop|show]:git stash [drop|list|pop|show] for all git repositories
+function ove-stash {
+	if [ "$1" == "pop" ] ||
+		[ "$1" == "list" ] ||
+		[ "$1" == "show" ] ||
+		[ "$1" == "drop" ]; then
+		ove_stash_$1
+	elif [ $# -eq 0 ]; then
+		ove_stash_save
+	else
+		ove-help '^stash '
+	fi
+}
+
 # diff:[GIT...]:git diff for all/specified git repositories
 function ove-diff {
 	local cmd
@@ -2708,20 +2795,6 @@ function ove-diff-check {
 
 	cmd="echo \$PWD; git --no-pager diff --check $* -- \$(git diff --name-only)"
 	ove_revtab_forall "$cmd"
-}
-
-# list-stash:[GIT...]:git stash list for all/specified repositories
-function ove-list-stash {
-	local cmd
-
-	cmd='git stash show stash@{0} &> /dev/null && \
-		(ove_echo_yellow_noprefix $PWD: && git --no-pager stash list -p; echo)'
-
-	if [ $# -eq 0 ]; then
-		ove_revtab_forall "$cmd"
-	else
-		ove_revtab_forsome "$cmd" "$*"
-	fi
 }
 
 # list-repositories: :display a list of tracked git repositories
@@ -3766,6 +3839,12 @@ function ove_bash_complete {
 			wordlist=$(ove_project_tags_and_branches)
 		elif [ $size -eq 3 ]; then
 			wordlist="purge autostash"
+		else
+			return
+		fi
+	elif [ "${subcommand}" == "stash" ]; then
+		if [ $size -eq 2 ]; then
+			wordlist="drop list pop show"
 		else
 			return
 		fi

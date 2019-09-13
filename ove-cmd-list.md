@@ -51,7 +51,6 @@
 | list-projects           | [long]                      | list projects                                                                                                     |
 | list-repositories       |                             | display a list of tracked git repositories                                                                        |
 | list-scripts            |                             | list available scripts                                                                                            |
-| list-stash              | [GIT...]                    | git stash list for all/specified repositories                                                                     |
 | list-systests           |                             | list available system tests                                                                                       |
 | list-systests-aliases   |                             | list available system test aliases                                                                                |
 | locate                  |                             | print OVE workspaces owned by '$USER' on this host using either 'locate' or 'find $OVE_LOCATE_SEARCH_DIR'         |
@@ -75,6 +74,7 @@
 | shortlog-project        | <rev> <rev>                 | git shortlog the project '$OVE_PROJECT_NAME'                                                                      |
 | show                    | [revision...]               | ove list-heads or search for 'revision' within all git repositories. If found run 'git show SHA-1\|TAG'            |
 | show-configuration      |                             | show current build configuration for each project                                                                 |
+| stash                   | [drop\|list\|pop\|show]        | git stash [drop\|list\|pop\|show] for all git repositories                                                           |
 | status                  | [GIT...]                    | git status -zbs -uno for all/specified repositories                                                               |
 | switch                  | [PATTERN]                   | switch to another OVE project                                                                                     |
 | systest                 | [TEST\|GROUP...]             | run one or more system tests/groups described in $OVE_PROJECT_DIR/systests-groups and $OVE_PROJECT_DIR/systests   |
