@@ -452,7 +452,7 @@ function ove_project_commands_list {
 
 	[ "$search_dirs" == "" ] && return
 
-	for f in $(cd $OVE_PROJECT_DIR/projects; find $search_dirs -perm -u=x -type f); do
+	for f in $(cd $OVE_PROJECT_DIR/projects; find -L $search_dirs -perm -u=x -type f); do
 		echo ${f#*/}
 	done | \
 		grep -v '[-_]' | \
