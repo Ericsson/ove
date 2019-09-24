@@ -3577,7 +3577,7 @@ function ove-list-heads {
 	local cmd
 	local f
 
-	cmd='echo $(echo -n $(echo $git | sed -e "s|$OVE_BASE_DIR/||g")? && git --no-pager log -1 --no-merges --format=%h?%ar?%ae?%s)'
+	cmd='echo $(echo -n "$(echo $git | sed -e "s|$OVE_BASE_DIR/||g")?" && git --no-pager log -1 --no-merges --format=%h?%ar?%ae?%s)'
 	f="$OVE_PROJECT_TMP/$FUNCNAME.tmp"
 
 	> $f
