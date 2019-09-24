@@ -2797,7 +2797,7 @@ function ove-diff-check {
 	ove_revtab_forall "$cmd"
 }
 
-# list-repositories: :display a list of tracked git repositories
+# list-repositories: :list all git repositories
 function ove-list-repositories {
 	ove_revtab_list
 }
@@ -3749,7 +3749,7 @@ function ove-lastlog {
 		column -t -s@
 }
 
-# authors: :summarize authors from tracked repositories
+# authors: :list author summary for all git repositories
 function ove-authors {
 	local git
 
@@ -3783,6 +3783,11 @@ function ove-authors {
 		sort | \
 		uniq -c | \
 		sort -nr
+}
+
+# domains: :list email domain summary for all git repositories
+function ove-domains {
+	ove-authors | grep '@' | cut -d@ -f2 | sort | uniq -c | sort -nr
 }
 
 function ove_bash_complete {

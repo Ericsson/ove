@@ -4,7 +4,7 @@
 | add                     | [GIT...]                    | git add -p for all/specified repositories                                                                         |
 | ag                      | PATTERN                     | search OVE workspace using The Silver Searcher                                                                    |
 | apply                   | PATCH                       | apply one OVE patch                                                                                               |
-| authors                 |                             | summarize authors from tracked repositories                                                                       |
+| authors                 |                             | list author summary for all git repositories                                                                      |
 | blame                   | PATTERN                     | git grep-blame-log combo                                                                                          |
 | blame-history           | PATTERN                     | git log -S for all git repositories                                                                               |
 | bootstrap               | [PROJECT...]                | run the 'bootstrap' step for all or individual projects                                                           |
@@ -28,6 +28,7 @@
 | diff-check              | [OPTIONS]                   | git diff --check [OPTIONS]                                                                                        |
 | diff-project            | <rev> <rev>                 | git diff the '$OVE_PROJECT_NAME' project                                                                          |
 | do                      | GIT                         | run a command within GIT                                                                                          |
+| domains                 |                             | list email domain summary for all git repositories                                                                |
 | dry-run                 | [0\|1]                       | toggle or set OVE_DRY_RUN                                                                                         |
 | env                     | [PATTERN]                   | show OVE env                                                                                                      |
 | export                  | [PROJECT...]                | export project(s)                                                                                                 |
@@ -49,7 +50,7 @@
 | list-heads              | [GIT...]                    | git log for all/specified git repositories                                                                        |
 | list-modified-files     |                             | list modified files                                                                                               |
 | list-projects           | [long]                      | list projects                                                                                                     |
-| list-repositories       |                             | display a list of tracked git repositories                                                                        |
+| list-repositories       |                             | list all git repositories                                                                                         |
 | list-scripts            |                             | list available scripts                                                                                            |
 | list-systests           |                             | list available system tests                                                                                       |
 | list-systests-aliases   |                             | list available system test aliases                                                                                |
