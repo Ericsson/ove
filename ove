@@ -942,7 +942,7 @@ function ove_revtab_check {
 
 				if test -z "$(git -C $OVE_BASE_DIR/$name --no-pager status --porcelain -uno)"; then
 					ove_echo_cyan_noprefix "$name: checkout '$rev'"
-					git -C $OVE_BASE_DIR/$name -c advice.detachedHead=false checkout $rev
+					ove_revtab_checkout $name
 				else
 					ove_echo_yellow_noprefix "$name: cannot checkout '$rev' as repo is dirty:"
 				fi
@@ -1023,37 +1023,61 @@ function ove_revtab_forsome_parallel {
 	)
 }
 
-function ove_revtab_clone {
+# $*: optional list of repositories
+function ove_revtab_clone_and_checkout {
 	(
 	local count
+	local git_basename
+	local index
+	local repo
 
-	count=0
-	while ((count < ove_revtab_num_repositories)); do
-		if [ ! -d "$OVE_BASE_DIR/${ove_revtab_git_name[$count]}" ]; then
-			git clone $OVE_CLONE_OPTIONS "${ove_revtab_fetch_url[$count]}" "$OVE_BASE_DIR/${ove_revtab_git_name[$count]}" &
-		fi
-		let count+=1
-	done
+	if [ $# -gt 0 ]; then
+		for repo in $*; do
+			git_basename=${1##*/}
+			index=${ove_revtab_basename2index[$git_basename]}
+
+			if [ ! -d "$OVE_BASE_DIR/$repo" ]; then
+				git clone "${ove_revtab_fetch_url[$index]}" "$OVE_BASE_DIR/${ove_revtab_git_name[$index]}" && ove_revtab_checkout $git_basename &
+			fi
+			shift
+		done
+	else
+		count=0
+		while ((count < ove_revtab_num_repositories)); do
+			if [ ! -d "$OVE_BASE_DIR/${ove_revtab_git_name[$count]}" ]; then
+				git clone "${ove_revtab_fetch_url[$count]}" "$OVE_BASE_DIR/${ove_revtab_git_name[$count]}" && ove_revtab_checkout ${ove_revtab_git_name[$count]} &
+			fi
+			let count+=1
+		done
+	fi
+
 	wait
 	)
 }
 
-# $1: optional list of repositories
+# $*: optional list of repositories
 function ove_revtab_checkout {
 	(
 	local count
+	local git_basename
+	local index
+	local repo
 
-	count=0
-	while ((count < ove_revtab_num_repositories)); do
-		# skip if not in $1
-		if [ "$1" != "" ] && [[ "$1" != *"${ove_revtab_git_name[$count]}"* ]]; then
-			true
-		else
+	if [ $# -gt 0 ]; then
+		for repo in $*; do
+			git_basename=${1##*/}
+			index=${ove_revtab_basename2index[$git_basename]}
+			git -C "$OVE_BASE_DIR/${ove_revtab_git_name[$index]}" -c advice.detachedHead=false checkout "${ove_revtab_rev[$index]}" &
+			shift
+		done
+	else
+		count=0
+		while ((count < ove_revtab_num_repositories)); do
 			git -C "$OVE_BASE_DIR/${ove_revtab_git_name[$count]}" -c advice.detachedHead=false checkout "${ove_revtab_rev[$count]}" &
-		fi
+			let count+=1
+		done
+	fi
 
-		let count+=1
-	done
 	wait
 	)
 }
@@ -1099,6 +1123,7 @@ function ove_revtab_pull_one {
 	fi
 }
 
+# $*: optional list of repositories
 function ove_revtab_fetch {
 	local co_list
 	local count
@@ -1106,7 +1131,7 @@ function ove_revtab_fetch {
 	ove_revtab_parse "$OVE_PROJECT_DIR"/revtab
 
 	if [ $# -ge 1 ]; then
-		ove_revtab_clone
+		ove_revtab_clone_and_checkout $*
 		ove_revtab_forsome_parallel 'git -C $git fetch --all --tags | sed -e "s|$| for $i|g"' $*
 		return $?
 	fi
@@ -1119,8 +1144,7 @@ function ove_revtab_fetch {
 		let count+=1
 	done
 
-	ove_revtab_clone
-	[ "$co_list" != "" ] && ove_revtab_checkout "$co_list"
+	[ "$co_list" != "" ] && ove_revtab_clone_and_checkout $co_list
 
 	ove_revtab_forall_parallel 'git -C $git fetch --all --tags | sed -e "s|$| for $(ove_git2shortpath $git)|g"'
 	return $?
@@ -3070,11 +3094,8 @@ function ove-checkout {
 		# init everything
 		ove_init
 
-		# clone repositories
-		ove_revtab_clone
-
-		# checkout rev
-		ove_revtab_checkout
+		# clone and checkout
+		ove_revtab_clone_and_checkout
 
 		if [ "$2" == "autostash" ]; then
 			for repo in $dirty_repos; do
