@@ -958,7 +958,7 @@ function ove_revtab_list_fullpath {
 
 	for git in "${ove_revtab_git_name[@]}" $(readlink .owel); do
 		echo -n "$OVE_BASE_DIR/$git "
-	done | xargs /bin/echo
+	done | xargs "$OVE_ECHO"
 }
 
 function ove_revtab_list_basename {
@@ -966,7 +966,7 @@ function ove_revtab_list_basename {
 
 	for git in "${ove_revtab_git_name[@]}" $(readlink .owel); do
 		echo -n "$git "
-	done | xargs /bin/echo
+	done | xargs "$OVE_ECHO"
 }
 
 function ove_revtab_forall {
@@ -1193,7 +1193,7 @@ function ove_list_projects {
 	if [ -f "$OVE_PROJECT_DIR"/projs ]; then
 		grep -o '^[a-zA-Z0-9_]\+' $OVE_PROJECT_DIR/projs | \
 			sort | \
-			xargs /bin/echo
+			xargs "$OVE_ECHO"
 	fi
 }
 export -f ove_list_projects
@@ -2397,9 +2397,9 @@ function ove_install_packages {
 
 	# sort the list
 	missing_packages_sorted="$(echo $missing_packages | \
-		xargs -n1 /bin/echo | \
+		xargs -n1 "$OVE_ECHO" | \
 		sort -u | \
-		xargs /bin/echo)"
+		xargs "$OVE_ECHO")"
 
 	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
 		ove_echo_yellow "Would prompt to install this/these package(s):"
@@ -3992,13 +3992,13 @@ function ove_update_tab_complete {
 		cut -d: -f1 | \
 		sort | \
 		tr '\n' ' ' | \
-		xargs /bin/echo)
+		xargs "$OVE_ECHO")
 
 	OVE_BUILT_INS=$(grep -o '^function ove-.* ' $BASH_SOURCE | \
 		sed -e ':a;N;$!ba;s/function ove-//g' | \
 		sort | \
 		tr '\n' ' ' | \
-		xargs /bin/echo)
+		xargs "$OVE_ECHO")
 
 	# project commands
 	OVE_ALL_COMMANDS=$OVE_PROJECT_COMMANDS
@@ -4088,7 +4088,7 @@ function ove_scripts_init {
 
 	array=($OVE_SCRIPTS_LIST)
 	oldIFS=$IFS
-	IFS=$'\n' OVE_SCRIPTS_LIST=$(xargs /bin/echo <<<$(sort <<<"${array[*]}"))
+	IFS=$'\n' OVE_SCRIPTS_LIST=$(xargs "$OVE_ECHO" <<<$(sort <<<"${array[*]}"))
 	IFS=$oldIFS
 }
 
@@ -4169,6 +4169,7 @@ function ove-select-configuration {
 
 # init:initialize OVE project
 function ove_init {
+	OVE_ECHO=$(which echo)
 	OVE_BASE_DIR="$(ove_get_base_dir)"
 	OVE_PROJECT_DIR=$(readlink -f $OVE_BASE_DIR/.owel)
 	OVE_PROJECT_LIST=$(ove_list_projects)
