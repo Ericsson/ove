@@ -127,7 +127,15 @@ function ove_welcome_msg {
 
 function ove_main {
 	/proc/self/exe --version | grep -q 'GNU bash'
-	test $? -ne 0 && echo 'error: run this in bash' && exit 1
+	test $? -ne 0 && echo 'error: run this in bash' && return 1
+
+	if [ ${BASH_VERSINFO[0]} -lt 4 ]; then
+		echo "error: bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} is way too old. I need bash 4.3+"
+		return 1
+	elif [ ${BASH_VERSINFO[0]} -eq 4 ] && [ ${BASH_VERSINFO[0]} -lt 3 ]; then
+		echo "error: bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} is too old. I need bash 4.3+"
+		return 1
+	fi
 
 	# pretty terminals
 	if [ -t 1 ]; then

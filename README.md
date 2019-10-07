@@ -186,6 +186,7 @@ The 'setup' script will then urge the developer to enter the OWEL directory and 
 
 Doing this, OVE will check that you have the required programs installed on your machine and prompt for installation otherwise. This is the current list:
 
+* bash (>=4.3)
 * column
 * file
 * envsubst
