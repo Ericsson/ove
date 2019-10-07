@@ -3912,6 +3912,13 @@ function ove_bash_complete {
 		elif [ $size -gt 2 ]; then
 			return
 		fi
+	elif [ "${subcommand}" == "vi" ]; then
+		if [ $size -eq 2 ]; then
+			wordlist=$(ove-list-modified-files | \
+				xargs -n1 basename)
+		elif [ $size -gt 2 ]; then
+			return
+		fi
 	elif [ "${subcommand}" == "config" ]; then
 		if [ $size -eq 2 ]; then
 			wordlist=$(ove-config | awk '{print $1}')
