@@ -1705,6 +1705,7 @@ function ove-systest {
 		fi
 
 		systest_row=($(grep -w ^$test_name "${OVE_PROJECT_DIR}"/systests))
+		test_name=${systest_row[0]}
 		systest_timeout=${systest_row[1]}
 		systest_type=${systest_row[2]}
 		systest_path=${OVE_BASE_DIR}/${systest_row[3]//\"}
