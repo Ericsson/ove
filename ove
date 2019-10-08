@@ -2560,7 +2560,13 @@ function ove_build_pre {
 	if [ $# -eq 0 ]; then
 		paths=$(ove_list_projects_paths)
 	else
-		paths=$(ove_get_paths_recursive $* | xargs -n1 | sort -u | xargs)
+		while true; do
+			p+="$(ove_get_paths_recursive $1) "
+			shift
+			[ $# -eq 0 ] && break
+		done
+
+		paths="$(echo $p | xargs -n1 | sort -u | xargs)"
 	fi
 
 	for p in $paths; do
