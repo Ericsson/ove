@@ -951,6 +951,7 @@ function ove_revtab_check {
 				if test -z "$(git -C $OVE_BASE_DIR/$name --no-pager status --porcelain -uno)"; then
 					ove_echo_cyan_noprefix "$name: checkout '$rev'"
 					ove_revtab_checkout $name
+					ove_patch_repositories
 				else
 					ove_echo_yellow_noprefix "$name: cannot checkout '$rev' as repo is dirty:"
 				fi
@@ -2988,7 +2989,8 @@ function ove-apply {
 function ove_patch_repositories {
 	! [ -d $OVE_PROJECT_DIR/patches ] && return
 
-	ove_revtab_forall 'git -C $git apply $OVE_PROJECT_DIR/patches/$git_basename/*.patch &> /dev/null || :'
+	ove_revtab_forall '[ -d $OVE_PROJECT_DIR/patches/$git_basename ] && \
+		git -C $git apply $OVE_PROJECT_DIR/patches/$git_basename/*.patch &> /dev/null || :'
 }
 
 # do:GIT:run a command within GIT
