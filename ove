@@ -159,6 +159,9 @@ function ove_main {
 	export OVE_LOG_DIR
 	! [ -d "$OVE_LOG_DIR" ] && mkdir -p "$OVE_LOG_DIR"
 
+	# set OVE_OS_* variables
+	ove_determine_dist_version_and_pack_manager
+
 	# interactive shell?
 	if [[ $- == *i* ]]; then
 		# turn off monitor mode to get rid of "Done" messages
@@ -167,8 +170,6 @@ function ove_main {
 		( set -o posix ; set ) | \
 			cut -d= -f1 | \
 			grep -v ^OVE > $OVE_TMP/bash-vars-before
-
-		ove_determine_dist_version_and_pack_manager
 
 		if ! ove_deps; then
 			ove-unsource
