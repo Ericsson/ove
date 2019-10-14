@@ -30,6 +30,7 @@
 | do                      | GIT                         | run a command within GIT                                                                                          |
 | domains                 |                             | list email domain summary for all git repositories                                                                |
 | dry-run                 | [0\|1]                       | toggle or set OVE_DRY_RUN                                                                                         |
+| emacs                   | [PATTERN]                   | open modified files in emacs                                                                                      |
 | env                     | [PATTERN]                   | show OVE env                                                                                                      |
 | export                  | [PROJECT...]                | export project(s)                                                                                                 |
 | fetch                   | [GIT...]                    | git fetch --all for all/specified repositories, ends with ove status                                              |

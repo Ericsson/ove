@@ -3430,8 +3430,8 @@ function ove-list-committed-files {
 	ove_revtab_forall "$cmd" | sort -u
 }
 
-# vi:[PATTERN]:open modified files in vi
-function ove-vi {
+function ove_edit {
+	local editor
 	local f
 	local files
 	local files_by_epoch
@@ -3439,6 +3439,15 @@ function ove-vi {
 	files=$(ove-list-modified-files)
 
 	[ "$files" == "" ] && return
+
+	editor="$1"
+	shift
+
+	# sanity check
+	if ! command -v ${editor} > /dev/null; then
+		ove_echo_stderr_noprefix "${editor} is not installed?"
+		return 1
+	fi
 
 	# stat every file
 	files_by_epoch=$(for f in $files; do echo $(stat --format '%Y' $f):$f; done | \
@@ -3452,8 +3461,25 @@ function ove-vi {
 			sed -e "s|^|$OVE_BASE_DIR/|g")
 	fi
 
-	[ "$files_by_epoch" != "" ] &&
-		vi -o $files_by_epoch -c "wincmd H"
+	if [ "$files_by_epoch" != "" ]; then
+		if [ "${editor}" == "vi" ]; then
+			vi -o $files_by_epoch -c "wincmd H"
+		elif [ "${editor}" == "emacs" ]; then
+			emacs $files_by_epoch
+		else
+			ove_echo_stderr_noprefix "unknown editor"
+		fi
+	fi
+}
+
+# emacs:[PATTERN]:open modified files in emacs
+function ove-emacs {
+	ove_edit emacs $*
+}
+
+# vi:[PATTERN]:open modified files in vi
+function ove-vi {
+	ove_edit vi $*
 }
 
 # mrproper:[y|Y]:remove untracked files AND removes '$OVE_STAGE_DIR/*' AND removes '$OVE_ARCHIVE_DIR/*'
@@ -3922,7 +3948,8 @@ function ove_bash_complete {
 		elif [ $size -gt 2 ]; then
 			return
 		fi
-	elif [ "${subcommand}" == "vi" ]; then
+	elif [ "${subcommand}" == "vi" ] ||
+		[ "${subcommand}" == "emacs" ]; then
 		if [ $size -eq 2 ]; then
 			wordlist=$(ove-list-modified-files | \
 				xargs -n1 basename)
