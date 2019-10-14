@@ -4262,6 +4262,7 @@ function ove_init {
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
 	export OVE_REPO_LIST
 	OVE_BUILD_ORDER="$(ove-build-order)"
+	export OVE_ECHO
 	export OVE_BUILD_ORDER
 	export OVE_BASE_DIR
 	export OVE_PROJECT_DIR
@@ -4269,6 +4270,7 @@ function ove_init {
 	export OVE_PROJECT_COMMANDS
 	export OVE_DIR
 	export OVE_BASENAME
+
 	OVE_PROJECT_NAME=${OVE_PROJECT_DIR##*/}
 	export OVE_PROJECT_NAME
 	OVE_PROJECT_TMP=$OVE_TMP/$OVE_PROJECT_NAME
