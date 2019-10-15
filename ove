@@ -2939,16 +2939,17 @@ function ove-apply {
 
 	cp -a "$1" "$OVE_PROJECT_TMP"
 	cd $OVE_PROJECT_TMP
+	p="$OVE_PROJECT_TMP/$(basename $1)"
 
 	# remove color codes
 	sed -i \
 		-r \
 		-e "s/\x1b\[1;3[1,3]m//g" \
 		-e "s/\x1b\[[0-9]+m//g" \
-		-e "s/\x1b\[m//g" $1
+		-e "s/\x1b\[m//g" ${p}
 
-	if ! file "$1" | grep -q "unified diff"; then
-		ove_echo_error_noprefix "'$1' is not a unified diff"
+	if ! file "${p}" | grep -q "unified diff"; then
+		ove_echo_error_noprefix "'${p}' is not a unified diff"
 		return 1
 	fi
 
@@ -2956,7 +2957,7 @@ function ove-apply {
 	find -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
 
 	# one patch per git
-	if ! csplit -s -z --prefix ove-apply-patch $1 /^\// {*}; then
+	if ! csplit -s -z --prefix ove-apply-patch ${p} /^\// {*}; then
 		ove_echo_error_noprefix "ops, csplit failed"
 		return 1
 	fi
