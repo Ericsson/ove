@@ -3116,6 +3116,9 @@ function ove-checkout {
 		# clone and checkout
 		ove_revtab_clone_and_checkout
 
+		# validate revtab revision
+		ove_revtab_check
+
 		if [ "$2" == "autostash" ]; then
 			for repo in $dirty_repos; do
 				git -C "$repo" stash pop -q
