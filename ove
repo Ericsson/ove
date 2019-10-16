@@ -342,6 +342,7 @@ function ove {
 		[ "${cmd}" == "cd" ] || \
 		[ "${cmd}" == "dry-run" ] || \
 		[ "${cmd}" == "loglevel" ] || \
+		[ "${cmd}" == "checkout" ] || \
 		[ "${cmd}" == "switch" ] || \
 		[ "${cmd}" == "unsource" ]; then
 		ove-${cmd} ${@:2}
