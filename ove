@@ -3165,7 +3165,7 @@ function ove-help {
 		return 0
 	fi
 
-	longest_function=$(grep -B1 "^function ove-" $OVE_DIR/$OVE_BASENAME | \
+	longest_function=$(grep -B1 "^function ove-" ${OVE_SELF} | \
 		grep '\#' | \
 		cut -b3- | \
 		cut -d: -f1 | \
@@ -3176,7 +3176,7 @@ function ove-help {
 		cut -d'"' -f2 | \
 		cut -d: -f1 | \
 		wc -L)
-	longest_argument=$(grep -B1 "^function ove-" $OVE_DIR/$OVE_BASENAME | \
+	longest_argument=$(grep -B1 "^function ove-" ${OVE_SELF} | \
 		grep '\#' | \
 		cut -b3- | \
 		cut -d: -f2 | \
@@ -4045,7 +4045,7 @@ function ove_bash_complete {
 function ove_update_tab_complete {
 	local cmd
 
-	OVE_BUILT_INS_WITHOUT_ARGS=$(grep -B1 '^function ove-' $BASH_SOURCE | \
+	OVE_BUILT_INS_WITHOUT_ARGS=$(grep -B1 '^function ove-' ${OVE_SELF} | \
 		grep ': :' | \
 		cut -b3- | \
 		cut -d: -f1 | \
@@ -4053,7 +4053,7 @@ function ove_update_tab_complete {
 		tr '\n' ' ' | \
 		xargs "$OVE_ECHO")
 
-	OVE_BUILT_INS=$(grep -o '^function ove-.* ' $BASH_SOURCE | \
+	OVE_BUILT_INS=$(grep -o '^function ove-.* ' ${OVE_SELF} | \
 		sed -e ':a;N;$!ba;s/function ove-//g' | \
 		sort | \
 		tr '\n' ' ' | \
@@ -4235,6 +4235,7 @@ function ove_init {
 	OVE_PROJECT_COMMANDS=$(ove_project_commands_list)
 	OVE_DIR="$(cd "$(dirname "$(readlink -f ${BASH_SOURCE[0]})")"; pwd -P)"
 	OVE_BASENAME="$(basename $(readlink -f ${BASH_SOURCE[0]}))"
+	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
 
 	# own config has precedence over project config
 	if [ -e $HOME/.oveconfig ]; then
@@ -4255,9 +4256,9 @@ function ove_init {
 
 	[ "$1" == "quick" ] && return 0
 
-	if grep ^function $BASH_SOURCE | grep -q -v 'function ove'; then
+	if grep ^function ${OVE_SELF} | grep -q -v 'function ove'; then
 		ove_echo_error_noprefix "functions need to start with 'ove-' or 'ove_'"
-		grep ^function $BASH_SOURCE | grep -v 'function ove'
+		grep ^function ${OVE_SELF} | grep -v 'function ove'
 		return 1
 	fi
 
@@ -4304,6 +4305,7 @@ function ove_init {
 	export OVE_PROJECT_COMMANDS
 	export OVE_DIR
 	export OVE_BASENAME
+	export OVE_SELF
 
 	OVE_PROJECT_NAME=${OVE_PROJECT_DIR##*/}
 	export OVE_PROJECT_NAME
@@ -4731,7 +4733,7 @@ function ove_unittest_preparations {
 	mkdir -p $unittest_dir/.ove
 
 	cd $unittest_dir
-	ln -s $OVE_DIR/$OVE_BASENAME ove
+	ln -s ${OVE_SELF} ove
 	ln -s $OVE_DIR/tests
 
 	# remotes
