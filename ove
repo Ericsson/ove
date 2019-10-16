@@ -3550,7 +3550,8 @@ function ove-mrproper {
 			if [ "$objects" != "" ]; then
 				echo $objects | \
 					tr ' ' '\n' | \
-					sort
+					sort | \
+					xargs file
 				echo
 				read -p "Proceed to remove $(echo $objects | wc -w) files/directories (list above) using 'rm -rf'? (y/N) " -r
 				echo
