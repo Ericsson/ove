@@ -71,6 +71,7 @@
 | remote-check            |                             | sanity check that all remotes are online                                                                          |
 | replicate               | HOST                        | replicate OVE workspace on HOST                                                                                   |
 | reset                   | [GIT...]                    | git reset -p for all/specified repositories                                                                       |
+| revtab-diff             | <rev> <rev>                 | print changes between two '$OVE_PROJECT_NAME' revisions                                                           |
 | select-configuration    | [PATTERN\|default]           | select build configuration for each project                                                                       |
 | setup                   |                             | print how to set this project up                                                                                  |
 | shortlog-project        | <rev> <rev>                 | git shortlog the project '$OVE_PROJECT_NAME'                                                                      |

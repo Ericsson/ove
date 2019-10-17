@@ -1788,22 +1788,82 @@ function ove-systest {
 	return $systest_exit_code
 }
 
-# $1: project revision A
-# $2: project revision B
-#
-# returns a list with three columns:
-#
-# repo1 SHA-1-in-rev-A SHA-1-in-rev-B
-# repo2 SHA-1-in-rev-A SHA-1-in-rev-B
-# ...
-function ove_revtab_diff() {
-	git -C "$OVE_PROJECT_DIR" --no-pager diff -w -U0 "$1" "$2" -- revtab | \
-		grep --no-group-separator -B1 '^+[A-Za-z0-9]\+' | \
+# helper function for a few revtab functions below
+function ove_revtab_sanity_check {
+	if [ $# -ne 2 ]; then
+		ove_echo_error_noprefix "please provide two revisions for '$OVE_PROJECT_DIR'"
+		return 1
+	fi
+
+	if [ "$1" == "$2" ]; then
+		ove_echo_error_noprefix "please provide two different revisions for '$OVE_PROJECT_DIR'"
+		return 2
+	fi
+
+	if ! git -C "$OVE_PROJECT_DIR" cat-file -e "$1" &> /dev/null; then
+		ove_echo_error_noprefix "'$1' is not a valid revision"
+		return 3
+	fi
+
+	if ! git -C "$OVE_PROJECT_DIR" cat-file -e "$2" &> /dev/null; then
+		ove_echo_error_noprefix "'$2' is not a valid revision"
+		return 4
+	fi
+}
+
+# revtab-diff:<rev> <rev>:print changes between two '$OVE_PROJECT_NAME' revisions
+function ove-revtab-diff {
+	local a
+	local b
+	local r
+	local sha_1
+	local sha_2
+
+	ove_revtab_sanity_check $* || return $?
+
+	# save revtab for rev A and rev B
+	a=$(git -C "$OVE_PROJECT_DIR" --no-pager show $1:revtab | \
+		grep -v \# | \
+		xargs -n4)
+	b=$(git -C "$OVE_PROJECT_DIR" --no-pager show $2:revtab | \
+		grep -v \# | \
+		xargs -n4)
+
+	# extract repo/push/pull
+	printf "$a" | \
+		awk '{print $1,$2,$3}' | \
+		sort | \
+		column -t > $OVE_PROJECT_TMP/repos_A
+	printf "$b" | \
+		awk '{print $1,$2,$3}' | \
+		sort | \
+		column -t > $OVE_PROJECT_TMP/repos_B
+
+	# extract repo/rev
+	printf "$a" | \
 		awk '{print $1,$4}' | \
-		paste -d ' ' - - | \
-		awk '{print $1,$2,$4}' | \
-		cut -b2- | \
-		grep -v ^#
+		sort | \
+		column -t > $OVE_PROJECT_TMP/rev_A
+	printf "$b" | \
+		awk '{print $1,$4}' | \
+		sort | \
+		column -t > $OVE_PROJECT_TMP/rev_B
+
+	# for repos common for A and B
+	for r in $(comm -1 -2 $OVE_PROJECT_TMP/repos_A $OVE_PROJECT_TMP/repos_B | awk '{print $1}'); do
+		sha_1=$(grep -w $r $OVE_PROJECT_TMP/rev_A | \
+			awk '{print $2}')
+		sha_2=$(grep -w $r $OVE_PROJECT_TMP/rev_B | \
+			awk '{print $2}')
+		[ "$sha_1" == "$sha_2" ] && continue
+		echo $r $sha_1 $sha_2
+	done | column -t
+
+	# cleanup
+	rm $OVE_PROJECT_TMP/repos_A \
+		$OVE_PROJECT_TMP/repos_B \
+		$OVE_PROJECT_TMP/rev_A \
+		$OVE_PROJECT_TMP/rev_B
 }
 
 # diff-project:<rev> <rev>:git diff the '$OVE_PROJECT_NAME' project
@@ -1815,8 +1875,7 @@ function ove-diff-project {
 	local sha_1
 	local sha_2
 
-	[ $# -ne 2 ] && ove_echo_error_noprefix "please provide two revisions" && return 1
-	[ "$1" == "$2" ] && ove_echo_error_noprefix "please provide two different revisions" && return 1
+	ove_revtab_sanity_check $* || return $?
 
 	cmd="git -C $OVE_PROJECT_DIR diff --color=always $1 $2"
 	diff=$($cmd)
@@ -1833,7 +1892,7 @@ function ove-diff-project {
 		if [ "$diff" != "" ]; then
 			echo -e "$diff" | $OVE_PAGER -Ps"$repo\:$(echo $cmd | sed -e 's/\./\\./g')"
 		fi
-	done <<<"$(ove_revtab_diff "$1" "$2")"
+	done <<<"$(ove-revtab-diff "$1" "$2")"
 }
 
 # log-project:<rev> <rev>:git log the project '$OVE_PROJECT_NAME'
@@ -1844,8 +1903,7 @@ function ove-log-project {
 	local sha_1
 	local sha_2
 
-	[ $# -ne 2 ] && ove_echo_error_noprefix "please provide two revisions" && return 1
-	[ "$1" == "$2" ] && ove_echo_error_noprefix "please provide two different revisions" && return 1
+	ove_revtab_sanity_check $* || return $?
 
 	diff=$(git --no-pager -C "$OVE_PROJECT_DIR" log --oneline --pretty="    %C(auto)%h %s" "$1".."$2")
 	if [ "$diff" != "" ]; then
@@ -1864,7 +1922,7 @@ function ove-log-project {
 			echo -e "$diff"
 			echo
 		fi
-	done <<<"$(ove_revtab_diff "$1" "$2")"
+	done <<<"$(ove-revtab-diff "$1" "$2")"
 }
 
 # shortlog-project:<rev> <rev>:git shortlog the project '$OVE_PROJECT_NAME'
@@ -1875,8 +1933,7 @@ function ove-shortlog-project {
 	local sha_1
 	local sha_2
 
-	[ $# -ne 2 ] && ove_echo_error_noprefix "please provide two revisions" && return 1
-	[ "$1" == "$2" ] && ove_echo_error_noprefix "please provide two different revisions" && return 1
+	ove_revtab_sanity_check $* || return $?
 
 	diff=$(git --no-pager -C "$OVE_PROJECT_DIR" shortlog --oneline "$1".."$2")
 	if [ "$diff" != "" ]; then
@@ -1894,7 +1951,7 @@ function ove-shortlog-project {
 			echo -e "$diff"
 			echo
 		fi
-	done <<<"$(ove_revtab_diff "$1" "$2")"
+	done <<<"$(ove-revtab-diff "$1" "$2")"
 }
 
 # help function that will print OVE project info
