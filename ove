@@ -1498,7 +1498,7 @@ function ove-list-scripts {
 	done
 }
 
-function ove_echo() {
+function ove_echo {
 	local diff
 	local diff_ns
 	local diff_s
@@ -1533,62 +1533,58 @@ function ove_echo() {
 	OVE_PREV_NS=$now_ns
 }
 
-function ove_echo_cyan() {
+function ove_echo_cyan {
 	ove_echo "$ove_cyan""$*""$ove_blank"
 }
 
-function ove_echo_cyan_error() {
+function ove_echo_cyan_error {
 	ove_echo "$ove_cyan""$*""$ove_blank" 1>&2;
 }
 
-function ove_echo_yellow() {
+function ove_echo_yellow {
 	ove_echo "$ove_yellow""$*""$ove_blank"
 }
 
-function ove_echo_yellow_noprefix() {
-	echo -e "$ove_yellow""$*""$ove_blank"
-}
-
-function ove_echo_green_noprefix() {
+function ove_echo_green_noprefix {
 	echo -e "$ove_green""$*""$ove_blank"
 }
 
-function ove_echo_red() {
+function ove_echo_red {
 	ove_echo "$ove_red""$*""$ove_blank"
 }
 
-function ove_echo_red_noprefix() {
+function ove_echo_red_noprefix {
 	echo -e "$ove_red""$*""$ove_blank"
 }
 
-function ove_echo_yellow_noprefix() {
+function ove_echo_yellow_noprefix {
 	echo -e "$ove_yellow""$*""$ove_blank"
 }
 
-function ove_echo_warning() {
+function ove_echo_warning {
 	ove_echo_yellow "warning: $*" 1>&2;
 }
 
-function ove_echo_cyan_noprefix() {
+function ove_echo_cyan_noprefix {
 	echo -e "$ove_cyan""$*""$ove_blank"
 }
 
-function ove_echo_error() {
+function ove_echo_error {
 	ove_echo_red "error: $*" 1>&2;
 }
 
-function ove_echo_error_noprefix() {
+function ove_echo_error_noprefix {
 	ove_echo_red_noprefix "error: $*" 1>&2;
 }
 
-function ove_echo_warning_noprefix() {
+function ove_echo_warning_noprefix {
 	ove_echo_yellow_noprefix "warning: $*" 1>&2;
 }
 
-function ove_echo_stderr() {
+function ove_echo_stderr {
 	ove_echo "$@" 1>&2;
 }
-function ove_echo_stderr_noprefix() {
+function ove_echo_stderr_noprefix {
 	echo "$@" 1>&2;
 }
 
@@ -1960,7 +1956,7 @@ function ove-shortlog-project {
 # help function that will print OVE project info
 #
 # $1 = path to OVE project directory
-function ove_locate_print() {
+function ove_locate_print {
 	local num_projs
 	local num_repos
 	local ove_dir
@@ -3094,17 +3090,6 @@ function ove-log {
 	git -C "$OVE_PROJECT_DIR" log --decorate $OVE_PROJECT_CI_BRANCH
 }
 
-function ove_verify_repository {
-	if git -C "$1" diff-index --quiet HEAD --; then
-		return 0
-	else
-		ove_echo_error_noprefix "You have staged/unstaged changes in '$1'"
-		echo "Please stash or create commits before you proceed!"
-
-		return 1
-	fi
-}
-
 # checkout:[rev[ [purge|autostash]]]:git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care
 function ove-checkout {
 	local cmd
@@ -4145,7 +4130,7 @@ function ove_update_tab_complete {
 	done
 }
 
-function ove_add_script_func() {
+function ove_add_script_func {
 	local htext
 	local script
 	local script_dir
@@ -4401,7 +4386,7 @@ function ove_init {
 	return 0
 }
 
-function ove_post_checks() {
+function ove_post_checks {
 	local corrupt_repos
 	local doublets
 	local script
