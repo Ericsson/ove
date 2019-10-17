@@ -1884,6 +1884,7 @@ function ove-diff-project {
 	fi
 
 	while IFS= read -r line; do
+		[ "$line" == "" ] && break
 		repo=$(echo $line | awk '{print $1}')
 		sha_1=$(echo $line | awk '{print $2}')
 		sha_2=$(echo $line | awk '{print $3}')
@@ -1913,6 +1914,7 @@ function ove-log-project {
 	fi
 
 	while IFS= read -r line; do
+		[ "$line" == "" ] && break
 		repo=$(echo $line | awk '{print $1}')
 		sha_1=$(echo $line | awk '{print $2}')
 		sha_2=$(echo $line | awk '{print $3}')
@@ -1942,6 +1944,7 @@ function ove-shortlog-project {
 	fi
 
 	while IFS= read -r line; do
+		[ "$line" == "" ] && break
 		repo=$(echo $line | awk '{print $1}')
 		sha_1=$(echo $line | awk '{print $2}')
 		sha_2=$(echo $line | awk '{print $3}')
