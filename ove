@@ -1828,22 +1828,18 @@ function ove-revtab-diff {
 	# extract repo/push/pull
 	printf "$a" | \
 		awk '{print $1,$2,$3}' | \
-		sort | \
-		column -t > $OVE_PROJECT_TMP/repos_A
+		sort > $OVE_PROJECT_TMP/repos_A
 	printf "$b" | \
 		awk '{print $1,$2,$3}' | \
-		sort | \
-		column -t > $OVE_PROJECT_TMP/repos_B
+		sort > $OVE_PROJECT_TMP/repos_B
 
 	# extract repo/rev
 	printf "$a" | \
 		awk '{print $1,$4}' | \
-		sort | \
-		column -t > $OVE_PROJECT_TMP/rev_A
+		sort > $OVE_PROJECT_TMP/rev_A
 	printf "$b" | \
 		awk '{print $1,$4}' | \
-		sort | \
-		column -t > $OVE_PROJECT_TMP/rev_B
+		sort  > $OVE_PROJECT_TMP/rev_B
 
 	# for repos common for A and B
 	for r in $(comm -1 -2 $OVE_PROJECT_TMP/repos_A $OVE_PROJECT_TMP/repos_B | awk '{print $1}'); do
@@ -1937,6 +1933,7 @@ function ove-shortlog-project {
 	if [ "$diff" != "" ]; then
 		ove_echo_yellow_noprefix ${OVE_PROJECT_NAME}:
 		echo -e "$diff"
+		echo
 	fi
 
 	while IFS= read -r line; do
