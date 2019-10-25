@@ -2787,7 +2787,10 @@ function ove-buildme-parallel {
 
 	# install packages
 	if [ "$pack_list" != "" ]; then
-		ove_install_packages $pack_list
+		if ! ove_install_packages $pack_list; then
+			ove_echo_error_noprefix "$FUNCNAME: missing package(s)"
+			return 1
+		fi
 	fi
 
 	# bootstrap
