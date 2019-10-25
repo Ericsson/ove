@@ -87,4 +87,5 @@
 | unsource                |                             | clean up all OVE vars/funcs from this shell                                                                       |
 | version                 |                             | print OVE version                                                                                                 |
 | vi                      | [PATTERN]                   | open modified files in vi                                                                                         |
+| wdiff                   | [GIT...]                    | git diff (word diff) for all/specified git repositories                                                           |
 | what-is                 | DIRECTORY...                | classify files using 'file' within a directory                                                                    |
