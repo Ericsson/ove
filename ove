@@ -843,12 +843,18 @@ function ove_revtab_status {
 	mv "$OVE_PROJECT_TMP/${OVE_NOW}-revtab-status" "$OVE_PROJECT_TMP/revtab-status"
 }
 
-function ove_revtab_news_one {
+# $1: ahead|behind
+function ove_revtab_status_parse_one {
+	local git_args
 	local git_fmt
 	local git_fullpath
 	local git_status
 	local i
 	local nbr_commits
+	local tense
+
+	tense=$1
+	shift
 
 	git_fmt='%h?%ar?%ae?%s'
 	git_fullpath=$(ove_git2fullpath $1)
@@ -860,28 +866,47 @@ function ove_revtab_news_one {
 	git_status=$(git -C "$git_fullpath" status -zbs -uno | tr '\0' ' ')
 	nbr_commits=0
 
-	if [[ "$git_status" == *"behind"* ]]; then
-		nbr_commits=${git_status##*behind }
-		nbr_commits=${nbr_commits%%]*}
+	# keep 'ahead X, behind Y'
+	git_status=${git_status##*[}
+	git_status=${git_status%%]*}
+
+	if [[ "$git_status" == *"$tense"* ]]; then
+		if [ "${tense}" == "ahead" ]; then
+			git_status=${git_status%%,*}
+			nbr_commits=${git_status##${tense} }
+		elif [ "${tense}" == "behind" ]; then
+			nbr_commits=${git_status##*${tense} }
+			git_args="FETCH_HEAD"
+		else
+			ove_echo_error_noprefix "$FUNCNAME: ops, this should never occur"
+			return 1
+		fi
 
 		ove_echo_yellow_noprefix "$(ove_git2shortpath $1): $nbr_commits new commit(s):"
-		git --no-pager -C "$git_fullpath" log FETCH_HEAD -n $nbr_commits --format="$git_fmt" | \
+		git --no-pager -C "$git_fullpath" log ${git_args} -n $nbr_commits --format="$git_fmt" | \
 			column -t -s?
 		echo
 	fi
 }
 
-function ove_revtab_news {
+# $1: ahead|behind
+function ove_revtab_status_parse {
 	local git
 	local repos
+	local tense
+
+	[ $# -eq 0 ] && return 1
+
+	tense="$1"
+	shift
 
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
 
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list $*)
-	elif [ -e $OVE_PROJECT_TMP/revtab-status ] && grep -q 'behind.*]' $OVE_PROJECT_TMP/revtab-status; then
-		repos=$(grep 'behind.*]' $OVE_PROJECT_TMP/revtab-status | \
+	elif [ -e $OVE_PROJECT_TMP/revtab-status ] && grep -q "\[.*${tense}.*\]" $OVE_PROJECT_TMP/revtab-status; then
+		repos=$(grep "\[.*${tense}.*\]" $OVE_PROJECT_TMP/revtab-status | \
 			cut -d: -f1 | \
 			xargs)
 	else
@@ -889,7 +914,7 @@ function ove_revtab_news {
 	fi
 
 	for git in $repos; do
-		ove_revtab_news_one $git
+		ove_revtab_status_parse_one ${tense} ${git}
 	done
 
 	# turn on monitor mode
@@ -2935,7 +2960,12 @@ function ove-status {
 
 # news:[GIT...]:list upstream changes for all/specified repositories
 function ove-news {
-	ove_revtab_news $* | tee $OVE_PROJECT_TMP/revtab-news
+	ove_revtab_status_parse behind $* | tee $OVE_PROJECT_TMP/revtab-news
+}
+
+# ahead:[GIT...]:list local commits not yet published for all/specified repositories
+function ove-ahead {
+	ove_revtab_status_parse ahead $* | tee $OVE_PROJECT_TMP/revtab-ahead
 }
 
 # pull:[GIT...]:git pull --rebase for all/specified repositories
@@ -3977,6 +4007,9 @@ function ove_bash_complete {
 			if [ -e $OVE_PROJECT_TMP/revtab-news ]; then
 				wordlist+=" $(grep -o '^[a-f0-9]\+' $OVE_PROJECT_TMP/revtab-news)"
 			fi
+			if [ -e $OVE_PROJECT_TMP/revtab-ahead ]; then
+				wordlist+=" $(grep -o '^[a-f0-9]\+' $OVE_PROJECT_TMP/revtab-ahead)"
+			fi
 		fi
 	elif [ "${subcommand}" == "diff-project" ] ||
 		[ "${subcommand}" == "log-project" ] ||
@@ -4031,6 +4064,16 @@ function ove_bash_complete {
 		[ "${subcommand}" == "pull" ]; then
 		if [ -e $OVE_PROJECT_TMP/revtab-status ] && grep -q 'behind.*]' $OVE_PROJECT_TMP/revtab-status; then
 			wordlist=$(grep 'behind.*]' $OVE_PROJECT_TMP/revtab-status | \
+				cut -d: -f1 | \
+				xargs)
+		else
+			wordlist=$(ove_revtab_list_basename)
+			wordlist+=" $OVE_PROJECT_NAME"
+		fi
+	elif [ "${subcommand}" == "ahead" ] ||
+		[ "${subcommand}" == "pull" ]; then
+		if [ -e $OVE_PROJECT_TMP/revtab-status ] && grep -q "${subcommand}.*]" $OVE_PROJECT_TMP/revtab-status; then
+			wordlist=$(grep "${subcommand}.*]" $OVE_PROJECT_TMP/revtab-status | \
 				cut -d: -f1 | \
 				xargs)
 		else

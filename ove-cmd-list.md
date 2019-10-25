@@ -3,6 +3,7 @@
 | !                       |                             | view last command in pager (=$OVE_PAGER)                                                                          |
 | add                     | [GIT...]                    | git add -p for all/specified repositories                                                                         |
 | ag                      | PATTERN                     | search OVE workspace using The Silver Searcher                                                                    |
+| ahead                   | [GIT...]                    | list local commits not yet published for all/specified repositories                                               |
 | apply                   | PATCH                       | apply one OVE patch                                                                                               |
 | authors                 |                             | list author summary for all git repositories                                                                      |
 | blame                   | PATTERN                     | git grep-blame-log combo                                                                                          |
