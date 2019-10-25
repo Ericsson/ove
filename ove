@@ -3417,8 +3417,8 @@ function ove-config {
 	if [ $# -eq 0 ]; then
 			grep -v '^#' $cfg | \
 				grep -v '^$' | \
-				grep -E --color "${grep_pattern}" | \
-				sort
+				sort | \
+				grep -E --color "${grep_pattern}"
 	elif [ $# -eq 1 ]; then
 		if ! grep -q -i $1 $cfg; then
 			echo "error: config '$1' not found"
