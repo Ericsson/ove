@@ -61,9 +61,9 @@ function ove_unsource {
 	# clean config variables
 	if [ -e $HOME/.oveconfig ]; then
 		ove_read_config $HOME/.oveconfig clean
-	elif [ "$OVE_PROJECT_DIR" != "" ] && \
-		[ -e "$OVE_PROJECT_DIR/.oveconfig" ]; then
-		ove_read_config $OVE_PROJECT_DIR/.oveconfig clean
+	elif [ "${OVE_PROJECT_DIR}" != "" ] && \
+		[ -e "${OVE_PROJECT_DIR}/.oveconfig" ]; then
+		ove_read_config ${OVE_PROJECT_DIR}/.oveconfig clean
 	fi
 
 	# unset old ove[-_] functions
@@ -155,9 +155,6 @@ function ove_main {
 	OVE_TMP=/tmp/$USER/ove
 	export OVE_TMP
 	! [ -d "$OVE_TMP" ] && mkdir -p "$OVE_TMP"
-	OVE_LOG_DIR="$OVE_TMP/logs"
-	export OVE_LOG_DIR
-	! [ -d "$OVE_LOG_DIR" ] && mkdir -p "$OVE_LOG_DIR"
 
 	# set OVE_OS_* variables
 	ove_determine_dist_version_and_pack_manager
@@ -365,9 +362,9 @@ function ove {
 			fi
 
 			if [ $OVE_LOGLEVEL -eq 3 ] || [ $OVE_LOGLEVEL -eq 4 ]; then
-				[ -e ${OVE_PROJECT_TMP}/strace-${cmd} ] && \
-					rm -rf ${OVE_PROJECT_TMP}/strace-${cmd}
-				mkdir -p ${OVE_PROJECT_TMP}/strace-${cmd}
+				[ -e ${OVE_PROJECT_TMP_DIR}/strace-${cmd} ] && \
+					rm -rf ${OVE_PROJECT_TMP_DIR}/strace-${cmd}
+				mkdir -p ${OVE_PROJECT_TMP_DIR}/strace-${cmd}
 
 				if [ $OVE_LOGLEVEL -eq 3 ]; then
 					strace_expression="execve"
@@ -378,7 +375,7 @@ function ove {
 				OVE_ANALYZE_EXECVE="strace \
 					-s 1024 \
 					-q \
-					-o ${OVE_PROJECT_TMP}/strace-${cmd}/strace-${cmd} \
+					-o ${OVE_PROJECT_TMP_DIR}/strace-${cmd}/strace-${cmd} \
 					-ff \
 					-e $strace_expression \
 					-ttt"
@@ -394,9 +391,9 @@ function ove {
 
 			if ! [ -z "${OVE_ANALYZE_EXECVE+x}" ]; then
 				if [ $OVE_LOGLEVEL -eq 3 ]; then
-					ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP}/strace-${cmd} | tee -a $OVE_LAST_COMMAND
+					ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP_DIR}/strace-${cmd} | tee -a $OVE_LAST_COMMAND
 				elif [ $OVE_LOGLEVEL -eq 4 ]; then
-					ove_analyze_strace_connect ${OVE_PROJECT_TMP}/strace-${cmd} | tee -a $OVE_LAST_COMMAND
+					ove_analyze_strace_connect ${OVE_PROJECT_TMP_DIR}/strace-${cmd} | tee -a $OVE_LAST_COMMAND
 				fi
 			fi
 
@@ -455,14 +452,14 @@ function ove_project_commands_list {
 	# ignore files with hyphens and underscore
 	for proj in $OVE_PROJECT_LIST common; do
 		# ignore projects without a project directory
-		[ ! -d $OVE_PROJECT_DIR/projects/$proj ] && continue
+		[ ! -d ${OVE_PROJECT_DIR}/projects/$proj ] && continue
 
 		search_dirs+="$proj "
 	done
 
 	[ "$search_dirs" == "" ] && return
 
-	for f in $(cd $OVE_PROJECT_DIR/projects; find -L $search_dirs -perm -u=x -type f); do
+	for f in $(cd ${OVE_PROJECT_DIR}/projects; find -L $search_dirs -perm -u=x -type f); do
 		echo ${f#*/}
 	done | \
 		grep -v '[-_]' | \
@@ -472,8 +469,8 @@ function ove_project_commands_list {
 
 # uniq list of mandatory attributes
 function ove_projects_attributes {
-	if [ -f "$OVE_PROJECT_DIR"/projs ]; then
-		grep -E -o '  \w+:' "$OVE_PROJECT_DIR"/projs | \
+	if [ -f "${OVE_PROJECT_DIR}"/projs ]; then
+		grep -E -o '  \w+:' "${OVE_PROJECT_DIR}"/projs | \
 			cut -d: -f1 | \
 			tr -d ' ' | \
 			sort -u
@@ -483,8 +480,8 @@ function ove_projects_attributes {
 # list of project tags and branches
 function ove_project_tags_and_branches {
 	(
-	git -C "$OVE_PROJECT_DIR" tag
-	git -C "$OVE_PROJECT_DIR" branch --no-color --all --list | \
+	git -C "${OVE_PROJECT_DIR}" tag
+	git -C "${OVE_PROJECT_DIR}" branch --no-color --all --list | \
 		grep -v HEAD | \
 		tr -d '*' | \
 		xargs | \
@@ -654,7 +651,7 @@ function ove_projects_cmd {
 	cmd=$2
 
 	# sanity check
-	! [ -e "$OVE_PROJECT_DIR/projects/$target/$cmd" ] && return
+	! [ -e "${OVE_PROJECT_DIR}/projects/$target/$cmd" ] && return
 
 	index=${ove_projects_name2index[$target]}
 
@@ -673,8 +670,8 @@ function ove_projects_cmd {
 	fi
 
 	# common for this command?
-	[ -e "$OVE_PROJECT_DIR/projects/common/$cmd" ] && \
-		source "$OVE_PROJECT_DIR/projects/common/$cmd"
+	[ -e "${OVE_PROJECT_DIR}/projects/common/$cmd" ] && \
+		source "${OVE_PROJECT_DIR}/projects/common/$cmd"
 
 	# "$1"/$2 is no longer needed
 	shift 2
@@ -682,11 +679,11 @@ function ove_projects_cmd {
 	if [ $OVE_DRY_RUN -eq 0 ]; then
 		# run it
 		eval "${target}_version=${ove_projects_version[$index]} \
-			$OVE_PROJECT_DIR/projects/$target/$cmd \
+			${OVE_PROJECT_DIR}/projects/$target/$cmd \
 			$OVE_REDIRECT_OUTPUT"
 	else
 		# dry: print the command
-		ove_echo_stderr_noprefix "cd $path && $OVE_PROJECT_DIR/projects/$target/$cmd"
+		ove_echo_stderr_noprefix "cd $path && ${OVE_PROJECT_DIR}/projects/$target/$cmd"
 	fi
 
 	# preserve return code
@@ -830,17 +827,17 @@ function ove_revtab_status {
 
 	[ "$repos" == "" ] && return
 
-	> "$OVE_PROJECT_TMP/${OVE_NOW}-revtab-status"
+	> "${OVE_PROJECT_STATE_DIR}/${OVE_NOW}-revtab-status"
 	for git in $repos; do
-		ove_status_one_repo $git >> "$OVE_PROJECT_TMP/${OVE_NOW}-revtab-status" &
+		ove_status_one_repo $git >> "${OVE_PROJECT_STATE_DIR}/${OVE_NOW}-revtab-status" &
 	done
 
 	wait
 
-	sort "$OVE_PROJECT_TMP/${OVE_NOW}-revtab-status" | \
+	sort "${OVE_PROJECT_STATE_DIR}/${OVE_NOW}-revtab-status" | \
 		column -t -s:
 
-	mv "$OVE_PROJECT_TMP/${OVE_NOW}-revtab-status" "$OVE_PROJECT_TMP/revtab-status"
+	mv "${OVE_PROJECT_STATE_DIR}/${OVE_NOW}-revtab-status" "${OVE_PROJECT_STATE_DIR}/revtab-status"
 }
 
 # $1: ahead|behind
@@ -905,8 +902,8 @@ function ove_revtab_status_parse {
 
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list $*)
-	elif [ -e $OVE_PROJECT_TMP/revtab-status ] && grep -q "\[.*${tense}.*\]" $OVE_PROJECT_TMP/revtab-status; then
-		repos=$(grep "\[.*${tense}.*\]" $OVE_PROJECT_TMP/revtab-status | \
+	elif [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && grep -q "\[.*${tense}.*\]" ${OVE_PROJECT_STATE_DIR}/revtab-status; then
+		repos=$(grep "\[.*${tense}.*\]" ${OVE_PROJECT_STATE_DIR}/revtab-status | \
 			cut -d: -f1 | \
 			xargs)
 	else
@@ -938,8 +935,8 @@ function ove_revtab_list {
 		let count+=1
 	done
 
-	url=$(git -C "$OVE_PROJECT_DIR" config --get remote.origin.url)
-	str+="$OVE_PROJECT_NAME $url $url $(git -C "$OVE_PROJECT_DIR" rev-parse --abbrev-ref HEAD)\n"
+	url=$(git -C "${OVE_PROJECT_DIR}" config --get remote.origin.url)
+	str+="$OVE_PROJECT_NAME $url $url $(git -C "${OVE_PROJECT_DIR}" rev-parse --abbrev-ref HEAD)\n"
 
 	printf "$str" | \
 		sort | \
@@ -1164,7 +1161,7 @@ function ove_revtab_fetch {
 	local co_list
 	local count
 
-	ove_revtab_parse "$OVE_PROJECT_DIR"/revtab
+	ove_revtab_parse "${OVE_PROJECT_DIR}"/revtab
 
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout $*
@@ -1226,8 +1223,8 @@ function ove_get_base_dir {
 export -f ove_get_base_dir
 
 function ove_list_projects {
-	if [ -f "$OVE_PROJECT_DIR"/projs ]; then
-		grep -o '^[a-zA-Z0-9_]\+' $OVE_PROJECT_DIR/projs | \
+	if [ -f "${OVE_PROJECT_DIR}"/projs ]; then
+		grep -o '^[a-zA-Z0-9_]\+' ${OVE_PROJECT_DIR}/projs | \
 			sort | \
 			xargs "$OVE_ECHO"
 	fi
@@ -1374,13 +1371,13 @@ function ove-list-projects {
 		projects=$OVE_PROJECT_LIST
 		for p in $projects; do
 			# ignore projects without a project directory
-			[ ! -d "$OVE_PROJECT_DIR"/projects/$p ] && continue
+			[ ! -d "${OVE_PROJECT_DIR}"/projects/$p ] && continue
 
-			for f in $(find "$OVE_PROJECT_DIR"/projects/$p -perm -u=x -type f); do
+			for f in $(find "${OVE_PROJECT_DIR}"/projects/$p -perm -u=x -type f); do
 				echo
 				f_basename=${f##*/}
 				ove_echo_green_noprefix $p:$f_basename
-				cat $OVE_PROJECT_DIR/projects/$p/$f_basename
+				cat ${OVE_PROJECT_DIR}/projects/$p/$f_basename
 			done
 		done
 	fi
@@ -1480,23 +1477,23 @@ function ove-forall-parallel {
 
 # list-systests: :list available system tests
 function ove-list-systests {
-	! [ -e $OVE_PROJECT_DIR/systests ] && return
+	! [ -e ${OVE_PROJECT_DIR}/systests ] && return
 	(
-	grep -E -v '^$|^\s*\#|.*:|^#.*' "$OVE_PROJECT_DIR"/systests | \
+	grep -E -v '^$|^\s*\#|.*:|^#.*' "${OVE_PROJECT_DIR}"/systests | \
 		awk '{print $1}'
-	grep : "$OVE_PROJECT_DIR"/systests | \
+	grep : "${OVE_PROJECT_DIR}"/systests | \
 		grep -v '#' | \
 		cut -d: -f1
 
-	if [ -e $OVE_PROJECT_DIR/systests-groups ]; then
-		grep : "$OVE_PROJECT_DIR"/systests-groups | \
+	if [ -e ${OVE_PROJECT_DIR}/systests-groups ]; then
+		grep : "${OVE_PROJECT_DIR}"/systests-groups | \
 			sed 's|[-:[:space:]]||g'
 	fi) | sort
 }
 
 # list-systests-aliases: :list available system test aliases
 function ove-list-systests-aliases {
-	grep : "$OVE_PROJECT_DIR"/systests | \
+	grep : "${OVE_PROJECT_DIR}"/systests | \
 		grep -v '#' | \
 		cut -d: -f1 | \
 		sort
@@ -1507,8 +1504,8 @@ function ove-list-scripts {
 	local repo
 
 	# project scripts
-	if [ -d "$OVE_PROJECT_DIR/scripts" ]; then
-		find $OVE_PROJECT_DIR/scripts -perm -u=x -not -name '*.help' -type f
+	if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
+		find ${OVE_PROJECT_DIR}/scripts -perm -u=x -not -name '*.help' -type f
 	fi
 
 	# OVE scripts
@@ -1613,7 +1610,7 @@ function ove_echo_stderr_noprefix {
 	echo "$@" 1>&2;
 }
 
-# systest:[TEST|GROUP...]:run one or more system tests/groups described in $OVE_PROJECT_DIR/systests-groups and $OVE_PROJECT_DIR/systests
+# systest:[TEST|GROUP...]:run one or more system tests/groups described in ${OVE_PROJECT_DIR}/systests-groups and ${OVE_PROJECT_DIR}/systests
 function ove-systest {
 	local exit_status
 	local groups
@@ -1773,9 +1770,9 @@ function ove-systest {
 					grep -P -q "#define EX_[A-Z]+\s+${systest_exit_code}" /usr/include/sysexits.h; then
 					exit_status=$(grep -P "#define EX_[A-Z]+\s${systest_exit_code}" /usr/include/sysexits.h | \
 						grep -o -P 'EX_[A-Z]+')
-				elif [ -e $OVE_PROJECT_DIR/${OVE_PROJECT_NAME}-sysexits.h ] && \
-					grep -P -q "#define [A-Z0-9_]+\s+${systest_exit_code}$" $OVE_PROJECT_DIR/${OVE_PROJECT_NAME}-sysexits.h; then
-					exit_status=$(grep -P "#define [A-Z0-9_]+\s+${systest_exit_code}$" $OVE_PROJECT_DIR/${OVE_PROJECT_NAME}-sysexits.h | \
+				elif [ -e ${OVE_PROJECT_DIR}/${OVE_PROJECT_NAME}-sysexits.h ] && \
+					grep -P -q "#define [A-Z0-9_]+\s+${systest_exit_code}$" ${OVE_PROJECT_DIR}/${OVE_PROJECT_NAME}-sysexits.h; then
+					exit_status=$(grep -P "#define [A-Z0-9_]+\s+${systest_exit_code}$" ${OVE_PROJECT_DIR}/${OVE_PROJECT_NAME}-sysexits.h | \
 						cut -f1 | \
 						cut -d' ' -f2)
 				else
@@ -1812,21 +1809,21 @@ function ove-systest {
 # helper function for a few revtab functions below
 function ove_revtab_sanity_check {
 	if [ $# -ne 2 ]; then
-		ove_echo_error_noprefix "please provide two revisions for '$OVE_PROJECT_DIR'"
+		ove_echo_error_noprefix "please provide two revisions for '${OVE_PROJECT_DIR}'"
 		return 1
 	fi
 
 	if [ "$1" == "$2" ]; then
-		ove_echo_error_noprefix "please provide two different revisions for '$OVE_PROJECT_DIR'"
+		ove_echo_error_noprefix "please provide two different revisions for '${OVE_PROJECT_DIR}'"
 		return 2
 	fi
 
-	if ! git -C "$OVE_PROJECT_DIR" cat-file -e "$1" &> /dev/null; then
+	if ! git -C "${OVE_PROJECT_DIR}" cat-file -e "$1" &> /dev/null; then
 		ove_echo_error_noprefix "'$1' is not a valid revision"
 		return 3
 	fi
 
-	if ! git -C "$OVE_PROJECT_DIR" cat-file -e "$2" &> /dev/null; then
+	if ! git -C "${OVE_PROJECT_DIR}" cat-file -e "$2" &> /dev/null; then
 		ove_echo_error_noprefix "'$2' is not a valid revision"
 		return 4
 	fi
@@ -1843,44 +1840,44 @@ function ove-revtab-diff {
 	ove_revtab_sanity_check $* || return $?
 
 	# save revtab for rev A and rev B
-	a=$(git -C "$OVE_PROJECT_DIR" --no-pager show $1:revtab | \
+	a=$(git -C "${OVE_PROJECT_DIR}" --no-pager show $1:revtab | \
 		grep -v \# | \
 		xargs -n4)
-	b=$(git -C "$OVE_PROJECT_DIR" --no-pager show $2:revtab | \
+	b=$(git -C "${OVE_PROJECT_DIR}" --no-pager show $2:revtab | \
 		grep -v \# | \
 		xargs -n4)
 
 	# extract repo/push/pull
 	printf "$a" | \
 		awk '{print $1,$2,$3}' | \
-		sort > $OVE_PROJECT_TMP/repos_A
+		sort > ${OVE_PROJECT_TMP_DIR}/repos_A
 	printf "$b" | \
 		awk '{print $1,$2,$3}' | \
-		sort > $OVE_PROJECT_TMP/repos_B
+		sort > ${OVE_PROJECT_TMP_DIR}/repos_B
 
 	# extract repo/rev
 	printf "$a" | \
 		awk '{print $1,$4}' | \
-		sort > $OVE_PROJECT_TMP/rev_A
+		sort > ${OVE_PROJECT_TMP_DIR}/rev_A
 	printf "$b" | \
 		awk '{print $1,$4}' | \
-		sort  > $OVE_PROJECT_TMP/rev_B
+		sort  > ${OVE_PROJECT_TMP_DIR}/rev_B
 
 	# for repos common for A and B
-	for r in $(comm -1 -2 $OVE_PROJECT_TMP/repos_A $OVE_PROJECT_TMP/repos_B | awk '{print $1}'); do
-		sha_1=$(grep -w $r $OVE_PROJECT_TMP/rev_A | \
+	for r in $(comm -1 -2 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B | awk '{print $1}'); do
+		sha_1=$(grep -w $r ${OVE_PROJECT_TMP_DIR}/rev_A | \
 			awk '{print $2}')
-		sha_2=$(grep -w $r $OVE_PROJECT_TMP/rev_B | \
+		sha_2=$(grep -w $r ${OVE_PROJECT_TMP_DIR}/rev_B | \
 			awk '{print $2}')
 		[ "$sha_1" == "$sha_2" ] && continue
 		echo $r $sha_1 $sha_2
 	done | column -t
 
 	# cleanup
-	rm $OVE_PROJECT_TMP/repos_A \
-		$OVE_PROJECT_TMP/repos_B \
-		$OVE_PROJECT_TMP/rev_A \
-		$OVE_PROJECT_TMP/rev_B
+	rm ${OVE_PROJECT_TMP_DIR}/repos_A \
+		${OVE_PROJECT_TMP_DIR}/repos_B \
+		${OVE_PROJECT_TMP_DIR}/rev_A \
+		${OVE_PROJECT_TMP_DIR}/rev_B
 }
 
 # diff-project:<rev> <rev>:git diff the '$OVE_PROJECT_NAME' project
@@ -1894,7 +1891,7 @@ function ove-diff-project {
 
 	ove_revtab_sanity_check $* || return $?
 
-	cmd="git -C $OVE_PROJECT_DIR diff --color=always $1 $2"
+	cmd="git -C ${OVE_PROJECT_DIR} diff --color=always $1 $2"
 	diff=$($cmd)
 	if [ "$diff" != "" ]; then
 		echo -e "$diff" | $OVE_PAGER -Ps"$OVE_PROJECT_NAME\:$(echo $cmd | sed -e 's/\./\\./g')"
@@ -1923,7 +1920,7 @@ function ove-log-project {
 
 	ove_revtab_sanity_check $* || return $?
 
-	diff=$(git --no-pager -C "$OVE_PROJECT_DIR" log --oneline --pretty="    %C(auto)%h %s" "$1".."$2")
+	diff=$(git --no-pager -C "${OVE_PROJECT_DIR}" log --oneline --pretty="    %C(auto)%h %s" "$1".."$2")
 	if [ "$diff" != "" ]; then
 		ove_echo_yellow_noprefix "  ${OVE_PROJECT_NAME}:"
 		echo -e "$diff"
@@ -1954,7 +1951,7 @@ function ove-shortlog-project {
 
 	ove_revtab_sanity_check $* || return $?
 
-	diff=$(git --no-pager -C "$OVE_PROJECT_DIR" shortlog --oneline "$1".."$2")
+	diff=$(git --no-pager -C "${OVE_PROJECT_DIR}" shortlog --oneline "$1".."$2")
 	if [ "$diff" != "" ]; then
 		ove_echo_yellow_noprefix ${OVE_PROJECT_NAME}:
 		echo -e "$diff"
@@ -2003,7 +2000,7 @@ function ove_locate_print {
 
 # setup: :print how to set this project up
 function ove-setup {
-	[ -e "$OVE_PROJECT_DIR/SETUP" ] && cat "$OVE_PROJECT_DIR/SETUP"
+	[ -e "${OVE_PROJECT_DIR}/SETUP" ] && cat "${OVE_PROJECT_DIR}/SETUP"
 }
 
 # refresh: :refresh projects found by ove-locate
@@ -2080,11 +2077,11 @@ function ove_locate_owels {
 	local o
 	local owels
 
-	if [ -e "$OVE_TMP/owel.cache" ]; then
-		a=$(stat --format '%Y' "$OVE_TMP/owel.cache")
+	if [ -e "${OVE_GLOBAL_STATE_DIR}/owel.cache" ]; then
+		a=$(stat --format '%Y' "${OVE_GLOBAL_STATE_DIR}/owel.cache")
 		b=$(date +%s)
 		if [ $((b-a)) -lt 600 ]; then
-			for o in $(cat "$OVE_TMP/owel.cache"); do
+			for o in $(cat "${OVE_GLOBAL_STATE_DIR}/owel.cache"); do
 				if ! [ -d $o ]; then
 					invalidate_cache=true
 				fi
@@ -2092,7 +2089,7 @@ function ove_locate_owels {
 			done
 
 			if ! [ "$invalidate_cache" = true ]; then
-				cat "$OVE_TMP/owel.cache"
+				cat "${OVE_GLOBAL_STATE_DIR}/owel.cache"
 				return
 			fi
 		fi
@@ -2110,7 +2107,7 @@ function ove_locate_owels {
 
 	echo $owels | \
 		xargs -n1 | \
-		tee "$OVE_TMP/owel.cache"
+		tee "${OVE_GLOBAL_STATE_DIR}/owel.cache"
 }
 
 # locate: :print OVE workspaces owned by '$USER' on this host using either 'locate' or 'find $OVE_LOCATE_SEARCH_DIR'
@@ -2249,10 +2246,10 @@ function ove_stashed_repos {
 function ove_stash_forsome {
 	local cmd
 
-	! [ -f $OVE_PROJECT_TMP/ove-stashed-repos ] && return
+	! [ -f ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos ] && return
 	cmd="git stash $1 -q"
-	ove_revtab_forsome "$cmd" "$(cat $OVE_PROJECT_TMP/ove-stashed-repos | sed "s|$OVE_BASE_DIR/||g" | xargs)"
-	rm $OVE_PROJECT_TMP/ove-stashed-repos
+	ove_revtab_forsome "$cmd" "$(cat ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos | sed "s|$OVE_BASE_DIR/||g" | xargs)"
+	rm ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos
 }
 
 function ove_stash_pop {
@@ -2269,14 +2266,14 @@ function ove_stash_save {
 	local git
 	local now
 
-	[ -f $OVE_PROJECT_TMP/ove-stashed-repos ] && return
+	[ -f ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos ] && return
 
 	dirty_repos=$(ove_dirty_repos)
 	[ "$dirty_repos" == "" ] && return
 
-	> $OVE_PROJECT_TMP/ove-stashed-repos
+	> ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos
 	now=$(date '+%Y%m%d-%H%M%S')
-	cmd="git stash save -q stashed by OVE@$now && echo \$git >> $OVE_PROJECT_TMP/ove-stashed-repos"
+	cmd="git stash save -q stashed by OVE@$now && echo \$git >> ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos"
 
 	for git in $dirty_repos; do
 		ove_revtab_forsome "$cmd" "$git"
@@ -2452,12 +2449,12 @@ function ove_get_paths_recursive {
 function ove_validate_revtab {
 	local doublets
 
-	doublets="$(grep -E -v '^$|^#' $OVE_PROJECT_DIR/revtab | \
+	doublets="$(grep -E -v '^$|^#' ${OVE_PROJECT_DIR}/revtab | \
 		awk -F, 'a[$1]++{print NR ":", $1}')"
 
 	# check for doublets
 	if [ "$doublets" != "" ]; then
-		ove_echo_error_noprefix "Found repo doublet(s) in '$OVE_PROJECT_DIR/revtab':"
+		ove_echo_error_noprefix "Found repo doublet(s) in '${OVE_PROJECT_DIR}/revtab':"
 
 		echo "$doublets"
 		return 1
@@ -2478,7 +2475,7 @@ function ove_validate_projs {
 	done | tsort > /dev/null
 
 	if [ $? -ne 0 ]; then
-		ove_echo_error_noprefix "circular dependency in '$OVE_PROJECT_DIR/projs', see output from 'tsort' above"
+		ove_echo_error_noprefix "circular dependency in '${OVE_PROJECT_DIR}/projs', see output from 'tsort' above"
 		return 1
 	fi
 }
@@ -2537,10 +2534,10 @@ function ove-export {
 	local projs
 	local tmp_var
 
-	mkdir -p $OVE_PROJECT_TMP/export $OVE_PROJECT_TMP/export/projects
-	> $OVE_PROJECT_TMP/export/revtab
-	> $OVE_PROJECT_TMP/export/projs
-	[ -d $OVE_PROJECT_TMP/export/projects ] && rm -rf $OVE_PROJECT_TMP/export/projects
+	mkdir -p ${OVE_PROJECT_TMP_DIR}/export ${OVE_PROJECT_TMP_DIR}/export/projects
+	> ${OVE_PROJECT_TMP_DIR}/export/revtab
+	> ${OVE_PROJECT_TMP_DIR}/export/projs
+	[ -d ${OVE_PROJECT_TMP_DIR}/export/projects ] && rm -rf ${OVE_PROJECT_TMP_DIR}/export/projects
 
 	while true; do
 		if [ $# -ge 1 ]; then
@@ -2563,7 +2560,7 @@ function ove-export {
 			fi
 
 			# already exported?
-			if grep -q ^${b}: $OVE_PROJECT_TMP/export/projs; then
+			if grep -q ^${b}: ${OVE_PROJECT_TMP_DIR}/export/projs; then
 				continue
 			fi
 
@@ -2583,12 +2580,12 @@ function ove-export {
 			str+="\n"
 		done
 
-		printf "$str" | sed '$ d' > $OVE_PROJECT_TMP/export/projs
+		printf "$str" | sed '$ d' > ${OVE_PROJECT_TMP_DIR}/export/projs
 
 		for b in $projs; do
-			mkdir -p $OVE_PROJECT_TMP/export/projects/${b}
-			if find $OVE_PROJECT_DIR/projects/${b} -mindepth 1 -print -quit 2> /dev/null | grep -q .; then
-				cp -ar $OVE_PROJECT_DIR/projects/${b}/* $OVE_PROJECT_TMP/export/projects/${b}
+			mkdir -p ${OVE_PROJECT_TMP_DIR}/export/projects/${b}
+			if find ${OVE_PROJECT_DIR}/projects/${b} -mindepth 1 -print -quit 2> /dev/null | grep -q .; then
+				cp -ar ${OVE_PROJECT_DIR}/projects/${b}/* ${OVE_PROJECT_TMP_DIR}/export/projects/${b}
 			fi
 		done
 
@@ -2596,27 +2593,27 @@ function ove-export {
 		[ $# -eq 0 ] && break
 	done
 
-	! [ -s $OVE_PROJECT_TMP/export/projs ] && return 1
+	! [ -s ${OVE_PROJECT_TMP_DIR}/export/projs ] && return 1
 
 	# YAML header
-	sed -i '1i ---' $OVE_PROJECT_TMP/export/projs
+	sed -i '1i ---' ${OVE_PROJECT_TMP_DIR}/export/projs
 
 	for b in $(echo $paths | tr ' ' '\n' | sort -u); do
 		while true; do
 			[ "$b" == "" ] && break
 			if echo $OVE_REPO_LIST | xargs -n 1 2> /dev/null | grep -q ^$b$; then
-				ove-list-repositories | grep "^$(ove_git2shortpath $b) " >> $OVE_PROJECT_TMP/export/revtab
+				ove-list-repositories | grep "^$(ove_git2shortpath $b) " >> ${OVE_PROJECT_TMP_DIR}/export/revtab
 				break
 			fi
 			b="${b%/*}"
 		done
 	done
-	LC_ALL="C" sort -u -o $OVE_PROJECT_TMP/export/revtab $OVE_PROJECT_TMP/export/revtab
+	LC_ALL="C" sort -u -o ${OVE_PROJECT_TMP_DIR}/export/revtab ${OVE_PROJECT_TMP_DIR}/export/revtab
 
-	tree $OVE_PROJECT_TMP/export
-	tar -C "$OVE_PROJECT_TMP/export" -cjf "$OVE_PROJECT_TMP/export.tar.bz2" .
+	tree ${OVE_PROJECT_TMP_DIR}/export
+	tar -C "${OVE_PROJECT_TMP_DIR}/export" -cjf "${OVE_PROJECT_TMP_DIR}/export.tar.bz2" .
 	echo
-	echo "$OVE_PROJECT_TMP/export.tar.bz2"
+	echo "${OVE_PROJECT_TMP_DIR}/export.tar.bz2"
 
 	return 0
 }
@@ -2626,7 +2623,7 @@ function ove-import {
 	local f
 
 	if [ $# -eq 0 ]; then
-		f="$OVE_PROJECT_TMP/export.tar.bz2"
+		f="${OVE_PROJECT_TMP_DIR}/export.tar.bz2"
 	elif [ $# -eq 1 ]; then
 		f="$1"
 	else
@@ -2639,7 +2636,7 @@ function ove-import {
 		return 2
 	fi
 
-	tar -C "$OVE_PROJECT_DIR" -xf "$f"
+	tar -C "${OVE_PROJECT_DIR}" -xf "$f"
 }
 
 function ove_build_pre {
@@ -2736,7 +2733,7 @@ function ove-buildme {
 			fi
 		fi
 
-		! [ -e "$OVE_PROJECT_DIR/projects/$b/bootstrap" ] && continue
+		! [ -e "${OVE_PROJECT_DIR}/projects/$b/bootstrap" ] && continue
 
 		if [ "$(type -t ove-bootstrap)" == "function" ] && \
 			! eval ove-bootstrap $b $OVE_REDIRECT_OUTPUT; then
@@ -2836,7 +2833,7 @@ function ove-buildme-parallel {
 			fi
 		fi
 
-		! [ -e "$OVE_PROJECT_DIR/projects/$b/bootstrap" ] && continue
+		! [ -e "${OVE_PROJECT_DIR}/projects/$b/bootstrap" ] && continue
 
 		{
 			if [ "$(type -t ove-bootstrap)" == "function" ] && \
@@ -2969,12 +2966,12 @@ function ove-status {
 
 # news:[GIT...]:list upstream changes for all/specified repositories
 function ove-news {
-	ove_revtab_status_parse behind $* | tee $OVE_PROJECT_TMP/revtab-news
+	ove_revtab_status_parse behind $* | tee ${OVE_PROJECT_STATE_DIR}/revtab-news
 }
 
 # ahead:[GIT...]:list local commits not yet published for all/specified repositories
 function ove-ahead {
-	ove_revtab_status_parse ahead $* | tee $OVE_PROJECT_TMP/revtab-ahead
+	ove_revtab_status_parse ahead $* | tee ${OVE_PROJECT_STATE_DIR}/revtab-ahead
 }
 
 # pull:[GIT...]:git pull --rebase for all/specified repositories
@@ -2987,8 +2984,8 @@ function ove-pull {
 
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list $*)
-	elif [ -e $OVE_PROJECT_TMP/revtab-status ] && grep -q 'behind.*]' $OVE_PROJECT_TMP/revtab-status; then
-		repos=$(grep 'behind.*]' $OVE_PROJECT_TMP/revtab-status | \
+	elif [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && grep -q 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status; then
+		repos=$(grep 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status | \
 			cut -d: -f1 | \
 			xargs)
 	else
@@ -3033,9 +3030,9 @@ function ove-apply {
 		return 1
 	fi
 
-	cp -a "$1" "$OVE_PROJECT_TMP"
-	cd $OVE_PROJECT_TMP
-	p="$OVE_PROJECT_TMP/$(basename $1)"
+	cp -a "$1" "${OVE_PROJECT_TMP_DIR}"
+	cd ${OVE_PROJECT_TMP_DIR}
+	p="${OVE_PROJECT_TMP_DIR}/$(basename $1)"
 
 	# remove color codes
 	sed -i \
@@ -3067,7 +3064,7 @@ function ove-apply {
 		fi
 
 		# rename the patch
-		q="$OVE_PROJECT_TMP/ove-apply-$git_basename.patch"
+		q="${OVE_PROJECT_TMP_DIR}/ove-apply-$git_basename.patch"
 		mv $p $q
 		if [ -d "$git_fullpath" ] && \
 			[ -d $git_fullpath/.git ]; then
@@ -3086,10 +3083,10 @@ function ove-apply {
 }
 
 function ove_patch_repositories {
-	! [ -d $OVE_PROJECT_DIR/patches ] && return
+	! [ -d ${OVE_PROJECT_DIR}/patches ] && return
 
-	ove_revtab_forall '[ -d $OVE_PROJECT_DIR/patches/$git_basename ] && \
-		git -C $git apply $OVE_PROJECT_DIR/patches/$git_basename/*.patch &> /dev/null || :'
+	ove_revtab_forall '[ -d ${OVE_PROJECT_DIR}/patches/$git_basename ] && \
+		git -C $git apply ${OVE_PROJECT_DIR}/patches/$git_basename/*.patch &> /dev/null || :'
 }
 
 # do:GIT:run a command within GIT
@@ -3121,12 +3118,12 @@ function ove-fetch {
 
 # tag: :list all project tags
 function ove-tag {
-	git -C "$OVE_PROJECT_DIR" log --tags --simplify-by-decoration --pretty="format:%ai %D"
+	git -C "${OVE_PROJECT_DIR}" log --tags --simplify-by-decoration --pretty="format:%ai %D"
 }
 
 # log: :project '$OVE_PROJECT_NAME' commit log for branch '$OVE_PROJECT_CI_BRANCH'
 function ove-log {
-	git -C "$OVE_PROJECT_DIR" log --decorate $OVE_PROJECT_CI_BRANCH
+	git -C "${OVE_PROJECT_DIR}" log --decorate $OVE_PROJECT_CI_BRANCH
 }
 
 # checkout:[rev[ [purge|autostash]]]:git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care
@@ -3174,16 +3171,16 @@ function ove-checkout {
 			fi
 		fi
 
-		git -C "$OVE_PROJECT_DIR" fetch --all
+		git -C "${OVE_PROJECT_DIR}" fetch --all
 
-		if ! git -C "$OVE_PROJECT_DIR" -c advice.detachedHead=false checkout "$rev"; then
+		if ! git -C "${OVE_PROJECT_DIR}" -c advice.detachedHead=false checkout "$rev"; then
 			ove_echo_error_noprefix "git checkout '$rev' failed"
 			echo
 			echo "available tags:"
-			git -C "$OVE_PROJECT_DIR" tag
+			git -C "${OVE_PROJECT_DIR}" tag
 			echo
 			echo "available branches:"
-			git -C "$OVE_PROJECT_DIR" branch --no-color --all | grep -v detached
+			git -C "${OVE_PROJECT_DIR}" branch --no-color --all | grep -v detached
 
 			# cleanup
 			if [ "$2" == "autostash" ]; then
@@ -3348,12 +3345,12 @@ Source control
 EOF
 
 	# Project specific help text
-	if [ -e "$OVE_PROJECT_DIR"/help ]; then
+	if [ -e "${OVE_PROJECT_DIR}"/help ]; then
 		echo
 		echo "Project '$OVE_PROJECT_NAME' help"
 		printf "%0.s-" $(eval echo {1..$(($(echo $OVE_PROJECT_NAME | wc -L) + 15))})
 		echo
-		cat "$OVE_PROJECT_DIR/help"
+		cat "${OVE_PROJECT_DIR}/help"
 	fi
 }
 
@@ -3439,11 +3436,11 @@ function ove-config {
 
 	if [ -e "$HOME/.oveconfig" ]; then
 		cfg=$HOME/.oveconfig
-		cfg_diff="$(diff -y --suppress-common-lines $HOME/.oveconfig <(git -C $OVE_PROJECT_DIR show HEAD:.oveconfig) \
+		cfg_diff="$(diff -y --suppress-common-lines $HOME/.oveconfig <(git -C ${OVE_PROJECT_DIR} show HEAD:.oveconfig) \
 			| awk '{print $1}')"
-	elif [ -e "$OVE_PROJECT_DIR/.oveconfig" ]; then
-		cfg=$OVE_PROJECT_DIR/.oveconfig
-		cfg_diff="$(git -C $OVE_PROJECT_DIR diff --no-color -U1 --raw $OVE_PROJECT_DIR/.oveconfig | \
+	elif [ -e "${OVE_PROJECT_DIR}/.oveconfig" ]; then
+		cfg=${OVE_PROJECT_DIR}/.oveconfig
+		cfg_diff="$(git -C ${OVE_PROJECT_DIR} diff --no-color -U1 --raw ${OVE_PROJECT_DIR}/.oveconfig | \
 			grep '^+[A-Z]\+'| \
 			cut -b2- | \
 			awk '{print $1}')"
@@ -3734,7 +3731,7 @@ function ove-list-heads {
 	local f
 
 	cmd='echo $(echo -n "$(echo $git | sed -e "s|$OVE_BASE_DIR/||g")?" && git --no-pager log -1 --no-merges --format=%h?%ar?%ae?%s)'
-	f="$OVE_PROJECT_TMP/$FUNCNAME.tmp"
+	f="${OVE_PROJECT_TMP_DIR}/$FUNCNAME.tmp"
 
 	> $f
 	if [ $# -eq 0 ]; then
@@ -3766,8 +3763,8 @@ function ove-ls-remote {
 		let count+=1
 	done
 
-	url=$(git -C "$OVE_PROJECT_DIR" config --get remote.origin.url)
-	sha=$(git -C $OVE_PROJECT_DIR ls-remote $url HEAD | awk {'print $1'})
+	url=$(git -C "${OVE_PROJECT_DIR}" config --get remote.origin.url)
+	sha=$(git -C "${OVE_PROJECT_DIR}" ls-remote $url HEAD | awk {'print $1'})
 	git=$OVE_PROJECT_NAME
 	str+="$git:$sha\n"
 
@@ -3776,7 +3773,7 @@ function ove-ls-remote {
 		column -t -s:
 }
 
-# heads2revtab:[GIT...]:update '$OVE_PROJECT_DIR/revtab' with current SHA-1
+# heads2revtab:[GIT...]:update '${OVE_PROJECT_DIR}/revtab' with current SHA-1
 function ove-heads2revtab {
 	local git
 	local repos
@@ -3789,10 +3786,10 @@ function ove-heads2revtab {
 
 	for git in $repos; do
 		SHA1=$(git -C "$OVE_BASE_DIR"/$git rev-parse HEAD)
-		sed -i -e 's|^'$git'\(\s\+.*\s\+.*\s\+\)\(.*\)$|'$git'\1'$SHA1'|g' "$OVE_PROJECT_DIR"/revtab
+		sed -i -e 's|^'$git'\(\s\+.*\s\+.*\s\+\)\(.*\)$|'$git'\1'$SHA1'|g' "${OVE_PROJECT_DIR}"/revtab
 	done
 
-	git --no-pager -C "$OVE_PROJECT_DIR" diff revtab
+	git --no-pager -C "${OVE_PROJECT_DIR}" diff revtab
 }
 
 # what-is:DIRECTORY...:classify files using 'file' within a directory
@@ -4013,11 +4010,11 @@ function ove_bash_complete {
 		if [ $size -ge 2 ]; then
 			wordlist="$(ove_revtab_forall_parallel 'git tag') HEAD FETCH_HEAD ORIG_HEAD MERGE_HEAD CHERRY_PICK_HEAD"
 			wordlist+=" $(ove-list-heads | awk '{print $2}')"
-			if [ -e $OVE_PROJECT_TMP/revtab-news ]; then
-				wordlist+=" $(grep -o '^[a-f0-9]\+' $OVE_PROJECT_TMP/revtab-news)"
+			if [ -e ${OVE_PROJECT_STATE_DIR}/revtab-news ]; then
+				wordlist+=" $(grep -o '^[a-f0-9]\+' ${OVE_PROJECT_STATE_DIR}/revtab-news)"
 			fi
-			if [ -e $OVE_PROJECT_TMP/revtab-ahead ]; then
-				wordlist+=" $(grep -o '^[a-f0-9]\+' $OVE_PROJECT_TMP/revtab-ahead)"
+			if [ -e ${OVE_PROJECT_STATE_DIR}/revtab-ahead ]; then
+				wordlist+=" $(grep -o '^[a-f0-9]\+' ${OVE_PROJECT_STATE_DIR}/revtab-ahead)"
 			fi
 		fi
 	elif [ "${subcommand}" == "diff-project" ] ||
@@ -4072,8 +4069,8 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "news" ] ||
 		[ "${subcommand}" == "pull" ]; then
-		if [ -e $OVE_PROJECT_TMP/revtab-status ] && grep -q 'behind.*]' $OVE_PROJECT_TMP/revtab-status; then
-			wordlist=$(grep 'behind.*]' $OVE_PROJECT_TMP/revtab-status | \
+		if [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && grep -q 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status; then
+			wordlist=$(grep 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status | \
 				cut -d: -f1 | \
 				xargs)
 		else
@@ -4082,8 +4079,8 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "ahead" ] ||
 		[ "${subcommand}" == "pull" ]; then
-		if [ -e $OVE_PROJECT_TMP/revtab-status ] && grep -q "${subcommand}.*]" $OVE_PROJECT_TMP/revtab-status; then
-			wordlist=$(grep "${subcommand}.*]" $OVE_PROJECT_TMP/revtab-status | \
+		if [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && grep -q "${subcommand}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status; then
+			wordlist=$(grep "${subcommand}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status | \
 				cut -d: -f1 | \
 				xargs)
 		else
@@ -4124,7 +4121,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "select-configuration" ]; then
 		if [ $size -eq 2 ]; then
-			wordlist="default $(find "$OVE_PROJECT_DIR/projects" -name "configure-*" -type l -exec basename {} \; | sed 's/configure-//g')"
+			wordlist="default $(find "${OVE_PROJECT_DIR}/projects" -name "configure-*" -type l -exec basename {} \; | sed 's/configure-//g')"
 		else
 			return
 		fi
@@ -4216,10 +4213,10 @@ function ove_scripts_init {
 	declare -A -g ove_scripts_name2path
 
 	# project scripts
-	if [ -d "$OVE_PROJECT_DIR/scripts" ]; then
-		script_list=$(find $OVE_PROJECT_DIR/scripts -perm -u=x -not -name '*.help' -type f)
+	if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
+		script_list=$(find ${OVE_PROJECT_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
 		for script in $script_list; do
-			ove_add_script_func $OVE_PROJECT_DIR/scripts ${script##*/}
+			ove_add_script_func ${OVE_PROJECT_DIR}/scripts ${script##*/}
 			OVE_SCRIPTS_LIST+="${script##*/} "
 		done
 	fi
@@ -4251,8 +4248,8 @@ function ove_scripts_init {
 
 # show-configuration: :show current build configuration for each project
 function ove-show-configuration {
-	[ -d "$OVE_PROJECT_DIR/projects" ] && \
-		tree -l -P 'configure' -I 'configure-*' $OVE_PROJECT_DIR/projects
+	[ -d "${OVE_PROJECT_DIR}/projects" ] && \
+		tree -l -P 'configure' -I 'configure-*' ${OVE_PROJECT_DIR}/projects
 }
 
 # select-configuration:[PATTERN|default]:select build configuration for each project
@@ -4269,24 +4266,24 @@ function ove-select-configuration {
 	iter=1
 	for p in $projects; do
 		# ignore projects without a project directory
-		[ ! -d "$OVE_PROJECT_DIR/projects/$p" ] && continue
+		[ ! -d "${OVE_PROJECT_DIR}/projects/$p" ] && continue
 
 		# multiple configurations, ask which one to select
-		configs=$(find "$OVE_PROJECT_DIR/projects/$p" -name "configure-*" -type l)
-		nbr_of_configs=$(find "$OVE_PROJECT_DIR/projects/$p" -name "configure-*" -type l| wc -l)
+		configs=$(find "${OVE_PROJECT_DIR}/projects/$p" -name "configure-*" -type l)
+		nbr_of_configs=$(find "${OVE_PROJECT_DIR}/projects/$p" -name "configure-*" -type l| wc -l)
 		if [ "$nbr_of_configs" -gt 1 ]; then
 			# pattern, select config
 			if [ $# -eq 1 ]; then
 				# use the default configuration
 				if [ $1 == "default" ]; then
-					git -C $OVE_PROJECT_DIR checkout $OVE_PROJECT_DIR/projects/$p/configure
+					git -C ${OVE_PROJECT_DIR} checkout ${OVE_PROJECT_DIR}/projects/$p/configure
 					continue
 				fi
 
 				for c in $configs; do
 					if basename $c | grep -w -q configure-$1; then
 						ove_echo_green_noprefix $p:
-						pushd $OVE_PROJECT_DIR/projects/$p &>/dev/null
+						pushd ${OVE_PROJECT_DIR}/projects/$p &>/dev/null
 						ln -sfv configure-$1 configure
 						popd &>/dev/null
 						break
@@ -4309,11 +4306,11 @@ function ove-select-configuration {
 			echo
 			if [[ $REPLY =~ ^[0-9]+$ ]] && [[ $REPLY -le $nbr_of_configs ]]; then
 				if [[ $REPLY == 0 ]]; then
-					git -C $OVE_PROJECT_DIR checkout $OVE_PROJECT_DIR/projects/$p/configure
+					git -C ${OVE_PROJECT_DIR} checkout ${OVE_PROJECT_DIR}/projects/$p/configure
 				else
 					cfg=$(echo $configs | cut -d' ' -f$REPLY)
 					cfg_basename=$(basename $cfg)
-					pushd $OVE_PROJECT_DIR/projects/$p &>/dev/null
+					pushd ${OVE_PROJECT_DIR}/projects/$p &>/dev/null
 					ln -sfv $cfg_basename configure
 					popd &>/dev/null
 				fi
@@ -4338,14 +4335,14 @@ function ove_init {
 	# own config has precedence over project config
 	if [ -e $HOME/.oveconfig ]; then
 		ove_read_config $HOME/.oveconfig
-	elif [ -e $OVE_PROJECT_DIR/.oveconfig ]; then
-		ove_read_config $OVE_PROJECT_DIR/.oveconfig
+	elif [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
+		ove_read_config ${OVE_PROJECT_DIR}/.oveconfig
 	fi
 
 	ove_revtab_init
-	ove_revtab_parse $OVE_PROJECT_DIR/revtab
+	ove_revtab_parse ${OVE_PROJECT_DIR}/revtab
 	ove_projects_init
-	ove_projects_parse $OVE_PROJECT_DIR/projs
+	ove_projects_parse ${OVE_PROJECT_DIR}/projs
 	ove_scripts_init
 
 	if [ "${OVE_LOGLEVEL}" == "2" ]; then
@@ -4407,9 +4404,41 @@ function ove_init {
 
 	OVE_PROJECT_NAME=${OVE_PROJECT_DIR##*/}
 	export OVE_PROJECT_NAME
-	OVE_PROJECT_TMP=$OVE_TMP/$OVE_PROJECT_NAME
-	export OVE_PROJECT_TMP
-	mkdir -p $OVE_PROJECT_TMP
+
+	[ -d /var/tmp ] && OVE_GLOBAL_STATE_DIR=/var${OVE_TMP} || OVE_GLOBAL_STATE_DIR=${OVE_TMP}
+	export OVE_GLOBAL_STATE_DIR
+
+	local OVE_STATE_LINK_NAME="${OVE_BASE_DIR}/.ove.state"
+	local OVE_TMP_LINK_NAME="${OVE_BASE_DIR}/.ove.tmp"
+	if ! [ -h ${OVE_STATE_LINK_NAME} ]; then
+		OVE_PROJECT_STATE_DIR=$(mktemp -u -d -p ${OVE_GLOBAL_STATE_DIR}/${OVE_PROJECT_NAME} state-XXXXXXXXXX)
+
+		mkdir -p ${OVE_PROJECT_STATE_DIR}
+		ln -s ${OVE_PROJECT_STATE_DIR} ${OVE_STATE_LINK_NAME}
+
+		# always re-create tmp link
+		[ -h ${OVE_TMP_LINK_NAME} ] && rm ${OVE_TMP_LINK_NAME}
+	else
+		OVE_PROJECT_STATE_DIR=$(readlink ${OVE_STATE_LINK_NAME})
+		! [ -e "${OVE_STATE_LINK_NAME}" ] && mkdir -p ${OVE_PROJECT_STATE_DIR}
+	fi
+	export OVE_PROJECT_STATE_DIR
+
+	if ! [ -h ${OVE_TMP_LINK_NAME} ]; then
+		# re-use last 10 characters from OVE_PROJECT_STATE_DIR
+		OVE_PROJECT_TMP_DIR="${OVE_TMP}/${OVE_PROJECT_NAME}/tmp-${OVE_PROJECT_STATE_DIR: -10}"
+		mkdir -p ${OVE_PROJECT_TMP_DIR}
+		ln -s ${OVE_PROJECT_TMP_DIR} ${OVE_TMP_LINK_NAME}
+	else
+		OVE_PROJECT_TMP_DIR=$(readlink ${OVE_TMP_LINK_NAME})
+		! [ -e "${OVE_TMP_LINK_NAME}" ] && mkdir -p ${OVE_PROJECT_TMP_DIR}
+	fi
+	export OVE_PROJECT_TMP_DIR
+
+	OVE_LOG_DIR="${OVE_GLOBAL_STATE_DIR}/logs"
+	export OVE_LOG_DIR
+	! [ -d "$OVE_LOG_DIR" ] && mkdir -p "$OVE_LOG_DIR"
+
 	OVE_STAGE_DIR=$OVE_BASE_DIR/stage
 	export OVE_STAGE_DIR
 	OVE_ARCHIVE_DIR=$OVE_BASE_DIR/archives
@@ -4445,36 +4474,36 @@ function ove_post_checks {
 	local script
 
 	# check for systest doublets
-	if [ -e $OVE_PROJECT_DIR/systests ]; then
+	if [ -e ${OVE_PROJECT_DIR}/systests ]; then
 		# yes, this is ugly
-		doublets=$(grep -E -v '#|^$' $OVE_PROJECT_DIR/systests | \
+		doublets=$(grep -E -v '#|^$' ${OVE_PROJECT_DIR}/systests | \
 			awk '{print $1}' | \
 			cut -d: -f1 | \
 			sort | \
 			uniq -c -d)
 		if [ "$doublets" != "" ]; then
 			echo
-			ove_echo_red_noprefix "error: doublet systests identified in '$OVE_PROJECT_DIR/systests':"
+			ove_echo_red_noprefix "error: doublet systests identified in '${OVE_PROJECT_DIR}/systests':"
 			ove_echo_red_noprefix $doublets
 		fi
 	fi
 
 	# inform the user if .oveconfig was updated within the project
-	if [ -e $HOME/.oveconfig ] && [ -e $OVE_PROJECT_DIR/.oveconfig ]; then
+	if [ -e $HOME/.oveconfig ] && [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
 		res=$(comm -3 <(grep -E -v '(^#.*$)|(^$)' $HOME/.oveconfig | awk '{ print $1 }' | sort) \
-			<(grep -E -v '(^#.*$)|(^$)' $OVE_PROJECT_DIR/.oveconfig | awk '{ print $1 }' | sort))
+			<(grep -E -v '(^#.*$)|(^$)' ${OVE_PROJECT_DIR}/.oveconfig | awk '{ print $1 }' | sort))
 		if [ "$res" != "" ]; then
 			echo
 			echo "--->"
 			ove_echo_yellow_noprefix "warning: the two files:"
 			echo
 			echo "$HOME/.oveconfig"
-			echo "$OVE_PROJECT_DIR/.oveconfig"
+			echo "${OVE_PROJECT_DIR}/.oveconfig"
 			echo
 			echo "...are different. Do a merge!?"
 			echo
 			diff <(grep -E -v '(^#.*$)|(^$)' $HOME/.oveconfig | awk '{ print $1 }' | sort) \
-				<(grep -E -v '(^#.*$)|(^$)' $OVE_PROJECT_DIR/.oveconfig | awk '{ print $1 }' | sort)
+				<(grep -E -v '(^#.*$)|(^$)' ${OVE_PROJECT_DIR}/.oveconfig | awk '{ print $1 }' | sort)
 			echo "<---"
 		fi
 	fi
@@ -4766,7 +4795,7 @@ function ove-replicate {
 
 	s="$(ove-setup)"
 	if [ "$s" == "" ]; then
-		ove_echo_error_noprefix "'$OVE_PROJECT_DIR/SETUP' file not found"
+		ove_echo_error_noprefix "'${OVE_PROJECT_DIR}/SETUP' file not found"
 		return 2
 	fi
 
@@ -4780,7 +4809,7 @@ function ove-replicate {
 	d=$(ssh $host mktemp -d)
 
 	# only diffs relative to the index is included (for now)
-	p=$(mktemp -p $OVE_PROJECT_TMP)
+	p=$(mktemp -p ${OVE_PROJECT_TMP_DIR})
 	ove-diff > $p
 	if [ -s "$p" ]; then
 		p_remote="$d/$OVE_PROJECT_NAME.patch"
@@ -4823,7 +4852,7 @@ function ove_unittest_preparations {
 	nbr_of_repos=$3
 	nbr_of_systests=$4
 
-	unittest_dir="$OVE_PROJECT_TMP/unittest"
+	unittest_dir="${OVE_PROJECT_TMP_DIR}/unittest"
 
 	echo -n "Preparing $unittest_dir..."
 	[ -d $unittest_dir ] && \
@@ -4947,7 +4976,7 @@ function ove-unittest {
 	nbr_of_systests=3
 
 	do_preparations="1"
-	if [ -t 1 ] && [ -d $OVE_PROJECT_TMP/unittest ]; then
+	if [ -t 1 ] && [ -d ${OVE_PROJECT_TMP_DIR}/unittest ]; then
 		read -p "Setup? (y/N) " -r
 		echo
 		if ! [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -4967,7 +4996,7 @@ function ove-unittest {
 		done
 	fi
 
-	cd $OVE_PROJECT_TMP/unittest
+	cd ${OVE_PROJECT_TMP_DIR}/unittest
 	shelltest=$(command -v shelltest)
 	if [ $OVE_LOGLEVEL -eq 2 ]; then
 		shelltest_opts=" --debug "
@@ -4983,7 +5012,7 @@ function ove-unittest {
 		-Dnbr_of_systests=$(((nbr_of_systests * 2) + 1)) \
 		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
 		-Dnbr_of_files=$((nbr_of_files * nbr_of_repos + (4 * nbr_of_projs) + 4)) \
-		-DOVE_TEST_BASE="$(echo $OVE_PROJECT_TMP/unittest| sed -e 's|/|\\/|g')"
+		-DOVE_TEST_BASE="$(echo ${OVE_PROJECT_TMP_DIR}/unittest| sed -e 's|/|\\/|g')"
 }
 
 # generate-doc: :generate OVE documentation (e.g. $OVE_DIR/ove-cmd-list.md)
