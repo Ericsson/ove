@@ -2162,7 +2162,8 @@ function ove-switch {
 		echo
 		read -p "Proj: "
 		if ! [[ "${REPLY}" =~ ^[0-9]+$ ]]; then
-			echo "error: just numbers"
+			[ "${REPLY}" != "" ] && \
+				echo "error: just numbers"
 			return 1
 		fi
 
