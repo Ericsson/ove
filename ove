@@ -1894,7 +1894,7 @@ function ove-diff-project {
 	cmd="git -C ${OVE_PROJECT_DIR} diff --color=always $1 $2"
 	diff=$($cmd)
 	if [ "$diff" != "" ]; then
-		echo -e "$diff" | $OVE_PAGER -Ps"$OVE_PROJECT_NAME\:$(echo $cmd | sed -e 's/\./\\./g')"
+		echo -e "$diff" | ${OVE_PAGER} -Ps"$OVE_PROJECT_NAME\:$(echo $cmd | sed -e 's/\./\\./g')"
 	fi
 
 	while IFS= read -r line; do
@@ -1905,7 +1905,7 @@ function ove-diff-project {
 		cmd="git -C $OVE_BASE_DIR/$repo diff --color=always ${sha_1} ${sha_2}"
 		diff=$($cmd)
 		if [ "$diff" != "" ]; then
-			echo -e "$diff" | $OVE_PAGER -Ps"$repo\:$(echo $cmd | sed -e 's/\./\\./g')"
+			echo -e "$diff" | ${OVE_PAGER} -Ps"$repo\:$(echo $cmd | sed -e 's/\./\\./g')"
 		fi
 	done <<<"$(ove-revtab-diff "$1" "$2")"
 }
@@ -2333,9 +2333,9 @@ function ove-diff {
 	if [ $# -eq 0 ]; then
 		for git in $(ove_dirty_repos); do
 			ove_revtab_forsome "$cmd" "$git"
-		done | $OVE_PAGER
+		done | ${OVE_PAGER}
 	else
-		ove_revtab_forsome "$cmd" "$*" | $OVE_PAGER
+		ove_revtab_forsome "$cmd" "$*" | ${OVE_PAGER}
 	fi
 }
 
@@ -2352,15 +2352,16 @@ function ove-diff-cached {
 	local cmd
 	local git
 
-	cmd='git --no-pager diff-index --quiet --cached HEAD -- || \
-		(ove_echo_yellow_noprefix $PWD && git --no-pager diff --cached)'
+	cmd="git --no-pager diff-index --quiet --cached HEAD -- || \
+		(ove_echo_yellow_noprefix \$PWD && \
+		git --no-pager diff --color=always --cached)"
 
 	if [ $# -eq 0 ]; then
 		for git in $(ove_dirty_repos); do
 			ove_revtab_forsome "$cmd" "$git"
-		done
+		done | ${OVE_PAGER}
 	else
-		ove_revtab_forsome "$cmd" "$*"
+		ove_revtab_forsome "$cmd" "$*" | ${OVE_PAGER}
 	fi
 }
 
@@ -3707,9 +3708,9 @@ function ove-mrproper {
 	fi
 }
 
-# !: :view last command in pager (=$OVE_PAGER)
+# !: :view last command in pager (=${OVE_PAGER})
 function ove-! {
-	[ -f "$OVE_LAST_COMMAND" ] && $OVE_PAGER $OVE_LAST_COMMAND
+	[ -f "$OVE_LAST_COMMAND" ] && ${OVE_PAGER} $OVE_LAST_COMMAND
 }
 
 # describe:[GIT...]:git describe+log+status combo for all/specified git repositories
