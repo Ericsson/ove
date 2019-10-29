@@ -649,6 +649,7 @@ function ove_projects_cmd {
 
 	target=$1
 	cmd=$2
+	ret=0
 
 	# sanity check
 	! [ -e "${OVE_PROJECT_DIR}/projects/$target/$cmd" ] && return
@@ -670,24 +671,29 @@ function ove_projects_cmd {
 	fi
 
 	# common for this command?
-	[ -e "${OVE_PROJECT_DIR}/projects/common/$cmd" ] && \
+	if [ -e "${OVE_PROJECT_DIR}/projects/common/$cmd" ]; then
 		source "${OVE_PROJECT_DIR}/projects/common/$cmd"
-
-	# "$1"/$2 is no longer needed
-	shift 2
-
-	if [ $OVE_DRY_RUN -eq 0 ]; then
-		# run it
-		eval "${target}_version=${ove_projects_version[$index]} \
-			${OVE_PROJECT_DIR}/projects/$target/$cmd \
-			$OVE_REDIRECT_OUTPUT"
-	else
-		# dry: print the command
-		ove_echo_stderr_noprefix "cd $path && ${OVE_PROJECT_DIR}/projects/$target/$cmd"
+		# preserve return code
+		ret="$?"
 	fi
 
-	# preserve return code
-	ret="$?"
+	if [ $ret -eq 0 ]; then
+		# "$1"/$2 is no longer needed
+		shift 2
+
+		if [ $OVE_DRY_RUN -eq 0 ]; then
+			# run it
+			eval "${target}_version=${ove_projects_version[$index]} \
+				${OVE_PROJECT_DIR}/projects/$target/$cmd \
+				$OVE_REDIRECT_OUTPUT"
+		else
+			# dry: print the command
+			ove_echo_stderr_noprefix "cd $path && ${OVE_PROJECT_DIR}/projects/$target/$cmd"
+		fi
+
+		# preserve return code
+		ret="$?"
+	fi
 
 	# exit directory
 	[ "${OVE_DRY_RUN}" -eq 0 ] && popd &>/dev/null
