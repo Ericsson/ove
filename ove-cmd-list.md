@@ -15,7 +15,7 @@
 | build-parallel          | [PROJECT...]                | run the 'build' step for all or individual projects (in parallel)                                                     |
 | buildme                 | [PROJECT]                   | build projects from scratch (=bootstrap, configure, build, install)                                                   |
 | buildme-parallel        | [PROJECT]                   | build projects from scratch (=bootstrap, configure, build, install)                                                   |
-| cd                      |                             | helper for 'cd $OVE_BASE_DIR'                                                                                         |
+| cd                      |                             | helper for 'cd ${OVE_BASE_DIR}'                                                                                       |
 | checkout                | [rev[ [purge\|autostash]]]   | git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care                    |
 | clean                   | [PROJECT...]                | run the 'clean' step for all or individual projects                                                                   |
 | clean-parallel          | [PROJECT...]                | run the 'clean' step for all or individual projects (in parallel)                                                     |
@@ -27,7 +27,7 @@
 | diff                    | [GIT...]                    | git diff for all/specified git repositories                                                                           |
 | diff-cached             | [GIT...]                    | git diff --cached for all/specified repositories                                                                      |
 | diff-check              | [OPTIONS]                   | git diff --check [OPTIONS]                                                                                            |
-| diff-project            | <rev> <rev>                 | git diff the '$OVE_PROJECT_NAME' project                                                                              |
+| diff-project            | <rev> <rev>                 | git diff the '${OVE_PROJECT_NAME}' project                                                                            |
 | do                      | GIT                         | run a command within GIT                                                                                              |
 | domains                 |                             | list email domain summary for all git repositories                                                                    |
 | dry-run                 | [0\|1]                       | toggle or set OVE_DRY_RUN                                                                                             |
@@ -39,7 +39,7 @@
 | forall-parallel         | COMMAND                     | run 'COMMAND' in parallel for all git repositories                                                                    |
 | forowel                 | COMMAND                     | run 'COMMAND' for all OVE workspaces on this host                                                                     |
 | forowel-parallel        | COMMAND                     | run 'COMMAND' in parallel for all OVE workspaces on this host                                                         |
-| generate-doc            |                             | generate OVE documentation (e.g. $OVE_DIR/ove-cmd-list.md)                                                            |
+| generate-doc            |                             | generate OVE documentation (e.g. ${OVE_DIR}/ove-cmd-list.md)                                                          |
 | grep                    | PATTERN                     | grep OVE workspace                                                                                                    |
 | heads2revtab            | [GIT...]                    | update '${OVE_PROJECT_DIR}/revtab' with current SHA-1                                                                 |
 | help                    | [PATTERN]                   | OVE help                                                                                                              |
@@ -56,15 +56,15 @@
 | list-scripts            |                             | list available scripts                                                                                                |
 | list-systests           |                             | list available system tests                                                                                           |
 | list-systests-aliases   |                             | list available system test aliases                                                                                    |
-| locate                  |                             | print OVE workspaces owned by '$USER' on this host using either 'locate' or 'find $OVE_LOCATE_SEARCH_DIR'             |
-| locate-all              |                             | print OVE workspaces on this host using either 'locate' or 'find $OVE_LOCATE_SEARCH_DIR'                              |
-| log                     |                             | project '$OVE_PROJECT_NAME' commit log for branch '$OVE_PROJECT_CI_BRANCH'                                            |
-| log-project             | <rev> <rev>                 | git log the project '$OVE_PROJECT_NAME'                                                                               |
+| locate                  |                             | print OVE workspaces owned by '${USER}' on this host using either 'locate' or 'find ${OVE_LOCATE_SEARCH_DIR}'         |
+| locate-all              |                             | print OVE workspaces on this host using either 'locate' or 'find ${OVE_LOCATE_SEARCH_DIR}'                            |
+| log                     |                             | project '${OVE_PROJECT_NAME}' commit log for branch '${OVE_PROJECT_CI_BRANCH}'                                        |
+| log-project             | <rev> <rev>                 | git log the project '${OVE_PROJECT_NAME}'                                                                             |
 | loglevel                | [LEVEL]                     | show or change loglevel [0-4]                                                                                         |
 | ls-files                | [PATTERN]                   | git ls-files for all git repositories                                                                                 |
 | ls-remote               |                             | git ls-remote <URL> HEAD for all git repositories                                                                     |
 | make                    | [PROJECT[-nodeps]]          | build project(s)                                                                                                      |
-| mrproper                | [y\|Y]                       | remove untracked files AND removes '$OVE_STAGE_DIR/*' AND removes '$OVE_ARCHIVE_DIR/*'                                |
+| mrproper                | [y\|Y]                       | remove untracked files AND removes '${OVE_STAGE_DIR}/*' AND removes '${OVE_ARCHIVE_DIR}/*'                            |
 | news                    | [GIT...]                    | list upstream changes for all/specified repositories                                                                  |
 | pull                    | [GIT...]                    | git pull --rebase for all/specified repositories                                                                      |
 | refresh                 |                             | refresh projects found by ove-locate                                                                                  |
@@ -72,10 +72,10 @@
 | remote-check            |                             | sanity check that all remotes are online                                                                              |
 | replicate               | HOST                        | replicate OVE workspace on HOST                                                                                       |
 | reset                   | [GIT...]                    | git reset -p for all/specified repositories                                                                           |
-| revtab-diff             | <rev> <rev>                 | print changes between two '$OVE_PROJECT_NAME' revisions                                                               |
+| revtab-diff             | <rev> <rev>                 | print changes between two '${OVE_PROJECT_NAME}' revisions                                                             |
 | select-configuration    | [PATTERN\|default]           | select build configuration for each project                                                                           |
 | setup                   |                             | print how to set this project up                                                                                      |
-| shortlog-project        | <rev> <rev>                 | git shortlog the project '$OVE_PROJECT_NAME'                                                                          |
+| shortlog-project        | <rev> <rev>                 | git shortlog the project '${OVE_PROJECT_NAME}'                                                                        |
 | show                    | [revision...]               | ove list-heads or search for 'revision' within all git repositories. If found run 'git show SHA-1\|TAG'                |
 | show-configuration      |                             | show current build configuration for each project                                                                     |
 | stash                   | [drop\|list\|pop\|show]        | git stash [drop\|list\|pop\|show] for all git repositories                                                               |
