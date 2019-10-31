@@ -552,9 +552,7 @@ function ove {
 		args="${*:2}"
 		mkdir -p ${OVE_LOG_DIR}/${OVE_SHA}
 		(cd ${OVE_LOG_DIR} && ln -sfn ${OVE_SHA} current)
-		OVE_NOW=$(date '+%Y%m%d-%H%M%S%N')
-		export OVE_NOW
-		OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/${OVE_NOW}-ove-${cmd}-$(hostname)-${OVE_PROJECT_NAME}.log"
+		OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/$(date '+%Y%m%d-%H%M%S%N')-ove-${cmd}-$(hostname)-${OVE_PROJECT_NAME}.log"
 
 		if [ -t 1 ]; then
 			script_help=$(2>&1 script --help)
@@ -1093,6 +1091,7 @@ function ove_validate_repo_list {
 }
 
 function ove_revtab_status {
+	local f
 	local git
 	local repos
 
@@ -1104,17 +1103,19 @@ function ove_revtab_status {
 
 	[ "${repos}" == "" ] && return
 
-	> "${OVE_PROJECT_STATE_DIR}/${OVE_NOW}-revtab-status"
+	f="${OVE_PROJECT_STATE_DIR}/$(date '+%Y%m%d-%H%M%S%N')-revtab-status"
+
+	> ${f}
 	for git in ${repos}; do
-		ove_status_one_repo ${git} >> "${OVE_PROJECT_STATE_DIR}/${OVE_NOW}-revtab-status" &
+		ove_status_one_repo ${git} >> ${f} &
 	done
 
 	wait
 
-	sort "${OVE_PROJECT_STATE_DIR}/${OVE_NOW}-revtab-status" | \
+	sort ${f} | \
 		column -t -s:
 
-	mv "${OVE_PROJECT_STATE_DIR}/${OVE_NOW}-revtab-status" "${OVE_PROJECT_STATE_DIR}/revtab-status"
+	mv "${f}" "${OVE_PROJECT_STATE_DIR}/revtab-status"
 }
 
 # $1: ahead|behind
