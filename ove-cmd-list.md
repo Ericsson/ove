@@ -61,6 +61,7 @@
 | log                     |                             | project '${OVE_PROJECT_NAME}' commit log for branch '${OVE_PROJECT_CI_BRANCH}'                                        |
 | log-project             | <rev> <rev>                 | git log the project '${OVE_PROJECT_NAME}'                                                                             |
 | loglevel                | [LEVEL]                     | show or change loglevel [0-4]                                                                                         |
+| loop                    | [TIMEOUT INOTIFY COMMAND]   | loop a OVE command using poll or inotify                                                                              |
 | ls-files                | [PATTERN]                   | git ls-files for all git repositories                                                                                 |
 | ls-remote               |                             | git ls-remote <URL> HEAD for all git repositories                                                                     |
 | make                    | [PROJECT[-nodeps]]          | build project(s)                                                                                                      |

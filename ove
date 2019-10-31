@@ -296,6 +296,208 @@ function ove_analyze_strace_connect {
 	done | sort -n | column -s'@' -t
 }
 
+# $1: timeout in seconds
+function ove_inotifywait {
+	local f
+
+	sleep 0.01
+	inotifywait \
+		-r \
+		-t $1 \
+		-qq \
+		--event modify \
+		--event delete_self \
+		--event create \
+		--event delete \
+		--exclude '.git' \
+		$(for f in $(ove-ls-files); do [ -f ${f} ] && echo ${f}; done);
+	sleep 0.01
+}
+
+# $1: timeout in sec
+# $2: use inotifywait (0 or 1)
+# $3: max count
+# $*: command
+function ove_loop_command {
+	local counter
+	local max_count
+	local read_args
+	local timeout
+	local use_inotify
+
+	[ $# -lt 4 ] && return 1
+
+	timeout=$1
+	use_inotify=$2
+	max_count=$3
+	shift 3
+	let counter=0
+	while true; do
+		let counter+=1
+		[ ${max_count} -ne 0 ] && [ ${counter} -gt ${max_count} ] && break
+		clear
+		ove_echo_cyan_error "ove-${*} [c:${counter} t:${timeout} i:${use_inotify} m:${max_count}]"
+		OVE_PAGER='tee /dev/null' ove-${1} ${*:2}
+		echo -
+		if [ ${use_inotify} -eq 1 ]; then
+			ove_inotifywait ${timeout}
+		else
+			[ "${timeout}" -gt 0 ] && read_args="-t ${timeout}"
+			read -n 1 -s -r -p '' ${read_args}
+		fi
+	done
+}
+
+# run:|TIMEOUT COMMAND:run one OVE command in terminal|tmux
+function ove-run {
+	local _cmd
+	local cmd
+	local read_args
+
+	if [ $# -eq 1 ]; then
+		ove-help "^${FUNCNAME/ove-/} "
+		return 1
+	fi
+
+	if [ $# -eq 0 ]; then
+		read -p "command timeout in sec (default 0 = no timeout): "
+		[ "${REPLY}" == "" ] && timeout=0 || timeout=${REPLY}
+		read -p "command: "
+		[ "${REPLY}" == "" ] && return || cmd=${REPLY}
+	else
+		timeout=$1
+		shift
+		cmd=$*
+	fi
+
+	if ! [[ "${timeout}" =~ ^[0-9]+$ ]]; then
+		echo "error: timeout: just numbers"
+		return 1
+	fi
+
+	cmd=${cmd#ove }
+	cmd=${cmd#ove-}
+	_cmd=$(echo ${cmd} | cut -d' ' -f1)
+	if [ "$(type -t ove-"${_cmd}")" != "function" ]; then
+		ove_echo_red_noprefix "error: '${_cmd}' unknown command"
+		return 1
+	fi
+
+	# turn off monitor mode to get rid of "Done" messages
+	set +m
+	[ "${timeout}" -gt 0 ] && read_args="-t ${timeout}"
+
+	if [ -n "${TMUX}" ]; then
+		tmux split-window -h "\
+			source ${OVE_BASE_DIR}/ove; \
+			ove_init; \
+			ove_echo_cyan_error \"ove-${cmd}\"; \
+			OVE_PAGER='tee /dev/null' ove-${cmd}; \
+			echo -; \
+			read -n 1 -s -r -p '' ${read_args}"
+
+		tmux select-layout main-vertical
+		tmux select-pane -t 0
+	else
+		ove_echo_cyan_error "ove-${cmd}"
+		OVE_PAGER='tee /dev/null' ove-${cmd}
+		echo -
+		read -n 1 -s -r -p '' ${read_args}
+	fi
+
+	# turn on monitor mode
+	set -m
+}
+
+# loop:|[TIMEOUT|?] [INOTIFY|?] [MAX-COUNT|?] COMMAND]:loop one OVE command
+function ove-loop {
+	local _cmd
+	local cmd
+	local max_count
+	local timeout
+	local use_inotify
+
+	if [ $# -gt 0 ] && [ $# -lt 4 ]; then
+		ove-help "^${FUNCNAME/ove-/} "
+		return 1
+	fi
+
+	if [ $# -eq 0 ]; then
+		read -p "command timeout in sec (default 0 = no timeout): "
+		[ "${REPLY}" == "" ] && timeout=0 || timeout=${REPLY}
+		read -p "inotify 0=no 1=yes (default 0): "
+		[ "${REPLY}" == "" ] && use_inotify=0 || use_inotify=${REPLY}
+		read -p "max count: (default 0 = forever): "
+		[ "${REPLY}" == "" ] && max_count=0 || max_count=${REPLY}
+		read -p "command: "
+		[ "${REPLY}" == "" ] && return || cmd=${REPLY}
+	else
+		if [ "$1" == "?" ]; then
+			read -p "command timeout in sec (0=no timeout): "
+			[ "${REPLY}" == "" ] && timeout=0 || timeout=${REPLY}
+		else
+			timeout=$1
+		fi
+
+		if [ "$2" == "?" ]; then
+			read -p "inotify 0=no 1=yes (default 0): "
+			[ "${REPLY}" == "" ] && use_inotify=0 || use_inotify=${REPLY}
+		else
+			use_inotify=$2
+		fi
+
+		if [ "$3" == "?" ]; then
+			read -p "max count: (default 0 = forever): "
+			[ "${REPLY}" == "" ] && max_count=0 || max_count=${REPLY}
+		else
+			max_count=$3
+		fi
+
+		shift 3
+		cmd=$*
+	fi
+
+	if ! [[ "${timeout}" =~ ^[0-9]+$ ]]; then
+		echo "error: timeout: just numbers"
+		return 1
+	fi
+
+	if ! [[ "${use_inotify}" =~ ^[0-1]$ ]]; then
+		echo "error: inotify: 0 or 1"
+		return 1
+	fi
+
+	if [ "${use_inotify}" -eq 1 ] && ! command -v inotifywait > /dev/null; then
+		echo "https://duckduckgo.com/?q=inotifywait"
+		return 1
+	fi
+
+	if ! [[ "${max_count}" =~ ^[0-9]+$ ]]; then
+		echo "error: max count: just numbers"
+		return 1
+	fi
+
+	cmd=${cmd#ove }
+	cmd=${cmd#ove-}
+	_cmd=$(echo ${cmd} | cut -d' ' -f1)
+	if [ "$(type -t ove-"${_cmd}")" != "function" ]; then
+		ove_echo_red_noprefix "error: '${_cmd}' unknown command"
+		return 1
+	fi
+
+	if [ -n "${TMUX}" ]; then
+		tmux split-window -h "\
+			source ${OVE_BASE_DIR}/ove; \
+			ove_init; \
+			ove_loop_command ${timeout} ${use_inotify} ${max_count} ${cmd}"
+
+		tmux select-layout main-vertical
+		tmux select-pane -t 0
+	else
+		ove_loop_command ${timeout} ${use_inotify} ${max_count} ${cmd}
+	fi
+}
+
 function ove {
 	local args
 	local candidates
@@ -3999,6 +4201,22 @@ function ove_bash_complete {
 		if [ ${size} -eq 2 ]; then
 			wordlist=${OVE_PROJECT_LIST}
 		elif [ ${size} -gt 2 ]; then
+			return
+		fi
+	elif [ "${subcommand}" == "run" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist="timeout-in-sec"
+		elif [ ${size} -eq 3 ]; then
+			wordlist="${OVE_ALL_COMMANDS}"
+		else
+			return
+		fi
+	elif [ "${subcommand}" == "loop" ]; then
+		if [ ${size} -eq 3 ]; then
+			wordlist="0 1"
+		elif [ ${size} -eq 4 ]; then
+			wordlist="${OVE_ALL_COMMANDS}"
+		else
 			return
 		fi
 	elif [ "${subcommand}" == "checkout" ]; then
