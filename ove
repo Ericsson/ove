@@ -1267,7 +1267,7 @@ function ove_revtab_check {
 function ove_revtab_list_fullpath {
 	local git
 
-	for git in "${ove_revtab_git_name[@]}" $(readlink .owel); do
+	for git in "${ove_revtab_git_name[@]}" $(readlink ${OVE_BASE_DIR}/.owel); do
 		echo -n "${OVE_BASE_DIR}/${git} "
 	done | xargs "${OVE_ECHO}"
 }
@@ -1275,7 +1275,7 @@ function ove_revtab_list_fullpath {
 function ove_revtab_list_basename {
 	local git
 
-	for git in "${ove_revtab_git_name[@]}" $(readlink .owel); do
+	for git in "${ove_revtab_git_name[@]}" $(readlink ${OVE_BASE_DIR}/.owel); do
 		echo -n "${git} "
 	done | xargs "${OVE_ECHO}"
 }
@@ -4365,7 +4365,6 @@ function ove_bash_complete {
 		[ "${subcommand}" == "wdiff" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
-			wordlist+=" ${OVE_PROJECT_NAME}"
 		fi
 	elif [ "${subcommand}" == "news" ] ||
 		[ "${subcommand}" == "pull" ]; then
@@ -4375,7 +4374,6 @@ function ove_bash_complete {
 				xargs)
 		else
 			wordlist=$(ove_revtab_list_basename)
-			wordlist+=" ${OVE_PROJECT_NAME}"
 		fi
 	elif [ "${subcommand}" == "ahead" ] ||
 		[ "${subcommand}" == "pull" ]; then
@@ -4385,13 +4383,11 @@ function ove_bash_complete {
 				xargs)
 		else
 			wordlist=$(ove_revtab_list_basename)
-			wordlist+=" ${OVE_PROJECT_NAME}"
 		fi
 	elif [ "${subcommand}" == "fetch" ] ||
 		[ "${subcommand}" == "list-heads" ] ||
 		[ "${subcommand}" == "status" ]; then
 		wordlist=$(ove_revtab_list_basename)
-		wordlist+=" ${OVE_PROJECT_NAME}"
 	elif [ "${subcommand}" == "systest" ] ||
 		[ "${subcommand}" == "systest-parallel" ]; then
 		if [ ${size} -ge 2 ]; then
