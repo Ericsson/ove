@@ -510,7 +510,7 @@ function ove {
 
 	cmd="$1"
 	if [ "$#" -eq 0 ]; then
-		ove-help
+		ove-fzf > /dev/null || ove-help
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
 		re=\\b${cmd}
 		if ! [[ "${OVE_ALL_COMMANDS}" =~ ${re} ]]; then
@@ -613,6 +613,75 @@ function ove {
 			return ${ret}
 		fi
 	fi
+}
+
+# fzf:[loop]:OVE fzf
+function ove-fzf {
+	local args
+	local cmd
+
+	if [ $# -gt 1 ]; then
+		ove-help "^${FUNCNAME/ove-/} "
+		return 1
+	fi
+
+	if ! command -v fzf > /dev/null; then
+		echo "https://duckduckgo.com/?q=fzf"
+		return 1
+	fi
+
+	while true; do
+		cmd=$(echo ${OVE_ALL_COMMANDS} | \
+			xargs -n 1 | \
+			grep -v '!' | \
+			fzf \
+			--cycle \
+			--preview '${OVE_INIT_STRING}; ove-help ^{1}\\s' \
+			--preview-window=down:1 \
+		)
+		[ "${cmd}" == "" ] && break
+
+		if echo ${OVE_BUILT_INS_WITHOUT_ARGS} | tr ' ' '\n' | grep -q ^${cmd}$; then
+			if [ "$1" == "loop" ]; then
+				echo "$ ove-loop ? ? ? ${cmd}"
+				ove-loop ? ? ? ${cmd}
+				echo -
+			else
+				ove-run 0 ${cmd}
+			fi
+			continue
+		fi
+
+		COMP_WORDS=(ove ${cmd} ' ')
+		COMP_LINE="ove ${cmd}"
+		COMP_CWORD=3
+		COMP_POINT=${#COMP_LINE}
+		ove_bash_complete
+		if [ ${#COMPREPLY[@]} -eq 0 ]; then
+			if [ $1 == "loop" ]; then
+				echo "$ ove-loop ? ? ? ${cmd}"
+				ove-loop ? ? ? ${cmd}
+				echo -
+			else
+				ove-run 0 ${cmd}
+			fi
+		else
+			args=$(printf '%s\n' "${COMPREPLY[@]}" | \
+				sort -u | \
+				fzf \
+					--cycle \
+					--preview "echo ESC\|CTRL+C to skip args $ ove ${cmd} {}" \
+					--preview-window=down:1)
+
+			if [ "$1" == "loop" ]; then
+				echo "$ ove-loop ? ? ? ${cmd} ${args}"
+				ove-loop ? ? ? ${cmd} ${args}
+				echo -
+			else
+				ove-run 0 ${cmd} ${args}
+			fi
+		fi
+	done
 }
 
 function ove_projects_init {
@@ -4227,6 +4296,9 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" == "fzf" ]; then
+		[ ${size} -ne 2 ] && return
+		wordlist="loop"
 	elif [ "${subcommand}" == "stash" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist="drop list pop show"
@@ -4374,6 +4446,8 @@ function ove_update_tab_complete {
 		sort | \
 		tr '\n' ' ' | \
 		xargs "${OVE_ECHO}")
+
+	export OVE_BUILT_INS_WITHOUT_ARGS
 
 	OVE_BUILT_INS=$(grep -o '^function ove-.* ' ${OVE_SELF} | \
 		sed -e ':a;N;$!ba;s/function ove-//g' | \
