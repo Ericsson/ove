@@ -2596,7 +2596,8 @@ function ove-stash {
 	elif [ $# -eq 0 ]; then
 		ove_stash_save
 	else
-		ove-help '^stash '
+		ove-help "^${FUNCNAME/ove-/} "
+		return 1
 	fi
 }
 
@@ -3296,7 +3297,7 @@ function ove-apply {
 	local q
 
 	if [ $# -ne 1 ]; then
-		ove-help '^apply '
+		ove-help "^${FUNCNAME/ove-/} "
 		return 1
 	fi
 
@@ -4154,7 +4155,6 @@ function ove-loglevel {
 # dry-run:[0|1]:toggle or set OVE_DRY_RUN
 function ove-dry-run {
 	if [ $# -eq 1 ] && ! [[ "$1" =~ ^[0-1]$ ]]; then
-		echo "usage:"
 		ove-help ^${FUNCNAME/ove-/}
 		return 1
 	fi
@@ -5090,7 +5090,6 @@ function ove-replicate {
 	local s
 
 	if [ $# -ne 1 ]; then
-		ove_echo_error_noprefix "usage:"
 		ove-help ^${FUNCNAME/ove-/}
 		return 1
 	fi
