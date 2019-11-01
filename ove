@@ -4283,9 +4283,13 @@ function ove_bash_complete {
 			return
 		fi
 	elif [ "${subcommand}" == "loop" ]; then
-		if [ ${size} -eq 3 ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist="timeout-in-sec"
+		elif [ ${size} -eq 3 ]; then
 			wordlist="0 1"
 		elif [ ${size} -eq 4 ]; then
+			wordlist="max-count"
+		elif [ ${size} -eq 5 ]; then
 			wordlist="${OVE_ALL_COMMANDS}"
 		else
 			return
