@@ -4342,10 +4342,10 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "vi" ] ||
 		[ "${subcommand}" == "emacs" ]; then
-		if [ ${size} -eq 2 ]; then
+		if [ ${size} -eq 2 ] && [ "$(ove-list-modified-files)" != "" ]; then
 			wordlist=$(ove-list-modified-files | \
 				xargs -n1 basename)
-		elif [ ${size} -gt 2 ]; then
+		else
 			return
 		fi
 	elif [ "${subcommand}" == "config" ]; then
