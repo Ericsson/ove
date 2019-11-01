@@ -1675,6 +1675,7 @@ function ove_build_topology {
 	done | tsort | tac | xargs
 }
 
+# build-order: :show build order
 function ove-build-order {
 	local autonomous_projs
 	local topology
@@ -4652,6 +4653,18 @@ function ove_init {
 	if grep ^function ${OVE_SELF} | grep -q -v 'function ove'; then
 		ove_echo_error_noprefix "functions need to start with 'ove-' or 'ove_'"
 		grep ^function ${OVE_SELF} | grep -v 'function ove'
+		return 1
+	fi
+
+	if [ "$(grep -B1 '^function ove-' ${OVE_SELF} | \
+		grep '^$' -A1 | \
+		awk '{print $2}' | \
+		xargs)" != "" ]; then
+		ove_echo_error_noprefix "add help for the following function(s):"
+		grep -B1 '^function ove-.*' ${OVE_SELF} |
+			grep '^$' -A1 | \
+			awk '{print $2}' | \
+			xargs
 		return 1
 	fi
 
