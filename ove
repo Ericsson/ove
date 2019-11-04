@@ -299,6 +299,13 @@ function ove_analyze_strace_connect {
 # $1: timeout in seconds
 function ove_inotifywait {
 	local f
+	local files
+
+	files=$(mktemp -u -p ${OVE_PROJECT_TMP_DIR} inotifywait-fromfile-XXXXXXXXXX)
+
+	for f in $(ove-ls-files); do
+		[ -f ${f} ] && echo ${f}
+	done > ${files}
 
 	sleep 0.01
 	inotifywait \
@@ -310,8 +317,9 @@ function ove_inotifywait {
 		--event create \
 		--event delete \
 		--exclude '.git' \
-		$(for f in $(ove-ls-files); do [ -f ${f} ] && echo ${f}; done);
+		--fromfile ${files}
 	sleep 0.01
+	rm ${files}
 }
 
 # $1: timeout in sec
