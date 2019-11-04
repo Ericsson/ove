@@ -4284,7 +4284,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "run" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist="timeout-in-sec"
+			wordlist="TIMEOUT"
 		elif [ ${size} -eq 3 ]; then
 			wordlist="${OVE_ALL_COMMANDS}"
 		else
@@ -4292,11 +4292,11 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "loop" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist="timeout-in-sec"
+			wordlist="TIMEOUT"
 		elif [ ${size} -eq 3 ]; then
-			wordlist="0 1"
+			wordlist="INOTIFY"
 		elif [ ${size} -eq 4 ]; then
-			wordlist="max-count"
+			wordlist="MAX-COUNT"
 		elif [ ${size} -eq 5 ]; then
 			wordlist="${OVE_ALL_COMMANDS}"
 		else
