@@ -420,6 +420,7 @@ function ove_loop_command {
 		else
 			[ "${timeout}" -gt 0 ] && read_args="-t ${timeout}"
 			read -n 1 -s -r -p '' ${read_args}
+			[[ ${REPLY} =~ ^[Qq]$ ]] && break
 		fi
 	done
 }
