@@ -3849,7 +3849,7 @@ function ove-ls-files {
 		cmd="re="$*"; git ls-files | while read line; do [[ \${PWD}/\${line} =~ \${re} ]] && echo -e \${PWD}/\${line}; done"
 	fi
 
-	ove_revtab_forall "${cmd}"
+	ove_revtab_forall_parallel "${cmd}" | sort
 }
 
 # list-modified-files: :list modified files
