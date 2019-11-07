@@ -220,14 +220,18 @@ function ove_analyze_strace_execve_timing {
 		if [[ "${line}" == *"execve"* ]]; then
 			cmd=$(echo ${line} | grep -o '\[.*')
 			t0=${line%% *}
-			t1=$(tail -1 ${f} | awk '{print $1}')
-			diff=$(awk "BEGIN{printf \"%.6f\n\", (${t1} - ${t0})}")
-			echo "${diff}:${cmd}"
+			if [ ${OVE_LOGLEVEL} -eq 3 ]; then
+				echo "${t0}:${cmd}"
+			elif [ ${OVE_LOGLEVEL} -eq 4 ]; then
+				t1=$(tail -1 ${f} | awk '{print $1}')
+				diff=$(awk "BEGIN{printf \"%.6f\n\", (${t1} - ${t0})}")
+				echo "${diff}:${cmd}"
+			fi
 		fi
 	done | \
 		sed -e 's|:\[|: |g' -e 's|\].*=||g' | \
 		tr -d '",' | \
-		sort -nr
+		sort -n$([ ${OVE_LOGLEVEL} -eq 4 ] && echo r)
 }
 
 # $1: directory with strace pid files
@@ -638,15 +642,15 @@ function ove {
 				script_opts+="-e "
 			fi
 
-			if [ ${OVE_LOGLEVEL} -eq 3 ] || [ ${OVE_LOGLEVEL} -eq 4 ]; then
+			if [ ${OVE_LOGLEVEL} -gt 2 ] && [ ${OVE_LOGLEVEL} -lt 6 ]; then
 				[ -e ${OVE_PROJECT_TMP_DIR}/strace-${cmd} ] && \
 					rm -rf ${OVE_PROJECT_TMP_DIR}/strace-${cmd}
 				mkdir -p ${OVE_PROJECT_TMP_DIR}/strace-${cmd}
 
-				if [ ${OVE_LOGLEVEL} -eq 3 ]; then
-					strace_expression="execve"
-				elif [ ${OVE_LOGLEVEL} -eq 4 ]; then
+				if [ ${OVE_LOGLEVEL} -eq 5 ]; then
 					strace_expression="connect,execve"
+				else
+					strace_expression="execve"
 				fi
 
 				OVE_ANALYZE_EXECVE="strace \
@@ -667,9 +671,9 @@ function ove {
 			ret=$?
 
 			if ! [ -z "${OVE_ANALYZE_EXECVE+x}" ]; then
-				if [ ${OVE_LOGLEVEL} -eq 3 ]; then
+				if [ ${OVE_LOGLEVEL} -eq 3 ] || [ ${OVE_LOGLEVEL} -eq 4 ]; then
 					ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP_DIR}/strace-${cmd} | tee -a ${OVE_LAST_COMMAND}
-				elif [ ${OVE_LOGLEVEL} -eq 4 ]; then
+				elif [ ${OVE_LOGLEVEL} -eq 5 ]; then
 					ove_analyze_strace_connect ${OVE_PROJECT_TMP_DIR}/strace-${cmd} | tee -a ${OVE_LAST_COMMAND}
 				fi
 			fi
@@ -4200,8 +4204,8 @@ function ove-version {
 # loglevel:[LEVEL] :show or change loglevel [0-4]
 function ove-loglevel {
 	set +x
-	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-4]$ ]]; then
-		echo "error: try 0-4"
+	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-5]$ ]]; then
+		echo "error: try 0-5"
 		return 1
 	elif [ $# -eq 1 ]; then
 		OVE_LOGLEVEL=$1
@@ -4212,8 +4216,9 @@ function ove-loglevel {
 		echo "0: silence is golden"
 		echo "1: normal"
 		echo "2: debug"
-		echo "3: execve time analysis"
-		echo "4: connect analysis"
+		echo "3: execve timeline"
+		echo "4: execve time analysis"
+		echo "5: connect analysis"
 		break
 	done | grep -E --color "$|${OVE_LOGLEVEL}"
 
