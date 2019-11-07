@@ -4201,7 +4201,7 @@ function ove-version {
 	echo "OVE [SHA-1: ${OVE_SHA} @ ${OVE_OS} ${OVE_OS_VER}]"
 }
 
-# loglevel:[LEVEL] :show or change loglevel [0-4]
+# loglevel:[LEVEL] :show or change loglevel [0-5]
 function ove-loglevel {
 	set +x
 	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-5]$ ]]; then
