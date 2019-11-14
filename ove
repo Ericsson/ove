@@ -549,7 +549,7 @@ function ove-loop {
 	fi
 
 	if [ "${use_inotify}" -eq 1 ] && ! command -v inotifywait > /dev/null; then
-		echo "https://duckduckgo.com/?q=inotifywait"
+		echo "duckduckgo.com/?q=inotifywait"
 		return 1
 	fi
 
@@ -591,7 +591,7 @@ function ove {
 
 	cmd="$1"
 	if [ "$#" -eq 0 ]; then
-		ove-fzf > /dev/null || ove-help
+		ove-fzf || ove-help
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
 		re=\\b${cmd}
 		if ! [[ "${OVE_ALL_COMMANDS}" =~ ${re} ]]; then
@@ -694,18 +694,17 @@ function ove {
 	fi
 }
 
-# fzf:[loop]:OVE fzf
+# fzf:[loop]:OVE fzf [duckduckgo.com/?q=fzf]
 function ove-fzf {
 	local args
 	local cmd
 
-	if [ $# -gt 1 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+	if ! command -v fzf > /dev/null; then
 		return 1
 	fi
 
-	if ! command -v fzf > /dev/null; then
-		echo "https://duckduckgo.com/?q=fzf"
+	if [ $# -gt 1 ]; then
+		ove-help "^${FUNCNAME/ove-/} "
 		return 1
 	fi
 
@@ -3717,10 +3716,9 @@ EOF
 	fi
 }
 
-# ag:PATTERN:search OVE workspace using The Silver Searcher
+# ag:PATTERN:search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]
 function ove-ag {
 	if ! command -v ag > /dev/null; then
-		echo "https://duckduckgo.com/?q=the+silver+searcher"
 		return 1
 	fi
 

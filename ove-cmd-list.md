@@ -2,7 +2,7 @@
 |-|-|-|
 | !                       |                                                   | view last command in pager (=${OVE_PAGER})                                                                            |
 | add                     | [GIT...]                                          | git add -p for all/specified repositories                                                                             |
-| ag                      | PATTERN                                           | search OVE workspace using The Silver Searcher                                                                        |
+| ag                      | PATTERN                                           | search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]                                |
 | ahead                   | [GIT...]                                          | list local commits not yet published for all/specified repositories                                                   |
 | apply                   | PATCH                                             | apply one OVE patch                                                                                                   |
 | authors                 |                                                   | list author summary for all git repositories                                                                          |
@@ -40,7 +40,7 @@
 | forall-parallel         | COMMAND                                           | run 'COMMAND' in parallel for all git repositories                                                                    |
 | forowel                 | COMMAND                                           | run 'COMMAND' for all OVE workspaces on this host                                                                     |
 | forowel-parallel        | COMMAND                                           | run 'COMMAND' in parallel for all OVE workspaces on this host                                                         |
-| fzf                     | [loop]                                            | OVE fzf                                                                                                               |
+| fzf                     | [loop]                                            | OVE fzf [duckduckgo.com/?q=fzf]                                                                                       |
 | generate-doc            |                                                   | generate OVE documentation (e.g. ${OVE_DIR}/ove-cmd-list.md)                                                          |
 | grep                    | PATTERN                                           | grep OVE workspace                                                                                                    |
 | heads2revtab            | [GIT...]                                          | update '${OVE_PROJECT_DIR}/revtab' with current SHA-1                                                                 |
