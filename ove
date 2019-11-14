@@ -1549,8 +1549,8 @@ function ove_get_base_dir {
 
 	pushd . &> /dev/null
 	found="FALSE"
-	parentdir=${PWD}
-	searchdir=${PWD}
+	parentdir=$(pwd -P)
+	searchdir=${parentdir}
 	while [ "${searchdir}" != "" ]; do
 		cd "${searchdir}"
 		if [[ -L ove && -L .owel && ( -d .ove || -d owel ) ]]; then
