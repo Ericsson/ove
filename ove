@@ -703,6 +703,9 @@ function ove-fzf {
 		return 1
 	fi
 
+	# sanity check
+	ove_get_base_dir > /dev/null
+
 	if [ $# -gt 1 ]; then
 		ove-help "^${FUNCNAME/ove-/} "
 		return 1
