@@ -2467,6 +2467,12 @@ function ove_locate_owels {
 		return 1
 	fi
 
+	for o in ${owels}; do
+		if ! [ -e ${o}/revtab ]; then
+			owels=${owels/${o}/}
+		fi
+	done
+
 	echo ${owels} | \
 		xargs -n1 | \
 		tee "${OVE_GLOBAL_STATE_DIR}/owel.cache"
