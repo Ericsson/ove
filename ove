@@ -4220,7 +4220,11 @@ function ove-loglevel {
 		return 1
 	elif [ $# -eq 1 ]; then
 		OVE_LOGLEVEL=$1
-		ove-config OVE_LOGLEVEL $1 > /dev/null
+		if ! [ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ]; then
+			echo "OVE_LOGLEVEL $1" > ${OVE_PROJECT_STATE_DIR}/.oveconfig
+		else
+			sed -i "s/^OVE_LOGLEVEL.*/OVE_LOGLEVEL $1/g" ${OVE_PROJECT_STATE_DIR}/.oveconfig
+		fi
 	fi
 
 	while true; do
@@ -4717,6 +4721,57 @@ function ove-select-configuration {
 	ove-show-configuration
 }
 
+function ove_dirs_init {
+	local OVE_STATE_LINK_NAME
+	local OVE_TMP_LINK_NAME
+
+	OVE_STATE_LINK_NAME="${OVE_BASE_DIR}/.ove.state"
+	OVE_TMP_LINK_NAME="${OVE_BASE_DIR}/.ove.tmp"
+
+	# global state
+	[ -d /var/tmp ] && OVE_GLOBAL_STATE_DIR=/var${OVE_TMP} || OVE_GLOBAL_STATE_DIR=${OVE_TMP}
+	export OVE_GLOBAL_STATE_DIR
+
+	# project state
+	if ! [ -h ${OVE_STATE_LINK_NAME} ]; then
+		OVE_PROJECT_STATE_DIR=$(mktemp -u -d -p ${OVE_GLOBAL_STATE_DIR}/${OVE_PROJECT_NAME} state-XXXXXXXXXX)
+
+		mkdir -p ${OVE_PROJECT_STATE_DIR}
+		ln -s ${OVE_PROJECT_STATE_DIR} ${OVE_STATE_LINK_NAME}
+
+		# always re-create tmp link
+		[ -h ${OVE_TMP_LINK_NAME} ] && rm ${OVE_TMP_LINK_NAME}
+	else
+		OVE_PROJECT_STATE_DIR=$(readlink ${OVE_STATE_LINK_NAME})
+		! [ -e "${OVE_STATE_LINK_NAME}" ] && mkdir -p ${OVE_PROJECT_STATE_DIR}
+	fi
+	export OVE_PROJECT_STATE_DIR
+
+	# project tmp
+	if ! [ -h ${OVE_TMP_LINK_NAME} ]; then
+		# re-use last 10 characters from OVE_PROJECT_STATE_DIR
+		OVE_PROJECT_TMP_DIR="${OVE_TMP}/${OVE_PROJECT_NAME}/tmp-${OVE_PROJECT_STATE_DIR: -10}"
+		mkdir -p ${OVE_PROJECT_TMP_DIR}
+		ln -s ${OVE_PROJECT_TMP_DIR} ${OVE_TMP_LINK_NAME}
+	else
+		OVE_PROJECT_TMP_DIR=$(readlink ${OVE_TMP_LINK_NAME})
+		! [ -e "${OVE_TMP_LINK_NAME}" ] && mkdir -p ${OVE_PROJECT_TMP_DIR}
+	fi
+	export OVE_PROJECT_TMP_DIR
+}
+
+function ove_config_init {
+	# own config has precedence over project config
+	if [ -e ${HOME}/.oveconfig ]; then
+		ove_read_config ${HOME}/.oveconfig
+	elif [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
+		ove_read_config ${OVE_PROJECT_DIR}/.oveconfig
+	fi
+
+	# project state config?
+	[ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ] && ove_read_config ${OVE_PROJECT_STATE_DIR}/.oveconfig
+}
+
 # init:initialize OVE project
 function ove_init {
 	OVE_ECHO=$(which echo)
@@ -4728,13 +4783,8 @@ function ove_init {
 	OVE_BASENAME="$(basename $(readlink -f ${BASH_SOURCE[0]}))"
 	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
 
-	# own config has precedence over project config
-	if [ -e ${HOME}/.oveconfig ]; then
-		ove_read_config ${HOME}/.oveconfig
-	elif [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
-		ove_read_config ${OVE_PROJECT_DIR}/.oveconfig
-	fi
-
+	ove_dirs_init
+	ove_config_init
 	ove_revtab_init
 	ove_revtab_parse ${OVE_PROJECT_DIR}/revtab
 	ove_projects_init
@@ -4820,36 +4870,6 @@ function ove_init {
 
 	OVE_PROJECT_NAME=${OVE_PROJECT_DIR##*/}
 	export OVE_PROJECT_NAME
-
-	[ -d /var/tmp ] && OVE_GLOBAL_STATE_DIR=/var${OVE_TMP} || OVE_GLOBAL_STATE_DIR=${OVE_TMP}
-	export OVE_GLOBAL_STATE_DIR
-
-	local OVE_STATE_LINK_NAME="${OVE_BASE_DIR}/.ove.state"
-	local OVE_TMP_LINK_NAME="${OVE_BASE_DIR}/.ove.tmp"
-	if ! [ -h ${OVE_STATE_LINK_NAME} ]; then
-		OVE_PROJECT_STATE_DIR=$(mktemp -u -d -p ${OVE_GLOBAL_STATE_DIR}/${OVE_PROJECT_NAME} state-XXXXXXXXXX)
-
-		mkdir -p ${OVE_PROJECT_STATE_DIR}
-		ln -s ${OVE_PROJECT_STATE_DIR} ${OVE_STATE_LINK_NAME}
-
-		# always re-create tmp link
-		[ -h ${OVE_TMP_LINK_NAME} ] && rm ${OVE_TMP_LINK_NAME}
-	else
-		OVE_PROJECT_STATE_DIR=$(readlink ${OVE_STATE_LINK_NAME})
-		! [ -e "${OVE_STATE_LINK_NAME}" ] && mkdir -p ${OVE_PROJECT_STATE_DIR}
-	fi
-	export OVE_PROJECT_STATE_DIR
-
-	if ! [ -h ${OVE_TMP_LINK_NAME} ]; then
-		# re-use last 10 characters from OVE_PROJECT_STATE_DIR
-		OVE_PROJECT_TMP_DIR="${OVE_TMP}/${OVE_PROJECT_NAME}/tmp-${OVE_PROJECT_STATE_DIR: -10}"
-		mkdir -p ${OVE_PROJECT_TMP_DIR}
-		ln -s ${OVE_PROJECT_TMP_DIR} ${OVE_TMP_LINK_NAME}
-	else
-		OVE_PROJECT_TMP_DIR=$(readlink ${OVE_TMP_LINK_NAME})
-		! [ -e "${OVE_TMP_LINK_NAME}" ] && mkdir -p ${OVE_PROJECT_TMP_DIR}
-	fi
-	export OVE_PROJECT_TMP_DIR
 
 	OVE_LOG_DIR="${OVE_GLOBAL_STATE_DIR}/logs"
 	export OVE_LOG_DIR
