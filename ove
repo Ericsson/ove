@@ -1080,6 +1080,8 @@ function ove_revtab_parse {
 	local array
 	local line
 
+	[ ! -f "$1" ] && return
+
 	ove_revtab_num_repositories=0
 
 	while read line; do
@@ -2819,6 +2821,8 @@ function ove_get_paths_recursive {
 
 function ove_validate_revtab {
 	local doublets
+
+	[ ! -f "$1" ] && return
 
 	doublets="$(grep -E -v '^$|^#' ${OVE_PROJECT_DIR}/revtab | \
 		awk -F, 'a[$1]++{print NR ":", $1}')"
