@@ -4773,6 +4773,14 @@ function ove_init {
 		return 1
 	fi
 
+	if ! [ -L ${OVE_BASE_DIR}/README ]; then
+		if [ -s ${OVE_PROJECT_DIR}/README ]; then
+			ln -s -r ${OVE_PROJECT_DIR}/README ${OVE_BASE_DIR}/README
+		elif [ -s ${OVE_PROJECT_DIR}/README.md ]; then
+			ln -s -r ${OVE_PROJECT_DIR}/README.md ${OVE_BASE_DIR}/README
+		fi
+	fi
+
 	ove_update_tab_complete
 
 	if [ -z "${OVE_DRY_RUN+x}" ]; then
