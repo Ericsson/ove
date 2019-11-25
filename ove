@@ -850,9 +850,9 @@ function ove_projects_parse {
 
 	ove_number_of_projects=0
 
-	[ ! -f "$1" ] && return
+	[ ! -e "${OVE_PROJECT_DIR}/projs" ] && return
 
-	eval $(ove_parse_yaml "$1")
+	eval $(ove_parse_yaml "${OVE_PROJECT_DIR}/projs")
 
 	# create ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
@@ -1080,7 +1080,7 @@ function ove_revtab_parse {
 	local array
 	local line
 
-	[ ! -f "$1" ] && return
+	[ ! -e "${OVE_PROJECT_DIR}/revtab" ] && return
 
 	ove_revtab_num_repositories=0
 
@@ -1098,7 +1098,7 @@ function ove_revtab_parse {
 		ove_revtab_basename2index[${array[0]##*/}]=${ove_revtab_num_repositories}
 
 		let ove_revtab_num_repositories+=1
-	done < "$1"
+	done < "${OVE_PROJECT_DIR}/revtab"
 }
 
 # $1: git (either basename, sub dir or fullpath)
@@ -1524,7 +1524,7 @@ function ove_revtab_fetch {
 	local co_list
 	local count
 
-	ove_revtab_parse "${OVE_PROJECT_DIR}"/revtab
+	ove_revtab_parse
 
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout $*
@@ -2820,24 +2820,31 @@ function ove_get_paths_recursive {
 }
 
 function ove_validate_revtab {
+	local d
 	local doublets
 
-	[ ! -f "$1" ] && return
+	[ ! -e "${OVE_PROJECT_DIR}/revtab" ] && return
 
 	doublets="$(grep -E -v '^$|^#' ${OVE_PROJECT_DIR}/revtab | \
-		awk -F, 'a[$1]++{print NR ":", $1}')"
+		awk 'a[$1]++{print $1}')"
 
 	# check for doublets
 	if [ "${doublets}" != "" ]; then
 		ove_echo_error_noprefix "Found repo doublet(s) in '${OVE_PROJECT_DIR}/revtab':"
 
-		echo "${doublets}"
+		for d in ${doublets}; do
+			grep -n "^${d} " ${OVE_PROJECT_DIR}/revtab
+		done
 		return 1
 	fi
 }
 
 function ove_validate_projs {
+	local d
+	local doublets
 	local i
+
+	[ ! -e "${OVE_PROJECT_DIR}/projs" ] && return
 
 	i=0
 	while ((i < ove_number_of_projects)); do
@@ -2851,6 +2858,18 @@ function ove_validate_projs {
 
 	if [ $? -ne 0 ]; then
 		ove_echo_error_noprefix "circular dependency in '${OVE_PROJECT_DIR}/projs', see output from 'tsort' above"
+		return 1
+	fi
+
+	doublets=$(grep -o '^[a-zA-Z0-9_]\+' ${OVE_PROJECT_DIR}/projs | \
+		awk 'a[$1]++{print $1}')
+
+	if [ "${doublets}" != "" ]; then
+		ove_echo_error_noprefix "Found project doublet(s) in '${OVE_PROJECT_DIR}/projs':"
+
+		for d in ${doublets}; do
+			grep -n "^${d}:" ${OVE_PROJECT_DIR}/projs
+		done
 		return 1
 	fi
 }
@@ -4786,9 +4805,9 @@ function ove_init {
 	ove_dirs_init
 	ove_config_init
 	ove_revtab_init
-	ove_revtab_parse ${OVE_PROJECT_DIR}/revtab
+	ove_revtab_parse
 	ove_projects_init
-	ove_projects_parse ${OVE_PROJECT_DIR}/projs
+	ove_projects_parse
 	ove_scripts_init
 
 	if [ "${OVE_LOGLEVEL}" == "2" ]; then
