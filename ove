@@ -4798,8 +4798,8 @@ function ove_init {
 	OVE_PROJECT_DIR=$(readlink -f ${OVE_BASE_DIR}/.owel)
 	OVE_PROJECT_LIST=$(ove_list_projects)
 	OVE_PROJECT_COMMANDS=$(ove_project_commands_list)
-	OVE_DIR="$(cd "$(dirname "$(readlink -f ${BASH_SOURCE[0]})")"; pwd -P)"
-	OVE_BASENAME="$(basename $(readlink -f ${BASH_SOURCE[0]}))"
+	OVE_DIR="$(cd "$(dirname "$(readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/})")"; pwd -P)"
+	OVE_BASENAME="$(basename $(readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/}))"
 	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
 
 	ove_dirs_init
