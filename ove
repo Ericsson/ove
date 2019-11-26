@@ -4631,6 +4631,8 @@ function ove_scripts_init {
 	local script_list
 	declare -A -g ove_scripts_name2path
 
+	OVE_SCRIPTS_LIST=
+
 	# project scripts
 	if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
 		script_list=$(find ${OVE_PROJECT_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
