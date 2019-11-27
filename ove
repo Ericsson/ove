@@ -1746,6 +1746,27 @@ function ove-list-projects {
 	fi
 }
 
+# digraph: :create a DOT directed graph for all projects
+function ove-digraph {
+	local i
+
+	echo "digraph $(echo ${OVE_PROJECT_NAME} | tr '-' '_') {"
+
+	i=0
+	while ((i < ove_number_of_projects)); do
+		if [ "${ove_projects_deps[${i}]}" != "" ]; then
+			for d in ${ove_projects_deps[${i}]}; do
+				echo "    ${ove_projects_name[${i}]} -> ${d};"
+			done
+		else
+			echo "    ${ove_projects_name[${i}]};"
+		fi
+		let i+=1
+	done
+
+	echo "}"
+}
+
 function ove_build_topology {
 	local i
 

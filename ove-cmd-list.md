@@ -29,6 +29,7 @@
 | diff-cached             | [GIT...]                                          | git diff --cached for all/specified repositories                                                                      |
 | diff-check              | [OPTIONS]                                         | git diff --check [OPTIONS]                                                                                            |
 | diff-project            | <rev> <rev>                                       | git diff the '${OVE_PROJECT_NAME}' project                                                                            |
+| digraph                 |                                                   | create a DOT directed graph for all projects                                                                          |
 | do                      | GIT                                               | run a command within GIT                                                                                              |
 | domains                 |                                                   | list email domain summary for all git repositories                                                                    |
 | dry-run                 | [0\|1]                                             | toggle or set OVE_DRY_RUN                                                                                             |
