@@ -2640,7 +2640,7 @@ function ove_stash_forsome {
 
 	! [ -f ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos ] && return
 	cmd="git stash $1 -q"
-	ove_revtab_forsome "${cmd}" "$(cat ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos | sed "s|${OVE_BASE_DIR}/||g" | xargs)"
+	ove_revtab_forsome "${cmd}" "$(sed "s|${OVE_BASE_DIR}/||g" ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos | xargs)"
 	rm ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos
 }
 
