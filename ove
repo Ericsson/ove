@@ -287,6 +287,29 @@ function ove_ip2host {
 	echo ${ip_lookup}
 }
 
+# $1: IPv4 address
+function ove_ip2org {
+	local ip
+	local org
+
+	if ! command -v whois > /dev/null; then
+		ove_echo_error_noprefix "error: 'whois' is not found"
+		return 1
+	fi
+
+	ip=${1}
+
+	if [[ ${ip} == 127* ]]; then
+		org="NA"
+	else
+		org=$(whois ${ip} | \
+			grep -E -i 'netrange:|netname|parent')
+		[ "${org}" == "" ] && return
+	fi
+
+	printf "${org}"
+}
+
 # $1: port
 function ove_port2service {
 	local port
@@ -505,10 +528,11 @@ function ove_run_one_pid {
 				cut -d')' -f1)
 			ip_lookup=$(ove_ip2host ${ip})
 			[ "${ip_lookup}" == "" ] && ip_lookup=${ip}
+			org=$(ove_ip2org ${ip} | sed -e 's/$/ \\l\\n/g' | tr '\n' ' ' | tr \" \')
 			port_service=$(ove_port2service ${port})
 			out_1+="c: ${ip}|${ip_lookup}|${port}|${port_service}\l\n"
 			ip_lookup_no_hyphen=$(echo ${ip_lookup} | tr '-' '_')
-			out_2+="    $(echo ${ip_lookup_no_hyphen} | cut -d. -f1) [label=\"${ip_lookup}\l\nIP: ${ip}\l\n\" shape=box3d,fontsize=20,style=filled, fillcolor=\"yellow\"];"
+			out_2+="    $(echo ${ip_lookup_no_hyphen} | cut -d. -f1) [label=\"${ip_lookup}\l\nIP: ${ip}\l\n${org}\l\n\" shape=box3d,fontsize=20,style=filled, fillcolor=\"yellow\"];"
 			out_2+="    ${pid} -> $(echo ${ip_lookup_no_hyphen} | cut -d. -f1) [label=\"${port} ${port_service}\"];"
 		fi
 	done <<< "${all_files[$1]}"
