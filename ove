@@ -3949,15 +3949,17 @@ function ove_patch_repositories {
 		git -C ${git} apply ${OVE_PROJECT_DIR}/patches/${git_basename}/*.patch &> /dev/null || :'
 }
 
-# do:GIT:run a command within GIT
+# do:DIR COMMAND:run a command within DIR relative to ${OVE_BASE_DIR}
 function ove-do {
 	local cmd
-	local git
+	local dir
 
-	git=$1
+	dir=$1
 	cmd="${*:2}"
 
-	cd ${OVE_BASE_DIR}/${git} && eval "${cmd}"
+	! [ -d "${dir}" ] && return 1
+
+	cd ${OVE_BASE_DIR}/${dir} && eval "${cmd}"
 }
 
 # fetch:[GIT...]:git fetch --all for all/specified repositories, ends with ove status
