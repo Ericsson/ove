@@ -514,14 +514,16 @@ function ove_strace_one_pid {
 	local port_service
 	local sa_family
 	local sun_path
+	local t
 
 	pid=$1
 
 	duration_ms=$(ove_strace_get_duration_ms ${pid})
 	duration_s=$(ove_strace_get_duration_s ${pid})
+	t=$(ove_strace_get_t0 ${pid})
 
 	# label START
-	out_1="    ${pid} [label=\"p: ${pid}\l\nt: $(ove_strace_get_t0 ${pid})\l\nd: ${duration_ms} ms (${duration_s} s)\l\n"
+	out_1="    ${pid} [label=\"p: ${pid}\l\nt: ${t}\l\nd: ${duration_ms} ms (${duration_s} s)\l\n"
 
 	# exit code
 	exit_code=$(ove_strace_get_exit_code ${pid})
@@ -545,7 +547,9 @@ function ove_strace_one_pid {
 		[ "${line}" == "" ] && continue
 		syscall=${line#* }
 		syscall=${syscall%%(*}
+		! [[ "${syscall}" =~ ^[a-z]+$ ]] && continue
 
+		echo "${t}:${syscall}:${pid}:${duration_ms}:${duration_s}" >> ${OVE_PROJECT_TMP_DIR}/timing
 		if [ "${syscall}" == "clone" ] ||
 			[ "${syscall}" == "fork" ] ||
 			[ "${syscall}" == "vfork" ]; then
@@ -590,9 +594,10 @@ function ove_strace_one_pid {
 				port_service=$(ove_port2service ${port})
 				out_1+="c: ${ip}|${ip_lookup}|${port}|${port_service}\l\n"
 
-				out_2+="    \"${ip}\" [label=\"IP: ${ip}\l\n${ip_lookup}\l\n${org}\l\n\" shape=box3d,fontsize=20,style=filled, fillcolor=\"yellow\"];"
+				out_2+="    \"${ip}\" [label=\"t: ${t}\l\nIP: ${ip}\l\n${ip_lookup}\l\n${org}\l\n\" shape=box3d,fontsize=20,style=filled, fillcolor=\"yellow\"];"
 				out_2+="    ${pid} -> \"${ip}\" [label=\"${syscall} ${port} ${port_service}\"];"
-
+			else
+				continue
 			fi
 		fi
 	done <<< "${all_files[$1]}"
@@ -659,9 +664,11 @@ function ove-strace-connect {
 function ove_strace_create_graph {
 	local all_files
 	local f
+	local o_base
 	local o_con
 	local o_dot
 	local o_svg
+	local o_timing
 	local o_tmp
 	local pid
 
@@ -671,6 +678,7 @@ function ove_strace_create_graph {
 	o_base="${OVE_PROJECT_TMP_DIR}/strace-${2}"
 	o_dot=${o_base}.dot
 	o_svg=${o_base}.svg
+	o_timing=${o_base}.timing
 
 	echo "digraph $(echo ${OVE_PROJECT_NAME} | tr '-' '_') {" > ${o_dot}
 	echo "    nodesep=2" >> ${o_dot}
@@ -681,6 +689,7 @@ function ove_strace_create_graph {
 	find ${OVE_PROJECT_TMP_DIR} -name "strace-${2}.dot.*" -print0 | xargs -0 rm &> /dev/null
 
 	declare -A all_files
+	> ${OVE_PROJECT_TMP_DIR}/timing
 	for f in $(find $1 -type f); do
 		pid=${f##*.}
 		all_files[${pid}]="$(<${f})"
@@ -693,6 +702,9 @@ function ove_strace_create_graph {
 	find ${OVE_PROJECT_TMP_DIR} -name "strace-${2}.dot.*" -print0 | xargs -0 rm
 
 	echo "}" >> ${o_dot}
+
+	sort -u ${OVE_PROJECT_TMP_DIR}/timing > ${o_timing}
+	rm ${OVE_PROJECT_TMP_DIR}/timing
 
 	du -sh ${1} ${o_dot}
 	if command -v dot > /dev/null; then
