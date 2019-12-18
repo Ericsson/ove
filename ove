@@ -1763,47 +1763,47 @@ function ove_revtab_list {
 		column -t
 }
 
-function ove_revtab_check {
+# $1: name
+# $2: rev
+function ove_revtab_check_one {
 	local a
 	local b
-	local count
 	local name
 	local rev
 
-	if [ "${ove_revtab_num_repositories}" == 0 ]; then
-		return 1
-	fi
+	name=$1
+	rev=$2
 
-	count=0
+	if [ -d "${OVE_BASE_DIR}/${name}" ]; then
+		a=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
+		b=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${rev} --)
+		[ $? -ne 0 ] &&  b=""
 
-	while ((count < ove_revtab_num_repositories)); do
-		name=${ove_revtab_git_name[${count}]}
-		rev=${ove_revtab_rev[${count}]}
+		if [ "${a}" != "${b}" ]; then
+			ove_echo_cyan_noprefix "${name}: HEAD (${a} = $(git -C ${OVE_BASE_DIR}/${name} describe --tags --always)) is different from the revtab revision (${b} = ${rev})"
 
-		if [ -d "${OVE_BASE_DIR}/${name}" ]; then
-			a=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
-			if ! git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${rev} -- &> /dev/null; then
-				b=""
+			if test -z "$(git -C ${OVE_BASE_DIR}/${name} --no-pager status --porcelain -uno)"; then
+				ove_echo_cyan_noprefix "${name}: checkout '${rev}'"
+				ove_revtab_checkout ${name}
+				ove_patch_repositories
 			else
-				b=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${rev} --)
-			fi
-
-			if [ "${a}" != "${b}" ]; then
-				echo
-				ove_echo_cyan_noprefix "${name}: HEAD (${a} = $(git -C ${OVE_BASE_DIR}/${name} describe --tags --always)) is different from the revtab revision (${b} = ${rev})"
-
-				if test -z "$(git -C ${OVE_BASE_DIR}/${name} --no-pager status --porcelain -uno)"; then
-					ove_echo_cyan_noprefix "${name}: checkout '${rev}'"
-					ove_revtab_checkout ${name}
-					ove_patch_repositories
-				else
-					ove_echo_yellow_noprefix "${name}: cannot checkout '${rev}' as repo is dirty:"
-				fi
-				ove-status "${name}"
+				ove_echo_yellow_noprefix "${name}: cannot checkout '${rev}' as repo is dirty:"
 			fi
 		fi
+	fi
+}
+
+function ove_revtab_check {
+	local count
+
+	[ "${ove_revtab_num_repositories}" == 0 ] && return 1
+
+	count=0
+	while ((count < ove_revtab_num_repositories)); do
+		ove_revtab_check_one ${ove_revtab_git_name[${count}]} ${ove_revtab_rev[${count}]} &
 		let count+=1
 	done
+	wait
 }
 
 function ove_revtab_list_fullpath {
