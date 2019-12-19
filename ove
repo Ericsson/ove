@@ -256,6 +256,11 @@ function ove_analyze_strace_execve_timing {
 	done | sort -n$([ ${OVE_LOGLEVEL} -eq 4 ] && echo r)
 }
 
+function ove_line2ipv4 {
+	echo ${*} | \
+		grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'
+}
+
 # $1: IPv4 address
 function ove_ip2host {
 	local ip
@@ -332,12 +337,12 @@ function ove_port2service {
 # $1: pid
 function ove_strace_connect_one_pid {
 	local cmd
-	local connect_return
 	local ip
 	local ip_lookup
 	local line
 	local port
 	local port_service
+	local ret
 	local sa_family
 	local str
 	local sun_path
@@ -356,6 +361,12 @@ function ove_strace_connect_one_pid {
 			sa_family=${sa_family%%,*}
 			t0=${line%% *}
 
+			ret=${line##* =}
+			ret=${ret% <*}
+			if [[ "${ret}" == " -1"* ]] && ! [[ "${ret}" != "EINPROGRESS"* ]]; then
+				continue
+			fi
+
 			if [ "${sa_family}" == "AF_LOCAL" ] || \
 				[ "${sa_family}" = "AF_UNIX" ]; then
 				sun_path=${line#*\"}
@@ -364,21 +375,17 @@ function ove_strace_connect_one_pid {
 				# abstract sockets
 				[[ "${line}" == *"=@"* ]] && sun_path="@${sun_path}"
 
-				connect_return=${line##* =}
-				connect_return=${connect_return% <*}
-				[[ "${connect_return}" == " -1"* ]] && continue
-				[ "${connect_return}" == " 0" ] && connect_return=""
-
 				cmd=$(ove_strace_get_execve ${pid})
 
 				str+="${t0}:${syscall}:${sa_family}:${sun_path}:${cmd}\n"
 			elif [ "${sa_family}" == "AF_INET" ]; then
-				ip=$(echo ${line} | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
+				ip=$(ove_line2ipv4 ${line})
 				port=$(echo ${line} | \
 					cut -d'(' -f3- | \
 					cut -d')' -f1)
-				ip_lookup=$(ove_ip2host ${ip})
-				port_service=$(ove_port2service ${port})
+
+				ip_lookup=${ove_ip2host_db["${ip}"]}
+				port_service=${ove_port2service_db["${port}"]}
 				cmd=$(ove_strace_get_execve ${pid})
 
 				str+="${t0}:${syscall}:${sa_family}:${ip}:${ip_lookup}:${port}:${port_service}:${cmd}\n"
@@ -387,6 +394,91 @@ function ove_strace_connect_one_pid {
 	done <<< "${all_files[${pid}]}"
 
 	[ "${str}" != "" ] && printf "${str}"
+}
+
+function ove_read_connect_cache {
+	local line
+
+	declare -A -g ove_ip2host_db
+	declare -A -g ove_ip2org_db
+	declare -A -g ove_port2service_db
+
+	if [ -e ${OVE_GLOBAL_STATE_DIR}/ip2host.cache ]; then
+		for line in $(cat ${OVE_GLOBAL_STATE_DIR}/ip2host.cache); do
+			ove_ip2host_db["${line%%:*}"]="${line##*:}"
+		done
+	fi
+
+	if [ -e ${OVE_GLOBAL_STATE_DIR}/port2service.cache ]; then
+		for line in $(cat ${OVE_GLOBAL_STATE_DIR}/port2service.cache); do
+			ove_port2service_db["${line%%:*}"]="${line##*:}"
+		done
+	fi
+
+	if [ -e ${OVE_GLOBAL_STATE_DIR}/ip2org.cache ]; then
+		while read -r line; do
+			ove_ip2org_db["${line%%:*}"]="$(echo ${line#*:} | tr '@' '\n')"
+		done < <(cat ${OVE_GLOBAL_STATE_DIR}/ip2org.cache)
+	fi
+}
+
+# $1: directory with strace pid files
+function ove_update_connect_db {
+	local host
+	local ip
+	local line
+	local org
+	local port
+	local service
+
+	ove_read_connect_cache
+
+	if command -v ag > /dev/null; then
+		ag --nobreak --nofilename -o --nonumbers 'AF_INET,.* =' $1 | \
+			sort -u > ${OVE_PROJECT_TMP_DIR}/af_inet
+	else
+		grep -E -R -o -h 'AF_INET,.* =' $1 | \
+			sort -u > ${OVE_PROJECT_TMP_DIR}/af_inet
+	fi
+
+	if ! [ -s "${OVE_PROJECT_TMP_DIR}/af_inet" ]; then
+		rm ${OVE_PROJECT_TMP_DIR}/af_inet
+		return
+	fi
+
+	while read -r line; do
+		ip=$(ove_line2ipv4 ${line})
+		[ "${ip}" == "" ] && continue
+		port=$(echo ${line} | \
+			cut -d'(' -f2- | \
+			cut -d')' -f1)
+		[ "${port}" == "" ] && continue
+
+		if ! test "${ove_ip2host_db["${ip}"]+isset}"; then
+			host="$(ove_ip2host ${ip})"
+			ove_ip2host_db["${ip}"]="${host}"
+			echo "${ip}:${host}" >> ${OVE_GLOBAL_STATE_DIR}/ip2host.cache
+		fi
+
+		if ! test "${ove_ip2org_db["${ip}"]+isset}"; then
+			org="$(ove_ip2org ${ip} | tr '\n' '@')"
+			ove_ip2org_db["${ip}"]="$(echo ${org} | tr '@' '\n')"
+			echo "${ip}:${org}" >> ${OVE_GLOBAL_STATE_DIR}/ip2org.cache
+		fi
+
+		if ! test "${ove_port2service_db["${port}"]+isset}"; then
+			service="$(ove_port2service ${port})"
+			ove_port2service_db["${port}"]=${service}
+			echo "${port}:${service}" >> ${OVE_GLOBAL_STATE_DIR}/port2service.cache
+		fi
+	done <${OVE_PROJECT_TMP_DIR}/af_inet
+
+	rm ${OVE_PROJECT_TMP_DIR}/af_inet
+
+	for line in ${OVE_GLOBAL_STATE_DIR}/{ip2host,ip2org,port2service}.cache; do
+		sort -V -o ${line} ${line} &
+	done
+	wait
 }
 
 # $1: directory with strace pid files
@@ -398,6 +490,7 @@ function ove_analyze_strace_connect {
 	! [ -d "$1" ] && return 1
 
 	declare -A all_files
+	ove_update_connect_db $1
 	while true; do
 		for f in $(find $1 -type f); do
 			pid=${f##*.}
@@ -500,11 +593,12 @@ function ove_strace_get_execve {
 # $1: pid
 function ove_strace_one_pid {
 	local cmd
-	local connect_return
 	local duration_ms
 	local duration_s
 	local ip
 	local ip_lookup
+	local ip_org
+	local key
 	local line
 	local out_1
 	local out_2
@@ -512,7 +606,9 @@ function ove_strace_one_pid {
 	local pid
 	local port
 	local port_service
+	local ret
 	local sa_family
+	local suffix
 	local sun_path
 	local t
 
@@ -543,6 +639,7 @@ function ove_strace_one_pid {
 
 	cmd=
 	out_2=
+	declare -A ip_port_cnt
 	while read -r line; do
 		[ "${line}" == "" ] && continue
 		syscall=${line#* }
@@ -569,6 +666,12 @@ function ove_strace_one_pid {
 			sa_family=${line##*sa_family=}
 			sa_family=${sa_family%%,*}
 
+			ret=${line##* =}
+			ret=${ret% <*}
+			if [[ "${ret}" == " -1"* ]] && ! [[ "${ret}" != "EINPROGRESS"* ]]; then
+				continue
+			fi
+
 			if [ "${sa_family}" == "AF_LOCAL" ] || \
 				[ "${sa_family}" = "AF_UNIX" ]; then
 				sun_path=${line#*\"}
@@ -577,30 +680,46 @@ function ove_strace_one_pid {
 				# abstract sockets
 				[[ "${line}" == *"=@"* ]] && sun_path="@${sun_path}"
 
-				connect_return=${line##* =}
-				connect_return=${connect_return% <*}
-				[[ "${connect_return}" == " -1"* ]] && continue
-				[ "${connect_return}" == " 0" ] && connect_return=""
-
 				out_2+="    \"${sun_path}\" [label=\"${sun_path}\l\n\" shape=box3d,fontsize=20,style=filled,fillcolor=\"cyan\"];"
-				out_2+="    ${pid} -> \"${sun_path}\" [label=\"${syscall} ${connect_return}\"];"
+				out_2+="    ${pid} -> \"${sun_path}\" [label=\"${syscall}\"];"
 			elif [ "${sa_family}" == "AF_INET" ]; then
-				ip=$(echo ${line} | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
+				ip=$(ove_line2ipv4 ${line})
+				[ "${ip}" == "" ] && continue
 				port=$(echo ${line} | \
 					cut -d'(' -f3- | \
 					cut -d')' -f1)
-				ip_lookup=$(ove_ip2host ${ip})
-				org=$(ove_ip2org ${ip} | sed -e 's/$/ \\l\\n/g' | tr '\n' ' ' | tr \" \')
-				port_service=$(ove_port2service ${port})
-				out_1+="c: ${ip}|${ip_lookup}|${port}|${port_service}\l\n"
+				[ "${port}" == "" ] && continue
+
+				if test "${ip_port_cnt["${ip}:${port}"]+isset}"; then
+					ip_port_cnt["${ip}:${port}"]=$((${ip_port_cnt["${ip}:${port}"]} + 1))
+				else
+					ip_port_cnt["${ip}:${port}"]=1
+				fi
+
+				ip_lookup=${ove_ip2host_db["${ip}"]}
+				ip_org=${ove_ip2org_db["${ip}"]}
+				port_service=${ove_port2service_db["${port}"]}
+
+				org=$(echo "${ip_org}" | sed -e 's/$/ \\l\\n/g' | tr '\n' ' ' | tr \" \')
 
 				out_2+="    \"${ip}\" [label=\"t: ${t}\l\nIP: ${ip}\l\n${ip_lookup}\l\n${org}\l\n\" shape=box3d,fontsize=20,style=filled, fillcolor=\"yellow\"];"
-				out_2+="    ${pid} -> \"${ip}\" [label=\"${syscall} ${port} ${port_service}\"];"
+				out_2+="    ${pid} -> \"${ip}\" [label=\"${syscall} ${port} ${port_service["${port}"]}\"];"
 			else
 				continue
 			fi
 		fi
 	done <<< "${all_files[$1]}"
+
+	for key in "${!ip_port_cnt[@]}"; do
+		ip=${key%%:*}
+		port=${key##*:}
+		ip_lookup="${ove_ip2host_db["${ip}"]}"
+		port_service=${ove_port2service_db["${port}"]}
+		if [ ${ip_port_cnt[${ip}:${port}]} -gt 1 ]; then
+			suffix="(repeated ${ip_port_cnt[${ip}:${port}]} time(s))"
+		fi
+		out_1+="c: ${ip}|${ip_lookup}|${port}|${port_service} ${suffix}\l\n"
+	done
 
 	# penwidth based on duration
 	penwidth=${duration_ms}
@@ -610,7 +729,9 @@ function ove_strace_one_pid {
 		penwidth=1
 	fi
 
-	out_1+=$(echo -e ${cmd} | fold -w 80 -s | sed -e 's/$/ \\l\\n/g' | tr '\n' ' ' | tr \" \')
+	[ "${cmd}" != "" ] && \
+		out_1+="x: $(echo -e ${cmd} | fold -w 80 -s | sed -e 's/$/ \\l\\n/g' | tr '\n' ' ' | tr \" \')"
+
 	# label END
 	out_1+="\",color=${border_color},penwidth=${penwidth},fontsize=14,fontcolor=black];"
 
@@ -680,7 +801,7 @@ function ove_strace_create_graph {
 	o_svg=${o_base}.svg
 	o_timing=${o_base}.timing
 
-	echo "digraph $(echo ${OVE_PROJECT_NAME} | tr '-' '_') {" > ${o_dot}
+	echo "strict digraph $(echo ${OVE_PROJECT_NAME} | tr '-' '_') {" > ${o_dot}
 	echo "    nodesep=2" >> ${o_dot}
 	echo "    ranksep=5" >> ${o_dot}
 	echo "    node [margin=1,shape=octagon,nodesep=10];" >> ${o_dot}
@@ -690,6 +811,7 @@ function ove_strace_create_graph {
 
 	declare -A all_files
 	> ${OVE_PROJECT_TMP_DIR}/timing
+	ove_update_connect_db $1
 	for f in $(find $1 -type f); do
 		pid=${f##*.}
 		all_files[${pid}]="$(<${f})"
