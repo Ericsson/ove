@@ -121,6 +121,12 @@ function ove_welcome_msg {
 	echo
 	echo "* enable tab completion for ove"
 
+	if ! [ -e "${HOME}/.ove.bash" ]; then
+		echo
+		echo "Do you want to skip the initial 'source ove' step? Run this:"
+		echo " cp ${OVE_DIR}/ove.bash ${HOME}/.ove.bash && echo '[ -f ~/.ove.bash ] && source ~/.ove.bash' >> ${HOME}/.bashrc"
+	fi
+
 	echo
 	echo "Now what? Run 'ove fetch' to sync with the outside world or 'ove help' for more information"
 }
