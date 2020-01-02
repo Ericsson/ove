@@ -28,7 +28,7 @@ function ove {
 	pushd . &> /dev/null
 	s=$(pwd -P)
 	while [ "${s}" != "" ]; do
-		[[ -L ${s}/ove && -L ${s}/.owel && -d ${s}/.ove ]] && break
+		[[ -L ${s}/ove && -L ${s}/.owel && ( -d ${s}/.ove || -d ${s}/owel ) ]] && break
 		s=${s%/*}
 	done
 
