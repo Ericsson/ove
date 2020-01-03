@@ -4163,7 +4163,13 @@ function ove-tag {
 
 # log: :project '${OVE_PROJECT_NAME}' commit log for branch '${OVE_PROJECT_CI_BRANCH}'
 function ove-log {
-	git -C "${OVE_PROJECT_DIR}" log --decorate ${OVE_PROJECT_CI_BRANCH}
+	local b
+
+	if git -C "${OVE_PROJECT_DIR}" branch -r | grep -q ${OVE_PROJECT_CI_BRANCH}; then
+		b="${OVE_PROJECT_CI_BRANCH}"
+	fi
+
+	git -C "${OVE_PROJECT_DIR}" log --decorate ${b}
 }
 
 # checkout:[rev[ [purge|autostash]]]:git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care
