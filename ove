@@ -5514,7 +5514,7 @@ function ove_init {
 	fi
 	if [ -z "${OVE_LOGLEVEL+x}" ]; then
 		OVE_LOGLEVEL=1
-		OVE_REDIRECT_OUTPUT="> /dev/null"
+		OVE_REDIRECT_OUTPUT=""
 		export OVE_REDIRECT_OUTPUT
 		export OVE_LOGLEVEL
 	fi
