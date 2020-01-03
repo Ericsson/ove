@@ -813,7 +813,7 @@ function ove_strace_create_graph {
 	o_svg=${o_base}.svg
 	o_timing=${o_base}.timing
 
-	echo "strict digraph $(echo ${OVE_PROJECT_NAME} | tr '-' '_') {" > ${o_dot}
+	echo "strict digraph $(echo ${OVE_PROJECT_NAME} | tr '-' '_' | tr -d '.') {" > ${o_dot}
 	echo "    nodesep=2" >> ${o_dot}
 	echo "    ranksep=5" >> ${o_dot}
 	echo "    node [margin=1,shape=octagon,nodesep=10];" >> ${o_dot}
