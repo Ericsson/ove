@@ -97,6 +97,7 @@ function ove-unsource {
 [[ $- == *i* ]] && ove_unsource
 
 function ove_welcome_msg {
+	ove-version
 	echo
 	echo "This script will do a few things:"
 	echo
@@ -170,9 +171,13 @@ function ove_main {
 		# turn off monitor mode to get rid of "Done" messages
 		set +m
 
-		( set -o posix ; set ) | \
-			cut -d= -f1 | \
-			grep -v ^OVE > ${OVE_TMP}/bash-vars-before
+		if [[ "$*" == *"hush"* ]]; then
+			:
+		else
+			( set -o posix ; set ) | \
+				cut -d= -f1 | \
+				grep -v ^OVE > ${OVE_TMP}/bash-vars-before
+		fi
 
 		if ! ove_deps; then
 			ove-unsource
@@ -197,8 +202,9 @@ function ove_main {
 			return 1
 		fi
 
-		ove-version
-		if [ ${OVE_LOGLEVEL} -ne 0 ]; then
+		if [ ${OVE_LOGLEVEL} -eq 0 ] || [[ "$*" == *"hush"* ]]; then
+			:
+		else
 			ove_welcome_msg
 		fi
 
