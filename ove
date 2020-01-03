@@ -4971,10 +4971,11 @@ function ove-authors {
 			uniq | \
 			sed -e 's/[^a-zA-Z0-9\-]/_/g' | \
 			sed -e 's/_git$//g')
-		if test "${urls["${url}"]+isset}"; then
-			continue
+
+		if [ "${url}" != "" ]; then
+			test "${urls["${url}"]+isset}" && continue
+			urls["${url}"]=1
 		fi
-		urls["${url}"]=1
 
 		git --no-pager -C "${git}" log --pretty="%ae"
 	done | \
