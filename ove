@@ -1204,8 +1204,7 @@ function ove {
 					strace_expression="execve"
 				fi
 
-				OVE_ANALYZE_EXECVE="sudo \
-					strace \
+				OVE_ANALYZE_EXECVE="strace \
 					-s 1024 \
 					-q \
 					-o ${OVE_PROJECT_TMP_DIR}/strace-${cmd}/strace-${cmd} \
@@ -1223,14 +1222,6 @@ function ove {
 					rm ${OVE_PROJECT_TMP_DIR}/strace.pid
 				[ -e ${OVE_PROJECT_TMP_DIR}/strace.cont ] && \
 					rm ${OVE_PROJECT_TMP_DIR}/strace.cont
-
-				if ! sudo -n true &> /dev/null; then
-					ove_echo_red_noprefix "I'm not able to run sudo without user interaction"
-					ove_echo_red_noprefix "Try to run a command as sudo to prolong the sudo timeout:"
-					echo
-					echo "$ sudo true"
-					return 1
-				fi
 
 				{
 					while true; do [ -e ${OVE_PROJECT_TMP_DIR}/strace.pid ] && break; done
@@ -1251,7 +1242,7 @@ function ove {
 			ret=$?
 
 			if ! [ -z "${OVE_ANALYZE_EXECVE+x}" ]; then
-				sudo pkill -SIGTERM -f strace
+				pkill -SIGTERM -f strace
 				[ -e ${OVE_PROJECT_TMP_DIR}/strace.pid ] && \
 					rm ${OVE_PROJECT_TMP_DIR}/strace.pid
 				[ -e ${OVE_PROJECT_TMP_DIR}/strace.cont ] && \
@@ -4885,11 +4876,36 @@ function ove-version {
 
 # loglevel:[LEVEL] :show or change loglevel [0-6]
 function ove-loglevel {
+	local sysctl_f
+
 	set +x
 	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-6]$ ]]; then
 		echo "error: try 0-6"
 		return 1
 	elif [ $# -eq 1 ]; then
+		if [ $1 -gt 2 ] && [ $1 -lt 7 ]; then
+			if ! command -v strace > /dev/null; then
+				ove_echo_error_noprefix "'strace' is not found"
+				return 1
+			fi
+
+			if [ -e /proc/sys/kernel/yama/ptrace_scope ] && [ $(cat /proc/sys/kernel/yama/ptrace_scope) -ne 0 ]; then
+				ove_echo_error_noprefix "the kernel does not allow you to trace all processes"
+				echo
+				echo "To fix this for now:"
+				echo " sudo bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope'"
+				echo
+				echo "To fix this permanently:"
+				sysctl_f=$(grep -l kernel.yama.ptrace_scope /etc/sysctl.d/*)
+				if [ "${sysctl_f}" != "" ]; then
+					echo " sudo bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope; sed -i -e \"s/kernel.yama.ptrace_scope.*/kernel.yama.ptrace_scope = 0/g\" ${sysctl_f}'"
+				else
+					echo " sudo bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope; echo \"kernel.yama.ptrace_scope = 0\" > /etc/sysctl.d/10-ptrace.conf'"
+				fi
+				return 1
+			fi
+		fi
+
 		OVE_LOGLEVEL=$1
 		if ! [ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ]; then
 			echo "OVE_LOGLEVEL $1" > ${OVE_PROJECT_STATE_DIR}/.oveconfig
@@ -4910,7 +4926,6 @@ function ove-loglevel {
 	done | grep -E --color "$|${OVE_LOGLEVEL}"
 
 	if [ $# -eq 1 ]; then
-		OVE_LOGLEVEL=$1
 		OVE_REDIRECT_OUTPUT=""
 		if [ $1 -eq 0 ]; then
 			OVE_REDIRECT_OUTPUT="> /dev/null"
