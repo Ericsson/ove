@@ -279,12 +279,12 @@ function ove_ip2host {
 	local ip_lookup
 
 	if ! command -v dig > /dev/null; then
-		ove_echo_error_noprefix "error: 'dig' is not found"
+		ove_echo_error_noprefix "'dig' is not found"
 		return 1
 	fi
 
 	if ! command -v whois > /dev/null; then
-		ove_echo_error_noprefix "error: 'whois' is not found"
+		ove_echo_error_noprefix "'whois' is not found"
 		return 1
 	fi
 
@@ -313,7 +313,7 @@ function ove_ip2org {
 	local org
 
 	if ! command -v whois > /dev/null; then
-		ove_echo_error_noprefix "error: 'whois' is not found"
+		ove_echo_error_noprefix "'whois' is not found"
 		return 1
 	fi
 
@@ -919,7 +919,7 @@ function ove_loop_command {
 			files_modified_by_command=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}
 
 			if [ $(cat /proc/sys/fs/inotify/max_user_watches) -lt $(cat ${all_files} | wc -l) ]; then
-				ove_echo_error_noprefix "You need to increase the number of inotify user watches. Try:"
+				ove_echo_error_noprefix "you need to increase the number of inotify user watches. Try:"
 				echo
 				echo "$ sudo bash -c 'echo $(cat ${all_files} | wc -l) > /proc/sys/fs/inotify/max_user_watches'"
 				read -p ""
@@ -2170,7 +2170,7 @@ function ove_get_base_dir {
 
 	# base directory found?
 	if [ "${found}" == "FALSE" ]; then
-		ove_echo_error_noprefix "Not in an OVE workspace (or any parent up to mount point ${parentdir}). Try 'ove cd'"
+		ove_echo_error_noprefix "not in an OVE workspace (or any parent up to mount point ${parentdir}). Try 'ove cd'"
 		# Exit to shell without closing the shell itself
 		kill -INT $$
 
@@ -3454,7 +3454,7 @@ function ove_validate_revtab {
 
 	# check for doublets
 	if [ "${doublets}" != "" ]; then
-		ove_echo_error_noprefix "Found repo doublet(s) in '${OVE_PROJECT_DIR}/revtab':"
+		ove_echo_error_noprefix "found repo doublet(s) in '${OVE_PROJECT_DIR}/revtab':"
 
 		for d in ${doublets}; do
 			grep -n "^${d} " ${OVE_PROJECT_DIR}/revtab
@@ -3509,7 +3509,7 @@ function ove_validate_projs {
 		awk 'a[$1]++{print $1}')
 
 	if [ "${doublets}" != "" ]; then
-		ove_echo_error_noprefix "Found project doublet(s) in '${OVE_PROJECT_DIR}/projs':"
+		ove_echo_error_noprefix "found project doublet(s) in '${OVE_PROJECT_DIR}/projs':"
 
 		for d in ${doublets}; do
 			grep -n "^${d}:" ${OVE_PROJECT_DIR}/projs
@@ -3536,7 +3536,7 @@ function ove_install_packages {
 		xargs "${OVE_ECHO}")"
 
 	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
-		ove_echo_yellow "Would prompt to install this/these package(s):"
+		ove_echo_yellow "would prompt to install this/these package(s):"
 		echo "$(echo ${missing_packages_sorted} | xargs -n1)"
 		return
 	fi
@@ -4211,7 +4211,7 @@ function ove-checkout {
 			dirty_repos=$(ove_dirty_repos)
 
 			if [ "${dirty_repos}" != "" ]; then
-				ove_echo_error_noprefix "You have staged/unstaged changes in the following repositories:"
+				ove_echo_error_noprefix "you have staged/unstaged changes in the following repositories:"
 				ove-status "${dirty_repos}"
 				return 1
 			fi
@@ -5634,7 +5634,7 @@ function ove_post_checks {
 		echo
 		ove_echo_error_noprefix "corrupt repo(s): ${corrupt_repos}"
 		echo
-		ove_echo_red_noprefix "Fix this by running the following two commands:"
+		ove_echo_red_noprefix "fix this by running the following two commands:"
 		echo
 		echo -e "\t$ rm -rf ${corrupt_repos}"
 		echo -e "\t$ ove fetch ${corrupt_repos}"
