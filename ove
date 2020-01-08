@@ -798,11 +798,9 @@ function ove_strace_create_graph {
 	local all_files
 	local f
 	local o_base
-	local o_con
 	local o_dot
 	local o_svg
 	local o_timing
-	local o_tmp
 	local pid
 
 	! [ -d "$1" ] && return 1
@@ -855,7 +853,7 @@ function ove_inotifywait {
 	local ret
 
 	! [ -e ${2} ] && return 1
-	! [ $(cat ${2} | wc -l) -ne 0 ] && return 1
+	[ $(wc -l < ${2}) -eq 0 ] && return 1
 
 	sleep 0.01
 	inotifywait \
@@ -918,10 +916,10 @@ function ove_loop_command {
 			ove_revtab_forall_parallel "${cmd}" > ${all_files}
 			files_modified_by_command=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}
 
-			if [ $(cat /proc/sys/fs/inotify/max_user_watches) -lt $(cat ${all_files} | wc -l) ]; then
+			if [ $(cat /proc/sys/fs/inotify/max_user_watches) -lt $(wc -l < ${all_files}) ]; then
 				ove_echo_error_noprefix "you need to increase the number of inotify user watches. Try:"
 				echo
-				echo "$ sudo bash -c 'echo $(cat ${all_files} | wc -l) > /proc/sys/fs/inotify/max_user_watches'"
+				echo "$ sudo bash -c 'echo $(wc -l < ${all_files}) > /proc/sys/fs/inotify/max_user_watches'"
 				read -p ""
 				return 1
 			fi
@@ -956,12 +954,12 @@ function ove_loop_command {
 				[ -f ${f} ] && echo ${f};
 			done > ${files_modified_by_command}.uniq
 			rm ${files_modified_by_command}
-			if [ $(cat ${files_modified_by_command}.uniq | wc -l) -eq 0 ]; then
+			if [ $(wc -l < ${files_modified_by_command}.uniq) -eq 0 ]; then
 				use_inotify=0
 				ove_echo_cyan_error "0 files touched, not using inotifywait"
 			else
 				echo
-				echo "$(cat ${files_modified_by_command}.uniq | wc -l) uniq file(s) was touched by '${1} ${*:2}': ${files_modified_by_command}.uniq"
+				echo "$(wc -l < ${files_modified_by_command}.uniq) uniq file(s) was touched by '${1} ${*:2}': ${files_modified_by_command}.uniq"
 			fi
 		fi
 
@@ -3524,7 +3522,7 @@ function ove_install_packages {
 
 	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
 		ove_echo_yellow "would prompt to install this/these package(s):"
-		echo "$(echo ${missing_packages_sorted} | xargs -n1)"
+		echo ${missing_packages_sorted} | xargs -n1
 		return
 	fi
 
@@ -5968,7 +5966,6 @@ function ove_unittest_preparations {
 	local nbr_of_projs
 	local nbr_of_repos
 	local nbr_of_systests
-	local unittest_path
 
 	nbr_of_files=$1
 	nbr_of_projs=$2
