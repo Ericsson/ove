@@ -1928,11 +1928,13 @@ function ove_revtab_check {
 
 	[ "${ove_revtab_num_repositories}" == 0 ] && return 1
 
+	set +m
+
 	count=0
 	while ((count < ove_revtab_num_repositories)); do
 		ove_revtab_check_one ${ove_revtab_git_name[${count}]} ${ove_revtab_rev[${count}]} &
 		let count+=1
-	done
+	done | grep -v '^\['
 	wait
 }
 
