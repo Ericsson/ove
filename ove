@@ -1177,7 +1177,9 @@ function ove {
 		ove-${cmd} ${@:2}
 	else
 		# sanity check
-		ove_get_base_dir > /dev/null
+		if ! ove_get_base_dir > /dev/null; then
+			return 1
+		fi
 
 		args="${*:2}"
 		mkdir -p ${OVE_LOG_DIR}/${OVE_SHA}
@@ -1286,7 +1288,9 @@ function ove-fzf {
 	fi
 
 	# sanity check
-	ove_get_base_dir > /dev/null
+	if ! ove_get_base_dir > /dev/null; then
+		return 1
+	fi
 
 	if [ $# -gt 1 ]; then
 		ove-help "^${FUNCNAME/ove-/} "
@@ -2138,40 +2142,32 @@ function ove_revtab_fetch {
 }
 
 function ove_get_base_dir {
-	local found
-	local parentdir
-	local searchdir
+	local s
 
 	pushd . &> /dev/null
-	found="FALSE"
-	parentdir=$(pwd -P)
-	searchdir=${parentdir}
-	while [ "${searchdir}" != "" ]; do
-		cd "${searchdir}"
-		if [[ -L ove && -L .owel && ( -d .ove || -d owel ) ]]; then
-			echo "${searchdir}"
-			found="TRUE"
+	s=$(pwd -P)
+	while [ "${s}" != "" ]; do
+		if [[ -L ${s}/ove && -L ${s}/.owel && ( -d ${s}/.ove || -d ${s}/owel ) ]]; then
+			echo "${s}"
 			break
 		fi
-		parentdir=${searchdir}
-		searchdir=${searchdir%/*}
+		s=${s%/*}
 	done
 
 	popd > /dev/null
 
 	# base directory found?
-	if [ "${found}" == "FALSE" ]; then
-		ove_echo_error_noprefix "not in an OVE workspace (or any parent up to mount point ${parentdir}). Try 'ove cd'"
-		# Exit to shell without closing the shell itself
-		kill -INT $$
+	if [ "${s}" == "" ]; then
+		ove_echo_error_noprefix "not in an OVE workspace. Try 'ove cd'"
+		return 1
 
 	# First time? Do nothing
 	elif [ -z "${OVE_BASE_DIR+x}" ]; then
 		:
 
 	# Have we moved to another OVE workspace? source that project
-	elif [ "${searchdir}" != "${OVE_BASE_DIR}" ] && [[ $- == *i* ]]; then
-		cd ${searchdir} && . ove > /dev/null && cd -
+	elif [ "${s}" != "${OVE_BASE_DIR}" ] && [[ $- == *i* ]]; then
+		cd ${s} && . ove > /dev/null && cd -
 	fi
 }
 export -f ove_get_base_dir
@@ -5469,8 +5465,13 @@ function ove_config_init {
 
 # init:initialize OVE project
 function ove_init {
+	local base_dir
+
+	base_dir=$(ove_get_base_dir)
+	[ $? -ne 0 ] && return 1
+	OVE_BASE_DIR="${base_dir}"
+
 	OVE_ECHO=$(which echo)
-	OVE_BASE_DIR="$(ove_get_base_dir)"
 	OVE_PROJECT_DIR=$(readlink -f ${OVE_BASE_DIR}/.owel)
 	OVE_PROJECT_NAME=${OVE_PROJECT_DIR##*/}
 	OVE_PROJECT_LIST=$(ove_list_projects)
