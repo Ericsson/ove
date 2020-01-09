@@ -71,6 +71,7 @@
 | mrproper                 | [y\|Y]                                             | remove untracked files AND removes '${OVE_STAGE_DIR}/*' AND removes '${OVE_ARCHIVE_DIR}/*'                            |
 | news                     | [GIT...]                                          | list upstream changes for all/specified repositories                                                                  |
 | pull                     | [GIT...]                                          | git pull --rebase for all/specified repositories                                                                      |
+| readme                   | [GIT...]                                          | display README files for all/specified git repositories                                                               |
 | refresh                  |                                                   | refresh projects found by ove-locate                                                                                  |
 | remote                   | [GIT...]                                          | git remote -v for all/specified git repositories                                                                      |
 | remote-check             |                                                   | sanity check that all remotes are online                                                                              |

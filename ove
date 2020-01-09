@@ -5146,6 +5146,7 @@ function ove_bash_complete {
 		[ "${subcommand}" == "diff-cached" ] ||
 		[ "${subcommand}" == "heads2revtab" ] ||
 		[ "${subcommand}" == "list-stash" ] ||
+		[ "${subcommand}" == "readme" ] ||
 		[ "${subcommand}" == "remote" ] ||
 		[ "${subcommand}" == "reset" ] ||
 		[ "${subcommand}" == "wdiff" ]; then
@@ -5902,6 +5903,21 @@ function ove_determine_dist_version_and_pack_manager {
 	export OVE_OS_VER
 	export OVE_OS_PACKAGE_MANAGER
 	export OVE_OS_PACKAGE_MANAGER_ARGS
+}
+
+# readme:[GIT...]:display README files for all/specified git repositories
+function ove-readme {
+	local cmd
+
+	cmd='find -maxdepth 1 -name "README*" -print0 | \
+		xargs -r -0 head -v | \
+		sed -e "1 i$(ove_echo_yellow_noprefix $(pwd -P))" -e "s/^/\t/g"'
+
+	if [ $# -eq 0 ]; then
+		ove_revtab_forall "${cmd}"
+	else
+		ove_revtab_forsome "${cmd}" "$*"
+	fi
 }
 
 # replicate:HOST:replicate OVE workspace on HOST
