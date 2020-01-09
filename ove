@@ -1784,7 +1784,7 @@ function ove_revtab_status {
 
 	wait
 
-	sort ${f} | \
+	LC_ALL="C" sort ${f} | \
 		column -t -s:
 
 	mv "${f}" "${OVE_PROJECT_STATE_DIR}/revtab-status"
