@@ -2840,9 +2840,9 @@ function ove-revtab-diff {
 
 	# for repos common for A and B
 	for r in $(comm -1 -2 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B | awk '{print $1}'); do
-		sha_1=$(grep -w ${r} ${OVE_PROJECT_TMP_DIR}/rev_A | \
+		sha_1=$(grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_A | \
 			awk '{print $2}')
-		sha_2=$(grep -w ${r} ${OVE_PROJECT_TMP_DIR}/rev_B | \
+		sha_2=$(grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_B | \
 			awk '{print $2}')
 		[ "${sha_1}" == "${sha_2}" ] && continue
 		echo ${r} ${sha_1} ${sha_2}
