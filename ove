@@ -2934,7 +2934,7 @@ function ove-shortlog-project {
 
 	ove_revtab_sanity_check $* || return $?
 
-	diff=$(git --no-pager -C "${OVE_PROJECT_DIR}" shortlog --oneline "$1".."$2")
+	diff=$(git --no-pager -C "${OVE_PROJECT_DIR}" shortlog --email --oneline "$1".."$2")
 	if [ "${diff}" != "" ]; then
 		ove_echo_yellow_noprefix ${OVE_PROJECT_NAME}:
 		echo -e "${diff}"
@@ -2946,7 +2946,7 @@ function ove-shortlog-project {
 		repo=$(echo ${line} | awk '{print $1}')
 		sha_1=$(echo ${line} | awk '{print $2}')
 		sha_2=$(echo ${line} | awk '{print $3}')
-		diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} shortlog --oneline ${sha_1}..${sha_2})
+		diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} shortlog --email --oneline ${sha_1}..${sha_2})
 		if [ "${diff}" != "" ]; then
 			ove_echo_yellow_noprefix "${repo}:"
 			echo -e "${diff}"
