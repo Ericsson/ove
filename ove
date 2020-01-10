@@ -2833,18 +2833,18 @@ function ove-revtab-diff {
 	# extract repo/push/pull
 	printf "${a}" | \
 		awk '{print $1,$2,$3}' | \
-		sort > ${OVE_PROJECT_TMP_DIR}/repos_A
+		LC_ALL="C" sort > ${OVE_PROJECT_TMP_DIR}/repos_A
 	printf "${b}" | \
 		awk '{print $1,$2,$3}' | \
-		sort > ${OVE_PROJECT_TMP_DIR}/repos_B
+		LC_ALL="C" sort > ${OVE_PROJECT_TMP_DIR}/repos_B
 
 	# extract repo/rev
 	printf "${a}" | \
 		awk '{print $1,$4}' | \
-		sort > ${OVE_PROJECT_TMP_DIR}/rev_A
+		LC_ALL="C" sort > ${OVE_PROJECT_TMP_DIR}/rev_A
 	printf "${b}" | \
 		awk '{print $1,$4}' | \
-		sort  > ${OVE_PROJECT_TMP_DIR}/rev_B
+		LC_ALL="C" sort  > ${OVE_PROJECT_TMP_DIR}/rev_B
 
 	# for repos common for A and B
 	for r in $(comm -1 -2 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B | awk '{print $1}'); do
