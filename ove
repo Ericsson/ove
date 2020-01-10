@@ -97,6 +97,8 @@ function ove-unsource {
 [[ $- == *i* ]] && ove_unsource
 
 function ove_welcome_msg {
+	local script_ver
+
 	ove-version
 	echo
 	echo "This script will do a few things:"
@@ -126,6 +128,12 @@ function ove_welcome_msg {
 		echo
 		echo "Do you want to skip the initial 'source ove' step? Run this:"
 		echo " cp ${OVE_DIR}/ove.bash ${HOME}/.ove.bash && echo '[ -f ~/.ove.bash ] && source ~/.ove.bash' >> ${HOME}/.bashrc"
+	fi
+
+	script_ver=$(script --version | awk '{print $NF}')
+	if [[ ${script_ver} =~ ^2.3[12] ]]; then
+		echo
+		echo "* NOTE: due to a bug in $(which script) 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any ove command."
 	fi
 
 	echo
