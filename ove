@@ -2847,7 +2847,7 @@ function ove-revtab-diff {
 		LC_ALL="C" sort  > ${OVE_PROJECT_TMP_DIR}/rev_B
 
 	# for repos common for A and B
-	for r in $(comm -1 -2 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B | awk '{print $1}'); do
+	for r in $(LC_COLLATE="C" comm -1 -2 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B | awk '{print $1}'); do
 		sha_1=$(grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_A | \
 			awk '{print $2}')
 		sha_2=$(grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_B | \
