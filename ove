@@ -4763,21 +4763,17 @@ function ove-describe {
 # list-heads:[GIT...]:git log for all/specified git repositories
 function ove-list-heads {
 	local cmd
-	local f
 
 	cmd='echo $(echo -n "$(echo ${git} | sed -e "s|${OVE_BASE_DIR}/||g")?" && git --no-pager log -1 --no-merges --format=%h?%ar?%ae?%s)'
-	f="${OVE_PROJECT_TMP_DIR}/${FUNCNAME[0]}.tmp"
+	while true; do
+		if [ $# -eq 0 ]; then
+			ove_revtab_forall_parallel "${cmd}"
+		else
+			ove_revtab_forsome "${cmd}" "$*"
+		fi
 
-	> ${f}
-	if [ $# -eq 0 ]; then
-		ove_revtab_forall_parallel "${cmd}" > ${f}
-	else
-		ove_revtab_forsome "${cmd}" "$*" > ${f}
-	fi
-	sort ${f} | \
-		column -t -s? 2> /dev/null
-
-	rm ${f}
+		break
+	done | sort | column -t -s? 2> /dev/null
 }
 
 # ls-remote: :git ls-remote <URL> HEAD for all git repositories
