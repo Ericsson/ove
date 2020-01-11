@@ -4690,11 +4690,11 @@ function ove-mrproper {
 
 	if [ "${nbr_untracked_files}" -ne 0 ]; then
 		# dry-run first
-		ove_revtab_forall 'ove_echo_yellow_noprefix ${PWD}: && git --no-pager clean -dffxn'
+		ove_revtab_forall 'a=$(git --no-pager clean -dffxn); [ "$a" != "" ] && printf "$a\n" | sed -e "s|Would remove \(.*\)$|$PWD/\1|g"'
 		echo
-		read -p "Proceed to remove ${nbr_untracked_files} untracked files and directories (list above) using 'git clean -dffx'? (y/N) " -r
-		echo
+		read -p "Proceed to remove ${nbr_untracked_files} untracked files/directories (list above) using 'git clean -dffx'? (y/N) " -r
 		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+			echo
 			read -p "Are you really sure? (y/N) " -r
 			echo
 			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
