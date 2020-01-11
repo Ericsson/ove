@@ -5117,7 +5117,10 @@ function ove_bash_complete {
 	elif [ "${subcommand}" == "do" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
-		elif [ ${size} -gt 2 ]; then
+		elif [ ${size} -eq 3 ]; then
+			[ -d ${OVE_BASE_DIR}/${COMP_WORDS[2]} ] &&
+				wordlist=$(find $(readlink -f ${OVE_BASE_DIR}/${COMP_WORDS[2]}) -perm -u=x -not -path '*.git*' -type f)
+		elif [ ${size} -gt 3 ]; then
 			return
 		fi
 	elif [ "${subcommand}" == "switch" ]; then
