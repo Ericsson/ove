@@ -133,11 +133,11 @@ function ove_welcome_msg {
 	script_ver=$(script --version | awk '{print $NF}')
 	if [[ ${script_ver} =~ ^2.3[12] ]]; then
 		echo
-		echo "* NOTE: due to a bug in $(which script) 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any ove command."
+		echo "NOTE: due to a bug in $(which script) 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any ove command."
 	fi
 
 	echo
-	echo "Now what? Run 'ove fetch' to sync with the outside world or 'ove help' for more information"
+	echo "Now what? Run 'ove fetch' to sync with the outside world or 'ove help' for more information."
 }
 
 function ove_main {
@@ -1710,9 +1710,6 @@ function ove_git2fullpath {
 		git_fullpath="${OVE_BASE_DIR}/${OVE_PROJECT_NAME}"
 	elif [ "${index}" != "" ]; then
 		git_fullpath="${OVE_BASE_DIR}/${ove_revtab_git_name[${index}]}"
-	else
-		ove_echo_error_noprefix "${FUNCNAME}: ops, this should never occur"
-		return
 	fi
 
 	echo ${git_fullpath}
@@ -1732,9 +1729,6 @@ function ove_git2shortpath {
 		git_shortpath="${OVE_PROJECT_NAME}"
 	elif [ "${index}" != "" ]; then
 		git_shortpath="${ove_revtab_git_name[${index}]}"
-	else
-		ove_echo_error_noprefix "${FUNCNAME}: ops, this should never occur"
-		return
 	fi
 
 	echo ${git_shortpath}
@@ -1759,9 +1753,7 @@ function ove_validate_repo_list {
 	while true; do
 		git_basename=${1##*/}
 		[ $# -eq 0 ] && break
-		if [ "$1" != "${OVE_PROJECT_NAME}" ] && ! [ -v ove_revtab_basename2index[${git_basename}] ]; then
-			ove_echo_error_noprefix "unknown repo '$1'"
-		else
+		if [ "$1" == "${OVE_PROJECT_NAME}" ] || [ -v ove_revtab_basename2index[${git_basename}] ]; then
 			repos+="$(ove_git2shortpath $1)\n"
 		fi
 		shift
@@ -1833,7 +1825,6 @@ function ove_revtab_status_parse_one {
 			nbr_commits=${git_status##*${tense} }
 			git_args="FETCH_HEAD"
 		else
-			ove_echo_error_noprefix "${FUNCNAME}: ops, this should never occur"
 			return 1
 		fi
 
