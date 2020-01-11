@@ -2336,6 +2336,8 @@ function ove-list-projects {
 function ove-digraph {
 	local i
 
+	[ ${ove_number_of_projects} -eq 0 ] && return
+
 	echo "digraph $(echo ${OVE_PROJECT_NAME} | tr '-' '_') {"
 
 	i=0
@@ -2464,6 +2466,8 @@ function ove-list-systests {
 
 # list-systests-aliases: :list available system test aliases
 function ove-list-systests-aliases {
+	! [ -e ${OVE_PROJECT_DIR}/systests ] && return
+
 	grep : "${OVE_PROJECT_DIR}"/systests | \
 		grep -v '#' | \
 		cut -d: -f1 | \
@@ -4121,7 +4125,7 @@ function ove-do {
 	dir=$1
 	cmd="${*:2}"
 
-	! [ -d "${dir}" ] && return 1
+	! [ -d "${OVE_BASE_DIR}/${dir}" ] && return 1
 
 	cd ${OVE_BASE_DIR}/${dir} && eval "${cmd}"
 }
