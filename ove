@@ -69,7 +69,7 @@ function ove_unsource {
 	# unset old ove[-_] functions
 	unset -f $(compgen -A function | \
 		grep -E '^ove($|[-_])' | \
-		grep -E -v "ove_read_config|ove-unsource|${FUNCNAME}" | \
+		grep -E -v "ove_read_config|ove-unsource|${FUNCNAME[0]}" | \
 		awk '{print $1}')
 
 	# unset old ove_/OVE_ variables
@@ -90,7 +90,7 @@ function ove-unsource {
 	unset -f $(compgen -A function | \
 		grep -E '^ove($|[-_])' | \
 		awk '{print $1}') \
-		${FUNCNAME}
+		${FUNCNAME[0]}
 }
 
 # interactive shell? clean up
@@ -2262,7 +2262,7 @@ function ove-make {
 			fi
 
 			index=${ove_projects_name2index[${target}]}
-			[ "${index}" == "" ] && echo "${FUNCNAME}: unknown target '${target}'" && return 1
+			[ "${index}" == "" ] && echo "${FUNCNAME[0]}: unknown target '${target}'" && return 1
 
 			# has deps?
 			if [ "${ove_projects_deps[${index}]}" != "" ]; then
@@ -2669,11 +2669,11 @@ function ove-systest {
 	nbr_tests=$(echo ${test_list} | \
 		wc -w)
 	if [ ${nbr_tests} -gt 1 ]; then
-		echo "${FUNCNAME}:Will run ${nbr_tests} test cases:"
+		echo "${FUNCNAME[0]}:Will run ${nbr_tests} test cases:"
 		i=0
 		for test_name in ${test_list}; do
 			let i=i+1
-			printf "${FUNCNAME}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
+			printf "${FUNCNAME[0]}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
 		done
 		echo
 	fi
@@ -2693,10 +2693,10 @@ function ove-systest {
 		else
 			match=$(grep -c -w ^${test_name} "${OVE_PROJECT_DIR}"/systests)
 			if [ ${match} -eq 0 ]; then
-				ove_echo_error_noprefix "${FUNCNAME}:can not find '${test_name}'"
+				ove_echo_error_noprefix "${FUNCNAME[0]}:can not find '${test_name}'"
 				continue
 			elif [ ${match} -gt 1 ]; then
-				ove_echo_error_noprefix "${FUNCNAME}:${match} match(es) for '${test_name}'"
+				ove_echo_error_noprefix "${FUNCNAME[0]}:${match} match(es) for '${test_name}'"
 				grep ^${test_name} "${OVE_PROJECT_DIR}"/systests
 				continue
 			fi
@@ -2717,7 +2717,7 @@ function ove-systest {
 
 		pushd "${systest_path}" &> /dev/null
 		shift
-		printf "${FUNCNAME}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
+		printf "${FUNCNAME[0]}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
 
 		OVE_SYSTEST_ACTIVE_TEST_CASE=${test_name}
 		OVE_SYSTEST_ITERATION=${i}
@@ -2728,11 +2728,11 @@ function ove-systest {
 
 		if [ "${OVE_DRY_RUN}" -eq 1 ]; then
 			# dry run
-			result=$(printf "${FUNCNAME}:[%03d/%03d ${ove_green}OK${ove_blank}]:${test_name}" ${i} ${nbr_tests})
+			result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_green}OK${ove_blank}]:${test_name}" ${i} ${nbr_tests})
 		else
 			if timeout --foreground --kill-after 30s ${systest_timeout} ${systest_cmd}; then
 				# test passed
-				result=$(printf "${FUNCNAME}:[%03d/%03d ${ove_green}OK${ove_blank}]:${test_name}" ${i} ${nbr_tests})
+				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_green}OK${ove_blank}]:${test_name}" ${i} ${nbr_tests})
 			else
 				systest_exit_code=$?
 
@@ -2758,7 +2758,7 @@ function ove-systest {
 				fi
 
 				# test failed
-				result=$(printf "${FUNCNAME}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ${exit_status}]:${test_name}"  ${i} ${nbr_tests})
+				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ${exit_status}]:${test_name}"  ${i} ${nbr_tests})
 
 				# type 1 systest or SIGINT => stop loop
 				if [ ${systest_type} -eq 1 ] || [ ${exit_status} == "SIGINT" ] ; then
@@ -2776,7 +2776,7 @@ function ove-systest {
 	done
 	echo
 	if [ ${nbr_tests} -gt 1 ]; then
-		echo ${FUNCNAME}:Summary:
+		echo ${FUNCNAME[0]}:Summary:
 		echo -e ${summary}
 	fi
 	echo "OVE log: ${OVE_LAST_COMMAND}"
@@ -3417,7 +3417,7 @@ function ove_get_paths_recursive {
 	local index
 
 	if [ $# -ne 1 ]; then
-		ove_echo_error_noprefix "${FUNCNAME}: need one arg"
+		ove_echo_error_noprefix "${FUNCNAME[0]}: need one arg"
 		return 1
 	fi
 
@@ -3532,12 +3532,12 @@ function ove_install_packages {
 	fi
 
 	if [ "${OVE_OS_PACKAGE_MANAGER}" == "unknown" ]; then
-		ove_echo_error_noprefix "${FUNCNAME}: fatal: package manager is not set"
+		ove_echo_error_noprefix "${FUNCNAME[0]}: fatal: package manager is not set"
 		return 1
 	fi
 
 	if ! command -v ${OVE_OS_PACKAGE_MANAGER} > /dev/null; then
-		ove_echo_error_noprefix "${FUNCNAME}: fatal: '${OVE_OS_PACKAGE_MANAGER}' not found"
+		ove_echo_error_noprefix "${FUNCNAME[0]}: fatal: '${OVE_OS_PACKAGE_MANAGER}' not found"
 		return 2
 	fi
 
@@ -3747,7 +3747,7 @@ function ove-buildme {
 	# install packages
 	if [ "${pack_list}" != "" ]; then
 		if ! ove_install_packages ${pack_list}; then
-			ove_echo_error_noprefix "${FUNCNAME}: missing package(s)"
+			ove_echo_error_noprefix "${FUNCNAME[0]}: missing package(s)"
 			return 1
 		fi
 	fi
@@ -3765,7 +3765,7 @@ function ove-buildme {
 
 		if [ "$(type -t ove-bootstrap)" == "function" ] && \
 			! eval ove-bootstrap ${b} ${OVE_REDIRECT_OUTPUT}; then
-			ove_echo_error_noprefix "${FUNCNAME}: bootstrap ${b} failed"
+			ove_echo_error_noprefix "${FUNCNAME[0]}: bootstrap ${b} failed"
 			return 1
 		fi
 	done
@@ -3780,18 +3780,18 @@ function ove-buildme {
 
 		if [ "$(type -t ove-configure)" == "function" ] && \
 			! eval ove-configure ${b} ${OVE_REDIRECT_OUTPUT}; then
-			ove_echo_error_noprefix "${FUNCNAME}: configure ${b} failed"
+			ove_echo_error_noprefix "${FUNCNAME[0]}: configure ${b} failed"
 			return 1
 		fi
 
 		if ! eval ove-make "${b}"-nodeps ${OVE_REDIRECT_OUTPUT}; then
-			ove_echo_error_noprefix "${FUNCNAME}: make ${b}-nodeps failed"
+			ove_echo_error_noprefix "${FUNCNAME[0]}: make ${b}-nodeps failed"
 			return 1
 		fi
 
 		if [ "$(type -t ove-install)" == "function" ] && \
 			! eval ove-install ${b} ${OVE_REDIRECT_OUTPUT}; then
-			ove_echo_error_noprefix "${FUNCNAME}: install ${b} failed"
+			ove_echo_error_noprefix "${FUNCNAME[0]}: install ${b} failed"
 			return 1
 		fi
 
@@ -3847,7 +3847,7 @@ function ove-buildme-parallel {
 	# install packages
 	if [ "${pack_list}" != "" ]; then
 		if ! ove_install_packages ${pack_list}; then
-			ove_echo_error_noprefix "${FUNCNAME}: missing package(s)"
+			ove_echo_error_noprefix "${FUNCNAME[0]}: missing package(s)"
 			return 1
 		fi
 	fi
@@ -3866,7 +3866,7 @@ function ove-buildme-parallel {
 		{
 			if [ "$(type -t ove-bootstrap)" == "function" ] && \
 				! eval ove-bootstrap ${b} ${OVE_REDIRECT_OUTPUT}; then
-				ove_echo_error_noprefix "${FUNCNAME}: bootstrap ${b} failed"
+				ove_echo_error_noprefix "${FUNCNAME[0]}: bootstrap ${b} failed"
 				kill -USR1 $$
 			fi
 		} &
@@ -3910,18 +3910,18 @@ function ove-buildme-parallel {
 
 			if [ "$(type -t ove-configure)" == "function" ] && \
 				! eval ove-configure ${b} ${OVE_REDIRECT_OUTPUT}; then
-				ove_echo_error_noprefix "${FUNCNAME}: configure ${b} failed"
+				ove_echo_error_noprefix "${FUNCNAME[0]}: configure ${b} failed"
 					kill -USR1 $$
 			fi
 
 			if ! eval ove-make "${b}"-nodeps ${OVE_REDIRECT_OUTPUT}; then
-				ove_echo_error_noprefix "${FUNCNAME}: make ${b}-nodeps failed"
+				ove_echo_error_noprefix "${FUNCNAME[0]}: make ${b}-nodeps failed"
 				kill -USR1 $$
 			fi
 
 			if [ "$(type -t ove-install)" == "function" ] && \
 				! eval ove-install ${b} ${OVE_REDIRECT_OUTPUT}; then
-				ove_echo_error_noprefix "${FUNCNAME}: install ${b} failed"
+				ove_echo_error_noprefix "${FUNCNAME[0]}: install ${b} failed"
 				kill -USR1 $$
 			fi
 
@@ -4766,7 +4766,7 @@ function ove-list-heads {
 	local f
 
 	cmd='echo $(echo -n "$(echo ${git} | sed -e "s|${OVE_BASE_DIR}/||g")?" && git --no-pager log -1 --no-merges --format=%h?%ar?%ae?%s)'
-	f="${OVE_PROJECT_TMP_DIR}/${FUNCNAME}.tmp"
+	f="${OVE_PROJECT_TMP_DIR}/${FUNCNAME[0]}.tmp"
 
 	> ${f}
 	if [ $# -eq 0 ]; then
@@ -4962,7 +4962,7 @@ function ove-lastlog {
 		xargs -0 stat --format '%Y:%n' | \
 		sort -nr | \
 		cut -d: -f2 | \
-		grep -v ${FUNCNAME} | \
+		grep -v ${FUNCNAME[0]} | \
 		sed "s/\(^.*-ove-\(.*\)-$(hostname)-\(.*\).log\)/\3@\2@\1/g" | \
 		column -t -s@
 }
@@ -5602,6 +5602,7 @@ function ove_init {
 function ove_post_checks {
 	local corrupt_repos
 	local doublets
+	local res
 	local script
 
 	# check for systest doublets
@@ -5861,7 +5862,7 @@ function ove_packages_not_installed {
 			sed -e 's/dpkg-query: no packages found matching //g' -e 's/:.*//g' | \
 			xargs
 	else
-		ove_echo_error_noprefix "function '${FUNCNAME}' is not implemented for ${OVE_OS}"
+		ove_echo_error_noprefix "function '${FUNCNAME[0]}' is not implemented for ${OVE_OS}"
 	fi
 }
 
