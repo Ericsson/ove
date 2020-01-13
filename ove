@@ -2825,12 +2825,12 @@ function ove-revtab-diff {
 		grep -v \# | \
 		xargs -n4)
 
-	# extract repo/push/pull
+	# extract repo
 	printf "${a}" | \
-		awk '{print $1,$2,$3}' | \
+		awk '{print $1}' | \
 		LC_ALL="C" sort > ${OVE_PROJECT_TMP_DIR}/repos_A
 	printf "${b}" | \
-		awk '{print $1,$2,$3}' | \
+		awk '{print $1}' | \
 		LC_ALL="C" sort > ${OVE_PROJECT_TMP_DIR}/repos_B
 
 	# extract repo/rev
@@ -2841,14 +2841,28 @@ function ove-revtab-diff {
 		awk '{print $1,$4}' | \
 		LC_ALL="C" sort  > ${OVE_PROJECT_TMP_DIR}/rev_B
 
-	# for repos common for A and B
-	for r in $(LC_COLLATE="C" comm -1 -2 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B | awk '{print $1}'); do
-		sha_1=$(grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_A | \
-			awk '{print $2}')
-		sha_2=$(grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_B | \
-			awk '{print $2}')
-		[ "${sha_1}" == "${sha_2}" ] && continue
-		echo ${r} ${sha_1} ${sha_2}
+	while true; do
+		# repos only in A
+		for r in $(LC_COLLATE="C" comm -2 -3 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B); do
+			grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_A | sed -e 's/^/a /g'
+		done
+
+		# repos only in B
+		for r in $(LC_COLLATE="C" comm -1 -3 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B); do
+			grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_B | sed -e 's/^/b /g'
+		done
+
+		# repos common for A and B
+		for r in $(LC_COLLATE="C" comm -1 -2 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B); do
+			sha_1=$(grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_A | \
+				awk '{print $2}')
+			sha_2=$(grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_B | \
+				awk '{print $2}')
+			[ "${sha_1}" == "${sha_2}" ] && continue
+			echo c ${r} ${sha_1} ${sha_2}
+		done
+
+		break
 	done | column -t
 
 	# cleanup
@@ -2863,6 +2877,8 @@ function ove-diff-project {
 	local cmd
 	local diff
 	local line
+	local only_a
+	local only_b
 	local repo
 	local sha_1
 	local sha_2
@@ -2877,21 +2893,41 @@ function ove-diff-project {
 
 	while IFS= read -r line; do
 		[ "${line}" == "" ] && break
-		repo=$(echo ${line} | awk '{print $1}')
-		sha_1=$(echo ${line} | awk '{print $2}')
-		sha_2=$(echo ${line} | awk '{print $3}')
-		cmd="git -C ${OVE_BASE_DIR}/${repo} diff --color=always ${sha_1} ${sha_2}"
-		diff=$(${cmd})
-		if [ "${diff}" != "" ]; then
-			echo -e "${diff}" | ${OVE_PAGER} -Ps"${repo}\:$(echo ${cmd} | sed -e 's/\./\\./g')"
+		if [ ${line:0:1} == "a" ]; then
+			only_a+="${line:1}\n"
+		elif [ ${line:0:1} == "b" ]; then
+			only_b+="${line:1}\n"
+		elif [ ${line:0:1} == "c" ]; then
+			repo=$(echo ${line} | awk '{print $2}')
+			sha_1=$(echo ${line} | awk '{print $3}')
+			sha_2=$(echo ${line} | awk '{print $4}')
+			cmd="git -C ${OVE_BASE_DIR}/${repo} diff --color=always ${sha_1} ${sha_2}"
+			diff=$(${cmd})
+			if [ "${diff}" != "" ]; then
+				echo -e "${diff}" | ${OVE_PAGER} -Ps"${repo}\:$(echo ${cmd} | sed -e 's/\./\\./g')"
+			fi
 		fi
 	done <<<"$(ove-revtab-diff "$1" "$2")"
+
+	if [ "${only_a}" != "" ]; then
+		echo
+		ove_echo_yellow_noprefix "only in '$1':"
+		printf "${only_a}"
+	fi
+
+	if [ "${only_b}" != "" ]; then
+		echo
+		ove_echo_yellow_noprefix "only in '$2':"
+		printf "${only_b}"
+	fi
 }
 
 # log-project:<rev> <rev>:git log the project '${OVE_PROJECT_NAME}'
 function ove-log-project {
 	local diff
 	local line
+	local only_a
+	local only_b
 	local repo
 	local sha_1
 	local sha_2
@@ -2900,29 +2936,48 @@ function ove-log-project {
 
 	diff=$(git --no-pager -C "${OVE_PROJECT_DIR}" log --oneline --pretty="    %C(auto)%h %s" "$1".."$2")
 	if [ "${diff}" != "" ]; then
-		ove_echo_yellow_noprefix "  ${OVE_PROJECT_NAME}:"
+		ove_echo_yellow_noprefix "${OVE_PROJECT_NAME}:"
 		echo -e "${diff}"
-		echo
 	fi
 
 	while IFS= read -r line; do
 		[ "${line}" == "" ] && break
-		repo=$(echo ${line} | awk '{print $1}')
-		sha_1=$(echo ${line} | awk '{print $2}')
-		sha_2=$(echo ${line} | awk '{print $3}')
-		diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} log --oneline --pretty="    %C(auto)%h %s" ${sha_1}..${sha_2})
-		if [ "${diff}" != "" ]; then
-			ove_echo_yellow_noprefix "  ${repo}:"
-			echo -e "${diff}"
-			echo
+		if [ ${line:0:1} == "a" ]; then
+			only_a+="${line:1}\n"
+		elif [ ${line:0:1} == "b" ]; then
+			only_b+="${line:1}\n"
+		elif [ ${line:0:1} == "c" ]; then
+			repo=$(echo ${line} | awk '{print $2}')
+			sha_1=$(echo ${line} | awk '{print $3}')
+			sha_2=$(echo ${line} | awk '{print $4}')
+			diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} log --oneline --pretty="  %C(auto)%h %s" ${sha_1}..${sha_2})
+			if [ "${diff}" != "" ]; then
+				echo
+				ove_echo_yellow_noprefix "${repo}:"
+				echo -e "${diff}"
+			fi
 		fi
 	done <<<"$(ove-revtab-diff "$1" "$2")"
+
+	if [ "${only_a}" != "" ]; then
+		echo
+		ove_echo_yellow_noprefix "only in '$1':"
+		printf "${only_a}"
+	fi
+
+	if [ "${only_b}" != "" ]; then
+		echo
+		ove_echo_yellow_noprefix "only in '$2':"
+		printf "${only_b}"
+	fi
 }
 
 # shortlog-project:<rev> <rev>:git shortlog the project '${OVE_PROJECT_NAME}'
 function ove-shortlog-project {
 	local diff
 	local line
+	local only_a
+	local only_b
 	local repo
 	local sha_1
 	local sha_2
@@ -2938,16 +2993,34 @@ function ove-shortlog-project {
 
 	while IFS= read -r line; do
 		[ "${line}" == "" ] && break
-		repo=$(echo ${line} | awk '{print $1}')
-		sha_1=$(echo ${line} | awk '{print $2}')
-		sha_2=$(echo ${line} | awk '{print $3}')
-		diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} shortlog --email --oneline ${sha_1}..${sha_2})
-		if [ "${diff}" != "" ]; then
-			ove_echo_yellow_noprefix "${repo}:"
-			echo -e "${diff}"
-			echo
+		if [ ${line:0:1} == "a" ]; then
+			only_a+="${line:1}\n"
+		elif [ ${line:0:1} == "b" ]; then
+			only_b+="${line:1}\n"
+		elif [ ${line:0:1} == "c" ]; then
+			repo=$(echo ${line} | awk '{print $2}')
+			sha_1=$(echo ${line} | awk '{print $3}')
+			sha_2=$(echo ${line} | awk '{print $4}')
+			diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} shortlog --email --oneline ${sha_1}..${sha_2} | sed -e 's/^/  /g')
+			if [ "${diff}" != "" ]; then
+				ove_echo_yellow_noprefix "${repo}:"
+				echo -e "${diff}"
+				echo
+			fi
 		fi
 	done <<<"$(ove-revtab-diff "$1" "$2")"
+
+	if [ "${only_a}" != "" ]; then
+		echo
+		ove_echo_yellow_noprefix "only in '$1':"
+		printf "${only_a}"
+	fi
+
+	if [ "${only_b}" != "" ]; then
+		echo
+		ove_echo_yellow_noprefix "only in '$2':"
+		printf "${only_b}"
+	fi
 }
 
 # help function that will print OVE project info
