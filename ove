@@ -2805,6 +2805,16 @@ function ove_revtab_sanity_check {
 		ove_echo_error_noprefix "'$2' is not a valid revision"
 		return 4
 	fi
+
+	if ! git -C "${OVE_PROJECT_DIR}" --no-pager show $1:revtab &> /dev/null; then
+		ove_echo_error_noprefix "revtab for '$1' is not available"
+		return 5
+	fi
+
+	if ! git -C "${OVE_PROJECT_DIR}" --no-pager show $2:revtab &> /dev/null; then
+		ove_echo_error_noprefix "revtab for '$2' is not available"
+		return 6
+	fi
 }
 
 # revtab-diff:<rev> <rev>:print changes between two '${OVE_PROJECT_NAME}' revisions
