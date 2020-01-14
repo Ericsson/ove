@@ -5995,7 +5995,7 @@ function ove_determine_dist_version_and_pack_manager {
 function ove-readme {
 	local cmd
 
-	cmd='find -maxdepth 1 -name "README*" -print0 | \
+	cmd='find $PWD -maxdepth 1 -name "README*" -print0 | \
 		xargs -r -0 head -v | \
 		sed -e "1 i$(ove_echo_yellow_noprefix $(pwd -P))" -e "s/^/\t/g"'
 
