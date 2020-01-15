@@ -1547,6 +1547,12 @@ function ove_projects_parse {
 
 		let i+=1
 	done
+
+	if ! ove_validate_projs; then
+		return 1
+	fi
+
+	ove_buildable_projects
 }
 
 function ove_list_projects_without_deps {
@@ -1695,6 +1701,10 @@ function ove_revtab_parse {
 
 		let ove_revtab_num_repositories+=1
 	done < "${OVE_PROJECT_DIR}/revtab"
+
+	if ! ove_validate_revtab; then
+		return 1
+	fi
 }
 
 # $1: git (either basename, sub dir or fullpath)
@@ -2119,7 +2129,9 @@ function ove_revtab_fetch {
 	local co_list
 	local count
 
-	ove_revtab_parse
+	if ! ove_revtab_parse; then
+		return 1
+	fi
 
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout $*
@@ -3644,6 +3656,7 @@ function ove-export {
 	local index
 	local paths
 	local projs
+	local re
 	local tmp_var
 
 	mkdir -p ${OVE_PROJECT_TMP_DIR}/export ${OVE_PROJECT_TMP_DIR}/export/projects
@@ -3752,38 +3765,48 @@ function ove-import {
 }
 
 function ove_build_pre {
-	local missing_repos
 	local p
-	local paths
 	local q
+	local re
+	local repos
 
 	if [ $# -eq 0 ]; then
-		paths=$(ove_list_projects_paths)
+		if ! [ -z "${OVE_PROJECT_LIST_BUILDABLE+x}" ] && \
+			[ "${OVE_PROJECT_LIST_BUILDABLE}" != "${OVE_PROJECT_LIST}" ]; then
+			ove_echo_error_noprefix "'$(comm -3 \
+				<(echo ${OVE_PROJECT_LIST} | xargs -n1 | sort) \
+				<(echo ${OVE_PROJECT_LIST_BUILDABLE} | xargs -n1 | sort) |
+				xargs)' is not buildable project(s). Try: 'ove fetch'"
+			return 1
+		fi
 	else
 		while true; do
-			p+="$(ove_get_paths_recursive $1) "
+			if ! [[ -v ove_projects_name2index[$1] ]]; then
+				ove_echo_error_noprefix "unknown project '$1'"
+				return 1
+			fi
+
+			if ! [ -z "${OVE_PROJECT_LIST_BUILDABLE+x}" ]; then
+				re=\\b$1\\b
+				if ! [[ "${OVE_PROJECT_LIST_BUILDABLE}" =~ ${re} ]]; then
+					for p in $(ove_get_paths_recursive $1 | xargs -n1 | sort -u); do
+						[ -d ${p} ] && continue
+						for q in ${OVE_REPO_LIST}; do
+							if [[ ${p} == *"${q}"* ]] && ! [ -d "${q}" ]; then
+								repos+="$(ove_git2shortpath ${q}) "
+							fi
+						done
+					done
+					if [ "${repos}" != "" ]; then
+						repos=$(echo ${repos} | xargs -n1 | sort -u | xargs)
+						ove_echo_error_noprefix "'$1' is not a buildable project. Try: 'ove fetch ${repos}'"
+					fi
+					return 1
+				fi
+			fi
 			shift
 			[ $# -eq 0 ] && break
 		done
-
-		paths="$(echo ${p} | xargs -n1 | sort -u | xargs)"
-	fi
-
-	for p in ${paths}; do
-		for q in ${OVE_REPO_LIST}; do
-			if [[ ${p} == *"${q}"* ]] && ! [ -d "${q}" ]; then
-				missing_repos+="$(ove_git2shortpath ${q}) "
-			fi
-		done
-	done
-
-	if [ "${missing_repos}" != "" ]; then
-		missing_repos=$(echo ${missing_repos} | xargs -n1 | sort -u | xargs)
-		ove_echo_error_noprefix "repo(s) '${missing_repos}' is not yet fetched, try:"
-		echo
-		echo -e "\t$ ove fetch ${missing_repos}"
-		echo
-		return 1
 	fi
 
 	# create stage/archive directories if needed
@@ -3800,18 +3823,14 @@ function ove-buildme {
 	local index
 	local n
 	local pack_list
-
-	if [ $# -eq 1 ]; then
-		if ! [[ -v ove_projects_name2index[$1] ]]; then
-			ove_echo_error_noprefix "unknown project '$1'"
-			return 1
-		fi
-
-		deps=$(ove_get_deps_recursive $1)
-	fi
+	local re
 
 	if ! ove_build_pre $*; then
 		return 1
+	fi
+
+	if [ $# -eq 1 ]; then
+		deps=$(ove_get_deps_recursive $1)
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
@@ -3899,6 +3918,7 @@ function ove-buildme-parallel {
 	local pids
 	local project_index
 	local project_dependency
+	local re
 	local wait_for_deps
 
 	if ! ove_build_pre $*; then
@@ -4223,7 +4243,9 @@ function ove-fetch {
 		[ "${repos}" == "" ] && return 1
 	fi
 
-	ove_revtab_fetch ${repos}
+	if ! ove_revtab_fetch ${repos}; then
+		return $?
+	fi
 
 	[ $# -eq 0 ] && ove_patch_repositories
 
@@ -5570,9 +5592,13 @@ function ove_init {
 	ove_dirs_init
 	ove_config_init
 	ove_revtab_init
-	ove_revtab_parse
+	if ! ove_revtab_parse; then
+		return 1
+	fi
 	ove_projects_init
-	ove_projects_parse
+	if ! ove_projects_parse; then
+		return 1
+	fi
 	ove_scripts_init
 
 	if [ "${OVE_LOGLEVEL}" == "2" ]; then
@@ -5589,14 +5615,6 @@ function ove_init {
 	[ "$1" == "quick" ] && return 0
 
 	if ! ove_validate_self; then
-		return 1
-	fi
-
-	if ! ove_validate_projs; then
-		return 1
-	fi
-
-	if ! ove_validate_revtab; then
 		return 1
 	fi
 
@@ -5747,6 +5765,52 @@ function ove_post_checks {
 
 	# vaidate revtab revision
 	ove_revtab_check
+}
+
+function ove_buildable_projects {
+	local deps
+	local index
+	local proj
+	local proj_path
+	local projs_and_deps_not_buildable
+	local projs_not_buildable
+	local q
+	local re
+
+	# remove projects with paths within git repos not yet fetched
+	for proj in ${OVE_PROJECT_LIST}; do
+		index=${ove_projects_name2index[${proj}]}
+		proj_path="${OVE_BASE_DIR}/${ove_projects_path[${index}]}"
+		for q in ${OVE_REPO_LIST}; do
+			if [[ ${proj_path} == *"${q}"* ]] && ! [ -d "${q}" ]; then
+				projs_not_buildable+="${proj} "
+			fi
+		done
+	done
+	[ "${projs_not_buildable}" == "" ] && return
+
+	# remove none buildable projects and its dependencies
+	projs_and_deps_not_buildable="${projs_not_buildable}"
+	for proj in ${OVE_PROJECT_LIST}; do
+		deps=$(ove_get_deps_recursive ${proj})
+		for q in ${projs_not_buildable}; do
+			re=\\b${q}\\b
+			if [[ "${deps}" =~ ${re} ]]; then
+				re=\\b${proj}\\b
+				# already marked as removed?
+				if [[ "${projs_and_deps_not_buildable}" =~ ${re} ]]; then
+					continue
+				fi
+				projs_and_deps_not_buildable+="${proj} "
+			fi
+		done
+	done
+
+	OVE_PROJECT_LIST_BUILDABLE=$(comm -3 \
+		<(echo ${OVE_PROJECT_LIST} | xargs -n1 | sort) \
+		<(echo ${projs_and_deps_not_buildable} | xargs -n1 | sort) |
+		xargs)
+	export OVE_PROJECT_LIST_BUILDABLE
 }
 
 # create a '.owel/revtab' file from current directory
