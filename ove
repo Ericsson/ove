@@ -6296,7 +6296,6 @@ function ove-unittest {
 		${shelltest} ${tests} \
 		${shelltest_opts} \
 		--color \
-		-j $(nproc) \
 		--diff \
 		-DOVE_TEST_STRING="source ove > /dev/null; ove_init > /dev/null" \
 		-Dnbr_of_systests=$(((nbr_of_systests * 2) + 1)) \
