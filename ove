@@ -2957,7 +2957,7 @@ function ove-log-project {
 
 	ove_revtab_sanity_check $* || return $?
 
-	diff=$(git --no-pager -C "${OVE_PROJECT_DIR}" log --oneline --pretty="    %C(auto)%h %s" "$1".."$2")
+	diff=$(git --no-pager -C "${OVE_PROJECT_DIR}" log --oneline --pretty="  %C(auto)%h %s" "$1".."$2")
 	if [ "${diff}" != "" ]; then
 		ove_echo_yellow_noprefix "${OVE_PROJECT_NAME}:"
 		echo -e "${diff}"
