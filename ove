@@ -2159,7 +2159,7 @@ function ove_get_base_dir {
 	pushd . &> /dev/null
 	s=$(pwd -P)
 	while [ "${s}" != "" ]; do
-		if [[ -L ${s}/ove && -L ${s}/.owel && ( -d ${s}/.ove || -d ${s}/owel ) ]]; then
+		if [[ -L ${s}/ove && -L ${s}/.owel ]]; then
 			echo "${s}"
 			break
 		fi
