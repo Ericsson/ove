@@ -6143,7 +6143,7 @@ function ove_unittest_preparations {
 
 	unittest_dir="${OVE_PROJECT_TMP_DIR}/unittest"
 
-	echo -n "Preparing ${unittest_dir}..."
+	echo "${unittest_dir}"
 	[ -d ${unittest_dir} ] && \
 		rm -rf ${unittest_dir}
 	mkdir -p ${unittest_dir}/.ove
@@ -6216,7 +6216,8 @@ function ove_unittest_preparations {
 		echo >> ${unittest_dir}/git-top/projs
 		mkdir -p ${unittest_dir}/git-top/projects/p${a}
 		for b in bootstrap configure build install; do
-			echo "echo ${b} p${a}" > ${unittest_dir}/git-top/projects/p${a}/${b}
+			echo "#!/bin/bash" > ${unittest_dir}/git-top/projects/p${a}/${b}
+			echo "echo ${b} p${a}" >> ${unittest_dir}/git-top/projects/p${a}/${b}
 			chmod +x ${unittest_dir}/git-top/projects/p${a}/${b}
 		done
 	done
