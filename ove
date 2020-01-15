@@ -91,6 +91,7 @@ function ove-unsource {
 		grep -E '^ove($|[-_])' | \
 		awk '{print $1}') \
 		${FUNCNAME[0]}
+	echo "ove has been removed from this bash shell [pid:${BASHPID}]" 1>&2
 }
 
 # interactive shell? clean up
