@@ -1246,7 +1246,7 @@ function ove {
 			set +m
 			SHELL=$(command -v bash) \
 				script ${script_opts} -q -c \
-				"source ${OVE_BASE_DIR}/ove; ove_init quick; ove-${cmd} ${args}" \
+				"source ${OVE_BASE_DIR}/ove; ove_init quick && ove-${cmd} ${args}" \
 				${OVE_LAST_COMMAND}
 			ret=$?
 
