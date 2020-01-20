@@ -1267,6 +1267,8 @@ function ove {
 					fi
 					break
 				done | tee -a ${OVE_LAST_COMMAND}
+
+				unset OVE_ANALYZE_EXECVE
 			fi
 
 			sed -i -e 's/\r$//' -e 's/\x0//' ${OVE_LAST_COMMAND}
