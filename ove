@@ -1797,8 +1797,8 @@ function ove_revtab_status {
 
 	wait
 
-	LC_ALL="C" sort ${f} | \
-		column -t -s:
+	LC_ALL="C" sort -o ${f} ${f}
+	column -t -s: <${f}
 
 	mv "${f}" "${OVE_PROJECT_STATE_DIR}/revtab-status"
 }
@@ -1901,7 +1901,7 @@ function ove_revtab_list {
 	str+="${OVE_PROJECT_NAME} ${url} ${url} $(git -C "${OVE_PROJECT_DIR}" rev-parse --abbrev-ref HEAD)\n"
 
 	printf "${str}" | \
-		sort | \
+		LC_ALL="C" sort | \
 		column -t
 }
 
@@ -3620,7 +3620,7 @@ function ove_install_packages {
 	# sort the list
 	missing_packages_sorted="$(echo ${missing_packages} | \
 		xargs -n1 "${OVE_ECHO}" | \
-		sort -u | \
+		LC_ALL="C" sort -u | \
 		xargs "${OVE_ECHO}")"
 
 	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
@@ -4645,7 +4645,7 @@ function ove-list-modified-files {
 
 	for git in $(ove_dirty_repos); do
 		ove_revtab_forsome "${cmd}" "${git}"
-	done | sort -u
+	done | LC_ALL="C" sort -u
 }
 
 # list-committed-files:[DAYS]:list committed files within 7 or DAYS day(s)
@@ -4865,7 +4865,7 @@ function ove-describe {
 
 	${func} 'echo $(echo ${git} | sed -e "s|${OVE_BASE_DIR}/||g")@$(git describe --tags --always --dirty --long)@"$(git log --format="%<(20,trunc)%s" -1)"@"$(git -c color.status=never status -s -uno | tr "\n" " ")"' $* |\
 		column -t -s'@' | \
-		sort
+		LC_ALL="C" sort
 }
 
 # list-heads:[GIT...]:git log for all/specified git repositories
@@ -4881,7 +4881,7 @@ function ove-list-heads {
 		fi
 
 		break
-	done | sort | column -t -s? 2> /dev/null
+	done | LC_ALL="C" sort | column -t -s? 2> /dev/null
 }
 
 # ls-remote: :git ls-remote <URL> HEAD for all git repositories
@@ -4908,7 +4908,7 @@ function ove-ls-remote {
 	str+="${git}:${sha}\n"
 
 	printf "${str}" | \
-		sort | \
+		LC_ALL="C" sort | \
 		column -t -s:
 }
 
