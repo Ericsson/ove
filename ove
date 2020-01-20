@@ -1922,11 +1922,9 @@ function ove_revtab_check_one {
 		[ $? -ne 0 ] &&  b=""
 
 		if [ "${a}" != "${b}" ]; then
-			ove_echo_cyan_noprefix "${name}: HEAD (${a} = $(git -C ${OVE_BASE_DIR}/${name} describe --tags --always)) is different from the revtab revision (${b} = ${rev})"
-
 			if test -z "$(git -C ${OVE_BASE_DIR}/${name} --no-pager status --porcelain -uno)"; then
-				ove_echo_cyan_noprefix "${name}: checkout '${rev}'"
-				ove_revtab_checkout ${name}
+				ove_revtab_checkout ${name} |& sed -e "1s|^|${name}$(printf "%0.s " $(eval echo {1..$((50 - ${#name}))}))|g" \
+					-e "2,10s|^|$(printf "%0.s " $(eval echo {1..50}))|g"
 				ove_patch_repositories
 			else
 				ove_echo_yellow_noprefix "${name}: cannot checkout '${rev}' as repo is dirty:"
