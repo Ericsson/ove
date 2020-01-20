@@ -4333,15 +4333,10 @@ function ove-checkout {
 
 		git -C "${OVE_PROJECT_DIR}" fetch --all
 
-		if ! git -C "${OVE_PROJECT_DIR}" -c advice.detachedHead=false checkout "${rev}"; then
-			ove_echo_error_noprefix "git checkout '${rev}' failed"
-			echo
-			echo "available tags:"
-			git -C "${OVE_PROJECT_DIR}" tag
-			echo
-			echo "available branches:"
-			git -C "${OVE_PROJECT_DIR}" branch --no-color --all | grep -v detached
-
+		git -C "${OVE_PROJECT_DIR}" -c advice.detachedHead=false checkout "${rev}" |& \
+			sed -e "1s|^|${OVE_PROJECT_NAME}$(printf "%0.s " $(eval echo {1..$((50 - ${#OVE_PROJECT_NAME}))}))|g" \
+			-e "2s|^|$(printf "%0.s " $(eval echo {1..50}))|g"
+		if [ ${PIPESTATUS[0]} -ne 0 ]; then
 			# cleanup
 			if [ "$2" == "autostash" ]; then
 				for repo in ${dirty_repos}; do
@@ -4351,6 +4346,8 @@ function ove-checkout {
 
 			return 1
 		fi
+
+		echo ---
 
 		# init everything
 		ove_init
