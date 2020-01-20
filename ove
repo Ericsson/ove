@@ -1146,6 +1146,19 @@ function ove {
 	local strace_expression
 
 	cmd="$1"
+
+	# keep this as early as possible
+	[ "${cmd}" == "cd" ] && ove-cd && return 0
+
+	# sanity check
+	if ! ove_get_base_dir > /dev/null; then
+		return 1
+	fi
+
+	if [ "$(type -t ove_verify_checksums)" == "function" ] && ! ove_verify_checksums; then
+		return 1
+	fi
+
 	if [ "$#" -eq 0 ]; then
 		ove-fzf || ove-help
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
@@ -1175,7 +1188,6 @@ function ove {
 
 		return 1
 	elif [ "${cmd}" == "!" ] || \
-		[ "${cmd}" == "cd" ] || \
 		[ "${cmd}" == "dry-run" ] || \
 		[ "${cmd}" == "loglevel" ] || \
 		[ "${cmd}" == "checkout" ] || \
@@ -1183,11 +1195,6 @@ function ove {
 		[ "${cmd}" == "unsource" ]; then
 		ove-${cmd} ${@:2}
 	else
-		# sanity check
-		if ! ove_get_base_dir > /dev/null; then
-			return 1
-		fi
-
 		args="${*:2}"
 		mkdir -p ${OVE_LOG_DIR}/${OVE_SHA}
 		(cd ${OVE_LOG_DIR} && ln -sfn ${OVE_SHA} current)
@@ -1555,6 +1562,8 @@ function ove_projects_parse {
 	fi
 
 	ove_buildable_projects
+
+	OVE_BUILD_ORDER="$(ove-build-order)"
 }
 
 function ove_list_projects_without_deps {
@@ -1707,6 +1716,8 @@ function ove_revtab_parse {
 	if ! ove_validate_revtab; then
 		return 1
 	fi
+
+	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
 }
 
 # $1: git (either basename, sub dir or fullpath)
@@ -1903,6 +1914,69 @@ function ove_revtab_list {
 	printf "${str}" | \
 		LC_ALL="C" sort | \
 		column -t
+}
+
+function ove_verify_checksums {
+	local md5
+	local reinit=0
+
+	if [ -e "${OVE_PROJECT_DIR}/revtab" ]; then
+		md5=$(md5sum ${OVE_PROJECT_DIR}/revtab)
+		md5=${md5% *}
+		# got updated?
+		if ! [ -z "${OVE_REVTAB_MD5+x}" ] && [ "${md5}" != "${OVE_REVTAB_MD5}" ]; then
+			let reinit+=1
+		# just created?
+		elif [ -z "${OVE_REVTAB_MD5+x}" ]; then
+			let reinit+=1
+		fi
+	elif ! [ -z "${OVE_REVTAB_MD5+x}" ]; then
+		# got removed?
+		unset OVE_REVTAB_MD5
+		let reinit+=1
+	fi
+
+	if [ -e "${OVE_PROJECT_DIR}/projs" ]; then
+		md5=$(md5sum ${OVE_PROJECT_DIR}/projs)
+		md5=${md5% *}
+		# got updated?
+		if ! [ -z "${OVE_PROJS_MD5+x}" ] && [ "${md5}" != "${OVE_PROJS_MD5}" ]; then
+			let reinit+=1
+		# just created?
+		elif [ -z "${OVE_PROJS_MD5+x}" ]; then
+			let reinit+=1
+		fi
+	elif ! [ -z "${OVE_PROJS_MD5+x}" ]; then
+		# got removed?
+		unset OVE_PROJS_MD5
+		let reinit+=1
+	fi
+
+	if [ ${reinit} -gt 0 ]; then
+		if ! ove_reinit; then
+			return 1
+		fi
+	fi
+
+	return 0
+}
+
+function ove_update_checksum {
+	local md5
+
+	if [ -e "${OVE_PROJECT_DIR}/revtab" ]; then
+		md5=$(md5sum ${OVE_PROJECT_DIR}/revtab)
+		md5=${md5% *}
+		OVE_REVTAB_MD5=${md5}
+		export OVE_REVTAB_MD5
+	fi
+
+	if [ -e "${OVE_PROJECT_DIR}/projs" ]; then
+		md5=$(md5sum ${OVE_PROJECT_DIR}/projs)
+		md5=${md5% *}
+		OVE_PROJS_MD5=${md5}
+		export OVE_PROJS_MD5
+	fi
 }
 
 # $1: name
@@ -5587,6 +5661,15 @@ function ove_config_init {
 	[ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ] && ove_read_config ${OVE_PROJECT_STATE_DIR}/.oveconfig
 }
 
+# re-initialize
+function ove_reinit {
+	if ! ove_init; then
+		return 1
+	fi
+
+	ove_post_checks
+}
+
 # init:initialize OVE project
 function ove_init {
 	local base_dir
@@ -5629,6 +5712,8 @@ function ove_init {
 
 	[ "$1" == "quick" ] && return 0
 
+	ove_update_checksum
+
 	if ! ove_validate_self; then
 		return 1
 	fi
@@ -5665,9 +5750,7 @@ function ove_init {
 		OVE_AUTOCORRECT=0
 		export OVE_AUTOCORRECT
 	fi
-	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
 	export OVE_REPO_LIST
-	OVE_BUILD_ORDER="$(ove-build-order)"
 	export OVE_ECHO
 	export OVE_BUILD_ORDER
 	export OVE_BASE_DIR
