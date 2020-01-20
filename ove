@@ -2895,6 +2895,60 @@ function ove-revtab-diff {
 		${OVE_PROJECT_TMP_DIR}/rev_B
 }
 
+# helper function for diff/log/shortlog-project functions
+function ove_extract_only_a {
+	local line=${*}
+	local repo
+	local sha_1
+
+	repo=$(echo ${line} | awk '{print $2}')
+	sha_1=$(echo ${line} | awk '{print $3}')
+	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -d ${OVE_BASE_DIR}/${repo}/.git ]; then
+		only_a+="  ${repo}|$(git -C ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
+	else
+		only_a+="${line:1}\n"
+	fi
+}
+
+# helper function for diff/log/shortlog-project functions
+function ove_extract_only_b {
+	local line=${*}
+	local repo
+	local sha_1
+
+	repo=$(echo ${line} | awk '{print $2}')
+	sha_1=$(echo ${line} | awk '{print $3}')
+	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -d ${OVE_BASE_DIR}/${repo}/.git ]; then
+		only_b+="  ${repo}|$(git -C ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
+	else
+		only_b+="${line:1}\n"
+	fi
+}
+
+# helper function for diff/log/shortlog-project functions
+function ove_print_only_a_and_b {
+	if [ "${only_a}" != "" ]; then
+		echo
+		ove_echo_yellow_noprefix "only in '$1':"
+		printf "${only_a}" | column -t -s'|'
+	fi
+
+	if [ "${only_b}" != "" ]; then
+		echo
+		ove_echo_yellow_noprefix "only in '$2':"
+		printf "${only_b}" | column -t -s'|'
+	fi
+}
+
+# helper function for diff/log/shortlog-project functions
+function ove_extract_repo_and_sha {
+	local line=${*}
+
+	repo=$(echo ${line} | awk '{print $2}')
+	sha_1=$(echo ${line} | awk '{print $3}')
+	sha_2=$(echo ${line} | awk '{print $4}')
+}
+
 # diff-project:<rev> <rev>:git diff the '${OVE_PROJECT_NAME}' project
 function ove-diff-project {
 	local cmd
@@ -2917,13 +2971,11 @@ function ove-diff-project {
 	while IFS= read -r line; do
 		[ "${line}" == "" ] && break
 		if [ ${line:0:1} == "a" ]; then
-			only_a+="${line:1}\n"
+			ove_extract_only_a ${line}
 		elif [ ${line:0:1} == "b" ]; then
-			only_b+="${line:1}\n"
+			ove_extract_only_b ${line}
 		elif [ ${line:0:1} == "c" ]; then
-			repo=$(echo ${line} | awk '{print $2}')
-			sha_1=$(echo ${line} | awk '{print $3}')
-			sha_2=$(echo ${line} | awk '{print $4}')
+			ove_extract_repo_and_sha ${line}
 			cmd="git -C ${OVE_BASE_DIR}/${repo} diff --color=always ${sha_1} ${sha_2}"
 			diff=$(${cmd})
 			if [ "${diff}" != "" ]; then
@@ -2932,17 +2984,7 @@ function ove-diff-project {
 		fi
 	done <<<"$(ove-revtab-diff "$1" "$2")"
 
-	if [ "${only_a}" != "" ]; then
-		echo
-		ove_echo_yellow_noprefix "only in '$1':"
-		printf "${only_a}"
-	fi
-
-	if [ "${only_b}" != "" ]; then
-		echo
-		ove_echo_yellow_noprefix "only in '$2':"
-		printf "${only_b}"
-	fi
+	ove_print_only_a_and_b $1 $2
 }
 
 # log-project:<rev> <rev>:git log the project '${OVE_PROJECT_NAME}'
@@ -2966,13 +3008,11 @@ function ove-log-project {
 	while IFS= read -r line; do
 		[ "${line}" == "" ] && break
 		if [ ${line:0:1} == "a" ]; then
-			only_a+="${line:1}\n"
+			ove_extract_only_a ${line}
 		elif [ ${line:0:1} == "b" ]; then
-			only_b+="${line:1}\n"
+			ove_extract_only_b ${line}
 		elif [ ${line:0:1} == "c" ]; then
-			repo=$(echo ${line} | awk '{print $2}')
-			sha_1=$(echo ${line} | awk '{print $3}')
-			sha_2=$(echo ${line} | awk '{print $4}')
+			ove_extract_repo_and_sha ${line}
 			diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} log --oneline --pretty="  %C(auto)%h %s" ${sha_1}..${sha_2})
 			if [ "${diff}" != "" ]; then
 				echo
@@ -2982,17 +3022,7 @@ function ove-log-project {
 		fi
 	done <<<"$(ove-revtab-diff "$1" "$2")"
 
-	if [ "${only_a}" != "" ]; then
-		echo
-		ove_echo_yellow_noprefix "only in '$1':"
-		printf "${only_a}"
-	fi
-
-	if [ "${only_b}" != "" ]; then
-		echo
-		ove_echo_yellow_noprefix "only in '$2':"
-		printf "${only_b}"
-	fi
+	ove_print_only_a_and_b $1 $2
 }
 
 # shortlog-project:<rev> <rev>:git shortlog the project '${OVE_PROJECT_NAME}'
@@ -3017,13 +3047,11 @@ function ove-shortlog-project {
 	while IFS= read -r line; do
 		[ "${line}" == "" ] && break
 		if [ ${line:0:1} == "a" ]; then
-			only_a+="${line:1}\n"
+			ove_extract_only_a ${line}
 		elif [ ${line:0:1} == "b" ]; then
-			only_b+="${line:1}\n"
+			ove_extract_only_b ${line}
 		elif [ ${line:0:1} == "c" ]; then
-			repo=$(echo ${line} | awk '{print $2}')
-			sha_1=$(echo ${line} | awk '{print $3}')
-			sha_2=$(echo ${line} | awk '{print $4}')
+			ove_extract_repo_and_sha ${line}
 			diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} shortlog --email --oneline ${sha_1}..${sha_2} | sed -e 's/^/  /g')
 			if [ "${diff}" != "" ]; then
 				ove_echo_yellow_noprefix "${repo}:"
@@ -3033,17 +3061,7 @@ function ove-shortlog-project {
 		fi
 	done <<<"$(ove-revtab-diff "$1" "$2")"
 
-	if [ "${only_a}" != "" ]; then
-		echo
-		ove_echo_yellow_noprefix "only in '$1':"
-		printf "${only_a}"
-	fi
-
-	if [ "${only_b}" != "" ]; then
-		echo
-		ove_echo_yellow_noprefix "only in '$2':"
-		printf "${only_b}"
-	fi
+	ove_print_only_a_and_b $1 $2
 }
 
 # help function that will print OVE project info
