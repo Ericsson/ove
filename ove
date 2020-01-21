@@ -5249,6 +5249,15 @@ function ove_bash_complete {
 	local subcommand
 	local wordlist
 
+	# sanity check
+	if ! ove_get_base_dir > /dev/null; then
+		return 1
+	fi
+
+	if [ "$(type -t ove_verify_checksums)" == "function" ] && ! ove_verify_checksums; then
+		return 1
+	fi
+
 	COMPREPLY=()
 
 	cur="${COMP_WORDS[COMP_CWORD]}"
