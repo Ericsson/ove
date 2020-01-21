@@ -4783,7 +4783,7 @@ function ove-list-committed-files {
 
 	[ $# -eq 1 ] && days="$1" || days=7
 
-	cmd='git --no-pager -C ${git} log --no-merges --author="$(git config --get user.name)" --name-only --pretty=format:"" --since="'${days}' days" | while read line; do [ -f ${PWD}/${line} ] && echo -e ${PWD}/${line}; done'
+	cmd='git --no-pager -C ${git} log --all --no-merges --author="$(git config --get user.name)" --name-only --pretty=format:"" --since="'${days}' days" | while read line; do [ -f ${PWD}/${line} ] && echo -e ${PWD}/${line}; done'
 
 	ove_revtab_forall "${cmd}" | sort -u
 }
