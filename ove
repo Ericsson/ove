@@ -1846,7 +1846,7 @@ function ove_revtab_status_parse_one {
 	tense=$1
 	shift
 
-	git_fmt='%h?%ar?%ae?%s'
+	git_fmt='%<(15,trunc)%h?%<(15,trunc)%ar?%<(40,mtrunc)%ae?%s'
 	git_fullpath=$(ove_git2fullpath $1)
 
 	if [ "${git_fullpath}" == "" ] || ! [ -d "${git_fullpath}" ]; then
