@@ -1431,11 +1431,32 @@ function ove_projects_attributes {
 	fi
 }
 
-# list of project tags and branches
-function ove_project_tags_and_branches {
+# $1: dir (optional)
+function ove_list_tags_and_branches {
+	local d
+
+	[ $# -eq 0 ] && d=${OVE_PROJECT_DIR} || d=$1
+	! [ -d ${d} ] && return
+
 	(
-	git -C "${OVE_PROJECT_DIR}" tag
-	git -C "${OVE_PROJECT_DIR}" branch --no-color --all --list | \
+	git -C "${d}" tag
+	git -C "${d}" branch --no-color --all --list | \
+		grep -v HEAD | \
+		tr -d '*' | \
+		xargs | \
+		tr ' ' '\n'
+	) | sort -V
+}
+
+# $1: dir (optional)
+function ove_list_branches {
+	local d
+
+	[ $# -eq 0 ] && d=${OVE_PROJECT_DIR} || d=$1
+	! [ -d ${d} ] && return
+
+	(
+	git -C "${d}" branch --no-color --all --list | \
 		grep -v HEAD | \
 		tr -d '*' | \
 		xargs | \
@@ -1980,22 +2001,43 @@ function ove_update_checksum {
 # $1: name
 # $2: rev
 function ove_revtab_check_one {
-	local a
-	local b
+	local co=0
+	local detached=0
 	local name
+	local re
 	local rev
+	local rev_is_branch=0
+	local sha_a
+	local sha_b
 
 	name=$1
 	rev=$2
 
 	if [ -d "${OVE_BASE_DIR}/${name}" ]; then
-		a=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
-		b=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${rev} --)
+		sha_a=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
+		sha_b=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${rev} --)
 		[ $? -ne 0 ] &&  b=""
 
-		if [ "${a}" != "${b}" ]; then
+		if [ "${sha_a}" != "${sha_b}" ]; then
+			# diff => checkout
+			co=1
+		else
+			re=\\b${rev}\\b
+			git -C "${OVE_BASE_DIR}/${name}" rev-parse -q "@{u}" &> /dev/null || detached=1
+			[[ "$(ove_list_branches ${OVE_BASE_DIR}/${name} | xargs)" =~ ${re} ]] && rev_is_branch=1
+
+			# detached and $rev is a branch => checkout
+			if [ ${detached} -eq 1 ] && [ ${rev_is_branch} -eq 1 ]; then
+				co=1
+			# not detached and $rev is not a branch => checkout
+			elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 0 ]; then
+				co=1
+			fi
+		fi
+
+		if [ ${co} -eq 1 ]; then
 			if test -z "$(git -C ${OVE_BASE_DIR}/${name} --no-pager status --porcelain -uno)"; then
-				ove_revtab_checkout ${name} |& sed -e "1s|^|${name}$(printf "%0.s " $(eval echo {1..$((50 - ${#name}))}))|g" \
+				ove_revtab_checkout ${name} |& sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((50 - ${#name}))}))|g" \
 					-e "2,10s|^|$(printf "%0.s " $(eval echo {1..50}))|g"
 				ove_patch_repositories
 			else
@@ -4407,7 +4449,7 @@ function ove-checkout {
 		git -C "${OVE_PROJECT_DIR}" fetch --all
 
 		git -C "${OVE_PROJECT_DIR}" -c advice.detachedHead=false checkout "${rev}" |& \
-			sed -e "1s|^|${OVE_PROJECT_NAME}$(printf "%0.s " $(eval echo {1..$((50 - ${#OVE_PROJECT_NAME}))}))|g" \
+			sed -e "1s|^|$(ove_echo_yellow_noprefix ${OVE_PROJECT_NAME})$(printf "%0.s " $(eval echo {1..$((50 - ${#OVE_PROJECT_NAME}))}))|g" \
 			-e "2s|^|$(printf "%0.s " $(eval echo {1..50}))|g"
 		if [ ${PIPESTATUS[0]} -ne 0 ]; then
 			# cleanup
@@ -5270,7 +5312,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "checkout" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist=$(ove_project_tags_and_branches)
+			wordlist=$(ove_list_tags_and_branches)
 		elif [ ${size} -eq 3 ]; then
 			wordlist="purge autostash"
 		else
@@ -5300,7 +5342,7 @@ function ove_bash_complete {
 		[ "${subcommand}" == "log-project" ] ||
 		[ "${subcommand}" == "shortlog-project" ]; then
 		if [ ${size} -lt 4 ]; then
-			wordlist=$(ove_project_tags_and_branches)
+			wordlist=$(ove_list_tags_and_branches)
 		else
 			return
 		fi
