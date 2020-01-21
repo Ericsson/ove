@@ -1684,7 +1684,7 @@ function ove_revtab_init {
 	declare -a -g ove_revtab_push_url
 	declare -a -g ove_revtab_rev
 	declare -a -g ove_revtab_git_name
-	declare -A -g ove_revtab_basename2index
+	declare -A -g ove_revtab_name2index
 
 	ove_revtab_num_repositories=0
 }
@@ -1708,7 +1708,7 @@ function ove_revtab_parse {
 		ove_revtab_fetch_url[${ove_revtab_num_repositories}]=${array[1]}
 		ove_revtab_push_url[${ove_revtab_num_repositories}]=${array[2]}
 		ove_revtab_rev[${ove_revtab_num_repositories}]=${array[3]}
-		ove_revtab_basename2index[${array[0]##*/}]=${ove_revtab_num_repositories}
+		ove_revtab_name2index[${array[0]}]=${ove_revtab_num_repositories}
 
 		let ove_revtab_num_repositories+=1
 	done < "${OVE_PROJECT_DIR}/revtab"
@@ -1720,38 +1720,36 @@ function ove_revtab_parse {
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
 }
 
-# $1: git (either basename, sub dir or fullpath)
+# $1: repo name (either 'name' or '$OVE_BASE_DIR/'name')
 function ove_git2fullpath {
-	local git_basename
 	local git_fullpath
 	local index
+	local name
 
-	git_basename=${1##*/}
-	index=${ove_revtab_basename2index[${git_basename}]}
-
-	# product repo?
-	if [ "${index}" == "" ] && [ "${git_basename}" == "${OVE_PROJECT_NAME}" ]; then
+	name=${1/${OVE_BASE_DIR}\/}
+	if [ "${name}" == "${OVE_PROJECT_NAME}" ]; then
 		git_fullpath="${OVE_BASE_DIR}/${OVE_PROJECT_NAME}"
-	elif [ "${index}" != "" ]; then
+	elif [ -v ove_revtab_name2index[${name}] ]; then
+		index=${ove_revtab_name2index[${name}]}
 		git_fullpath="${OVE_BASE_DIR}/${ove_revtab_git_name[${index}]}"
 	fi
 
 	echo ${git_fullpath}
 }
 
-# $1: git (either basename, sub dir or fullpath)
+# $1: repo name (either 'name' or '$OVE_BASE_DIR/'name')
 function ove_git2shortpath {
-	local git_basename
 	local git_shortpath
 	local index
+	local name
 
-	git_basename=${1##*/}
-	index=${ove_revtab_basename2index[${git_basename}]}
+	[ $# -ne 1 ] && return 1
 
-	# product repo?
-	if [ "${index}" == "" ] && [ "${git_basename}" == "${OVE_PROJECT_NAME}" ]; then
+	name=${1/${OVE_BASE_DIR}\/}
+	if [ "${name}" == "${OVE_PROJECT_NAME}" ]; then
 		git_shortpath="${OVE_PROJECT_NAME}"
-	elif [ "${index}" != "" ]; then
+	elif [ -v ove_revtab_name2index[${name}] ]; then
+		index=${ove_revtab_name2index[${name}]}
 		git_shortpath="${ove_revtab_git_name[${index}]}"
 	fi
 
@@ -1762,6 +1760,8 @@ function ove_git2shortpath {
 function ove_status_one_repo {
 	local git_fullpath
 
+	[ $# -ne 1 ] && return 1
+
 	git_fullpath=$(ove_git2fullpath $1)
 	if [ "${git_fullpath}" == "" ] || ! [ -d "${git_fullpath}" ]; then
 		return
@@ -1771,13 +1771,11 @@ function ove_status_one_repo {
 }
 
 function ove_validate_repo_list {
-	local git_basename
 	local repos
 
 	while true; do
-		git_basename=${1##*/}
 		[ $# -eq 0 ] && break
-		if [ "$1" == "${OVE_PROJECT_NAME}" ] || [ -v ove_revtab_basename2index[${git_basename}] ]; then
+		if [ "$1" == "${OVE_PROJECT_NAME}" ] || [ -v ove_revtab_name2index[${1}] ]; then
 			repos+="$(ove_git2shortpath $1)\n"
 		fi
 		shift
@@ -2102,17 +2100,17 @@ function ove_revtab_forsome_parallel {
 function ove_revtab_clone_and_checkout {
 	(
 	local count
-	local git_basename
 	local index
 	local repo
+	local repos
 
 	if [ $# -gt 0 ]; then
-		for repo in $*; do
-			git_basename=${1##*/}
-			index=${ove_revtab_basename2index[${git_basename}]}
-
+		repos=$(ove_validate_repo_list $*)
+		[ "${repos}" == "" ] && return 1
+		for repo in ${repos}; do
+			index=${ove_revtab_name2index[${1}]}
 			if [ ! -d "${OVE_BASE_DIR}/${repo}" ]; then
-				git clone "${ove_revtab_fetch_url[${index}]}" "${OVE_BASE_DIR}/${ove_revtab_git_name[${index}]}" && ove_revtab_checkout ${git_basename} &
+				git clone "${ove_revtab_fetch_url[${index}]}" "${OVE_BASE_DIR}/${ove_revtab_git_name[${index}]}" && ove_revtab_checkout ${1} &
 			fi
 			shift
 		done
@@ -2134,14 +2132,15 @@ function ove_revtab_clone_and_checkout {
 function ove_revtab_checkout {
 	(
 	local count
-	local git_basename
 	local index
 	local repo
+	local repos
 
 	if [ $# -gt 0 ]; then
-		for repo in $*; do
-			git_basename=${1##*/}
-			index=${ove_revtab_basename2index[${git_basename}]}
+		repos=$(ove_validate_repo_list $*)
+		[ "${repos}" == "" ] && return 1
+		for repo in ${repos}; do
+			index=${ove_revtab_name2index[${1}]}
 			git -C "${OVE_BASE_DIR}/${ove_revtab_git_name[${index}]}" -c advice.detachedHead=false checkout "${ove_revtab_rev[${index}]}" &
 			shift
 		done
@@ -4219,7 +4218,6 @@ function ove-pull {
 	for git in ${repos}; do
 		ove_revtab_pull_one ${git} | grep -v '^\['
 
-		# product repo?
 		if [ "${git##*/}" == "${OVE_PROJECT_NAME}" ]; then
 			ove_revtab_check
 		fi
@@ -4280,7 +4278,8 @@ function ove-apply {
 	fi
 
 	for p in $(find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' | sort); do
-		git_basename=$(basename $(head -1 -q ${p}))
+		git_basename=$(head -1 -q ${p})
+		git_basename=${git_basename/${OVE_BASE_DIR}\/}
 		git_fullpath=$(ove_git2fullpath ${git_basename})
 		if [ "${git_fullpath}" == "" ] || ! [ -d "${git_fullpath}" ]; then
 			ove_echo_error_noprefix "'${git_basename}': unknown git, next..."
@@ -4288,7 +4287,7 @@ function ove-apply {
 		fi
 
 		# rename the patch
-		q="${OVE_PROJECT_TMP_DIR}/ove-apply-${git_basename}.patch"
+		q="${OVE_PROJECT_TMP_DIR}/ove-apply-${git_basename/\//-}.patch"
 		mv ${p} ${q}
 		if [ -d "${git_fullpath}" ] && \
 			[ -d ${git_fullpath}/.git ]; then
