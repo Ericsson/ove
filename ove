@@ -2090,7 +2090,7 @@ function ove_revtab_forall {
 
 	for git in ${OVE_REPO_LIST}; do
 		! [ -d "${git}" ] && continue
-		git_basename=${git##*/}
+		git_basename=${git/${OVE_BASE_DIR}\/}
 		eval "pushd ${git} &>/dev/null && $1; popd&>/dev/null"
 	done
 }
@@ -2109,12 +2109,14 @@ function ove_revtab_forall_parallel {
 
 function ove_revtab_forsome {
 	local git
+	local git_basename
 	local i
 
 	for i in ${*:2}; do
 		for git in ${OVE_REPO_LIST}; do
 			! [ -d "${git}" ] && continue
 			if [ "${git}" == "${OVE_BASE_DIR}/${i}" ]; then
+				git_basename=${git/${OVE_BASE_DIR}\/}
 				eval "pushd ${git} &>/dev/null && $1; popd&>/dev/null"
 			fi
 		done
@@ -3404,7 +3406,7 @@ function ove-switch {
 function ove-branch {
 	local cmd
 
-	cmd='ove_echo_yellow_noprefix ${PWD} && git --no-pager branch -v'
+	cmd='ove_echo_yellow_noprefix ${git_basename} && git --no-pager branch -vv; echo'
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forall "${cmd}"
