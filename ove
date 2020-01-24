@@ -1713,17 +1713,24 @@ function ove_revtab_init {
 function ove_revtab_parse {
 	local array
 	local line
+	local lineno=0
 
 	[ ! -e "${OVE_PROJECT_DIR}/revtab" ] && return
 
 	ove_revtab_num_repositories=0
 
 	while read line; do
+		let lineno+=1
 		# skip comments and blank lines
 		[ "${line:0:1}" == "#" ] && continue
 		[ "${line}" == "" ] && continue
 
 		array=(${line})
+
+		if [ "${array[1]}" == "" ] || [ "${array[2]}" == "" ] || [ "${array[3]}" == "" ]; then
+			ove_echo_warning_noprefix "${OVE_PROJECT_DIR}/revtab:${lineno} format error"
+			continue
+		fi
 
 		ove_revtab_git_name[${ove_revtab_num_repositories}]=${array[0]}
 		ove_revtab_fetch_url[${ove_revtab_num_repositories}]=${array[1]}
