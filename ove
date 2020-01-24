@@ -2019,6 +2019,7 @@ function ove_update_checksum {
 function ove_revtab_check_one {
 	local co=0
 	local detached=0
+	local m
 	local name
 	local re
 	local rev
@@ -2053,8 +2054,9 @@ function ove_revtab_check_one {
 
 		if [ ${co} -eq 1 ]; then
 			if test -z "$(git -C ${OVE_BASE_DIR}/${name} --no-pager status --porcelain -uno)"; then
-				ove_revtab_checkout ${name} |& sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((50 - ${#name}))}))|g" \
-					-e "2,10s|^|$(printf "%0.s " $(eval echo {1..50}))|g"
+				m=$(xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | wc -L)
+				ove_revtab_checkout ${name} |& sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((${m} - ${#name}))}))|g" \
+					-e "2,10s|^|$(printf "%0.s " $(eval echo {1..${m}}))|g"
 				ove_patch_repositories
 			else
 				ove_echo_yellow_noprefix "${name}: cannot checkout '${rev}' as repo is dirty:"
@@ -2114,9 +2116,11 @@ function ove_revtab_forall {
 function ove_revtab_forall_parallel {
 	(
 	local git
+	local git_basename
 
 	for git in ${OVE_REPO_LIST}; do
 		! [ -d "${git}" ] && continue
+		git_basename=${git/${OVE_BASE_DIR}\/}
 		pushd "${git}" &>/dev/null && eval "$1" &
 	done
 	wait
@@ -2261,6 +2265,7 @@ function ove_revtab_pull_one {
 function ove_revtab_fetch {
 	local co_list
 	local count
+	local m
 
 	if ! ove_revtab_parse; then
 		return 1
@@ -2268,7 +2273,8 @@ function ove_revtab_fetch {
 
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout $*
-		ove_revtab_forsome_parallel 'git -C ${git} fetch --all --tags | sed -e "s|$| for ${i}|g"' $*
+		m=$(xargs -n1 <<<$* | wc -L)
+		ove_revtab_forsome_parallel "git -C \${git} fetch --all --tag | sed -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#i}))}))|g\"" $*
 		return $?
 	fi
 
@@ -2282,7 +2288,8 @@ function ove_revtab_fetch {
 
 	[ "${co_list}" != "" ] && ove_revtab_clone_and_checkout ${co_list}
 
-	ove_revtab_forall_parallel 'git -C ${git} fetch --all --tags | sed -e "s|$| for $(ove_git2shortpath ${git})|g"'
+	m=$(xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | wc -L)
+	ove_revtab_forall_parallel "git -C \${git} fetch --all --tags | sed -e \"s|^|\${git_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#git_basename}))}))|g\""
 	return $?
 }
 
@@ -4438,6 +4445,7 @@ function ove-fetch {
 
 	[ $# -eq 0 ] && ove_patch_repositories
 
+	echo
 	ove-status ${repos}
 }
 
@@ -4462,6 +4470,7 @@ function ove-checkout {
 	local cmd
 	local dirty_repos
 	local git
+	local m
 	local proj
 	local repo
 	local rev
@@ -4504,9 +4513,10 @@ function ove-checkout {
 
 		git -C "${OVE_PROJECT_DIR}" fetch --all
 
+		m=$(xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | wc -L)
 		git -C "${OVE_PROJECT_DIR}" -c advice.detachedHead=false checkout "${rev}" |& \
-			sed -e "1s|^|$(ove_echo_yellow_noprefix ${OVE_PROJECT_NAME})$(printf "%0.s " $(eval echo {1..$((50 - ${#OVE_PROJECT_NAME}))}))|g" \
-			-e "2s|^|$(printf "%0.s " $(eval echo {1..50}))|g"
+			sed -e "1s|^|$(ove_echo_yellow_noprefix ${OVE_PROJECT_NAME})$(printf "%0.s " $(eval echo {1..$((${m} - ${#OVE_PROJECT_NAME}))}))|g" \
+			-e "2s|^|$(printf "%0.s " $(eval echo {1..${m}}))|g"
 		if [ ${PIPESTATUS[0]} -ne 0 ]; then
 			# cleanup
 			if [ "$2" == "autostash" ]; then
