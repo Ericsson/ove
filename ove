@@ -4012,6 +4012,22 @@ function ove_build_pre {
 	return 0
 }
 
+function ove_build_post {
+	local rm
+
+	if [ -d ${OVE_STAGE_DIR} ] && \
+		[ "$(find ${OVE_STAGE_DIR} -maxdepth 1)" == "${OVE_STAGE_DIR}" ]; then
+		rm+="${OVE_STAGE_DIR} "
+	fi
+
+	if [ -d ${OVE_ARCHIVE_DIR} ] && \
+		[ "$(find ${OVE_ARCHIVE_DIR} -maxdepth 1)" == "${OVE_ARCHIVE_DIR}" ]; then
+		rm+="${OVE_ARCHIVE_DIR} "
+	fi
+
+	[ "${rm}" != "" ] && rmdir ${rm}
+}
+
 # buildme:[PROJECT]:build projects from scratch (=bootstrap, configure, build, install)
 function ove-buildme {
 	local b
@@ -4024,6 +4040,8 @@ function ove-buildme {
 	if ! ove_build_pre $*; then
 		return 1
 	fi
+
+	trap ove_build_post EXIT
 
 	if [ $# -eq 1 ]; then
 		deps=$(ove_get_deps_recursive $1)
@@ -4120,6 +4138,8 @@ function ove-buildme-parallel {
 	if ! ove_build_pre $*; then
 		return 1
 	fi
+
+	trap ove_build_post EXIT
 
 	if [ $# -eq 1 ]; then
 		if ! [[ -v ove_projects_name2index[$1] ]]; then
