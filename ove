@@ -5617,11 +5617,13 @@ function ove_add_script_func {
 		htext=$(<${script_dir}/${script}.help)
 		eval "ove-${script}() {
 		local helptext=\"${htext}\"
+		local __scriptname="ove-${script}"
 		\"${script_dir}\"/${script} \$*
 		}"
 	else
 		eval "ove-${script}() {
 		local helptext=\"${script}: :run '${script_dir}/${script}'\"
+		local __scriptname="ove-${script}"
 		\"${script_dir}\"/${script} \$*
 		}"
 	fi
@@ -5630,12 +5632,19 @@ function ove_add_script_func {
 function ove_scripts_init {
 	local array
 	local oldIFS
+	local prev_scripts
 	local repo
 	local script
 	local script_list
 	declare -A -g ove_scripts_name2path
 
 	OVE_SCRIPTS_LIST=
+
+	# unset any ove- functions marked with "__scriptname"
+	prev_scripts=$(set | grep '^    local __scriptname=.*')
+	prev_scripts=${prev_scripts//    local __scriptname=}
+	prev_scripts=${prev_scripts//;}
+	[ "${prev_scripts}" != "" ] && unset -f ${prev_scripts}
 
 	# project scripts
 	if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
