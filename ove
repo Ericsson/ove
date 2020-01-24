@@ -1978,6 +1978,12 @@ function ove_verify_checksums {
 		let reinit+=1
 	fi
 
+	md5=$(ove_dir_fingerprint $(ove_list_scripts_directories))
+	# got updated?
+	if ! [ -z "${OVE_SCRIPTS_MD5+x}" ] && [ "${md5}" != "${OVE_SCRIPTS_MD5}" ]; then
+		let reinit+=1
+	fi
+
 	if [ ${reinit} -gt 0 ]; then
 		if ! ove_reinit; then
 			return 1
@@ -2003,6 +2009,9 @@ function ove_update_checksum {
 		OVE_PROJS_MD5=${md5}
 		export OVE_PROJS_MD5
 	fi
+
+	OVE_SCRIPTS_MD5=$(ove_dir_fingerprint $(xargs -n1 <<<${ove_scripts_name2path[*]} | sort -u))
+	export OVE_SCRIPTS_MD5
 }
 
 # $1: name
@@ -2317,19 +2326,32 @@ function ove_list_projects {
 }
 export -f ove_list_projects
 
-function ove_stage_dir_md5sum_parallel {
+# $*: dir...
+function ove_dir_md5sum_parallel {
 	local f
 
-	for f in $(find ${OVE_STAGE_DIR} -type f); do
-		md5sum ${f} &
+	[ $# -eq 0 ] && return 1
+
+	while [ $# -ne 0 ]; do
+		! [ -d ${1} ] && shift && continue
+		for f in $(find ${1} -type f); do
+			md5sum ${f} &
+		done
+		shift
 	done
 	wait
 }
 
-function ove_stage_dir_fingerprint {
-	[ "${OVE_DRY_RUN}" -eq 1 ] && echo && return
+# $*: dir...
+function ove_dir_fingerprint {
+	[ $# -eq 0 ] && return 1
 
-	ove_stage_dir_md5sum_parallel | \
+	if ! [ -z "${OVE_DRY_RUN+x}" ] && [ "${OVE_DRY_RUN}" -eq 1 ]; then
+		echo
+		return
+	fi
+
+	ove_dir_md5sum_parallel "${@}" | \
 		sort -k 2 | \
 		md5sum | \
 		cut -d' ' -f1
@@ -2375,10 +2397,10 @@ function ove-make {
 				done
 			fi
 
-			fingerprint_a=$(ove_stage_dir_fingerprint)
+			fingerprint_a=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
 			ove_projects_cmd "${proj}" build
 			ove_projects_cmd "${proj}" install
-			fingerprint_b=$(ove_stage_dir_fingerprint)
+			fingerprint_b=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
 
 			# remember if project modified the stage dir
 			if [ "${fingerprint_a}" != "${fingerprint_b}" ]; then
@@ -2403,7 +2425,7 @@ function ove-make {
 
 			# has deps?
 			if [ "${ove_projects_deps[${index}]}" != "" ]; then
-				fingerprint_a=$(ove_stage_dir_fingerprint)
+				fingerprint_a=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
 
 				for dep in ${ove_projects_deps[${index}]}; do
 					# already built? next!
@@ -2416,7 +2438,7 @@ function ove-make {
 					fi
 				done
 
-				fingerprint_b=$(ove_stage_dir_fingerprint)
+				fingerprint_b=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
 
 				# clean the project if OVE_STAGE_DIR was updated
 				if [ "${fingerprint_a}" != "${fingerprint_b}" ]; then
@@ -2633,6 +2655,31 @@ function ove-list-scripts {
 	done
 	[ "${p}" != "" ] && \
 		find -L ${p} -perm -u=x -not -name '*.help' -type f
+}
+
+function ove_list_scripts_directories {
+	local repo
+
+	while true; do
+		# project scripts
+		if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
+			find ${OVE_PROJECT_DIR}/scripts -perm -u=x -not -name '*.help' -type f -printf "%h\n" -quit
+		fi
+
+		# OVE scripts
+		if [ -d "${OVE_DIR}/scripts" ]; then
+			find ${OVE_DIR}/scripts -perm -u=x -not -name '*.help' -type f -printf "%h\n" -quit
+		fi
+
+		# repo scripts
+		for repo in ${OVE_REPO_LIST}; do
+			[ -d "${repo}/.ove/scripts" ] || continue
+			find -L ${repo}/.ove/scripts -perm -u=x -not -name '*.help' -type f -printf "%h\n" -quit &
+		done
+
+		wait
+		break
+	done | LC_ALL="C" sort -u
 }
 
 function ove_echo {
@@ -5920,7 +5967,7 @@ function ove_post_checks {
 		echo
 	fi
 
-	# vaidate revtab revision
+	# validate revtab revision
 	ove_revtab_check
 }
 
