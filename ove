@@ -1198,7 +1198,7 @@ function ove {
 		args="${*:2}"
 		mkdir -p ${OVE_LOG_DIR}/${OVE_SHA}
 		(cd ${OVE_LOG_DIR} && ln -sfn ${OVE_SHA} current)
-		OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/$(date '+%Y%m%d-%H%M%S%N')-ove-${cmd}-$(hostname)-${OVE_PROJECT_NAME}.log"
+		OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/$(date '+%Y%m%d-%H%M%S%N')-ove-${cmd}-${HOSTNAME}-${OVE_PROJECT_NAME}.log"
 
 		if [ -t 1 ]; then
 			script_help=$(2>&1 script --help)
@@ -5281,7 +5281,7 @@ function ove-lastlog {
 		sort -nr | \
 		cut -d: -f2 | \
 		grep -v ${FUNCNAME[0]} | \
-		sed "s/\(^.*-ove-\(.*\)-$(hostname)-\(.*\).log\)/\3@\2@\1/g" | \
+		sed "s/\(^.*-ove-\(.*\)-${HOSTNAME}-\(.*\).log\)/\3@\2@\1/g" | \
 		column -t -s@
 }
 
@@ -6135,13 +6135,6 @@ function ove_command_to_package {
 		else
 			package="git"
 		fi
-	# hostname
-	elif [ "$1" == "hostname" ]; then
-		if [[ ${OVE_OS} == *"Alpine"* ]]; then
-			package="net-tools"
-		else
-			package="hostname"
-		fi
 	# locate
 	elif [ "$1" == "locate" ]; then
 		package="mlocate"
@@ -6197,7 +6190,6 @@ function ove_deps {
 	deps+=('file')
 	deps+=('envsubst')
 	deps+=('git')
-	deps+=('hostname')
 	deps+=('pgrep')
 	deps+=('script')
 	deps+=('tree')

@@ -191,7 +191,6 @@ Doing this, OVE will check that you have the required programs installed on your
 * file
 * envsubst
 * git
-* hostname
 * pgrep
 * script
 * tree
