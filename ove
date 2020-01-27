@@ -2055,8 +2055,8 @@ function ove_revtab_check_one {
 		if [ ${co} -eq 1 ]; then
 			if test -z "$(git -C ${OVE_BASE_DIR}/${name} --no-pager status --porcelain -uno)"; then
 				m=$(xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | wc -L)
-				ove_revtab_checkout ${name} |& sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((${m} - ${#name}))}))|g" \
-					-e "2,10s|^|$(printf "%0.s " $(eval echo {1..${m}}))|g"
+				ove_revtab_checkout ${name} |& sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#name}))}))|g" \
+					-e "2,10s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
 				ove_patch_repositories
 			else
 				ove_echo_yellow_noprefix "${name}: cannot checkout '${rev}' as repo is dirty:"
@@ -4535,8 +4535,8 @@ function ove-checkout {
 
 		m=$(xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | wc -L)
 		git -C "${OVE_PROJECT_DIR}" -c advice.detachedHead=false checkout "${rev}" |& \
-			sed -e "1s|^|$(ove_echo_yellow_noprefix ${OVE_PROJECT_NAME})$(printf "%0.s " $(eval echo {1..$((${m} - ${#OVE_PROJECT_NAME}))}))|g" \
-			-e "2s|^|$(printf "%0.s " $(eval echo {1..${m}}))|g"
+			sed -e "1s|^|$(ove_echo_yellow_noprefix ${OVE_PROJECT_NAME})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#OVE_PROJECT_NAME}))}))|g" \
+			-e "2s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
 		if [ ${PIPESTATUS[0]} -ne 0 ]; then
 			# cleanup
 			if [ "$2" == "autostash" ]; then
