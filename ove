@@ -2030,7 +2030,7 @@ function ove_revtab_check_one {
 	name=$1
 	rev=$2
 
-	if [ -d "${OVE_BASE_DIR}/${name}" ]; then
+	if [ -d "${OVE_BASE_DIR}/${name}/.git" ]; then
 		sha_a=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
 		sha_b=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${rev} --)
 		[ $? -ne 0 ] &&  b=""
@@ -5940,6 +5940,15 @@ function ove_init {
 	return 0
 }
 
+function ove_corrupt_repos {
+	local git
+
+	for git in ${OVE_REPO_LIST}; do
+		# repos without a .git directory
+		[ -d ${git}/.git ] || echo -n "${git/${OVE_BASE_DIR}\/} "
+	done
+}
+
 function ove_post_checks {
 	local corrupt_repos
 	local doublets
@@ -5993,8 +6002,8 @@ function ove_post_checks {
 		done
 	fi
 
-	# check for repos without a '.git' directory
-	corrupt_repos=$(ove_revtab_forall_parallel '[ -d .git ] || ove_git2shortpath $(pwd)' | xargs)
+	# check for corrupt repos
+	corrupt_repos="$(ove_corrupt_repos)"
 	if [ "${corrupt_repos}" != "" ]; then
 		echo
 		ove_echo_error_noprefix "corrupt repo(s): ${corrupt_repos}"
