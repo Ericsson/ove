@@ -43,6 +43,7 @@
 | forowel-parallel         | COMMAND                                           | run 'COMMAND' in parallel for all OVE workspaces on this host                                                         |
 | fzf                      | [loop]                                            | OVE fzf [duckduckgo.com/?q=fzf]                                                                                       |
 | generate-doc             |                                                   | generate OVE documentation (e.g. ${OVE_DIR}/ove-cmd-list.md)                                                          |
+| gitmodules2revtab        |                                                   | import git submodules                                                                                                 |
 | grep                     | PATTERN                                           | grep OVE workspace                                                                                                    |
 | heads2revtab             | [GIT...]                                          | update '${OVE_PROJECT_DIR}/revtab' with current SHA-1                                                                 |
 | help                     | [PATTERN]                                         | OVE help                                                                                                              |

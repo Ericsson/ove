@@ -4437,6 +4437,39 @@ function ove_patch_repositories {
 		git -C ${git} apply ${OVE_PROJECT_DIR}/patches/${git_basename}/*.patch &> /dev/null || :'
 }
 
+# gitmodules2revtab: :import git submodules
+function ove-gitmodules2revtab {
+	local repo
+	local repos_with_submodules
+	local sha
+	local submodule
+
+	for repo in ${OVE_REPO_LIST}; do
+		[ -s ${repo}/.gitmodules ] && repos_with_submodules+="$repo "
+	done
+
+	[ "${repos_with_submodules}" == "" ] && return
+
+	for repo in ${repos_with_submodules}; do
+		for submodule in $(git -C ${repo} submodule--helper list | awk '{print $4}'); do
+			url=$(git -C ${repo} config --file .gitmodules --list | \
+				grep "^submodule.${submodule}.url=" | \
+				cut -d= -f2)
+			[ "${url}" == "" ] && continue
+
+			sha=$(git -C ${repo} submodule--helper list | \
+				awk '{print $4,$2}' | \
+				grep "^${submodule} " | awk '{print $2}')
+			[ "${sha}" == "" ] && continue
+
+			echo "${repo//${OVE_BASE_DIR}\/}/${submodule} ${url} ${url} ${sha}"
+		done
+	done >> ${OVE_PROJECT_DIR}/revtab
+
+	# sort and prettify
+	LC_ALL="C" sort -u -o ${OVE_PROJECT_DIR}/revtab <(column -t ${OVE_PROJECT_DIR}/revtab)
+}
+
 # do:DIR COMMAND:run a command within DIR relative to ${OVE_BASE_DIR}
 function ove-do {
 	local cmd
