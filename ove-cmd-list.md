@@ -33,7 +33,7 @@
 | do                       | DIR COMMAND                                       | run a command within DIR relative to ${OVE_BASE_DIR}                                                                  |
 | domains                  |                                                   | list email domain summary for all git repositories                                                                    |
 | dry-run                  | [0\|1]                                             | toggle or set OVE_DRY_RUN                                                                                             |
-| emacs                    | [PATTERN]                                         | open modified files in emacs                                                                                          |
+| emacs                    | [PATTERN\|FILE...]                                 | open modified files in emacs                                                                                          |
 | env                      | [PATTERN]                                         | show OVE env                                                                                                          |
 | export                   | [PROJECT...]                                      | export project(s)                                                                                                     |
 | fetch                    | [GIT...]                                          | git fetch --all for all/specified repositories, ends with ove status                                                  |
@@ -97,6 +97,6 @@
 | unittest                 | [TEST...]                                         | run all/specific unit tests                                                                                           |
 | unsource                 |                                                   | clean up all OVE vars/funcs from this shell                                                                           |
 | version                  |                                                   | print OVE version                                                                                                     |
-| vi                       | [PATTERN]                                         | open modified files in vi                                                                                             |
+| vi                       | [PATTERN\|FILE...]                                 | open modified files in vi                                                                                             |
 | wdiff                    | [GIT...]                                          | git diff (word diff) for all/specified git repositories                                                               |
 | what-is                  | DIRECTORY...                                      | classify files using 'file' within a directory                                                                        |

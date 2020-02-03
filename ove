@@ -4908,6 +4908,7 @@ function ove-list-committed-files {
 }
 
 function ove_edit {
+	declare -A f_hash
 	local editor
 	local f
 	local files
@@ -4931,30 +4932,41 @@ function ove_edit {
 		sort -r | \
 		cut -d: -f2)
 
-	if [ $# -eq 1 ]; then
-		files_by_epoch=$(printf "${files_by_epoch}" | \
-			sed -e "s|${OVE_BASE_DIR}/||g" | \
-			grep -i $1 | \
-			sed -e "s|^|${OVE_BASE_DIR}/|g")
+	if [ $# -eq 0 ]; then
+		files="${files_by_epoch}"
+	else
+		f=
+		while [ $# -ne 0 ]; do
+			test "${f_hash["${1}"]+isset}" && shift && continue
+			f_hash["${1}"]=1
+			f+=$(printf "${files_by_epoch}" | \
+				sed -e "s|${OVE_BASE_DIR}/||g" | \
+				grep -i $1 | \
+				sed -e "s|^|${OVE_BASE_DIR}/|g")
+			f+=" "
+			shift
+		done
+
+		files="${f}"
 	fi
 
-	if [ "${files_by_epoch}" != "" ]; then
+	if [ "${files}" != "" ]; then
 		if [ "${editor}" == "vi" ]; then
-			vi -o ${files_by_epoch} -c "wincmd H"
+			vi -o ${files} -c "wincmd H"
 		elif [ "${editor}" == "emacs" ]; then
-			emacs ${files_by_epoch}
+			emacs ${files}
 		else
 			ove_echo_stderr_noprefix "unknown editor"
 		fi
 	fi
 }
 
-# emacs:[PATTERN]:open modified files in emacs
+# emacs:[PATTERN|FILE...]:open modified files in emacs
 function ove-emacs {
 	ove_edit emacs $*
 }
 
-# vi:[PATTERN]:open modified files in vi
+# vi:[PATTERN|FILE...]:open modified files in vi
 function ove-vi {
 	ove_edit vi $*
 }
@@ -5493,7 +5505,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "vi" ] ||
 		[ "${subcommand}" == "emacs" ]; then
-		if [ ${size} -eq 2 ] && [ "$(ove-list-modified-files)" != "" ]; then
+		if [ ${size} -ge 2 ] && [ "$(ove-list-modified-files)" != "" ]; then
 			wordlist=$(ove-list-modified-files | \
 				xargs -n1 basename)
 		else
