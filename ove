@@ -1896,6 +1896,9 @@ function ove_revtab_status_parse {
 	tense="$1"
 	shift
 
+	# refresh status
+	ove-status > /dev/null
+
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
 
