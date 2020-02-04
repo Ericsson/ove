@@ -1945,6 +1945,17 @@ function ove_revtab_list {
 		column -t
 }
 
+function ove_repos_fetched {
+	local f=0
+	local git
+
+	for git in ${OVE_REPO_LIST}; do
+		[ -d ${git} ] && let f+=1
+	done
+
+	echo ${f}
+}
+
 function ove_verify_checksums {
 	local md5
 	local reinit=0
@@ -1987,6 +1998,10 @@ function ove_verify_checksums {
 		let reinit+=1
 	fi
 
+	if [ $(ove_repos_fetched) -ne ${OVE_REPOS_FETCHED} ]; then
+		let reinit+=1
+	fi
+
 	if [ ${reinit} -gt 0 ]; then
 		if ! ove_reinit; then
 			return 1
@@ -2015,6 +2030,9 @@ function ove_update_checksum {
 
 	OVE_SCRIPTS_MD5=$(ove_dir_fingerprint $(xargs -n1 <<<${ove_scripts_name2path[*]} | sort -u))
 	export OVE_SCRIPTS_MD5
+
+	OVE_REPOS_FETCHED=$(ove_repos_fetched)
+	export OVE_REPOS_FETCHED
 }
 
 # $1: name
