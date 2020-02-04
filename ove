@@ -2040,7 +2040,7 @@ function ove_revtab_check_one {
 			co=1
 		else
 			re=\\b${rev}\\b
-			git -C "${OVE_BASE_DIR}/${name}" rev-parse -q "@{u}" &> /dev/null || detached=1
+			git -C "${OVE_BASE_DIR}/${name}" symbolic-ref -q HEAD > /dev/null || detached=1
 			[[ "$(ove_list_branches ${OVE_BASE_DIR}/${name} | xargs)" =~ ${re} ]] && rev_is_branch=1
 
 			# detached and $rev is a branch => checkout
