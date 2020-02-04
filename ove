@@ -5992,6 +5992,8 @@ function ove_corrupt_repos {
 	local git
 
 	for git in ${OVE_REPO_LIST}; do
+		# ignore repos not yet fetched
+		[ -d ${git} ] || continue
 		# repos without a .git directory
 		[ -d ${git}/.git ] || echo -n "${git/${OVE_BASE_DIR}\/} "
 	done
