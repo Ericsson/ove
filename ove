@@ -6107,7 +6107,11 @@ function ove_buildable_projects {
 			fi
 		done
 	done
-	[ "${projs_not_buildable}" == "" ] && return
+
+	if [ "${projs_not_buildable}" == "" ]; then
+		unset OVE_PROJECT_LIST_BUILDABLE
+		return
+	fi
 
 	# remove none buildable projects and its dependencies
 	projs_and_deps_not_buildable="${projs_not_buildable}"
