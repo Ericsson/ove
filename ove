@@ -1582,7 +1582,11 @@ function ove_projects_parse {
 		return 1
 	fi
 
-	ove_buildable_projects
+	if [ $(ove_repos_fetched) -eq $(wc -w <<<$OVE_REPO_LIST) ]; then
+		unset OVE_PROJECT_LIST_BUILDABLE
+	else
+		ove_buildable_projects
+	fi
 
 	OVE_BUILD_ORDER="$(ove-build-order)"
 }
