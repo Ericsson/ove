@@ -5130,9 +5130,21 @@ function ove-mrproper {
 	fi
 }
 
-# !: :view last command in pager (=${OVE_PAGER})
+# !:[PATTERN]:view last command output in pager (=${OVE_PAGER}) or print lines matching PATTERN
 function ove-! {
-	[ -f "${OVE_LAST_COMMAND}" ] && ${OVE_PAGER} ${OVE_LAST_COMMAND}
+	[ -f "${OVE_LAST_COMMAND}" ] || return
+
+	if [ $# -eq 0 ]; then
+		${OVE_PAGER} ${OVE_LAST_COMMAND}
+		return $?
+	fi
+
+	if command -v ag > /dev/null; then
+		ag -H -i "$@" ${OVE_LAST_COMMAND}
+	else
+		echo ${OVE_LAST_COMMAND}
+		grep -i "$@" ${OVE_LAST_COMMAND}
+	fi
 }
 
 # describe:[GIT...]:git describe+log+status combo for all/specified git repositories

@@ -1,6 +1,6 @@
 | Command                  | Arguments                                         | Description                                                                                                           |
 |-|-|-|
-| !                        |                                                   | view last command in pager (=${OVE_PAGER})                                                                            |
+| !                        | [PATTERN]                                         | view last command output in pager (=${OVE_PAGER}) or print lines matching PATTERN                                     |
 | add                      | [GIT...]                                          | git add -p for all/specified repositories                                                                             |
 | ag                       | PATTERN                                           | search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]                                |
 | ahead                    | [GIT...]                                          | list local commits not yet published for all/specified repositories                                                   |
