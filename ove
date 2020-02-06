@@ -2002,7 +2002,7 @@ function ove_verify_checksums {
 		let reinit+=1
 	fi
 
-	if [ $(ove_repos_fetched) -ne ${OVE_REPOS_FETCHED} ]; then
+	if [ "${OVE_REPOS_FETCHED}" != "" ] && [ $(ove_repos_fetched) -ne ${OVE_REPOS_FETCHED} ]; then
 		let reinit+=1
 	fi
 
