@@ -6112,6 +6112,7 @@ function ove_buildable_projects {
 	local projs_not_buildable
 	local q
 	local re
+	declare -A projs_hash
 
 	# remove projects with paths within git repos not yet fetched
 	for proj in ${OVE_PROJECT_LIST}; do
@@ -6119,6 +6120,8 @@ function ove_buildable_projects {
 		proj_path="${OVE_BASE_DIR}/${ove_projects_path[${index}]}"
 		for q in ${OVE_REPO_LIST}; do
 			if [[ ${proj_path} == *"${q}"* ]] && ! [ -d "${q}" ]; then
+				test "${projs_hash["${proj}"]+isset}" && continue
+				projs_hash["${proj}"]=1
 				projs_not_buildable+="${proj} "
 			fi
 		done
