@@ -5635,6 +5635,14 @@ function ove_bash_complete {
 	fi
 }
 
+function ove_get_built_ins {
+	grep -o '^function ove-.* ' ${OVE_SELF} | \
+		sed -e ':a;N;$!ba;s/function ove-//g' | \
+		sort | \
+		tr '\n' ' ' | \
+		xargs "${OVE_ECHO}"
+}
+
 function ove_update_tab_complete {
 	local array
 	local cmd
@@ -5650,11 +5658,7 @@ function ove_update_tab_complete {
 
 	export OVE_BUILT_INS_WITHOUT_ARGS
 
-	OVE_BUILT_INS=$(grep -o '^function ove-.* ' ${OVE_SELF} | \
-		sed -e ':a;N;$!ba;s/function ove-//g' | \
-		sort | \
-		tr '\n' ' ' | \
-		xargs "${OVE_ECHO}")
+	OVE_BUILT_INS=$(ove_get_built_ins)
 
 	# project commands
 	OVE_ALL_COMMANDS=${OVE_PROJECT_COMMANDS}
@@ -6668,6 +6672,9 @@ function ove-generate-doc {
 		column -s: -t | \
 		sed -e 's/\@/\\|/g' \
 		> ${OVE_DIR}/ove-cmd-list.md
+
+	pwd
+	sed -i "s/^ove_built_ins=.*/ove_built_ins=\"$(ove_get_built_ins)\"/g" ${OVE_DIR}/ove.bash
 
 	return 0
 }
