@@ -791,7 +791,7 @@ function ove-strace-execve-time {
 	OVE_LOGLEVEL=4 ove_analyze_strace_execve_timing $1
 }
 
-# strace-execve-connect:DIR:run strace connect time analysis on DIR
+# strace-connect:DIR:run strace connect time analysis on DIR
 function ove-strace-connect {
 	if [ $# -ne 1 ]; then
 		ove-help "^${FUNCNAME/ove-/} "
@@ -6673,7 +6673,6 @@ function ove-generate-doc {
 		sed -e 's/\@/\\|/g' \
 		> ${OVE_DIR}/ove-cmd-list.md
 
-	pwd
 	sed -i "s/^ove_built_ins=.*/ove_built_ins=\"$(ove_get_built_ins)\"/g" ${OVE_DIR}/ove.bash
 
 	return 0

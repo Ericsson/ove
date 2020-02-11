@@ -87,7 +87,7 @@
 | show-configuration       |                                                   | show current build configuration for each project                                                                     |
 | stash                    | [drop\|list\|pop\|show]                              | git stash [drop\|list\|pop\|show] for all git repositories                                                               |
 | status                   | [GIT...]                                          | git status -zbs -uno for all/specified repositories                                                                   |
-| strace-execve-connect    | DIR                                               | run strace connect time analysis on DIR                                                                               |
+| strace-connect           | DIR                                               | run strace connect time analysis on DIR                                                                               |
 | strace-execve-time       | DIR                                               | run strace execve time analysis on DIR                                                                                |
 | strace-execve-timeline   | DIR                                               | run strace execve timeline analysis on DIR                                                                            |
 | strace-graph             | DIR                                               | run strace graph analysis on DIR                                                                                      |
