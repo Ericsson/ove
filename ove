@@ -6078,6 +6078,11 @@ function ove_post_checks {
 		fi
 	fi
 
+	# keep ${HOME}/.ove.bash up-to-date
+	if [ -e "${HOME}/.ove.bash" ] && ! diff -q "${OVE_DIR}/ove.bash" "${HOME}/.ove.bash"; then
+		cp -b -v "${OVE_DIR}/ove.bash" "${HOME}/.ove.bash"
+	fi
+
 	# check for script doublets
 	doublets=$(for script in $(ove-list-scripts); do echo ${script##*/}; done | \
 		sort | \
