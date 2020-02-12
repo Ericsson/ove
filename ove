@@ -4342,6 +4342,19 @@ function ove-news {
 	ove_revtab_status_parse behind $* | tee ${OVE_PROJECT_STATE_DIR}/revtab-news
 }
 
+# show-news:[GIT...]:run 'ove show' on upstream changes for all/specified repositories
+function ove-show-news {
+	local sha_list
+
+	# refresh news
+	ove-news $* > /dev/null
+
+	sha_list="$(grep -o '^[a-f0-9]\+' ${OVE_PROJECT_STATE_DIR}/revtab-news | tac)"
+	[ "${sha_list}" == "" ] && return
+
+	ove-show ${sha_list}
+}
+
 # ahead:[GIT...]:list local commits not yet published for all/specified repositories
 function ove-ahead {
 	ove_revtab_status_parse ahead $* | tee ${OVE_PROJECT_STATE_DIR}/revtab-ahead
@@ -5568,6 +5581,7 @@ function ove_bash_complete {
 			wordlist=$(ove_revtab_list_basename)
 		fi
 	elif [ "${subcommand}" == "news" ] ||
+		[ "${subcommand}" == "show-news" ] ||
 		[ "${subcommand}" == "pull" ]; then
 		if [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && grep -q 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status; then
 			wordlist=$(grep 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status | \
