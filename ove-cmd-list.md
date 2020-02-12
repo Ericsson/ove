@@ -84,6 +84,7 @@
 | setup                    |                                                   | print how to set this project up                                                                                      |
 | shortlog-project         | <rev> <rev>                                       | git shortlog the project '${OVE_PROJECT_NAME}'                                                                        |
 | show                     | [revision...]                                     | ove list-heads or search for 'revision' within all git repositories. If found run 'git show SHA-1\|TAG'                |
+| show-ahead               | [GIT...]                                          | run 'ove show' on local commits not yet published for all/specified repositories                                      |
 | show-configuration       |                                                   | show current build configuration for each project                                                                     |
 | show-news                | [GIT...]                                          | run 'ove show' on upstream changes for all/specified repositories                                                     |
 | stash                    | [drop\|list\|pop\|show]                              | git stash [drop\|list\|pop\|show] for all git repositories                                                               |

@@ -4368,6 +4368,19 @@ function ove-ahead {
 	ove_revtab_status_parse ahead $* | tee ${OVE_PROJECT_STATE_DIR}/revtab-ahead
 }
 
+# show-ahead:[GIT...]:run 'ove show' on local commits not yet published for all/specified repositories
+function ove-show-ahead {
+	local sha_list
+
+	# refresh ahead
+	ove-ahead $* > /dev/null
+
+	sha_list="$(grep -o '^[a-f0-9]\+' ${OVE_PROJECT_STATE_DIR}/revtab-ahead | tac)"
+	[ "${sha_list}" == "" ] && return
+
+	ove-show ${sha_list}
+}
+
 # pull:[GIT...]:git pull --rebase for all/specified repositories
 function ove-pull {
 	local git
@@ -5600,7 +5613,8 @@ function ove_bash_complete {
 			wordlist=$(ove_revtab_list_basename)
 		fi
 	elif [ "${subcommand}" == "ahead" ] ||
-		[ "${subcommand}" == "pull" ]; then
+		[ "${subcommand}" == "show-ahead" ]; then
+		subcommand=${subcommand##show-}
 		if [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && grep -q "${subcommand}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status; then
 			wordlist=$(grep "${subcommand}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status | \
 				cut -d: -f1 | \
