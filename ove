@@ -3650,6 +3650,14 @@ function ove-wdiff {
 	ove-diff $*
 }
 
+# wdiff-cached:[GIT...]:git diff --cached (word diff) for all/specified git repositories
+function ove-wdiff-cached {
+	local OVE_DIFF_OPTIONS
+
+	OVE_DIFF_OPTIONS="--color-words=."
+	ove-diff-cached $*
+}
+
 # diff-cached:[GIT...]:git diff --cached for all/specified repositories
 function ove-diff-cached {
 	local cmd
@@ -3657,7 +3665,7 @@ function ove-diff-cached {
 
 	cmd="git --no-pager diff-index --quiet --cached HEAD -- || \
 		(ove_echo_yellow_noprefix \${PWD} && \
-		git --no-pager diff --color=always --cached)"
+		git --no-pager diff --color=always --cached ${OVE_DIFF_OPTIONS})"
 
 	if [ $# -eq 0 ]; then
 		for git in $(ove_dirty_repos); do
@@ -5576,7 +5584,8 @@ function ove_bash_complete {
 		[ "${subcommand}" == "readme" ] ||
 		[ "${subcommand}" == "remote" ] ||
 		[ "${subcommand}" == "reset" ] ||
-		[ "${subcommand}" == "wdiff" ]; then
+		[ "${subcommand}" == "wdiff" ] ||
+		[ "${subcommand}" == "wdiff-cached" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
 		fi

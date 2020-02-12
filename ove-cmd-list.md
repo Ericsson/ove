@@ -100,4 +100,5 @@
 | version                  |                                                   | print OVE version                                                                                                     |
 | vi                       | [PATTERN\|FILE...]                                 | open modified files in vi                                                                                             |
 | wdiff                    | [GIT...]                                          | git diff (word diff) for all/specified git repositories                                                               |
+| wdiff-cached             | [GIT...]                                          | git diff --cached (word diff) for all/specified git repositories                                                      |
 | what-is                  | DIRECTORY...                                      | classify files using 'file' within a directory                                                                        |
