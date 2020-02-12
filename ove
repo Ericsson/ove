@@ -2068,10 +2068,10 @@ function ove_revtab_check_one {
 			git -C "${OVE_BASE_DIR}/${name}" symbolic-ref -q HEAD > /dev/null || detached=1
 			[[ "$(ove_list_branches ${OVE_BASE_DIR}/${name} | xargs)" =~ ${re} ]] && rev_is_branch=1
 
-			# detached and $rev is a branch => checkout
+			# detached and rev is a branch => checkout
 			if [ ${detached} -eq 1 ] && [ ${rev_is_branch} -eq 1 ]; then
 				co=1
-			# not detached and $rev is not a branch => checkout
+			# not detached and rev is not a branch => checkout
 			elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 0 ]; then
 				co=1
 			fi
@@ -4470,7 +4470,7 @@ function ove-gitmodules2revtab {
 	local submodule
 
 	for repo in ${OVE_REPO_LIST}; do
-		[ -s ${repo}/.gitmodules ] && repos_with_submodules+="$repo "
+		[ -s ${repo}/.gitmodules ] && repos_with_submodules+="${repo} "
 	done
 
 	[ "${repos_with_submodules}" == "" ] && return
@@ -5257,9 +5257,8 @@ function ove-show {
 		# remove dirty tags
 		SHA=${SHA%-dirty}
 		ove_revtab_forall 'git --no-pager show '"${SHA}"' -- &> /dev/null && \
-			ove_echo_yellow_noprefix ${PWD} && \
-			git show --color=always '"${SHA}"' -- && \
-			echo'
+			clear && \
+			GIT_PAGER="less -Ps${git_basename}" git show --color=always '"${SHA}"' --'
 	done
 }
 
