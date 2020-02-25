@@ -134,7 +134,7 @@ function ove_welcome_msg {
 	script_ver=$(script --version | awk '{print $NF}')
 	if [[ ${script_ver} =~ ^2.3[12] ]]; then
 		echo
-		echo "NOTE: due to a bug in $(which script) 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any ove command."
+		echo "NOTE: due to a bug in $(which script) 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any ove command. Upgrade package: '$(ove_command_to_package script)'."
 	fi
 
 	echo
