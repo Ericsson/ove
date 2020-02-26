@@ -6755,8 +6755,8 @@ function ove-generate-doc {
 		LC_ALL="C" sort)
 
 	printf "${header}\n|-|-|-|\n${sorted}\n" | \
-		column -s: -t | \
-		sed -e 's/\@/\\|/g' \
+		sed -e 's/\@/\\|/g' | \
+		column -s: -t \
 		> ${OVE_DIR}/ove-cmd-list.md
 
 	sed -i "s/^ove_built_ins=.*/ove_built_ins=\"$(ove_get_built_ins)\"/g" ${OVE_DIR}/ove.bash
