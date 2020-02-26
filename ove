@@ -3495,17 +3495,55 @@ function ove-switch {
 	fi
 }
 
-# branch:[GIT...]:git branch -v for all/specified git repositories
+# branch:[GIT...]|[GIT... NAME]:list branch(es) OR create-and-checkout 'NAME' branch for 'GIT...' and update '${OVE_PROJECT_DIR}/revtab' accordingly
 function ove-branch {
+	local a
+	local args
+	local branch_name
 	local cmd
+	local index
+	local r
+	local repos
 
-	cmd='ove_echo_yellow_noprefix ${git_basename} && git --no-pager branch -vv; echo'
+	if [ $# -lt 2 ]; then
+		cmd='ove_echo_yellow_noprefix ${git_basename} && git --no-pager branch -vv; echo'
+		if [ $# -eq 0 ]; then
+		        ove_revtab_forall "${cmd}"
+		else
+		        ove_revtab_forsome "${cmd}" "$*"
+		fi
 
-	if [ $# -eq 0 ]; then
-		ove_revtab_forall "${cmd}"
-	else
-		ove_revtab_forsome "${cmd}" "$*"
+		return 0
 	fi
+
+	a=($@)
+	# all but last arg
+	args=${a[@]:0:${#a[@]}-1}
+	branch_name=${a[@]: -1}
+	repos=$(ove_validate_repo_list $args)
+	if [ "${repos}" == "" ]; then
+		echo "error: repo(s) '$args' is not valid repo(s)"
+		return 1
+	fi
+
+	for r in ${repos}; do
+		if ! [ -d "${OVE_BASE_DIR}/${r}" ]; then
+			echo "error: repo '${r}' is not yet fetched"
+			continue
+		fi
+
+		# checkout branch
+		if ! git -C "${OVE_BASE_DIR}/${r}" checkout -b ${branch_name} |& sed "s|^|${r}: |g"; then
+			continue
+		fi
+
+		[ -e "${OVE_PROJECT_DIR}/revtab" ] || continue
+		[ "${OVE_PROJECT_NAME}" == "${r}" ] && continue
+
+		# update revtab
+		index=${ove_revtab_name2index[${r}]}
+		sed -i "s/^\(${r} .*\)${ove_revtab_rev[${index}]}/\1${branch_name}/g" "${OVE_PROJECT_DIR}/revtab"
+	done
 }
 
 # remote:[GIT...]:git remote -v for all/specified git repositories
