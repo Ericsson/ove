@@ -2042,6 +2042,7 @@ function ove_update_checksum {
 # $1: name
 # $2: rev
 function ove_revtab_check_one {
+	local branch_name
 	local co=0
 	local detached=0
 	local m
@@ -2074,6 +2075,12 @@ function ove_revtab_check_one {
 			# not detached and rev is not a branch => checkout
 			elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 0 ]; then
 				co=1
+			# switched branch?
+			elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 1 ]; then
+				branch_name=$(git -C ${OVE_BASE_DIR}/${name} rev-parse --abbrev-ref HEAD)
+				if [ "${branch_name}" != "${rev}" ]; then
+					co=1
+				fi
 			fi
 		fi
 
