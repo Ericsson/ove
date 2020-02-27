@@ -1488,6 +1488,11 @@ function ove_projects_parse {
 				return 1
 			fi
 
+			# common .pre
+			if [ -e \${OVE_PROJECT_DIR}/projects/common/${m}.pre ]; then
+				source \${OVE_PROJECT_DIR}/projects/common/${m}.pre
+			fi
+
 			if [ \$# -eq 0 ]; then
 				count=0
 				while ((count < ove_number_of_projects)); do
@@ -1504,6 +1509,10 @@ function ove_projects_parse {
 				done
 			fi
 
+			# common .post
+			if [ -e \${OVE_PROJECT_DIR}/projects/common/${m}.post ]; then
+				source \${OVE_PROJECT_DIR}/projects/common/${m}.post
+			fi
 		}"
 	done
 
@@ -1516,6 +1525,11 @@ function ove_projects_parse {
 
 			if ! ove_build_pre \$*; then
 				return 1
+			fi
+
+			# common .pre
+			if [ -e \${OVE_PROJECT_DIR}/projects/common/${m}.pre ]; then
+				source \${OVE_PROJECT_DIR}/projects/common/${m}.pre
 			fi
 
 			if [ \$# -eq 0 ]; then
@@ -1539,6 +1553,11 @@ function ove_projects_parse {
 			fi
 
 			wait
+
+			# common .post
+			if [ -e \${OVE_PROJECT_DIR}/projects/common/${m}.post ]; then
+				source \${OVE_PROJECT_DIR}/projects/common/${m}.post
+			fi
 		}"
 	done
 
