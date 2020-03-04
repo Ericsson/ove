@@ -6565,8 +6565,8 @@ function ove-replicate {
 		echo $ ssh ${host};
 		echo $ cd ${d}; cd ${d};
 		echo $ '${s}'; eval ${s};
-		cd *;
-		echo $ pwd; pwd;
+		cd \$(find \${PWD} -maxdepth 1 -mindepth 1 -type d);
+		echo $ pwd; echo \${PWD};
 		echo $ source ove; source ove;
 		ove_init;
 		echo $ ove fetch; ove-fetch;
