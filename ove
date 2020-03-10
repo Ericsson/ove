@@ -4445,6 +4445,64 @@ function ove-show-ahead {
 	ove-show ${sha_list}
 }
 
+# format-patch: :create a bz2 archive for all local commits not yet published
+function ove-format-patch {
+	local d
+	local file
+
+	d="${OVE_PROJECT_TMP_DIR}/format-patch"
+	mkdir -p ${d}
+	find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
+
+	ove-ahead | \
+		sed -r \
+		-e "s/\x1b\[1;3[1,3]m//g" \
+		-e "s/\x1b\[[0-9]+m//g" \
+		-e "s/\x1b\[m//g" | \
+		grep --color=never ': [0-9]\+ new commit' | \
+		while IFS=' ' read -r repo n foo bar; do
+			repo=${repo/:/}
+			mkdir -p ${d}/${repo}
+			git -C ${OVE_BASE_DIR}/${repo} format-patch -q -${n} -o ${d}/${repo}
+		done
+
+	[ $(find ${d} -type f | wc -l) -eq 0 ] && return || tree -a "${d}"
+
+	echo
+	file="${PWD}/${OVE_PROJECT_NAME}-patches-$(date '+%Y%m%d-%H%M').tar.bz2"
+	tar -C "${d}" -cjf "${file}" .
+	ls -lh "${file}"
+}
+
+# am:file:apply a bz2 archive file created with 'format-patch'
+function ove-am {
+	local d
+	local r
+	local repos
+
+	[ $# -eq 1 ] || return 1
+	[ -e $1 ] || return 2
+
+	d="${OVE_PROJECT_TMP_DIR}/am"
+	mkdir -p ${d}
+	find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
+
+	# unpack
+	tar -C "${d}" -xf "$1" || return 3
+
+	repos=$(find ${d} -type f -print0 | xargs -0 dirname)
+	[ "${repos}" == "" ] && return 4
+	for r in ${repos}; do
+		r=${r/${d}\/}
+
+		ove_echo_yellow_noprefix ${r}
+		# apply patch(es)
+		if ! git -C ${OVE_BASE_DIR}/${r} am ${d}/${r}/*; then
+			git -C ${OVE_BASE_DIR}/${r} am --abort
+		fi
+	done
+}
+
 # pull:[GIT...]:git pull --rebase for all/specified repositories
 function ove-pull {
 	local git
