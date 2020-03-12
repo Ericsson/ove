@@ -80,6 +80,7 @@
 | remote-check             |                                                       | sanity check that all remotes are online                                                                               |
 | replicate                | HOST                                                  | replicate OVE workspace on HOST                                                                                        |
 | reset                    | [GIT...]                                              | git reset -p for all/specified repositories                                                                            |
+| reset-ahead              |                                                       | git reset --hard HEAD~N where N is #commits ahead for ALL repositories                                                 |
 | revtab-diff              | <rev> <rev>                                           | print changes between two '${OVE_PROJECT_NAME}' revisions                                                              |
 | run                      | \|TIMEOUT COMMAND                                     | run one OVE command in terminal\|tmux                                                                                  |
 | select-configuration     | [PATTERN\|default]                                    | select build configuration for each project                                                                            |
