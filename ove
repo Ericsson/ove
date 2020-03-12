@@ -4490,7 +4490,7 @@ function ove-am {
 	# unpack
 	tar -C "${d}" -xf "$1" || return 3
 
-	repos=$(find ${d} -type f -print0 | xargs -0 dirname)
+	repos=$(find ${d} -type f -print0 | xargs -0 dirname | sort -u)
 	[ "${repos}" == "" ] && return 4
 	for r in ${repos}; do
 		r=${r/${d}\/}
