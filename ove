@@ -6493,20 +6493,24 @@ function ove_deps {
 # $*: list of packages
 # returns a list of packages NOT installed
 function ove_packages_not_installed {
+	local p_sort
+
 	[ $# -eq 0 ] && return
 
+	p_sort=$(xargs -n1 <<<"$@" | sort -u)
+
 	if [[ ${OVE_OS} == *"Arch Linux"* ]]; then
-		comm -2 -3 <(echo $* | xargs -n1 | sort) <(pacman -Q | awk '{print $1}')
+		comm -2 -3 <(echo ${p_sort}) <(pacman -Q | awk '{print $1}')
 	elif [[ ${OVE_OS} == *"Alpine"* ]]; then
-		comm -2 -3 <(echo $* | xargs -n1 | sort) <(apk info | sort)
+		comm -2 -3 <(echo ${p_sort}) <(apk info | sort)
 	elif [[ ${OVE_OS} == *"CentOS"* ]] || \
 		[[ ${OVE_OS} == *"Fedora"* ]] || \
 		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]]; then
-		comm -2 -3 <(echo $* | xargs -n1 | sort) <(rpm -qa --qf "%{NAME}\n"| sort)
+		comm -2 -3 <(echo ${p_sort}) <(rpm -qa --qf "%{NAME}\n"| sort)
 	elif [[ ${OVE_OS} == *"Debian"* ]] || \
 		[[ ${OVE_OS} == *"Raspbian"* ]] || \
 		[[ ${OVE_OS} == *"Ubuntu"* ]]; then
-		dpkg-query -W -f='${Package}:${Status}\n' $* 2>&1 | \
+		dpkg-query -W -f='${Package}:${Status}\n' ${p_sort} 2>&1 | \
 			grep -v ":install ok installed" | \
 			sed -e 's/dpkg-query: no packages found matching //g' -e 's/:.*//g' | \
 			xargs
