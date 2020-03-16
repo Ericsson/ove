@@ -4554,7 +4554,9 @@ function ove-pull {
 # apply:PATCH:apply one OVE patch
 function ove-apply {
 	local git_basename
+	local lineno
 	local p
+	local patches
 	local q
 
 	if [ $# -ne 1 ]; then
@@ -4591,13 +4593,25 @@ function ove-apply {
 	# remove any old patch file(s)
 	find -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
 
-	# one patch per git
-	if ! csplit -s -z --prefix ove-apply-patch ${p} /^\// {*}; then
-		ove_echo_error_noprefix "ops, csplit failed"
-		return 1
+	# get a list of line numbers where to split the file
+	lineno=$(grep --color=never --no-group-separator -n -B1 '^diff --git' ${p} | \
+		grep -v '[0-9]\+:diff --git' | \
+		cut -d- -f1 | \
+		tail -n +2)
+
+	if [ "${lineno}" == "" ]; then
+		patches=${p}
+	else
+		# one patch per git
+		if ! csplit -s -z --prefix ove-apply-patch ${p} ${lineno}; then
+			ove_echo_error_noprefix "ops, csplit failed"
+			return 1
+		fi
+
+		patches=$(find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' | sort)
 	fi
 
-	for p in $(find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' | sort); do
+	for p in ${patches}; do
 		git_basename=$(head -1 -q ${p})
 		git_basename=${git_basename/${OVE_BASE_DIR}\/}
 		git_fullpath=$(ove_git2fullpath ${git_basename})
@@ -4607,7 +4621,7 @@ function ove-apply {
 		fi
 
 		# rename the patch
-		q="${OVE_PROJECT_TMP_DIR}/ove-apply-${git_basename/\//-}.patch"
+		q="${OVE_PROJECT_TMP_DIR}/ove-apply-${git_basename////-}.patch"
 		mv ${p} ${q}
 		if [ -d "${git_fullpath}" ] && \
 			[ -d ${git_fullpath}/.git ]; then
