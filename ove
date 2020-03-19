@@ -3807,11 +3807,14 @@ function ove-commit {
 function ove_get_deps_recursive {
 	local dep
 	local index
+	local proj
 
-	index=${ove_projects_name2index[$1]}
-	for dep in ${ove_projects_deps[${index}]}; do
-		echo -n "${dep} "
-		ove_get_deps_recursive ${dep}
+	for proj in $*; do
+		index=${ove_projects_name2index[$proj]}
+		for dep in ${ove_projects_deps[${index}]}; do
+			echo -n "${dep} "
+			ove_get_deps_recursive ${dep}
+		done
 	done
 }
 
@@ -4140,7 +4143,7 @@ function ove_build_post {
 	[ "${rm}" != "" ] && rmdir ${rm}
 }
 
-# buildme:[PROJECT]:build projects from scratch (=bootstrap, configure, build, install)
+# buildme:[PROJECT...]:build project(s) from scratch (=bootstrap, configure, build, install)
 function ove-buildme {
 	local b
 	local deps
@@ -4155,14 +4158,14 @@ function ove-buildme {
 
 	trap ove_build_post EXIT
 
-	if [ $# -eq 1 ]; then
-		deps=$(ove_get_deps_recursive $1)
+	if [ $# -ge 1 ]; then
+		deps="$(ove_get_deps_recursive $*) $*"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -eq 1 ]; then
+		if [ "$#" -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${deps}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
+			if ! [[ "${deps}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
@@ -4183,9 +4186,9 @@ function ove-buildme {
 
 	# bootstrap
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -eq 1 ]; then
+		if [ "$#" -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${deps}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
+			if ! [[ "${deps}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
@@ -4200,9 +4203,9 @@ function ove-buildme {
 	done
 
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -eq 1 ]; then
+		if [ "$#" -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${deps}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
+			if ! [[ "${deps}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
@@ -4222,10 +4225,6 @@ function ove-buildme {
 			! eval ove-install ${b} ${OVE_REDIRECT_OUTPUT}; then
 			ove_echo_error_noprefix "${FUNCNAME[0]}: install ${b} failed"
 			return 1
-		fi
-
-		if [ "$#" -eq 1 ]; then
-			[ "${b}" == "$1" ] && return 0
 		fi
 	done
 
@@ -5658,13 +5657,14 @@ function ove_bash_complete {
 
 	wordlist=""
 	if [ "${subcommand}" == "make" ] ||
-		[ "${subcommand}" == "buildme-parallel" ] ||
-		[ "${subcommand}" == "buildme" ]; then
+		[ "${subcommand}" == "buildme-parallel" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist=${OVE_PROJECT_LIST}
 		elif [ ${size} -gt 2 ]; then
 			return
 		fi
+	elif [ "${subcommand}" == "buildme" ]; then
+		wordlist=${OVE_PROJECT_LIST}
 	elif [ "${subcommand}" == "run" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist="TIMEOUT"
