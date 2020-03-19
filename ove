@@ -6499,14 +6499,17 @@ function ove_deps {
 	str_cmds=""
 
 	deps=()
+	deps+=('bzip2')
 	deps+=('column')
-	deps+=('file')
 	deps+=('envsubst')
+	deps+=('file')
 	deps+=('git')
+	deps+=('gzip')
 	deps+=('pgrep')
 	deps+=('script')
 	deps+=('tree')
 	deps+=('tsort')
+	deps+=('which')
 
 	for dep in "${deps[@]}"; do
 		if ! command -v ${dep} > /dev/null; then
