@@ -3343,11 +3343,19 @@ function ove-refresh {
 			if ove news > /dev/null; then
 				ove news
 				while true; do
-					read -p '%s [c,d,n,p,q,x,?]? ' -r -n1
+					read -p '%s [?,a,A,c,d,n,p,q,s,x]? ' -r -n1
 					echo
 					if [[ \${REPLY} =~ ^[Pp]$ ]]; then
 						echo '$ ove pull'
 						ove pull
+						echo
+					elif [[ \${REPLY} =~ ^[a]$ ]]; then
+						echo '$ ove ahead'
+						ove ahead
+						echo
+					elif [[ \${REPLY} =~ ^[A]$ ]]; then
+						echo '$ ove show-ahead'
+						ove show-ahead
 						echo
 					elif [[ \${REPLY} =~ ^[Cc]$ ]]; then
 						echo '$ ove checkout'
@@ -3368,16 +3376,23 @@ function ove-refresh {
 							break
 						fi
 						echo
+					elif [[ \${REPLY} =~ ^[Ss]$ ]]; then
+						echo '$ ove show-news'
+						ove show-news
+						echo
 					elif [[ \${REPLY} =~ ^[Qq]$ ]]; then
 						return
 					elif [[ \${REPLY} =~ ^[Nn]$ ]]; then
 						break
 					elif [[ \${REPLY} =~ ^[?]$ ]]; then
+						echo 'a - ahead'
+						echo 'A - show ahead'
 						echo 'c - checkout'
 						echo 'd - diff'
 						echo 'n - next'
 						echo 'p - pull'
 						echo 'q - quit'
+						echo 's - show news'
 						echo 'x - pull and next'
 						echo '? - this help'
 						continue
