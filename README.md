@@ -345,6 +345,7 @@ OVE has been tested for the following distributions:
 * Ubuntu 16.04
 * Ubuntu 18.04
 * Ubuntu 19.10
+* Void Linux
 
 Want to know more about OVE? Please check out the OVE [tutorial](https://github.com/Ericsson/ove-tutorial) or ask OVE:
 

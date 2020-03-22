@@ -6546,13 +6546,13 @@ function ove_packages_not_installed {
 	p_sort=$(xargs -n1 <<<"$@" | sort -u)
 
 	if [[ ${OVE_OS} == *"Arch Linux"* ]]; then
-		comm -2 -3 <(echo ${p_sort}) <(pacman -Q | awk '{print $1}')
+		comm -2 -3 <(xargs -n1 <<<${p_sort}) <(pacman -Q | awk '{print $1}')
 	elif [[ ${OVE_OS} == *"Alpine"* ]]; then
-		comm -2 -3 <(echo ${p_sort}) <(apk info | sort)
+		comm -2 -3 <(xargs -n1 <<<${p_sort}) <(apk info | sort)
 	elif [[ ${OVE_OS} == *"CentOS"* ]] || \
 		[[ ${OVE_OS} == *"Fedora"* ]] || \
 		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]]; then
-		comm -2 -3 <(echo ${p_sort}) <(rpm -qa --qf "%{NAME}\n"| sort)
+		comm -2 -3 <(xargs -n1 <<<${p_sort}) <(rpm -qa --qf "%{NAME}\n"| sort)
 	elif [[ ${OVE_OS} == *"Debian"* ]] || \
 		[[ ${OVE_OS} == *"Raspbian"* ]] || \
 		[[ ${OVE_OS} == *"Ubuntu"* ]]; then
@@ -6560,6 +6560,10 @@ function ove_packages_not_installed {
 			grep -v ":install ok installed" | \
 			sed -e 's/dpkg-query: no packages found matching //g' -e 's/:.*//g' | \
 			xargs
+	elif [[ ${OVE_OS} == *"void"* ]]; then
+		comm -2 -3 \
+			<(xargs -n1 <<<${p_sort}) \
+			<(xbps-query --list-pkgs | awk '{print $2}' | rev | cut -d- -f2- | rev | sort | xargs -n1)
 	else
 		ove_echo_error_noprefix "function '${FUNCNAME[0]}' is not implemented for ${OVE_OS}"
 	fi
@@ -6604,6 +6608,9 @@ function ove_determine_dist_version_and_pack_manager {
 		[[ ${OVE_OS} == *"SLES"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="zypper"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
+	elif [[ ${OVE_OS} == *"void"* ]]; then
+		OVE_OS_PACKAGE_MANAGER="xbps-install"
+		OVE_OS_PACKAGE_MANAGER_ARGS=""
 	else
 		OVE_OS_PACKAGE_MANAGER="unknown"
 		OVE_OS_PACKAGE_MANAGER_ARGS=""
