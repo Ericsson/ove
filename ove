@@ -4146,9 +4146,10 @@ function ove_build_post {
 # buildme:[PROJECT...]:build project(s) from scratch (=bootstrap, configure, build, install)
 function ove-buildme {
 	local b
-	local deps
+	local build_list
 	local index
 	local n
+	local p
 	local pack_list
 	local re
 
@@ -4159,13 +4160,21 @@ function ove-buildme {
 	trap ove_build_post EXIT
 
 	if [ $# -ge 1 ]; then
-		deps="$(ove_get_deps_recursive $*) $*"
+		for p in $*; do
+			if ! [[ -v ove_projects_name2index[${p}] ]]; then
+				ove_echo_error_noprefix "unknown project '${p}'"
+				return 1
+			fi
+		done
+
+		build_list="$(ove_get_deps_recursive $*) $*"
+		build_list="$(xargs -n1 <<<${build_list} | sort -u | xargs)"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ "$#" -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${deps}" =~ ${re} ]]; then
+			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
@@ -4197,7 +4206,7 @@ function ove-buildme {
 
 		if [ "$(type -t ove-bootstrap)" == "function" ] && \
 			! eval ove-bootstrap ${b} ${OVE_REDIRECT_OUTPUT}; then
-			ove_echo_error_noprefix "${FUNCNAME[0]}: bootstrap ${b} failed"
+			ove_echo_error_noprefix "${FUNCNAME[0]}: ove-bootstrap ${b} failed"
 			return 1
 		fi
 	done
@@ -4205,35 +4214,27 @@ function ove-buildme {
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ "$#" -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${deps}" =~ ${re} ]]; then
+			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
 
-		if [ "$(type -t ove-configure)" == "function" ] && \
-			! eval ove-configure ${b} ${OVE_REDIRECT_OUTPUT}; then
-			ove_echo_error_noprefix "${FUNCNAME[0]}: configure ${b} failed"
-			return 1
-		fi
-
-		if ! eval ove-make "${b}"-nodeps ${OVE_REDIRECT_OUTPUT}; then
-			ove_echo_error_noprefix "${FUNCNAME[0]}: make ${b}-nodeps failed"
-			return 1
-		fi
-
-		if [ "$(type -t ove-install)" == "function" ] && \
-			! eval ove-install ${b} ${OVE_REDIRECT_OUTPUT}; then
-			ove_echo_error_noprefix "${FUNCNAME[0]}: install ${b} failed"
-			return 1
-		fi
+		for p in configure build install; do
+			if [ "$(type -t ove-${p})" == "function" ] && \
+				! eval ove-${p} ${b} ${OVE_REDIRECT_OUTPUT}; then
+				ove_echo_error_noprefix "${FUNCNAME[0]}: ove-${p} ${b} failed"
+				return 1
+			fi
+		done
 	done
 
 	return 0
 }
 
-# buildme-parallel:[PROJECT]:build projects from scratch (=bootstrap, configure, build, install)
+# buildme-parallel:[PROJECT...]:build project(s) from scratch (=bootstrap, configure, build, install)
 function ove-buildme-parallel {
 	local b
+	local build_list
 	local dep
 	local inotify_max_user_instances
 	local n
@@ -4241,8 +4242,6 @@ function ove-buildme-parallel {
 	local pack_list
 	local pid
 	local pids
-	local project_index
-	local project_dependency
 	local re
 	local wait_for_deps
 
@@ -4252,19 +4251,22 @@ function ove-buildme-parallel {
 
 	trap ove_build_post EXIT
 
-	if [ $# -eq 1 ]; then
-		if ! [[ -v ove_projects_name2index[$1] ]]; then
-			ove_echo_error_noprefix "unknown project '$1'"
-			return 1
-		fi
+	if [ "$#" -ge 1 ]; then
+		for p in $*; do
+			if ! [[ -v ove_projects_name2index[${p}] ]]; then
+				ove_echo_error_noprefix "unknown project '${p}'"
+				return 1
+			fi
+		done
 
-		project_dependency=$(ove_get_deps_recursive $1)
+		build_list="$(ove_get_deps_recursive $*) $*"
+		build_list="$(xargs -n1 <<<${build_list} | sort -u | xargs)"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -eq 1 ]; then
+		if [ "$#" -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${project_dependency}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
+			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
@@ -4285,9 +4287,9 @@ function ove-buildme-parallel {
 
 	# bootstrap
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -eq 1 ]; then
+		if [ "$#" -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${project_dependency}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
+			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
@@ -4310,15 +4312,11 @@ function ove-buildme-parallel {
 	# pids db
 	declare -A pids_db=()
 
-	let project_index=1
-
 	inotify_max_user_instances=$(($(cat /proc/sys/fs/inotify/max_user_instances) - 20))
 	for b in ${OVE_BUILD_ORDER}; do
-		let project_index+=1
-
-		if [ "$#" -eq 1 ]; then
+		if [ "$#" -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${project_dependency}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
+			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
@@ -4339,33 +4337,20 @@ function ove-buildme-parallel {
 			done
 			[ "${wait_for_deps}" != "" ] && wait
 
-			if [ "$(type -t ove-configure)" == "function" ] && \
-				! eval ove-configure ${b} ${OVE_REDIRECT_OUTPUT}; then
-				ove_echo_error_noprefix "${FUNCNAME[0]}: configure ${b} failed"
+			for p in configure build install; do
+				if [ "$(type -t ove-${p})" == "function" ] && \
+					! eval ove-${p} ${b} ${OVE_REDIRECT_OUTPUT}; then
+					ove_echo_error_noprefix "${FUNCNAME[0]}: ${p} ${b} failed"
 					kill -USR1 $$
-			fi
-
-			if ! eval ove-make "${b}"-nodeps ${OVE_REDIRECT_OUTPUT}; then
-				ove_echo_error_noprefix "${FUNCNAME[0]}: make ${b}-nodeps failed"
-				kill -USR1 $$
-			fi
-
-			if [ "$(type -t ove-install)" == "function" ] && \
-				! eval ove-install ${b} ${OVE_REDIRECT_OUTPUT}; then
-				ove_echo_error_noprefix "${FUNCNAME[0]}: install ${b} failed"
-				kill -USR1 $$
-			fi
-
-			if [ "$#" -eq 1 ]; then
-				[ "${b}" == "$1" ] && return 101
-			fi
+				fi
+			done
 		} &
 		pid=$!
 		pids_db[${b}]=${pid}
 		pids+=" ${pid}"
 
 		while true; do
-			if [ $(pgrep -f tail | wc -l) -gt ${inotify_max_user_instances} ]; then
+			if [ $(pgrep -f 'tail -s 0.01' | wc -l) -gt ${inotify_max_user_instances} ]; then
 				sleep 0.1
 				continue
 			fi
@@ -4374,6 +4359,7 @@ function ove-buildme-parallel {
 	done
 
 	wait ${pids}
+
 	return 0
 }
 
@@ -5656,14 +5642,14 @@ function ove_bash_complete {
 	fi
 
 	wordlist=""
-	if [ "${subcommand}" == "make" ] ||
-		[ "${subcommand}" == "buildme-parallel" ]; then
+	if [ "${subcommand}" == "make" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist=${OVE_PROJECT_LIST}
 		elif [ ${size} -gt 2 ]; then
 			return
 		fi
-	elif [ "${subcommand}" == "buildme" ]; then
+	elif [ "${subcommand}" == "buildme" ] ||
+		[ "${subcommand}" == "buildme-parallel" ]; then
 		wordlist=${OVE_PROJECT_LIST}
 	elif [ "${subcommand}" == "run" ]; then
 		if [ ${size} -eq 2 ]; then

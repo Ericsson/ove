@@ -16,7 +16,7 @@
 | build-order              |                                                       | show build order                                                                                                       |
 | build-parallel           | [PROJECT...]                                          | run the 'build' step for all or individual projects (in parallel)                                                      |
 | buildme                  | [PROJECT...]                                          | build project(s) from scratch (=bootstrap, configure, build, install)                                                  |
-| buildme-parallel         | [PROJECT]                                             | build projects from scratch (=bootstrap, configure, build, install)                                                    |
+| buildme-parallel         | [PROJECT...]                                          | build project(s) from scratch (=bootstrap, configure, build, install)                                                  |
 | cd                       |                                                       | helper for 'cd ${OVE_BASE_DIR}'                                                                                        |
 | checkout                 | [rev[ [purge\|autostash]]]                            | git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care                     |
 | clean                    | [PROJECT...]                                          | run the 'clean' step for all or individual projects                                                                    |
