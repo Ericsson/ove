@@ -1601,7 +1601,7 @@ function ove_projects_parse {
 		return 1
 	fi
 
-	if [ $(ove_repos_fetched) -eq $(wc -w <<<$OVE_REPO_LIST) ]; then
+	if [ $(ove_repos_fetched) -eq $(wc -w <<<${OVE_REPO_LIST}) ]; then
 		unset OVE_PROJECT_LIST_BUILDABLE
 	else
 		ove_buildable_projects
@@ -1771,7 +1771,7 @@ function ove_revtab_parse {
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
 }
 
-# $1: repo name (either 'name' or '$OVE_BASE_DIR/'name')
+# $1: repo name (either 'name' or '${OVE_BASE_DIR}/'name')
 function ove_git2fullpath {
 	local git_fullpath
 	local index
@@ -1788,7 +1788,7 @@ function ove_git2fullpath {
 	echo ${git_fullpath}
 }
 
-# $1: repo name (either 'name' or '$OVE_BASE_DIR/'name')
+# $1: repo name (either 'name' or '${OVE_BASE_DIR}/'name')
 function ove_git2shortpath {
 	local git_shortpath
 	local index
@@ -3554,9 +3554,9 @@ function ove-branch {
 	# all but last arg
 	args=${a[@]:0:${#a[@]}-1}
 	branch_name=${a[@]: -1}
-	repos=$(ove_validate_repo_list $args)
+	repos=$(ove_validate_repo_list ${args})
 	if [ "${repos}" == "" ]; then
-		echo "error: repo(s) '$args' is not valid repo(s)"
+		echo "error: repo(s) '${args}' is not valid repo(s)"
 		return 1
 	fi
 
@@ -3810,7 +3810,7 @@ function ove_get_deps_recursive {
 	local proj
 
 	for proj in $*; do
-		index=${ove_projects_name2index[$proj]}
+		index=${ove_projects_name2index[${proj}]}
 		for dep in ${ove_projects_deps[${index}]}; do
 			echo -n "${dep} "
 			ove_get_deps_recursive ${dep}
@@ -5280,7 +5280,7 @@ function ove-mrproper {
 
 	if [ "${nbr_untracked_files}" -ne 0 ]; then
 		# dry-run first
-		ove_revtab_forall 'a=$(git --no-pager clean -dffxn); [ "$a" != "" ] && printf "$a\n" | sed -e "s|Would remove \(.*\)$|$PWD/\1|g"'
+		ove_revtab_forall 'a=$(git --no-pager clean -dffxn); [ "${a}" != "" ] && printf "${a}\n" | sed -e "s|Would remove \(.*\)$|${PWD}/\1|g"'
 		echo
 		read -p "Proceed to remove ${nbr_untracked_files} untracked files/directories (list above) using 'git clean -dffx'? (y/N) " -r
 		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
@@ -6626,7 +6626,7 @@ function ove_determine_dist_version_and_pack_manager {
 function ove-readme {
 	local cmd
 
-	cmd='find $PWD -maxdepth 1 -name "README*" -print0 | \
+	cmd='find ${PWD} -maxdepth 1 -name "README*" -print0 | \
 		xargs -r -0 head -v | \
 		sed -e "1 i$(ove_echo_yellow_noprefix $(pwd -P))" -e "s/^/\t/g"'
 
