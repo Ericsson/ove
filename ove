@@ -5743,11 +5743,13 @@ function ove_bash_complete {
 		[ "${subcommand}" == "describe" ] ||
 		[ "${subcommand}" == "diff" ] ||
 		[ "${subcommand}" == "diff-cached" ] ||
+		[ "${subcommand}" == "fsck" ] ||
 		[ "${subcommand}" == "heads2revtab" ] ||
 		[ "${subcommand}" == "list-stash" ] ||
 		[ "${subcommand}" == "readme" ] ||
 		[ "${subcommand}" == "remote" ] ||
 		[ "${subcommand}" == "reset" ] ||
+		[ "${subcommand}" == "show-dangling" ] ||
 		[ "${subcommand}" == "wdiff" ] ||
 		[ "${subcommand}" == "wdiff-cached" ]; then
 		if [ ${size} -ge 2 ]; then
@@ -6621,6 +6623,14 @@ function ove-fsck {
 	else
 		ove_revtab_forsome "${cmd}" "$*"
 	fi
+}
+
+# show-dangling:[GIT...]:show dangling git objects (=blob|commit|tag|tree) for all/specified git repositories
+function ove-show-dangling {
+	local sha_list
+
+	sha_list=$(ove-fsck $* | grep '^dangling' | awk '{print $3}')
+	[ "${sha_list}" == "" ] || ove-show ${sha_list}
 }
 
 # readme:[GIT...]:display README files for all/specified git repositories

@@ -90,6 +90,7 @@
 | show                     | [revision...]                                         | ove list-heads or search for 'revision' within all git repositories. If found run 'git show SHA-1\|TAG'                |
 | show-ahead               | [GIT...]                                              | run 'ove show' on local commits not yet published for all/specified repositories                                       |
 | show-configuration       |                                                       | show current build configuration for each project                                                                      |
+| show-dangling            | [GIT...]                                              | show dangling git objects (=blob\|commit\|tag\|tree) for all/specified git repositories                                |
 | show-news                | [GIT...]                                              | run 'ove show' on upstream changes for all/specified repositories                                                      |
 | stash                    | [drop\|list\|pop\|show]                               | git stash [drop\|list\|pop\|show] for all git repositories                                                             |
 | status                   | [GIT...]                                              | git status -zbs -uno for all/specified repositories                                                                    |
