@@ -6608,6 +6608,21 @@ function ove_determine_dist_version_and_pack_manager {
 	export OVE_OS_PACKAGE_MANAGER_ARGS
 }
 
+# fsck:[GIT...]:git fsck --full for all/specified git repositories
+function ove-fsck {
+	local cmd
+
+	cmd="ove_echo_yellow_noprefix \$(pwd -P) && \
+		git -C \${git} fsck --full || \
+		ove_echo_error_noprefix \'git -C \$(pwd -P) fsck --full\' returned != 0, corrupt repo?; echo"
+
+	if [ $# -eq 0 ]; then
+		ove_revtab_forall "${cmd}"
+	else
+		ove_revtab_forsome "${cmd}" "$*"
+	fi
+}
+
 # readme:[GIT...]:display README files for all/specified git repositories
 function ove-readme {
 	local cmd

@@ -43,6 +43,7 @@
 | format-patch             |                                                       | create a bz2 archive for all local commits not yet published                                                           |
 | forowel                  | COMMAND                                               | run 'COMMAND' for all OVE workspaces on this host                                                                      |
 | forowel-parallel         | COMMAND                                               | run 'COMMAND' in parallel for all OVE workspaces on this host                                                          |
+| fsck                     | [GIT...]                                              | git fsck --full for all/specified git repositories                                                                     |
 | fzf                      | [loop]                                                | OVE fzf [duckduckgo.com/?q=fzf]                                                                                        |
 | generate-doc             |                                                       | generate OVE documentation (e.g. ${OVE_DIR}/ove-cmd-list.md)                                                           |
 | gitmodules2revtab        |                                                       | import git submodules                                                                                                  |
