@@ -5440,9 +5440,9 @@ function ove-show {
 	for SHA in "$@"; do
 		# remove dirty tags
 		SHA=${SHA%-dirty}
-		ove_revtab_forall 'git --no-pager show '"${SHA}"' -- &> /dev/null && \
+		ove_revtab_forall "git --no-pager show ${SHA} -- &> /dev/null && \
 			clear && \
-			GIT_PAGER="less -Ps${git_basename}" git show --color=always '"${SHA}"' --'
+			GIT_PAGER=\"less -Ps'\${git_basename} ${SHA}'\" git show --color=always ${SHA} --"
 	done
 }
 
