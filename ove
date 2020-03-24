@@ -4197,7 +4197,7 @@ function ove-buildme {
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ "$#" -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${deps}" =~ ${re} ]]; then
+			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
