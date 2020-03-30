@@ -1202,9 +1202,9 @@ function ove {
 
 		if [ -t 1 ]; then
 			script_help=$(2>&1 script --help)
-			if [[ "${script_help}" != *"invalid option"* ]] && \
-				[[ "${script_help}" == *"-e"* ]]; then
-				script_opts+="-e "
+			if [[ "${script_help}" != *"invalid option"* ]]; then
+				[[ "${script_help}" == *"-e"* ]] && script_opts+="-e "
+				[[ "${script_help}" == *"-f"* ]] && script_opts+="-f "
 			fi
 
 			if [ ${OVE_LOGLEVEL} -gt 2 ] && [ ${OVE_LOGLEVEL} -lt 7 ]; then
