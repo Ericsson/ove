@@ -63,9 +63,17 @@ fi
 
 mkdir -vp "${path}"
 cd "${path}"
-git clone "${url}" &
-git clone https://github.com/Ericsson/ove.git .ove &
-wait
+
+if ! git clone "${url}"; then
+	echo "error: 'git clone "${url}"' failed"
+	exit 3
+fi
+
+ove_url="https://github.com/Ericsson/ove.git"
+if ! git clone ${ove_url} .ove; then
+	echo "error: 'git clone "${ove_url}" .ove' failed"
+	exit 4
+fi
 
 owel=${2##*/}
 owel=${owel%.*}
@@ -75,6 +83,7 @@ ln -s .ove/ove ove
 if [ "$#" -eq 3 ]; then
 	git -C .owel -c advice.detachedHead=false checkout "$3" || :
 fi
+
 echo
 echo "Please run: "
 echo "$ cd ${path}"
