@@ -6140,9 +6140,9 @@ function ove_init {
 
 	if ! [ -L ${OVE_BASE_DIR}/README ]; then
 		if [ -s ${OVE_PROJECT_DIR}/README ]; then
-			ln -s -r ${OVE_PROJECT_DIR}/README ${OVE_BASE_DIR}/README
+			( cd ${OVE_BASE_DIR} && ln -s ${OVE_PROJECT_DIR}/README )
 		elif [ -s ${OVE_PROJECT_DIR}/README.md ]; then
-			ln -s -r ${OVE_PROJECT_DIR}/README.md ${OVE_BASE_DIR}/README
+			( cd ${OVE_BASE_DIR} && ln -s ${OVE_PROJECT_DIR}/README.md README )
 		fi
 	fi
 
