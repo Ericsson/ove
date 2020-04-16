@@ -4643,7 +4643,12 @@ function ove_patch_repositories {
 	! [ -d ${OVE_PROJECT_DIR}/patches ] && return
 
 	ove_revtab_forall '[ -d ${OVE_PROJECT_DIR}/patches/${git_basename} ] && \
-		git -C ${git} apply ${OVE_PROJECT_DIR}/patches/${git_basename}/*.patch &> /dev/null || :'
+		for p in $(find ${OVE_PROJECT_DIR}/patches/${git_basename} -name "*.patch"); do \
+			if git -C ${git} apply --check $p 2> /dev/null; then
+				echo "${git_basename}: apply patch: $p"
+				git -C ${git} apply $p 2> /dev/null
+			fi
+		done'
 }
 
 # gitmodules2revtab: :import git submodules
