@@ -1858,7 +1858,11 @@ function ove_revtab_status {
 	wait
 
 	LC_ALL="C" sort -o ${f} ${f}
-	column -t -s: <${f}
+	if [ "${OVE_COLUMN_WRAP_BUG}" -eq 1 ]; then
+		column -t -s: <<<$(fold -w 2048 -s ${f})
+	else
+		column -t -s: <${f}
+	fi
 
 	mv "${f}" "${OVE_PROJECT_STATE_DIR}/revtab-status"
 }
@@ -6111,6 +6115,11 @@ function ove_init {
 	OVE_DIR="$(cd "$(dirname "$(readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/})")"; pwd -P)"
 	OVE_BASENAME="$(basename $(readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/}))"
 	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
+	if ! ( for i in {1..205} ; do echo -n 123456789, ; done ; echo ) | column -t -s "," &> /dev/null; then
+		OVE_COLUMN_WRAP_BUG=1
+	else
+		OVE_COLUMN_WRAP_BUG=0
+	fi
 
 	ove_dirs_init
 	ove_config_init
