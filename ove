@@ -5544,11 +5544,18 @@ function ove-dry-run {
 	ove-env | grep ^OVE_DRY_RUN
 }
 
-# lastlog:[cmin]:list logs created within last 60 min or cmin min
+# lastlog:[cmin]:list OVE logs created within last 60 min or cmin min
 function ove-lastlog {
-	local cmin
+	local cmin=60
 
-	[ "$#" -eq 1 ] && cmin=$1 || cmin=60
+	if [ "$#" -eq 1 ]; then
+		if ! [[ "${1}" =~ ^[0-9]+$ ]]; then
+			echo "error: just numbers"
+			return 1
+		fi
+
+		cmin=$1
+	fi
 
 	find ${OVE_LOG_DIR} -type f -cmin -${cmin} -print0 | \
 		xargs -0 stat --format '%Y:%n' | \

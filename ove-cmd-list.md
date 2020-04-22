@@ -53,7 +53,7 @@
 | import                   | [file]                                                | import project(s), see export                                                                                          |
 | install                  | [PROJECT...]                                          | run the 'install' step for all or individual projects                                                                  |
 | install-parallel         | [PROJECT...]                                          | run the 'install' step for all or individual projects (in parallel)                                                    |
-| lastlog                  | [cmin]                                                | list logs created within last 60 min or cmin min                                                                       |
+| lastlog                  | [cmin]                                                | list OVE logs created within last 60 min or cmin min                                                                   |
 | list-commands            |                                                       | list commands                                                                                                          |
 | list-committed-files     | [DAYS]                                                | list committed files within 7 or DAYS day(s)                                                                           |
 | list-heads               | [GIT...]                                              | git log for all/specified git repositories                                                                             |
