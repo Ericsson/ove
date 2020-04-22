@@ -5558,11 +5558,11 @@ function ove-lastlog {
 	fi
 
 	find ${OVE_LOG_DIR} -type f -cmin -${cmin} -print0 | \
-		xargs -0 stat --format '%Y:%n' | \
+		xargs -0 stat --format '%Y:%n:%s' | \
 		sort -nr | \
-		cut -d: -f2 | \
+		cut -d: -f2- | \
 		grep -v ${FUNCNAME[0]} | \
-		sed "s/\(^.*-ove-\(.*\)-${HOSTNAME}-\(.*\).log\)/\3@\2@\1/g" | \
+		sed "s/\(^.*-ove-\(.*\)-${HOSTNAME}-\(.*\).log\):\(.*\)/\3@\2@\1@\4/g" | \
 		column -t -s@
 }
 
