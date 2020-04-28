@@ -4530,13 +4530,13 @@ function ove-pull {
 	set +m
 
 	if [ $# -ge 1 ]; then
-		repos=$(ove_validate_repo_list $*)
+		repos=$(ove_validate_repo_list ${*//${OVE_BASE_DIR}\/})
 	elif [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && grep -q 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status; then
 		repos=$(grep 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status | \
 			cut -d: -f1 | \
 			xargs)
 	else
-		repos=${OVE_REPO_LIST}
+		repos=${OVE_REPO_LIST//${OVE_BASE_DIR}\/}
 	fi
 
 	for git in ${repos}; do
@@ -4548,7 +4548,7 @@ function ove-pull {
 	done
 
 	if [ "${repos}" != "" ]; then
-		ove_revtab_status | grep -v '^\['
+		ove_revtab_status ${repos} | grep -v '^\['
 	fi
 
 	# turn on monitor mode
