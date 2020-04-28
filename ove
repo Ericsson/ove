@@ -1839,6 +1839,7 @@ function ove_revtab_status {
 	local f
 	local git
 	local repos
+	local o
 
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list $*)
@@ -1848,9 +1849,15 @@ function ove_revtab_status {
 
 	[ "${repos}" == "" ] && return
 
-	f="${OVE_PROJECT_STATE_DIR}/$(date '+%Y%m%d-%H%M%S%N')-revtab-status"
+	if [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
+		f="${OVE_PROJECT_STATE_DIR}"
+	else
+		f="${OVE_TMP}"
+	fi
+	o=${f}
 
-	> ${f}
+	f+="/$(date '+%Y%m%d-%H%M%S%N')-revtab-status"
+
 	for git in ${repos}; do
 		ove_status_one_repo ${git} >> ${f} &
 	done
@@ -1864,7 +1871,7 @@ function ove_revtab_status {
 		column -t -s: <${f}
 	fi
 
-	mv "${f}" "${OVE_PROJECT_STATE_DIR}/revtab-status"
+	mv "${f}" "${o}/revtab-status"
 }
 
 # $1: ahead|behind
@@ -3643,6 +3650,11 @@ function ove_stashed_repos {
 function ove_stash_forsome {
 	local cmd
 
+	if ! [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
+		ove_echo_error_noprefix "you are not allowed to 'stash $1'"
+		return 1
+	fi
+
 	! [ -f ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos ] && return
 	cmd="git stash $1 -q"
 	ove_revtab_forsome "${cmd}" "$(sed "s|${OVE_BASE_DIR}/||g" ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos | xargs)"
@@ -3662,6 +3674,11 @@ function ove_stash_save {
 	local dirty_repos
 	local git
 	local now
+
+	if ! [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
+		ove_echo_error_noprefix "you are not allowed to 'stash'"
+		return 1
+	fi
 
 	[ -f ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos ] && return
 
@@ -4427,7 +4444,11 @@ function ove-status {
 
 # news:[GIT...]:list upstream changes for all/specified repositories
 function ove-news {
-	ove_revtab_status_parse behind $* | tee ${OVE_PROJECT_STATE_DIR}/revtab-news
+	if [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
+		ove_revtab_status_parse behind $* | tee ${OVE_PROJECT_STATE_DIR}/revtab-news
+	else
+		ove_revtab_status_parse behind $*
+	fi
 }
 
 # show-news:[GIT...]:run 'ove show' on upstream changes for all/specified repositories
@@ -4445,7 +4466,11 @@ function ove-show-news {
 
 # ahead:[GIT...]:list local commits not yet published for all/specified repositories
 function ove-ahead {
-	ove_revtab_status_parse ahead $* | tee ${OVE_PROJECT_STATE_DIR}/revtab-ahead
+	if [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
+		ove_revtab_status_parse ahead $* | tee ${OVE_PROJECT_STATE_DIR}/revtab-ahead
+	else
+		ove_revtab_status_parse ahead $*
+	fi
 }
 
 # show-ahead:[GIT...]:run 'ove show' on local commits not yet published for all/specified repositories
@@ -5510,10 +5535,12 @@ function ove-loglevel {
 		fi
 
 		OVE_LOGLEVEL=$1
-		if ! [ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ]; then
-			echo "OVE_LOGLEVEL $1" > ${OVE_PROJECT_STATE_DIR}/.oveconfig
-		else
-			sed -i "s/^OVE_LOGLEVEL.*/OVE_LOGLEVEL $1/g" ${OVE_PROJECT_STATE_DIR}/.oveconfig
+		if [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
+			if ! [ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ]; then
+				echo "OVE_LOGLEVEL $1" > ${OVE_PROJECT_STATE_DIR}/.oveconfig
+			else
+				sed -i "s/^OVE_LOGLEVEL.*/OVE_LOGLEVEL $1/g" ${OVE_PROJECT_STATE_DIR}/.oveconfig
+			fi
 		fi
 	fi
 
