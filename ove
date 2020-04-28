@@ -3538,6 +3538,7 @@ function ove-branch {
 	local a
 	local args
 	local branch_name
+	local branch_start_point
 	local cmd
 	local index
 	local r
@@ -3570,8 +3571,19 @@ function ove-branch {
 			continue
 		fi
 
+		while true; do
+			read -p "${r}: starting point for branch '${branch_name}'? (leave empty to create branch from current HEAD): "
+			[ "${REPLY}" == "" ] && break
+			if ! git -C "${OVE_BASE_DIR}/${r}" cat-file -e "${REPLY}" &> /dev/null; then
+				ove_echo_error_noprefix "'${REPLY}' is not a valid revision for ${r}, try again"
+				continue
+			fi
+			branch_start_point=${REPLY}
+			break
+		done
+
 		# checkout branch
-		if ! git -C "${OVE_BASE_DIR}/${r}" checkout -b ${branch_name} |& sed "s|^|${r}: |g"; then
+		if ! git -C "${OVE_BASE_DIR}/${r}" checkout -b ${branch_name} ${branch_start_point} |& sed "s|^|${r}: |g"; then
 			continue
 		fi
 
