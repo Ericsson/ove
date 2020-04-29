@@ -1948,7 +1948,7 @@ function ove_revtab_status_parse {
 
 	for git in ${repos}; do
 		ove_revtab_status_parse_one ${tense} ${git}
-	done
+	done | head -n -1
 
 	# turn on monitor mode
 	set -m
