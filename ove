@@ -1653,6 +1653,7 @@ function ove_projects_cmd {
 	local cmd
 	local index
 	local path
+	local re
 	local ret
 	local target
 
@@ -1677,6 +1678,14 @@ function ove_projects_cmd {
 
 	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
 		pushd "${path}" &>/dev/null
+	fi
+
+	if [[ ${FUNCNAME[*]} == *-parallel ]] && [ -n "${OVE_FORCE_SERIALIZE_COMMANDS}" ]; then
+		re=\\b${cmd}\\b
+		if [[ "${OVE_FORCE_SERIALIZE_COMMANDS}" =~ ${re} ]]; then
+			exec {fd}>${OVE_PROJECT_TMP_DIR}/${cmd}.lock
+			flock ${fd}
+		fi
 	fi
 
 	# common for this command?
