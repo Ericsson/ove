@@ -5876,6 +5876,15 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" == "tail-lastlog" ] ||
+		[ "${subcommand}" == "less-lastlog" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist=$([ -d /var/tmp ] && cd /var/tmp || cd /tmp; \
+				find */ove/logs -maxdepth 0 -type d | \
+				cut -d/ -f1)
+		else
+			return
+		fi
 	fi
 
 	if [ "${wordlist}" != "" ]; then
@@ -6948,6 +6957,95 @@ function ove-unittest {
 		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
 		-Dnbr_of_files=$((nbr_of_files * nbr_of_repos + (4 * nbr_of_projs) + 4)) \
 		-DOVE_TEST_BASE="$(echo ${OVE_PROJECT_TMP_DIR}/unittest| sed -e 's|/|\\/|g')"
+}
+
+# less-lastlog:[USER]:peek into user(s) last OVE log using less
+function ove-less-lastlog {
+	ove_watch_logs "less" $*
+}
+
+# tail-lastlog:[USER]:peek into user(s) last OVE log using tail -f
+function ove-tail-lastlog {
+	ove_watch_logs "tail" $*
+}
+
+# $1: tail|less
+# ${@:2}: users
+function ove_watch_logs {
+	local cmd
+	local _cmd
+	local d
+	local i
+	local ignore
+	local log
+	local u
+	local users
+
+	cmd=$1
+	if [ "${cmd}" == "tail" ]; then
+		cmd="tail -f"
+	elif [ "${cmd}" == "less" ]; then
+		cmd="less"
+	else
+		return 1
+	fi
+	shift
+
+	if [ -d /var/tmp ]; then
+		d="/var/tmp"
+	else
+		d="/tmp"
+	fi
+
+	users=($(cd ${d}; find */ove/logs -maxdepth 0 -type d | cut -d/ -f1))
+	[ "${users}" == "" ] && return 2
+
+	ignore="tail-lastlog|less-lastlog"
+	if [ -n "${TMUX}" ]; then
+		for u in ${users[*]}; do
+			[ $# -eq 1 ] && [ "${u}" != "${1}" ] && continue
+
+			log=$(find ${d}/${u}/ove/logs/current/ -type f | \
+				grep -v -E "${ignore}" | \
+				sort | \
+				tail -1)
+
+			if [ "${cmd}" == "less" ]; then
+				_cmd="less -Ps\"${log}\""
+			else
+				_cmd=${cmd}
+			fi
+
+			tmux split-window -h "${_cmd} ${log}"
+			[ $# -eq 1 ] && return
+			tmux select-layout tiled
+		done
+	else
+		if [ $# -eq 1 ]; then
+			u=$1
+		elif [ ${#users[*]} -eq 1 ]; then
+			u=${users[0]}
+		else
+			i=1
+			for u in ${users[*]}; do
+				echo "$i:$u"
+				((i++))
+			done
+			read -p "user: "
+			if ! [[ "${REPLY}" =~ ^[0-9]+$ ]] || [ "${REPLY}" -gt ${#users[*]} ]; then
+				return 1
+			fi
+			echo
+			u=${users[$((REPLY - 1))]}
+		fi
+
+		[ -d "${d}/${u}" ] || return 3
+		log=$(find ${d}/${u}/ove/logs/current/ -type f | \
+			grep -v -E "${ignore}" | \
+			sort | \
+			tail -1)
+		${cmd} ${log}
+	fi
 }
 
 # generate-doc: :generate OVE documentation (e.g. ${OVE_DIR}/ove-cmd-list.md)

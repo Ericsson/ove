@@ -54,6 +54,7 @@
 | install                  | [PROJECT...]                                          | run the 'install' step for all or individual projects                                                                  |
 | install-parallel         | [PROJECT...]                                          | run the 'install' step for all or individual projects (in parallel)                                                    |
 | lastlog                  | [cmin]                                                | list OVE logs created within last 60 min or cmin min                                                                   |
+| less-lastlog             | [USER]                                                | peek into user(s) last OVE log using less                                                                              |
 | list-commands            |                                                       | list commands                                                                                                          |
 | list-committed-files     | [DAYS]                                                | list committed files within 7 or DAYS day(s)                                                                           |
 | list-heads               | [GIT...]                                              | git log for all/specified git repositories                                                                             |
@@ -101,6 +102,7 @@
 | switch                   | [PATTERN]                                             | switch to another OVE project                                                                                          |
 | systest                  | [TEST\|GROUP...]                                      | run one or more system tests/groups described in ${OVE_PROJECT_DIR}/systests-groups and ${OVE_PROJECT_DIR}/systests    |
 | tag                      |                                                       | list all project tags                                                                                                  |
+| tail-lastlog             | [USER]                                                | peek into user(s) last OVE log using tail -f                                                                           |
 | unittest                 | [TEST...]                                             | run all/specific unit tests                                                                                            |
 | unsource                 |                                                       | clean up all OVE vars/funcs from this shell                                                                            |
 | version                  |                                                       | print OVE version                                                                                                      |
