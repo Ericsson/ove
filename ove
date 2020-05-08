@@ -6308,8 +6308,10 @@ function ove_corrupt_repos {
 }
 
 function ove_post_checks {
+	local c
 	local corrupt_repos
 	local doublets
+	local f
 	local res
 	local script
 
@@ -6347,6 +6349,20 @@ function ove_post_checks {
 			echo "<---"
 		fi
 	fi
+
+	# check for config doublets
+	for f in ${HOME}/.oveconfig ${OVE_PROJECT_DIR}/.oveconfig; do
+		[ -e ${f} ] || continue
+
+		doublets=($(grep -E -v '#|^$' ${f} | awk '{print $1}' | sort | uniq -d))
+		if [ "${doublets[*]}" != "" ]; then
+			echo
+			ove_echo_yellow_noprefix "warning: found ${#doublets[*]} config duplicate(s):"
+			for c in ${doublets[*]}; do
+				grep -H -n -w ${c} ${f}
+			done
+		fi
+	done
 
 	# keep ${HOME}/.ove.bash up-to-date
 	if [ -e "${HOME}/.ove.bash" ] && ! diff -q "${OVE_DIR}/ove.bash" "${HOME}/.ove.bash"; then
