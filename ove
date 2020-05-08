@@ -2870,6 +2870,8 @@ function ove-systest {
 	local test_list
 	local test_name
 
+	[ -e ${OVE_PROJECT_DIR}/systests ] || return 1
+
 	if [ $# -eq 0 ]; then
 		echo "Need arguments, plz see ove help systest"
 		return 1
