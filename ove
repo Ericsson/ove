@@ -4505,7 +4505,7 @@ function ove-reset-ahead {
 		grep --color=never ': [0-9]\+ new commit' | \
 		while IFS=' ' read -r repo n foo bar; do
 			repo=${repo/:/}
-			git -C ${OVE_BASE_DIR}/${repo} reset --hard HEAD~${n}
+			git -C ${OVE_BASE_DIR}/${repo} reset --hard HEAD~${n} |& sed -e "s/^/${repo}: /g"
 		done
 }
 
