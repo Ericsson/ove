@@ -5803,19 +5803,22 @@ function ove_bash_complete {
 			return
 		fi
 	elif [ "${subcommand}" == "add" ] ||
-		[ "${subcommand}" == "branch" ] ||
-		[ "${subcommand}" == "describe" ] ||
 		[ "${subcommand}" == "diff" ] ||
 		[ "${subcommand}" == "diff-cached" ] ||
+		[ "${subcommand}" == "reset" ] ||
+		[ "${subcommand}" == "wdiff" ] ||
+		[ "${subcommand}" == "wdiff-cached" ]; then
+		if [ ${size} -ge 2 ]; then
+			wordlist=$(ove_dirty_repos)
+		fi
+	elif [ "${subcommand}" == "branch" ] ||
+		[ "${subcommand}" == "describe" ] ||
 		[ "${subcommand}" == "fsck" ] ||
 		[ "${subcommand}" == "heads2revtab" ] ||
 		[ "${subcommand}" == "list-stash" ] ||
 		[ "${subcommand}" == "readme" ] ||
 		[ "${subcommand}" == "remote" ] ||
-		[ "${subcommand}" == "reset" ] ||
-		[ "${subcommand}" == "show-dangling" ] ||
-		[ "${subcommand}" == "wdiff" ] ||
-		[ "${subcommand}" == "wdiff-cached" ]; then
+		[ "${subcommand}" == "show-dangling" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
 		fi
