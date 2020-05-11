@@ -3581,7 +3581,7 @@ function ove-branch {
 	local repos
 
 	if [ $# -lt 2 ]; then
-		cmd='ove_echo_yellow_noprefix ${git_basename} && git --no-pager branch -vv; echo'
+		cmd='ove_echo_yellow_noprefix ${git_basename} && git --no-pager -C ${git} branch -vv; echo'
 		if [ $# -eq 0 ]; then
 		        ove_revtab_forall "${cmd}"
 		else
@@ -3636,7 +3636,7 @@ function ove-branch {
 function ove-remote {
 	local cmd
 
-	cmd='ove_echo_yellow_noprefix ${PWD} && git --no-pager remote -v'
+	cmd='ove_echo_yellow_noprefix ${PWD} && git --no-pager -C ${git} remote -v'
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forall "${cmd}"
@@ -3662,7 +3662,7 @@ function ove-remote-check {
 function ove_dirty_repos {
 	local repo
 
-	for repo in $(ove_revtab_forall_parallel 'test -z "$(git --no-pager status --porcelain -uno)" || echo ${PWD}'); do
+	for repo in $(ove_revtab_forall_parallel 'test -z "$(git --no-pager -C ${git} status --porcelain -uno)" || echo ${PWD}'); do
 		ove_git2shortpath ${repo}
 	done
 }
@@ -3670,7 +3670,7 @@ function ove_dirty_repos {
 function ove_stashed_repos {
 	local repo
 
-	for repo in $(ove_revtab_forall_parallel 'test -z "$(git --no-pager stash show 2> /dev/null)" || echo ${PWD}'); do
+	for repo in $(ove_revtab_forall_parallel 'test -z "$(git --no-pager -C ${git} stash show 2> /dev/null)" || echo ${PWD}'); do
 		ove_git2shortpath ${repo}
 	done
 }
@@ -3730,7 +3730,7 @@ function ove_stash_inspect {
 	stashed_repos=$(ove_stashed_repos)
 	[ "${stashed_repos}" == "" ] && return
 
-	cmd="git --no-pager stash"
+	cmd="git --no-pager -C \${git} stash"
 	if [ "$1" == "show" ]; then
 		cmd+=" show -p"
 	elif [ "$1" == "list" ]; then
@@ -3770,9 +3770,9 @@ function ove-diff {
 	local cmd
 	local git
 
-	cmd="git --no-pager diff-files --quiet || \
+	cmd="git --no-pager -C \${git} diff-files --quiet || \
 		(ove_echo_yellow_noprefix \${git_basename} && \
-		git --no-pager diff --color=always ${OVE_DIFF_OPTIONS})"
+		git --no-pager -C \${git} diff --color=always ${OVE_DIFF_OPTIONS})"
 
 	if [ $# -eq 0 ]; then
 		for git in $(ove_dirty_repos); do
@@ -3804,9 +3804,9 @@ function ove-diff-cached {
 	local cmd
 	local git
 
-	cmd="git --no-pager diff-index --quiet --cached HEAD -- || \
+	cmd="git --no-pager -C \${git} diff-index --quiet --cached HEAD -- || \
 		(ove_echo_yellow_noprefix \${PWD} && \
-		git --no-pager diff --color=always --cached ${OVE_DIFF_OPTIONS})"
+		git --no-pager -C \${git} diff --color=always --cached ${OVE_DIFF_OPTIONS})"
 
 	if [ $# -eq 0 ]; then
 		for git in $(ove_dirty_repos); do
@@ -3821,8 +3821,8 @@ function ove-diff-cached {
 function ove-reset {
 	local cmd
 
-	cmd='git --no-pager diff-index --quiet --cached HEAD -- || \
-		(ove_echo_yellow_noprefix ${PWD} && git reset -p)'
+	cmd='git --no-pager -C ${git} diff-index --quiet --cached HEAD -- || \
+		(ove_echo_yellow_noprefix ${PWD} && git -C ${git} reset -p)'
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forall "${cmd}"
@@ -3836,8 +3836,8 @@ function ove-add {
 	local cmd
 	local git
 
-	cmd='git --no-pager diff-files --quiet || \
-		(ove_echo_yellow_noprefix ${PWD} && git --no-pager add -p)'
+	cmd='git --no-pager -C ${git} diff-files --quiet || \
+		(ove_echo_yellow_noprefix ${PWD} && git --no-pager -C ${git} add -p)'
 
 	if [ $# -eq 0 ]; then
 		for git in $(ove_dirty_repos); do
@@ -3853,8 +3853,9 @@ function ove-commit {
 	local cmd
 	local git
 
-	cmd="git --no-pager diff --cached --quiet || \
-		(ove_echo_yellow_noprefix \${PWD} && git commit -t <(echo; echo \# git: \${git}; echo \#; git diff --cached -U0 | sed 's/^/# /g'))"
+	cmd="git --no-pager -C \${git} diff --cached --quiet || \
+		(ove_echo_yellow_noprefix \${PWD} && \
+		git -C \${git} commit -t <(echo; echo \# git: \${git}; echo \#; git -C \${git} diff --cached -U0 | sed 's/^/# /g'))"
 
 	if [ $# -eq 0 ]; then
 		for git in $(ove_dirty_repos); do
@@ -4429,7 +4430,7 @@ function ove-buildme-parallel {
 function ove-diff-check {
 	local cmd
 
-	cmd="echo \${PWD}; git --no-pager diff --check $* -- \$(git diff --name-only)"
+	cmd="echo \${PWD}; git --no-pager -C \${git} diff --check $* -- \$(git -C \${git} diff --name-only)"
 	ove_revtab_forall "${cmd}"
 }
 
@@ -5049,13 +5050,13 @@ function ove-ag {
 function ove-grep {
 	[ $# -eq 0 ] && echo "No pattern, try again" && return 1
 
-	ove_revtab_forall_parallel 'git --no-pager grep --color=always "'"$*"'" | sed -e 's@^@\${PWD}/@g''
+	ove_revtab_forall_parallel 'git --no-pager -C ${git} grep --color=always "'"$*"'" | sed -e 's@^@\${PWD}/@g''
 }
 
 # blame-history:PATTERN:git log -S for all git repositories
 function ove-blame-history {
 	[ $# -eq 0 ] && echo "No pattern, try again" && return 1
-	ove_revtab_forall 'git --no-pager log --color=always -p -S "'"$*"'"'
+	ove_revtab_forall 'git --no-pager -C ${git} log --color=always -p -S "'"$*"'"'
 }
 
 # blame:PATTERN:git grep-blame-log combo
@@ -5177,7 +5178,7 @@ function ove-list-modified-files {
 	local cmd
 	local git
 
-	cmd='git --no-pager diff-index --quiet HEAD || git diff --name-only HEAD | sed -e "s|^|${git}/|g"'
+	cmd='git --no-pager -C ${git} diff-index --quiet HEAD || git -C ${git} diff --name-only HEAD | sed -e "s|^|${git}/|g"'
 
 	for git in $(ove_dirty_repos); do
 		ove_revtab_forsome "${cmd}" "${git}"
@@ -5276,7 +5277,7 @@ function ove-mrproper {
 	archive_dir_size="$(tree ${OVE_ARCHIVE_DIR} | tail -1)"
 
 	if [ "$1" == "y" ] || [ "$1" == "Y" ]; then
-		ove_revtab_forall 'git --no-pager clean -dffx > /dev/null'
+		ove_revtab_forall 'git --no-pager -C ${git} clean -dffx > /dev/null'
 		! [ "${OVE_STAGE_DIR}" == "" ] && rm -rf ${OVE_STAGE_DIR}/*
 		! [ "${OVE_ARCHIVE_DIR}" == "" ] && rm -rf ${OVE_ARCHIVE_DIR}/*
 
@@ -5346,7 +5347,7 @@ function ove-mrproper {
 
 	if [ "${nbr_untracked_files}" -ne 0 ]; then
 		# dry-run first
-		ove_revtab_forall 'a=$(git --no-pager clean -dffxn); [ "${a}" != "" ] && printf "${a}\n" | sed -e "s|Would remove \(.*\)$|${PWD}/\1|g"'
+		ove_revtab_forall 'a=$(git --no-pager -C ${git} clean -dffxn); [ "${a}" != "" ] && printf "${a}\n" | sed -e "s|Would remove \(.*\)$|${PWD}/\1|g"'
 		echo
 		read -p "Proceed to remove ${nbr_untracked_files} untracked files/directories (list above) using 'git clean -dffx'? (y/N) " -r
 		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
@@ -5354,7 +5355,7 @@ function ove-mrproper {
 			read -p "Are you really sure? (y/N) " -r
 			echo
 			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-				ove_revtab_forall 'git --no-pager clean -dffx'
+				ove_revtab_forall 'git --no-pager -C ${git} clean -dffx'
 			fi
 		fi
 	fi
@@ -5432,7 +5433,8 @@ function ove-describe {
 function ove-list-heads {
 	local cmd
 
-	cmd='echo $(echo -n "$(echo ${git} | sed -e "s|${OVE_BASE_DIR}/||g")?" && git --no-pager log -1 --no-merges --format=%h?%ar?%ae?%s 2> /dev/null)'
+	cmd='echo $(echo -n "$(echo ${git} | sed -e "s|${OVE_BASE_DIR}/||g")?" && \
+		git --no-pager -C ${git} log -1 --no-merges --format=%h?%ar?%ae?%s 2> /dev/null)'
 	while true; do
 		if [ $# -eq 0 ]; then
 			ove_revtab_forall_parallel "${cmd}"
@@ -5520,9 +5522,9 @@ function ove-show {
 	for SHA in "$@"; do
 		# remove dirty tags
 		SHA=${SHA%-dirty}
-		ove_revtab_forall "git --no-pager show ${SHA} -- &> /dev/null && \
+		ove_revtab_forall "git --no-pager -C \${git} show ${SHA} -- &> /dev/null && \
 			clear && \
-			GIT_PAGER=\"less -Ps'\${git_basename} ${SHA}'\" git show --color=always ${SHA} --"
+			GIT_PAGER=\"less -Ps'\${git_basename} ${SHA}'\" git -C \${git} show --color=always ${SHA} --"
 	done
 }
 
