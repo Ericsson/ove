@@ -3191,13 +3191,31 @@ function ove_print_only_a_and_b {
 	fi
 }
 
+# $1: repo
+# $2: rev
+function ove_validate_rev {
+	local repo="$1"
+	local rev="$2"
+
+	if ! git -C "${OVE_BASE_DIR}/${repo}" cat-file -e "${rev}" &> /dev/null; then
+		ove_echo_error_noprefix "${repo}: '${rev}' is not a valid revision, try 'ove fetch ${repo}'"
+		return 1
+	fi
+}
+
 # helper function for diff/log/shortlog-project functions
 function ove_extract_repo_and_sha {
 	local line=${*}
 
 	repo=$(echo ${line} | awk '{print $2}')
 	sha_1=$(echo ${line} | awk '{print $3}')
+	if ! ove_validate_rev ${repo} ${sha_1}; then
+		return 1
+	fi
 	sha_2=$(echo ${line} | awk '{print $4}')
+	if ! ove_validate_rev ${repo} ${sha_2}; then
+		return 1
+	fi
 }
 
 # diff-project:<rev> <rev>:git diff the '${OVE_PROJECT_NAME}' project
@@ -3226,7 +3244,7 @@ function ove-diff-project {
 		elif [ ${line:0:1} == "b" ]; then
 			ove_extract_only_b ${line}
 		elif [ ${line:0:1} == "c" ]; then
-			ove_extract_repo_and_sha ${line}
+			ove_extract_repo_and_sha ${line} || continue
 			cmd="git -C ${OVE_BASE_DIR}/${repo} diff --color=always ${sha_1} ${sha_2}"
 			diff=$(${cmd})
 			if [ "${diff}" != "" ]; then
@@ -3263,7 +3281,7 @@ function ove-log-project {
 		elif [ ${line:0:1} == "b" ]; then
 			ove_extract_only_b ${line}
 		elif [ ${line:0:1} == "c" ]; then
-			ove_extract_repo_and_sha ${line}
+			ove_extract_repo_and_sha ${line} || continue
 			diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} log --oneline --pretty="  %C(auto)%h %s" ${sha_1}..${sha_2})
 			if [ "${diff}" != "" ]; then
 				echo
@@ -3302,7 +3320,7 @@ function ove-shortlog-project {
 		elif [ ${line:0:1} == "b" ]; then
 			ove_extract_only_b ${line}
 		elif [ ${line:0:1} == "c" ]; then
-			ove_extract_repo_and_sha ${line}
+			ove_extract_repo_and_sha ${line} || continue
 			diff=$(git --no-pager -C ${OVE_BASE_DIR}/${repo} shortlog --email --oneline ${sha_1}..${sha_2} | sed -e 's/^/  /g')
 			if [ "${diff}" != "" ]; then
 				ove_echo_yellow_noprefix "${repo}:"
