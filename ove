@@ -4116,7 +4116,7 @@ function ove-export {
 	return 0
 }
 
-# import:[file]:import project(s), see export
+# import:[FILE]:import project(s), see export
 function ove-import {
 	local f
 
@@ -4529,7 +4529,7 @@ function ove-reset-ahead {
 		done
 }
 
-# format-patch: :create a bz2 archive for all local commits not yet published
+# format-patch:[NAME]:create a bz2 archive for all local commits not yet published
 function ove-format-patch {
 	local d
 	local file
@@ -4553,12 +4553,17 @@ function ove-format-patch {
 	[ $(find ${d} -type f | wc -l) -eq 0 ] && return || tree -a "${d}"
 
 	echo
-	file="${PWD}/${OVE_PROJECT_NAME}-patches-$(date '+%Y%m%d-%H%M').tar.bz2"
+	if [ $# -eq 1 ]; then
+		file="$1"
+	else
+		file="${PWD}/${OVE_PROJECT_NAME}-patches-$(date '+%Y%m%d-%H%M%S').tar.bz2"
+	fi
+
 	tar -C "${d}" -cjf "${file}" .
 	ls -lh "${file}"
 }
 
-# am:file:apply a bz2 archive file created with 'format-patch'
+# am:FILE:apply a bz2 archive file created with 'format-patch'
 function ove-am {
 	local d
 	local r

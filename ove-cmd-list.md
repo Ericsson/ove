@@ -4,7 +4,7 @@
 | add                      | [GIT...]                                              | git add -p for all/specified repositories                                                                              |
 | ag                       | PATTERN                                               | search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]                                 |
 | ahead                    | [GIT...]                                              | list local commits not yet published for all/specified repositories                                                    |
-| am                       | file                                                  | apply a bz2 archive file created with 'format-patch'                                                                   |
+| am                       | FILE                                                  | apply a bz2 archive file created with 'format-patch'                                                                   |
 | apply                    | PATCH                                                 | apply one OVE patch                                                                                                    |
 | authors                  |                                                       | list author summary for all git repositories                                                                           |
 | blame                    | PATTERN                                               | git grep-blame-log combo                                                                                               |
@@ -40,7 +40,7 @@
 | fetch                    | [GIT...]                                              | git fetch --all for all/specified repositories, ends with ove status                                                   |
 | forall                   | COMMAND                                               | run 'COMMAND' for all git repositories                                                                                 |
 | forall-parallel          | COMMAND                                               | run 'COMMAND' in parallel for all git repositories                                                                     |
-| format-patch             |                                                       | create a bz2 archive for all local commits not yet published                                                           |
+| format-patch             | [NAME]                                                | create a bz2 archive for all local commits not yet published                                                           |
 | forowel                  | COMMAND                                               | run 'COMMAND' for all OVE workspaces on this host                                                                      |
 | forowel-parallel         | COMMAND                                               | run 'COMMAND' in parallel for all OVE workspaces on this host                                                          |
 | fsck                     | [GIT...]                                              | git fsck --full for all/specified git repositories                                                                     |
@@ -50,7 +50,7 @@
 | grep                     | PATTERN                                               | grep OVE workspace                                                                                                     |
 | heads2revtab             | [GIT...]                                              | update '${OVE_PROJECT_DIR}/revtab' with current SHA-1                                                                  |
 | help                     | [PATTERN]                                             | OVE help                                                                                                               |
-| import                   | [file]                                                | import project(s), see export                                                                                          |
+| import                   | [FILE]                                                | import project(s), see export                                                                                          |
 | install                  | [PROJECT...]                                          | run the 'install' step for all or individual projects                                                                  |
 | install-parallel         | [PROJECT...]                                          | run the 'install' step for all or individual projects (in parallel)                                                    |
 | lastlog                  | [cmin]                                                | list OVE logs created within last 60 min or cmin min                                                                   |
