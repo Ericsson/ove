@@ -2870,6 +2870,7 @@ function ove-systest {
 	local systest_type
 	local test_list
 	local test_name
+	local timeout_cmd
 
 	[ -e ${OVE_PROJECT_DIR}/systests ] || return 1
 
@@ -2994,7 +2995,13 @@ function ove-systest {
 			# dry run
 			result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_green}OK${ove_blank}]:${test_name}" ${i} ${nbr_tests})
 		else
-			if timeout --foreground --kill-after 30s ${systest_timeout} ${systest_cmd}; then
+			if [ ${systest_timeout} -eq 0 ]; then
+				timeout_cmd=""
+			else
+				timeout_cmd="timeout --foreground --kill-after 30s ${systest_timeout}"
+			fi
+
+			if ${timeout_cmd} ${systest_cmd}; then
 				# test passed
 				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_green}OK${ove_blank}]:${test_name}" ${i} ${nbr_tests})
 			else
