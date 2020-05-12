@@ -7163,4 +7163,38 @@ function ove-generate-doc {
 	return 0
 }
 
+# shell-check: :run shellcheck on OVE
+function ove-shell-check {
+	local exclude
+
+	if ! command -v shellcheck > /dev/null; then
+		ove_echo_error_noprefix "'shellcheck' is not found"
+		return 1
+	fi
+
+	# this {/} is literal...
+	exclude+="SC1083,"
+
+	# can't follow non-constant source
+	exclude+="SC1090,"
+
+	# quote this to prevent word splitting
+	exclude+="SC2046,"
+
+	# double quote to prevent globbing and word splitting
+	exclude+="SC2086,"
+
+	# use foo "$@" if function's $1 should mean script's $1
+	exclude+="SC2119,"
+
+	# foo references arguments, but none are ever passed
+	exclude+="SC2120"
+
+	shellcheck -x -e ${exclude} "${OVE_SELF}" > "${OVE_TMP}/shell-check"
+	grep -c -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" > "${OVE_TMP}/shellcheck.summary"
+	grep -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" | sort | uniq -c | sort -nr >> "${OVE_TMP}/shellcheck.summary"
+	cp -a "${OVE_TMP}/shellcheck.summary" "${OVE_DIR}/tests/.shellcheck"
+	git --no-pager -C "${OVE_DIR}" diff -- tests/.shellcheck
+}
+
 ove_main "$@"

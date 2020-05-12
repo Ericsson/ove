@@ -87,6 +87,7 @@
 | run                      | \|TIMEOUT COMMAND                                     | run one OVE command in terminal\|tmux                                                                                  |
 | select-configuration     | [PATTERN\|default]                                    | select build configuration for each project                                                                            |
 | setup                    |                                                       | print how to set this project up                                                                                       |
+| shell-check              |                                                       | run shellcheck on OVE                                                                                                  |
 | shortlog-project         | <rev> <rev>                                           | git shortlog the project '${OVE_PROJECT_NAME}'                                                                         |
 | show                     | [revision...]                                         | ove list-heads or search for 'revision' within all git repositories. If found run 'git show SHA-1\|TAG'                |
 | show-ahead               | [GIT...]                                              | run 'ove show' on local commits not yet published for all/specified repositories                                       |
