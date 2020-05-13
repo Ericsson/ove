@@ -51,6 +51,7 @@
 | heads2revtab             | [GIT...]                                              | update '${OVE_PROJECT_DIR}/revtab' with current SHA-1                                                                  |
 | help                     | [PATTERN]                                             | OVE help                                                                                                               |
 | import                   | [FILE]                                                | import project(s), see export                                                                                          |
+| init                     | \|[DIR]\|[DIR NAME]                                   | scan directories and look for git repositories, if found create/update a OVE workspace                                 |
 | install                  | [PROJECT...]                                          | run the 'install' step for all or individual projects                                                                  |
 | install-parallel         | [PROJECT...]                                          | run the 'install' step for all or individual projects (in parallel)                                                    |
 | lastlog                  | [cmin]                                                | list OVE logs created within last 60 min or cmin min                                                                   |

@@ -12,6 +12,9 @@ OVE is built with the developer in focus. We embrace the fact that while compute
 ## Tutorial
 Eager to get going? We have a tutorial [here](https://github.com/Ericsson/ove-tutorial). Try OVE out with a pre-made tutorial project and get up to speed on OVE in just a few minutes.
 
+## Install
+    $ git clone https://github.com/Ericsson/ove.git .ove && source .ove/ove
+
 ## Overview
 OVE provides a top project, and on this top level OVE therefore needs to handle four major functionality areas:
 

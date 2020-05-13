@@ -192,17 +192,10 @@ function ove_main {
 			return 1
 		fi
 
-		if [[ "$*" == *"crawl"* ]]; then
-			ove_crawl
-			return 0
-		fi
-
 		if [ -e ".owel" ] && [ -e ove ]; then
 			:
 		else
-			ove_echo_error_noprefix "you have to source this script from a OVE root"
-			ove-unsource
-			return 1
+			ove-init
 		fi
 
 		if ! ove_init; then
@@ -1147,7 +1140,10 @@ function ove {
 	cmd="$1"
 
 	# keep this as early as possible
-	[ "${cmd}" == "cd" ] && ove-cd && return 0
+	if [ "${cmd}" == "cd" ] || [ "${cmd}" == "init" ]; then
+		ove-${cmd} "${@:2}"
+		return $?
+	fi
 
 	# sanity check
 	if ! ove_get_base_dir > /dev/null; then
@@ -2051,6 +2047,11 @@ function ove_verify_checksums {
 		(( reinit+=1 ))
 	fi
 
+	# OVE_BASE_DIR got lost?
+	if [ -z "${OVE_BASE_DIR+x}" ]; then
+		(( reinit+=1 ))
+	fi
+
 	if [ ${reinit} -gt 0 ]; then
 		if ! ove_reinit; then
 			return 1
@@ -2370,13 +2371,22 @@ function ove_revtab_fetch {
 	return $?
 }
 
+# $1: dir
+function ove_is_base_dir {
+	if [[ -L ${1}/ove && -L ${1}/.owel ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
 function ove_get_base_dir {
 	local s
 
 	pushd . &> /dev/null
 	s=$(pwd -P)
 	while [ "${s}" != "" ]; do
-		if [[ -L ${s}/ove && -L ${s}/.owel ]]; then
+		if ove_is_base_dir "${s}"; then
 			echo "${s}"
 			break
 		fi
@@ -6509,45 +6519,203 @@ function ove_buildable_projects {
 	export OVE_PROJECT_LIST_BUILDABLE
 }
 
-# create a '.owel/revtab' file from current directory
-function ove_crawl {
+# init:|[DIR]|[DIR NAME]:scan directories and look for git repositories, if found create/update a OVE workspace
+function ove-init {
+	local d
+	local dir
+	local do_init_git
+	local doublets
 	local fetch_url
 	local git
+	local i
 	local name
+	local ove_link
+	local owel_default
+	local owel_name
 	local push_url
 	local rev
+	local revtabs
+	local revtab_file
 	local str
 
-	str=""
-	for git in $(find -type d -name .git 2>/dev/null); do
+	if [ $# -eq 0 ]; then
+		while true; do
+			read -r -p "Directory to scan for git repositories? Leave blank to search in '$PWD': "
+			if [ "${REPLY}" == "" ]; then
+				if ove_is_base_dir "${PWD}"; then
+					ove_echo_error_noprefix "'${PWD}' is already a OVE workspace. Remove the symblic link '${PWD}/.owel' to be able to re-init this directory."
+					continue
+				fi
+
+				dir=${PWD}
+				break
+			fi
+
+			if ! [ -d ${REPLY} ]; then
+				ove_echo_error_noprefix "'${REPLY}' is not a directory, try again"
+				continue
+			fi
+
+			if ove_is_base_dir "${REPLY}"; then
+				ove_echo_error_noprefix "'${REPLY}' is already a OVE workspace. Remove the symbolic link '${REPLY%/}/.owel' to be able to re-init this directory."
+				continue
+			fi
+			dir=${REPLY}
+			break
+		done
+
+	elif [ $# -lt 3 ]; then
+		if ! [ -d ${1} ]; then
+			ove_echo_error_noprefix "'${1}' is not a directory"
+			return 1
+		fi
+		if ove_is_base_dir "${1}"; then
+			ove_echo_error_noprefix "'${1}' is already a OVE workspace. Remove the symbolic link '${1%/}/.owel' to be able to re-init this directory."
+			return 1
+		fi
+		dir=${1}
+	fi
+
+	# remove any trailing slash
+	[ ${#dir} -ne 1 ] && dir="${dir%/}"
+
+	if ! [ -w "${dir}" ]; then
+		ove_echo_error_noprefix "sorry you are not allowed to create files/directories here: '${dir}'"
+		return 1
+	fi
+
+	if [ -e ${dir}/ove ] && ! [ -L ${dir}/ove ]; then
+		ove_echo_error_noprefix "you already have a file/directory named '${dir}/ove', rename/remove to proceed"
+		return 1
+	fi
+
+	mapfile -t revtabs < <(find ${dir} -mindepth 2 -maxdepth 2 -name revtab)
+	if [ $# -lt 2 ] && [ ${#revtabs[*]} -eq 1 ]; then
+		owel_default="$(basename $(dirname ${revtabs[0]}))"
+	else
+		owel_default="top"
+	fi
+
+	if [ $# -eq 0 ] || [ $# -eq 1 ]; then
+		while true; do
+			read -r -p "Top level repo name? Leave blank to name it '${owel_default}': "
+			if [ "${REPLY}" == "" ]; then
+				owel_name="${owel_default}"
+			else
+				owel_name="${REPLY}"
+			fi
+			break
+		done
+	elif [ $# -eq 2 ]; then
+		owel_name=${2}
+	fi
+
+	dir=$(readlink -f ${dir})
+	i=0
+	do_init_git=0
+
+	# updating an existing git repo?
+	if [ -d ${dir}/${owel_name}/.git ]; then
+		owel_remote=$(git -C "${dir}/${owel_name}" remote -v | \
+			grep fetch | \
+			awk '{print $2}')
+	else
+		do_init_git=1
+	fi
+
+	while read -r git; do
 		if ! git -C ${git} log -1 --oneline &> /dev/null; then
 			continue
 		fi
-		name=$(dirname "${git}" | cut -b3-)
+
+		name=$(dirname "${git}")
+		name=${name/${dir}\//}
+
 		fetch_url=$(git -C "${git}" remote -v | \
 			grep fetch | \
-			awk '{print $2}' | \
-			tr -d '\n')
+			awk '{print $2}')
+		[ "${fetch_url}" == "" ] && fetch_url="noremote"
+		# ignore OWEL remote
+		[ "${fetch_url}" == "${owel_remote}" ] && continue
+
 		push_url=$(git -C "${git}" remote -v | \
 			grep push | \
-			awk '{print $2}' | \
-			tr -d '\n')
-		if git -C "${git}" branch | grep -q detached; then
-			rev=$(git -C "${git}" rev-parse --short HEAD| tr -d '\n')
+			awk '{print $2}')
+		[ "${push_url}" == "" ] && push_url="noremote"
+
+		# detached?
+		if ! git -C "${git}" symbolic-ref -q HEAD > /dev/null; then
+			rev=$(git -C "${git}" rev-parse --short HEAD)
 		else
 			rev=$(git -C "${git}" branch | \
 				cut -d' ' -f2 | \
 				tr -d '\n')
 		fi
 
+		((i++))
+		echo -en "Scanning '${dir}'. #repos: ${i}\r"
 		str+="${name} ${fetch_url} ${push_url} ${rev}\n"
-	done
-	mkdir -vp .owel
+	done < <(find "${dir}" -type d -name .git 2>/dev/null)
+
+	if [ ${i} -eq 0 ]; then
+		ove_echo_error_noprefix "no git repositories found here: '${dir}'"
+		return 1
+	fi
+
+	echo
+	mkdir -p ${dir}/${owel_name}
+
+	if [ ${do_init_git} -eq 1 ]; then
+		git -C ${dir}/${owel_name} init || return 2
+	fi
+
+	# owel symlink
+	(cd ${dir} && ln -s ${owel_name} .owel)
+
+	# symlink self
+	if ! [ -L ${dir}/ove ]; then
+		if [ "${OVE_SELF}" == "" ]; then
+			ove_link=$(readlink -f ${BASH_SOURCE[0]})
+		else
+			ove_link=${OVE_SELF}
+		fi
+		(cd ${dir} && ln -s ${ove_link} ove)
+	fi
+
+	# create a revtab file
+	revtab_file="${dir}/${owel_name}/revtab"
 	printf "${str}" | \
 		column -t | \
-		sort > .owel/revtab
+		sort > ${revtab_file}
 
-	echo "Created '.owel/revtab' and populated the file with $(wc -l .owel/revtab) repositories, run 'source ove' again"
+	# inform user on repos with same fetch url
+	mapfile -t doublets < <(awk '{print $2}' ${revtab_file} | grep -v noremote | sort | uniq -d)
+	if [ "${doublets[*]}" != "" ]; then
+		ove_echo_yellow_noprefix "NOTE: found a few repos with the same fetch url:"
+		for d in ${doublets[*]}; do
+			grep -H -n "${d}" ${revtab_file}
+			echo "--"
+		done | column -t
+	fi
+
+	echo "---"
+	echo "Init summary:"
+	echo "* created/updated '${revtab_file}' and with ${i} repositories"
+	if [ "${ove_link}" != "" ]; then
+		echo "* created a symbolic link '${dir}/ove' -> '${ove_link}'"
+	fi
+	echo "* created a symbolic link '${dir}/.owel' -> '${dir}/${owel_name}'"
+
+	if [ ${do_init_git} -eq 1 ]; then
+		echo "* created a empty git repository here: '${dir}/${owel_name}'"
+	fi
+	if [ ${#doublets[*]} -ne 0 ]; then
+		echo "* found that a few repos are mentioned more than one time in '${revtab_file}', details above"
+	fi
+	if [ ${dir} != "${PWD}" ]; then
+		cd ${dir} || return 1
+		echo "* changed current working directory to ${dir}"
+	fi
 }
 
 # $1: command
