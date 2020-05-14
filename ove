@@ -5730,7 +5730,7 @@ function ove_bash_complete {
 	local wordlist
 
 	# sanity check
-	if ! ove_get_base_dir > /dev/null; then
+	if ! ove_get_base_dir &> /dev/null; then
 		return 1
 	fi
 
