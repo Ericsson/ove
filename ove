@@ -3646,7 +3646,7 @@ function ove-branch {
 
 		# update revtab
 		index=${ove_revtab_name2index[${r}]}
-		sed -i "s/^\(${r} .*\)${ove_revtab_rev[${index}]}/\1${branch_name}/g" "${OVE_PROJECT_DIR}/revtab"
+		sed -i "s|^\(${r} .*\)${ove_revtab_rev[${index}]}|\1${branch_name}|g" "${OVE_PROJECT_DIR}/revtab"
 	done
 }
 
