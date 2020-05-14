@@ -2162,9 +2162,10 @@ function ove_revtab_list_fullpath {
 	local git
 	local s
 
-	for git in "${ove_revtab_git_name[@]}" $(readlink ${OVE_BASE_DIR}/.owel); do
+	for git in "${ove_revtab_git_name[@]}"; do
 		s+="${OVE_BASE_DIR}/${git} "
 	done
+	s+="${OVE_PROJECT_DIR}"
 
 	echo ${s}
 }
@@ -2173,7 +2174,7 @@ function ove_revtab_list_basename {
 	local git
 	local s
 
-	for git in "${ove_revtab_git_name[@]}" $(readlink ${OVE_BASE_DIR}/.owel); do
+	for git in "${ove_revtab_git_name[@]}" ${OVE_PROJECT_NAME}; do
 		s+="${git} "
 	done
 
@@ -6193,7 +6194,7 @@ function ove_dirs_init {
 		# always re-create tmp link
 		[ -h ${OVE_TMP_LINK_NAME} ] && rm ${OVE_TMP_LINK_NAME}
 	else
-		OVE_PROJECT_STATE_DIR=$(readlink ${OVE_STATE_LINK_NAME})
+		OVE_PROJECT_STATE_DIR=$(readlink -f ${OVE_STATE_LINK_NAME})
 		! [ -e "${OVE_STATE_LINK_NAME}" ] && mkdir -p ${OVE_PROJECT_STATE_DIR}
 	fi
 	export OVE_PROJECT_STATE_DIR
@@ -6205,7 +6206,7 @@ function ove_dirs_init {
 		mkdir -p ${OVE_PROJECT_TMP_DIR}
 		ln -s ${OVE_PROJECT_TMP_DIR} ${OVE_TMP_LINK_NAME}
 	else
-		OVE_PROJECT_TMP_DIR=$(readlink ${OVE_TMP_LINK_NAME})
+		OVE_PROJECT_TMP_DIR=$(readlink -f ${OVE_TMP_LINK_NAME})
 		! [ -e "${OVE_TMP_LINK_NAME}" ] && mkdir -p ${OVE_PROJECT_TMP_DIR}
 	fi
 	export OVE_PROJECT_TMP_DIR
