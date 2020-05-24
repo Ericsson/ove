@@ -1817,6 +1817,9 @@ function ove_git2shortpath {
 # $1: git
 function ove_status_one_repo {
 	local git_fullpath
+	local git_shortpath
+	local index
+	local rev
 
 	[ $# -ne 1 ] && return 1
 
@@ -1825,7 +1828,16 @@ function ove_status_one_repo {
 		return
 	fi
 
-	printf "$(ove_git2shortpath $1):$(git -c color.status=always -C "${git_fullpath}" status -zbs -uno | tr '\0' ' ')\n"
+	git_shortpath="$(ove_git2shortpath $1)"
+	index=${ove_revtab_name2index[${git_shortpath}]}
+
+	if [ "${git_shortpath}" == "${OVE_PROJECT_NAME}" ]; then
+		rev="$(git -C "${OVE_PROJECT_DIR}" rev-parse --abbrev-ref HEAD 2> /dev/null)"
+	else
+		rev="${ove_revtab_rev[${index}]}"
+	fi
+
+	printf "${git_shortpath}:${rev:0:6}:$(git -c color.status=always -C "${git_fullpath}" status -zbs -uno | tr '\0' ' ')\n"
 }
 
 function ove_validate_repo_list {
