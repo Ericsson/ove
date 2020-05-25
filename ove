@@ -1835,12 +1835,12 @@ function ove_status_one_repo {
 
 	if [ "${git_shortpath}" == "${OVE_PROJECT_NAME}" ]; then
 		rev="$(git -C "${OVE_PROJECT_DIR}" describe --tags --always 2> /dev/null)"
-		[ "${rev}" == "" ] && rev=" "
+		[ -n "${rev}" ] || rev=" "
 	else
 		rev="${ove_revtab_rev[${index}]}"
 	fi
 
-	printf "${git_shortpath}:${rev:0:7}:$(git -c color.status=always -C "${git_fullpath}" status -zbs -uno | tr '\0' ' ')\n"
+	printf "${git_shortpath}:${rev}:$(git -c color.status=always -C "${git_fullpath}" status -zbs -uno | tr '\0' ' ')\n"
 }
 
 function ove_validate_repo_list {
