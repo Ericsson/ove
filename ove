@@ -882,6 +882,7 @@ function ove_loop_command {
 	local f
 	local files_modified_by_command
 	local max_count
+	local prefix
 	local read_args
 	local inotifywait_pid
 	local timeout
@@ -918,7 +919,8 @@ function ove_loop_command {
 			if [ $(cat /proc/sys/fs/inotify/max_user_watches) -lt $(wc -l < ${all_files}) ]; then
 				ove_echo_error_noprefix "you need to increase the number of inotify user watches. Try:"
 				echo
-				echo "$ sudo bash -c 'echo $(wc -l < ${all_files}) > /proc/sys/fs/inotify/max_user_watches'"
+				[ $(id -u) != 0 ] && prefix="sudo"
+				echo "$ ${prefix} bash -c 'echo $(wc -l < ${all_files}) > /proc/sys/fs/inotify/max_user_watches'"
 				read -p -r ""
 				return 1
 			fi
@@ -4055,6 +4057,7 @@ function ove_install_packages {
 	echo
 	echo "To fix this, run the following command:"
 	echo
+	[ $(id -u) != 0 ] && cmd="sudo ${cmd}"
 	echo -e "\t${cmd}"
 	echo
 	return 1
@@ -5590,6 +5593,7 @@ function ove-version {
 
 # loglevel:[LEVEL] :show or change loglevel [0-6]
 function ove-loglevel {
+	local prefix
 	local sysctl_f
 
 	set +x
@@ -5607,14 +5611,15 @@ function ove-loglevel {
 				ove_echo_error_noprefix "the kernel does not allow you to trace all processes"
 				echo
 				echo "To fix this for now:"
-				echo " sudo bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope'"
+				[ $(id -u) != 0 ] && prefix="sudo"
+				echo " ${prefix} bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope'"
 				echo
 				echo "To fix this permanently:"
 				sysctl_f=$(grep -l kernel.yama.ptrace_scope /etc/sysctl.d/*)
 				if [ "${sysctl_f}" != "" ]; then
-					echo " sudo bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope; sed -i -e \"s/kernel.yama.ptrace_scope.*/kernel.yama.ptrace_scope = 0/g\" ${sysctl_f}'"
+					echo " ${prefix} bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope; sed -i -e \"s/kernel.yama.ptrace_scope.*/kernel.yama.ptrace_scope = 0/g\" ${sysctl_f}'"
 				else
-					echo " sudo bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope; echo \"kernel.yama.ptrace_scope = 0\" > /etc/sysctl.d/10-ptrace.conf'"
+					echo " ${prefix} bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope; echo \"kernel.yama.ptrace_scope = 0\" > /etc/sysctl.d/10-ptrace.conf'"
 				fi
 				return 1
 			fi
