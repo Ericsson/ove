@@ -921,7 +921,7 @@ function ove_loop_command {
 				echo
 				[ $(id -u) != 0 ] && prefix="sudo"
 				echo "$ ${prefix} bash -c 'echo $(wc -l < ${all_files}) > /proc/sys/fs/inotify/max_user_watches'"
-				read -p -r ""
+				read -r -p ""
 				return 1
 			fi
 
