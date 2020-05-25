@@ -6399,15 +6399,17 @@ function ove_post_checks {
 	# check for systest doublets
 	if [ -e ${OVE_PROJECT_DIR}/systests ]; then
 		# yes, this is ugly
-		doublets=$(grep -E -v '#|^$' ${OVE_PROJECT_DIR}/systests | \
+		mapfile -t doublets < <(grep -E -v '#|^$' ${OVE_PROJECT_DIR}/systests | \
 			awk '{print $1}' | \
 			cut -d: -f1 | \
 			sort | \
-			uniq -c -d)
-		if [ "${doublets}" != "" ]; then
+			uniq -d)
+		if [ "${doublets[*]}" != "" ]; then
 			echo
-			ove_echo_red_noprefix "error: doublet systests identified in '${OVE_PROJECT_DIR}/systests':"
-			ove_echo_red_noprefix ${doublets}
+			ove_echo_yellow_noprefix "warning: found ${#doublets[*]} systest duplicate(s):"
+			for c in ${doublets[*]}; do
+				grep -H -n -w ^${c} ${OVE_PROJECT_DIR}/systests
+			done
 		fi
 	fi
 
@@ -6435,7 +6437,7 @@ function ove_post_checks {
 	for f in ${HOME}/.oveconfig ${OVE_PROJECT_DIR}/.oveconfig; do
 		[ -e ${f} ] || continue
 
-		doublets=($(grep -E -v '#|^$' ${f} | awk '{print $1}' | sort | uniq -d))
+		mapfile -t doublets < <(grep -E -v '#|^$' ${f} | awk '{print $1}' | sort | uniq -d)
 		if [ "${doublets[*]}" != "" ]; then
 			echo
 			ove_echo_yellow_noprefix "warning: found ${#doublets[*]} config duplicate(s):"
@@ -6451,12 +6453,12 @@ function ove_post_checks {
 	fi
 
 	# check for script doublets
-	doublets=($(for script in $(ove-list-scripts); do echo ${script##*/}; done | \
+	mapfile -t doublets < <(for script in $(ove-list-scripts); do echo ${script##*/}; done | \
 		sort | \
-		uniq -d))
+		uniq -d)
 	if [ "${doublets[*]}" != "" ]; then
 		echo
-		ove_echo_yellow_noprefix "warning: found script duplicates:"
+		ove_echo_yellow_noprefix "warning: found ${#doublets[*]} script duplicate(s):"
 		for script in ${doublets[*]}; do
 			ove-list-scripts | grep "/${script}$"
 		done
@@ -7258,7 +7260,8 @@ function ove_watch_logs {
 	fi
 
 	# shellcheck disable=SC2164
-	users=($(cd ${d}; find ./*/ove/logs -maxdepth 0 -type d | cut -d/ -f2))
+	mapfile -t users < <(cd ${d}; find ./*/ove/logs -maxdepth 0 -type d | cut -d/ -f2)
+
 	[ "${users[*]}" == "" ] && return 2
 
 	ignore="tail-lastlog|less-lastlog"
