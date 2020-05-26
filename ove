@@ -154,10 +154,10 @@ function ove_main {
 
 	# pretty terminals
 	if [ -t 1 ]; then
-		ove_green='\033[0;32;7m'
-		ove_cyan='\033[0;36;7m'
+		ove_green='\033[1;32;7m'
+		ove_cyan='\033[1;36;7m'
 		ove_yellow='\033[1;33;7m'
-		ove_red='\033[0;31;7m'
+		ove_red='\033[1;31;7m'
 		ove_blank='\033[0m'
 	else
 		ove_green=''
