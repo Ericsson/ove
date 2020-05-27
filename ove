@@ -5503,28 +5503,46 @@ function ove-list-heads {
 function ove-ls-remote {
 	local count
 	local git
+	local ret
 	local sha
 	local str
 	local url
 
 	count=0
+	ret=0
 	while ((count < ove_revtab_num_repositories)); do
 		git="${ove_revtab_git_name[${count}]}"
 		url="${ove_revtab_fetch_url[${count}]}"
+		[ "${url}" == "noremote" ] && (( count+=1 )) && continue
 
 		sha=$(git ls-remote ${url} HEAD | awk '{print $1}')
-		str+="${git}:${sha}\n"
+		if [ "${sha}" == "" ]; then
+			ove_echo_error_noprefix "ls-remote failed for '${url}'"
+			(( ret+=1 ))
+		else
+			str+="${git}:${sha}\n"
+		fi
 		(( count+=1 ))
 	done
 
 	url=$(git -C "${OVE_PROJECT_DIR}" config --get remote.origin.url)
-	sha=$(git -C "${OVE_PROJECT_DIR}" ls-remote ${url} HEAD | awk '{print $1}')
-	git=${OVE_PROJECT_NAME}
-	str+="${git}:${sha}\n"
+	if [ "${url}" == "" ] || [ "${url}" == "noremote" ]; then
+		:
+	else
+		sha=$(git -C "${OVE_PROJECT_DIR}" ls-remote ${url} HEAD | awk '{print $1}')
+		if [ "${sha}" == "" ]; then
+			ove_echo_error_noprefix "ls-remote failed for '${url}'"
+			(( ret+=1 ))
+		else
+			str+="${OVE_PROJECT_NAME}:${sha}\n"
+		fi
+	fi
 
 	printf "${str}" | \
 		LC_ALL="C" sort | \
 		column -t -s:
+
+	return ${ret}
 }
 
 # heads2revtab:[GIT...]:update '${OVE_PROJECT_DIR}/revtab' with current SHA-1
