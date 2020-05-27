@@ -5977,7 +5977,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "replicate" ]; then
 		if [ "$(type -t _known_hosts_real)" == "function" ]; then
-			_known_hosts_real -- "$cur"
+			_known_hosts_real -a -- "$cur"
 			return
 		fi
 	elif [ "${subcommand}" == "tail-lastlog" ] ||
