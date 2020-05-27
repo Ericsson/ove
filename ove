@@ -4886,7 +4886,7 @@ function ove-checkout {
 
 			if [ "${dirty_repos}" != "" ]; then
 				ove_echo_error_noprefix "you have staged/unstaged changes in the following repositories:"
-				ove-status "${dirty_repos}"
+				ove-status ${dirty_repos}
 				return 1
 			fi
 		fi
