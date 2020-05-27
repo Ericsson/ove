@@ -7403,6 +7403,12 @@ function ove-shell-check {
 	grep -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" | sort | uniq -c | sort -nr >> "${OVE_TMP}/shellcheck.summary"
 	cp -a "${OVE_TMP}/shellcheck.summary" "${OVE_DIR}/tests/.shellcheck"
 	git --no-pager -C "${OVE_DIR}" diff -- tests/.shellcheck
+
+	if git diff-files  --quiet -- tests/.shellcheck; then
+		return 0
+	else
+		return 1
+	fi
 }
 
 ove_main "$@"
