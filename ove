@@ -152,20 +152,12 @@ function ove_main {
 		return 1
 	fi
 
-	# pretty terminals
-	if [ -t 1 ]; then
-		ove_green='\033[1;32;7m'
-		ove_cyan='\033[1;36;7m'
-		ove_yellow='\033[1;33;7m'
-		ove_red='\033[1;31;7m'
-		ove_blank='\033[0m'
-	else
-		ove_green=''
-		ove_cyan=''
-		ove_yellow=''
-		ove_red=''
-		ove_blank=''
-	fi
+	ove_green="\033[1;32;7m"
+	ove_cyan="\033[1;36;7m"
+	ove_yellow_x="1;33;7m"
+	ove_yellow="\033[${ove_yellow_x}"
+	ove_red="\033[1;31;7m"
+	ove_blank="\033[0m"
 
 	OVE_TMP=/tmp/${USER}/ove
 	export OVE_TMP
@@ -4561,7 +4553,7 @@ function ove-show-ahead {
 function ove-reset-ahead {
 	ove-ahead | \
 		sed -r \
-		-e "s/\x1b\[1;3[1,3]m//g" \
+		-e "s/\x1b\[1;3[0-9];7m//g" \
 		-e "s/\x1b\[[0-9]+m//g" \
 		-e "s/\x1b\[m//g" | \
 		grep --color=never ': [0-9]\+ new commit' | \
@@ -4582,7 +4574,7 @@ function ove-format-patch {
 
 	ove-ahead | \
 		sed -r \
-		-e "s/\x1b\[1;3[1,3]m//g" \
+		-e "s/\x1b\[1;3[0-9];7m//g" \
 		-e "s/\x1b\[[0-9]+m//g" \
 		-e "s/\x1b\[m//g" | \
 		grep --color=never ': [0-9]\+ new commit' | \
@@ -4691,14 +4683,22 @@ function ove-apply {
 		return 1
 	fi
 
+	if ! [ -s "$1" ]; then
+		ove_echo_error_noprefix "'$1' is empty"
+		return 1
+	fi
+
 	cp -a "$1" "${OVE_PROJECT_TMP_DIR}"
 	cd ${OVE_PROJECT_TMP_DIR} || return 1
 	p="${OVE_PROJECT_TMP_DIR}/$(basename $1)"
 
+	# get a list of line numbers where to split the file
+	lineno=$(grep -n "${ove_yellow_x}" "${p}"| tail -n +2 | cut -d: -f1 | xargs)
+
 	# remove color codes
 	sed -i \
 		-r \
-		-e "s/\x1b\[1;3[1,3]m//g" \
+		-e "s/\x1b\[1;3[0-9];7m//g" \
 		-e "s/\x1b\[[0-9]+m//g" \
 		-e "s/\x1b\[m//g" ${p}
 
@@ -4709,12 +4709,6 @@ function ove-apply {
 
 	# remove any old patch file(s)
 	find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
-
-	# get a list of line numbers where to split the file
-	lineno=$(grep --color=never --no-group-separator -n -B1 '^diff --git' ${p} | \
-		grep -v '[0-9]\+:diff --git' | \
-		cut -d- -f1 | \
-		tail -n +2)
 
 	if [ "${lineno}" == "" ]; then
 		patches=${p}
