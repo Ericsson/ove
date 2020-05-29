@@ -6235,7 +6235,8 @@ function ove_dirs_init {
 	export OVE_PROJECT_STATE_DIR
 
 	# project tmp
-	if ! [ -h ${OVE_TMP_LINK_NAME} ]; then
+	if ! [ -h ${OVE_TMP_LINK_NAME} ] || [ "$(readlink -f ${OVE_TMP_LINK_NAME})" == "" ]; then
+		[ -h ${OVE_TMP_LINK_NAME} ] && rm ${OVE_TMP_LINK_NAME}
 		# re-use last 10 characters from OVE_PROJECT_STATE_DIR
 		OVE_PROJECT_TMP_DIR="${OVE_TMP}/${OVE_PROJECT_NAME}/tmp-${OVE_PROJECT_STATE_DIR: -10}"
 		mkdir -p ${OVE_PROJECT_TMP_DIR}
