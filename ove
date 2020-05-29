@@ -2753,6 +2753,8 @@ function ove-list-scripts {
 	done
 	[ "${p}" != "" ] && \
 		find -L ${p} -perm -u=x -not -name '*.help' -type f
+
+	return 0
 }
 
 function ove_list_scripts_directories {
@@ -3387,6 +3389,8 @@ function ove_locate_print {
 # setup: :print how to set this project up
 function ove-setup {
 	[ -e "${OVE_PROJECT_DIR}/SETUP" ] && cat "${OVE_PROJECT_DIR}/SETUP"
+
+	return 0
 }
 
 # refresh: :refresh projects found by ove-locate
@@ -5963,7 +5967,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "unittest" ]; then
 		if [ ${size} -ge 2 ]; then
-			wordlist=$(find ${OVE_DIR}/tests -maxdepth 1 -mindepth 1 -name "t*" -type f -exec basename {} \;)
+			wordlist=$(find ${OVE_DIR}/tests -maxdepth 1 -mindepth 1 -name "t*.test" -type f -exec basename {} .test \;)
 		fi
 	elif [ "${subcommand}" == "what-is" ]; then
 		if [ ${size} -ge 2 ]; then
@@ -7101,7 +7105,6 @@ function ove_unittest_preparations {
 		mkdir -p ${unittest_dir}/remotes/git-${a}
 		if ! [ -d .git ]; then
 			git init -q --bare ${unittest_dir}/remotes/git-${a}
-			echo -n .
 		fi
 	done
 
@@ -7113,7 +7116,6 @@ function ove_unittest_preparations {
 		else
 			git clone -q remotes/git-${a} ${unittest_dir}/git-${a} &> /dev/null
 		fi
-		echo -n .
 	done
 	git clone -q ${unittest_dir}/remotes/git-top &> /dev/null
 	ln -s git-top .owel
@@ -7127,7 +7129,6 @@ function ove_unittest_preparations {
 		fi
 
 		for i in $(seq 1 ${nbr_of_files}); do
-			echo -n .
 			filename=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13 ; echo '')
 			touch ${filename}
 			git add ${filename}
@@ -7141,9 +7142,9 @@ function ove_unittest_preparations {
 	# create revtab
 	for a in $(seq 1 ${nbr_of_repos}); do
 		if [ $((a%2)) -eq 0 ]; then
-			echo "testing/src/git-${a} ${unittest_dir}/remotes/git-1 ${unittest_dir}/remotes/git-1 master" >> ${unittest_dir}/git-top/revtab
+			echo "testing/src/git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} master" >> ${unittest_dir}/git-top/revtab
 		else
-			echo "git-${a} ${unittest_dir}/remotes/git-1 ${unittest_dir}/remotes/git-1 master" >> ${unittest_dir}/git-top/revtab
+			echo "git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} master" >> ${unittest_dir}/git-top/revtab
 		fi
 	done
 
@@ -7179,9 +7180,6 @@ function ove_unittest_preparations {
 	git -C ${unittest_dir}/git-top add .
 	git -C ${unittest_dir}/git-top commit -q -m "test"
 	git -C ${unittest_dir}/git-top push -q origin master
-
-	echo -n "..done"
-	echo
 }
 
 # unittest:[TEST...]:run all/specific unit tests
@@ -7201,32 +7199,41 @@ function ove-unittest {
 		return 1
 	fi
 
+	if [ $# -eq 0 ]; then
+		tests="tests/t*.test"
+	else
+		for a in "$@"; do
+			if ! [ -e "${OVE_DIR}/tests/${a}.test" ]; then
+				continue
+			fi
+			tests+="tests/${a}.test "
+		done
+
+		if [ "${tests}" == "" ]; then
+			echo "error: select test(s) from:"
+			find ${OVE_DIR}/tests -name 't*.test' -type f -exec basename {} .test \; | sort
+			return 1
+		fi
+	fi
+
 	nbr_of_files=3
 	nbr_of_projs=400
 	nbr_of_repos=100
 	nbr_of_systests=3
 
-	do_preparations="1"
+	do_preparations=1
 	if [ -t 1 ] && [ -d ${OVE_PROJECT_TMP_DIR}/unittest ]; then
-		read -p "Setup? (y/N) " -r
-		echo
-		if ! [[ ${REPLY} =~ ^[Yy]$ ]]; then
-			do_preparations="0"
+		do_preparations=0
+		read -p "reuse '${OVE_PROJECT_TMP_DIR}/unittest'? (Y/n) " -r
+		if [[ ${REPLY} =~ ^[Nn]$ ]]; then
+			do_preparations="1"
 		fi
 	fi
 
-	[ "${do_preparations}" == "1" ] && \
-		ove_unittest_preparations ${nbr_of_files} ${nbr_of_projs} ${nbr_of_repos} ${nbr_of_systests}
+	[ ${do_preparations} -eq 1 ] && \
+		GIT_TRACE=1 ove_unittest_preparations ${nbr_of_files} ${nbr_of_projs} ${nbr_of_repos} ${nbr_of_systests}
 
 	# launch shelltestrunner
-	if [ $# -eq 0 ]; then
-		tests="tests/t*"
-	else
-		for a in "$@"; do
-			tests+="tests/${a} "
-		done
-	fi
-
 	cd ${OVE_PROJECT_TMP_DIR}/unittest || return 2
 	shelltest=$(command -v shelltest)
 	if [ ${OVE_LOGLEVEL} -eq 2 ]; then
@@ -7238,10 +7245,12 @@ function ove-unittest {
 		${shelltest_opts} \
 		--color \
 		--diff \
+		-a \
 		-DOVE_TEST_STRING="source ove > /dev/null; ove_init > /dev/null; ove-loglevel 0 > /dev/null" \
 		-Dnbr_of_systests=$(((nbr_of_systests * 2) + 1)) \
 		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
 		-Dnbr_of_files=$((nbr_of_files * nbr_of_repos + (4 * nbr_of_projs) + 4)) \
+		-DOVE_DIR=${OVE_DIR} \
 		-DOVE_TEST_BASE="$(sed -e 's|/|\\/|g' <<<${OVE_PROJECT_TMP_DIR}/unittest)"
 }
 
