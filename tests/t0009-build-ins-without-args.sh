@@ -2,6 +2,7 @@
 
 set -e
 
+ignore+=" pre-push"
 ignore+=" refresh"
 ignore+=" shell-check"
 ignore+=" unsource"

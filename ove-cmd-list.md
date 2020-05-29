@@ -76,6 +76,7 @@
 | make                     | [PROJECT[-nodeps]]                                    | build project(s)                                                                                                       |
 | mrproper                 | [y\|Y]                                                | remove untracked files AND removes '${OVE_STAGE_DIR}/*' AND removes '${OVE_ARCHIVE_DIR}/*'                             |
 | news                     | [GIT...]                                              | list upstream changes for all/specified repositories                                                                   |
+| pre-push                 |                                                       | shell-check+unittest+generate-doc combo                                                                                |
 | pull                     | [GIT...]                                              | git pull --rebase for all/specified repositories                                                                       |
 | readme                   | [GIT...]                                              | display README files for all/specified git repositories                                                                |
 | refresh                  |                                                       | refresh projects found by ove-locate                                                                                   |

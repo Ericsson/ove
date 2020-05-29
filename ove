@@ -7421,4 +7421,16 @@ function ove-shell-check {
 	fi
 }
 
+# pre-push: :shell-check+unittest+generate-doc combo
+function ove-pre-push {
+	ove_echo "shell-check"
+	ove-shell-check
+	ove_echo "unittest"
+	ove-unittest
+	ove_echo "generate-doc"
+	ove-generate-doc
+	ove_echo "diff"
+	ove-diff
+}
+
 ove_main "$@"
