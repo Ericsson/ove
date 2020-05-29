@@ -904,7 +904,7 @@ function ove_loop_command {
 			# start inotifywait in monitor mode in the background
 			# monitor all files (for now)
 			# shellcheck disable=SC2016
-			cmd='for f in $(git ls-files); do [ -f ${f} ] && echo ${PWD}/${f}; done; echo ${PWD}/.git'
+			cmd='for f in $(git -C ${git} ls-files); do [ -f ${f} ] && echo ${PWD}/${f}; done; echo ${PWD}/.git'
 			ove_revtab_forall_parallel "${cmd}" > ${all_files}
 			files_modified_by_command=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}
 
@@ -3667,7 +3667,7 @@ function ove-remote {
 	local cmd
 
 	# shellcheck disable=SC2016
-	cmd='ove_echo_yellow_noprefix ${PWD} && git --no-pager -C ${git} remote -v'
+	cmd='ove_echo_yellow_noprefix ${git_basename} && git --no-pager -C ${git} remote -v'
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forall "${cmd}"
@@ -3682,7 +3682,7 @@ function ove-remote-check {
 
 	count=0
 	while ((count < ove_revtab_num_repositories)); do
-		if ! git ls-remote ${ove_revtab_fetch_url[${count}]} HEAD > /dev/null; then
+		if ! git -C "${PWD}" ls-remote ${ove_revtab_fetch_url[${count}]} HEAD > /dev/null; then
 			return 1
 		fi
 
@@ -3749,7 +3749,7 @@ function ove_stash_save {
 
 	true > ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos
 	now=$(date '+%Y%m%d-%H%M%S')
-	cmd="git stash save -q stashed by OVE@${now} && echo \${git} >> ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos"
+	cmd="git -C \${git} stash save -q stashed by OVE@${now} && echo \${git} >> ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos"
 
 	for git in ${dirty_repos}; do
 		ove_revtab_forsome "${cmd}" "${git}"
@@ -3772,7 +3772,7 @@ function ove_stash_inspect {
 		return
 	fi
 
-	ove_revtab_forsome "ove_echo_yellow_noprefix \${PWD}: && ${cmd}" "${stashed_repos}"
+	ove_revtab_forsome "ove_echo_yellow_noprefix \${git_basename}: && ${cmd}" "${stashed_repos}"
 }
 
 function ove_stash_show {
@@ -3838,7 +3838,7 @@ function ove-diff-cached {
 	local git
 
 	cmd="git --no-pager -C \${git} diff-index --quiet --cached HEAD -- || \
-		(ove_echo_yellow_noprefix \${PWD} && \
+		(ove_echo_yellow_noprefix \${git_basename} && \
 		git --no-pager -C \${git} diff --color=always --cached ${OVE_DIFF_OPTIONS})"
 
 	if [ $# -eq 0 ]; then
@@ -3857,7 +3857,7 @@ function ove-reset {
 	# shellcheck disable=SC2016
 	cmd='git --no-pager -C ${git} diff-index --quiet --cached HEAD -- ||'
 	# shellcheck disable=SC2016
-	cmd+=' (ove_echo_yellow_noprefix ${PWD} && git -C ${git} reset -p)'
+	cmd+=' (ove_echo_yellow_noprefix ${git_basename} && git -C ${git} reset -p)'
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forall "${cmd}"
@@ -3874,7 +3874,7 @@ function ove-add {
 	# shellcheck disable=SC2016
 	cmd='git --no-pager -C ${git} diff-files --quiet ||'
 	# shellcheck disable=SC2016
-	cmd+=' (ove_echo_yellow_noprefix ${PWD} && git --no-pager -C ${git} add -p)'
+	cmd+=' (ove_echo_yellow_noprefix ${git_basename} && git --no-pager -C ${git} add -p)'
 
 	if [ $# -eq 0 ]; then
 		for git in $(ove_dirty_repos); do
@@ -3891,7 +3891,7 @@ function ove-commit {
 	local git
 
 	cmd="git --no-pager -C \${git} diff --cached --quiet || \
-		(ove_echo_yellow_noprefix \${PWD} && \
+		(ove_echo_yellow_noprefix \${git_basename} && \
 		git -C \${git} commit -t <(echo; echo \# git: \${git}; echo \#; git -C \${git} diff --cached -U0 | sed 's/^/# /g'))"
 
 	if [ $# -eq 0 ]; then
@@ -4863,12 +4863,13 @@ function ove-checkout {
 	if [ $# -eq 0 ]; then
 		for git in $(ove_dirty_repos); do
 			# shellcheck disable=SC2016
-			cmd='git diff --quiet || (ove_echo_yellow_noprefix ${git_basename}; git checkout -p)'
+			cmd='git -C ${git} diff --quiet || (ove_echo_yellow_noprefix ${git_basename}; git -C ${git} checkout -p)'
 			ove_revtab_forsome "${cmd}" "${git}"
 		done
 	elif [ "$#" -eq 1 ] || [ "$#" -eq 2 ]; then
 		if [ "$2" == "purge" ]; then
-			cmd='git reset; git checkout .'
+			# shellcheck disable=SC2016
+			cmd='git -C ${git} reset; git -C ${git} checkout .'
 
 			read -p "Proceed to run '${cmd}' for all git repositories? (y/N) " -r
 			echo
@@ -5208,10 +5209,10 @@ function ove-ls-files {
 
 	if [ $# -eq 0 ]; then
 		# shellcheck disable=SC2016
-		cmd='git ls-files | while read line; do echo -e ${PWD}/${line}; done'
+		cmd='git -C ${git} ls-files | while read line; do echo -e ${PWD}/${line}; done'
 	else
 		# shellcheck disable=SC2016
-		cmd="re=$*; git ls-files | while read line; do [[ \${PWD}/\${line} =~ \${re} ]] && echo -e \${PWD}/\${line}; done"
+		cmd="re=$*; git -C \${git} ls-files | while read line; do [[ \${PWD}/\${line} =~ \${re} ]] && echo -e \${PWD}/\${line}; done"
 	fi
 
 	ove_revtab_forall_parallel "${cmd}" | sort
