@@ -1032,7 +1032,7 @@ function ove-run {
 	set -m
 }
 
-# loop:|[TIMEOUT|?] [INOTIFY|?] [MAX-COUNT|?] COMMAND]:loop one OVE command
+# loop:|[TIMEOUT|x] [INOTIFY|x] [MAX-COUNT|x] COMMAND]:loop one OVE command
 function ove-loop {
 	local _cmd
 	local cmd
@@ -1055,21 +1055,21 @@ function ove-loop {
 		read -r -p "command: "
 		[ "${REPLY}" == "" ] && return || cmd=${REPLY}
 	else
-		if [ "$1" == "?" ]; then
+		if [ "${1,}" == "x" ]; then
 			read -r -p "command timeout in sec (0=no timeout): "
 			[ "${REPLY}" == "" ] && timeout=0 || timeout=${REPLY}
 		else
 			timeout=$1
 		fi
 
-		if [ "$2" == "?" ]; then
+		if [ "${2,}" == "x" ]; then
 			read -r -p "inotify 0=no 1=yes (default 0): "
 			[ "${REPLY}" == "" ] && use_inotify=0 || use_inotify=${REPLY}
 		else
 			use_inotify=$2
 		fi
 
-		if [ "$3" == "?" ]; then
+		if [ "${3,}" == "x" ]; then
 			read -r -p "max count: (default 0 = forever): "
 			[ "${REPLY}" == "" ] && max_count=0 || max_count=${REPLY}
 		else

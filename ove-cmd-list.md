@@ -70,7 +70,7 @@
 | log                      |                                                       | project '${OVE_PROJECT_NAME}' commit log for branch '${OVE_PROJECT_CI_BRANCH}'                                         |
 | log-project              | <rev> <rev>                                           | git log the project '${OVE_PROJECT_NAME}'                                                                              |
 | loglevel                 | [LEVEL]                                               | show or change loglevel [0-6]                                                                                          |
-| loop                     | \|[TIMEOUT\|?] [INOTIFY\|?] [MAX-COUNT\|?] COMMAND]   | loop one OVE command                                                                                                   |
+| loop                     | \|[TIMEOUT\|x] [INOTIFY\|x] [MAX-COUNT\|x] COMMAND]   | loop one OVE command                                                                                                   |
 | ls-files                 | [PATTERN]                                             | git ls-files for all git repositories                                                                                  |
 | ls-remote                |                                                       | git ls-remote <URL> HEAD for all git repositories                                                                      |
 | make                     | [PROJECT[-nodeps]]                                    | build project(s)                                                                                                       |
