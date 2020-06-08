@@ -1177,6 +1177,7 @@ function ove {
 		return 1
 	elif [ "${cmd}" == "!" ] || \
 		[ "${cmd}" == "dry-run" ] || \
+		[ "${cmd}" == "config" ] || \
 		[ "${cmd}" == "loglevel" ] || \
 		[ "${cmd}" == "checkout" ] || \
 		[ "${cmd}" == "switch" ] || \
@@ -5196,6 +5197,7 @@ function ove-config {
 		shift
 		if grep -q -w ${var} ${cfg}; then
 			sed -i -e "s|\(^${var}\s\+\).*|\1$*|g" ${cfg}
+			ove_config_init
 			ove-config ${var}
 		else
 			echo "error: config '${var}' not found"
