@@ -4862,11 +4862,15 @@ function ove-checkout {
 	rev="$1"
 
 	if [ $# -eq 0 ]; then
-		for git in $(ove_dirty_repos); do
+		dirty_repos=$(ove_dirty_repos)
+
+		for git in ${dirty_repos}; do
 			# shellcheck disable=SC2016
 			cmd='git -C ${git} diff --quiet || (ove_echo_yellow_noprefix ${git_basename}; git -C ${git} checkout -p)'
 			ove_revtab_forsome "${cmd}" "${git}"
 		done
+
+		[[ "${dirty_repos}" =~ ${OVE_PROJECT_NAME} ]] && ove_reinit
 	elif [ "$#" -eq 1 ] || [ "$#" -eq 2 ]; then
 		if [ "$2" == "purge" ]; then
 			# shellcheck disable=SC2016
