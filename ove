@@ -952,7 +952,9 @@ function ove_loop_command {
 				ove_echo_cyan_error "0 files touched, not using inotifywait"
 			else
 				echo
-				echo "$(wc -l < ${files_modified_by_command}.uniq) uniq file(s) was touched by '${1} ${*:2}': ${files_modified_by_command}.uniq"
+				echo "$(wc -l < ${files_modified_by_command}.uniq) uniq file(s) was touched by '${1} ${*:2}'"
+				echo "$ ove head-tail ${files_modified_by_command}.uniq"
+				ove-head-tail ${files_modified_by_command}.uniq
 			fi
 		fi
 
@@ -5573,6 +5575,39 @@ function ove-heads2revtab {
 	git --no-pager -C "${OVE_PROJECT_DIR}" diff revtab
 }
 
+# head-tail:FILE [NUM]:display first/last 3(=NUM) lines of a text file
+function ove-head-tail {
+	local c
+	local f
+	local n
+
+	if [[ $# -eq 0 || $# -gt 2 || ( $# -eq 2 && ! "$2" =~ ^[0-9]+$ ) ]]; then
+		ove-help "^${FUNCNAME/ove-/} "
+		return 1
+	fi
+
+	f=$1
+	if ! [ -e ${f} ]; then
+		ove_echo_error_noprefix "file '${f}' not found"
+		return 1
+	fi
+
+	if ! file -bL --mime ${f} |grep -q '^text'; then
+		ove_echo_error_noprefix "'${f}' is not a text file, use xxd/hexdump"
+		return 1
+	fi
+
+	[ $# -eq 1 ] && c=3 || c=$2
+	n=$(wc -l <${f})
+	if [ ${n} -gt $((c + c)) ]; then
+		cat -n ${f} | head -${c}
+		echo -e "\t..."
+		cat -n ${f} | tail -${c}
+	else
+		cat -n ${f}
+	fi
+}
+
 # what-is:DIRECTORY...:classify files using 'file' within a directory
 function ove-what-is {
 	local dir
@@ -5982,6 +6017,10 @@ function ove_bash_complete {
 	elif [ "${subcommand}" == "what-is" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(find $(readlink -f ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type d -exec basename {} \;)
+		fi
+	elif [ "${subcommand}" == "head-tail" ]; then
+		if [ ${size} -ge 2 ]; then
+			wordlist=$(find $(readlink -f ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type f -exec basename {} \;)
 		fi
 	elif [ "${subcommand}" == "select-configuration" ]; then
 		if [ ${size} -eq 2 ]; then

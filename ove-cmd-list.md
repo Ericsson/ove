@@ -48,6 +48,7 @@
 | generate-doc             |                                                       | generate OVE documentation (e.g. ${OVE_DIR}/ove-cmd-list.md)                                                           |
 | gitmodules2revtab        |                                                       | import git submodules                                                                                                  |
 | grep                     | PATTERN                                               | grep OVE workspace                                                                                                     |
+| head-tail                | FILE [NUM]                                            | display first/last 3(=NUM) lines of a text file                                                                        |
 | heads2revtab             | [GIT...]                                              | update '${OVE_PROJECT_DIR}/revtab' with current SHA-1                                                                  |
 | help                     | [PATTERN]                                             | OVE help                                                                                                               |
 | import                   | [FILE]                                                | import project(s), see export                                                                                          |
