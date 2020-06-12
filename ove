@@ -4806,10 +4806,13 @@ function ove-do {
 	local cmd
 	local dir
 
-	dir=$1
+	dir=${1/${OVE_BASE_DIR}}
 	cmd="${*:2}"
 
-	! [ -d "${OVE_BASE_DIR}/${dir}" ] && return 1
+	if ! [ -d "${OVE_BASE_DIR}/${dir}" ]; then
+		ove_echo_error_noprefix "'${OVE_BASE_DIR}/${dir}' is not a directory"
+		return 1
+	fi
 
 	cd ${OVE_BASE_DIR}/${dir} && eval "${cmd}"
 }
