@@ -5193,7 +5193,7 @@ function ove-config {
 				grep -E --color "${grep_pattern}"
 	elif [ $# -eq 1 ]; then
 		if ! grep -q -i $1 ${cfg}; then
-			echo "error: config '$1' not found"
+			echo "error: pattern '$1' not found"
 		else
 			grep_pattern+="|$1"
 			grep -v '^#' ${cfg} | \
