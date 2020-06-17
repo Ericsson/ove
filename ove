@@ -6273,7 +6273,8 @@ function ove_dirs_init {
 	export OVE_GLOBAL_STATE_DIR
 
 	# project state
-	if ! [ -h ${OVE_STATE_LINK_NAME} ]; then
+	if ! [ -h ${OVE_STATE_LINK_NAME} ] || [ "$(readlink -f ${OVE_STATE_LINK_NAME})" == "" ]; then
+		[ -h ${OVE_STATE_LINK_NAME} ] && rm ${OVE_STATE_LINK_NAME}
 		OVE_PROJECT_STATE_DIR=$(mktemp -u -d -p ${OVE_GLOBAL_STATE_DIR}/${OVE_PROJECT_NAME} state-XXXXXXXXXX)
 
 		mkdir -p ${OVE_PROJECT_STATE_DIR}
