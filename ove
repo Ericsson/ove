@@ -3737,7 +3737,6 @@ function ove_stash_drop {
 function ove_stash_save {
 	local cmd
 	local dirty_repos
-	local git
 	local now
 
 	if ! [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
@@ -3754,9 +3753,7 @@ function ove_stash_save {
 	now=$(date '+%Y%m%d-%H%M%S')
 	cmd="git -C \${git} stash save -q stashed by OVE@${now} && echo \${git} >> ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos"
 
-	for git in ${dirty_repos}; do
-		ove_revtab_forsome "${cmd}" "${git}"
-	done
+	ove_revtab_forsome "${cmd}" "${dirty_repos}"
 }
 
 function ove_stash_inspect {
@@ -3804,19 +3801,15 @@ function ove-stash {
 # diff:[GIT...]:git diff for all/specified git repositories
 function ove-diff {
 	local cmd
-	local git
+	local repos
 
 	cmd="git --no-pager -C \${git} diff-files --quiet || \
 		(ove_echo_yellow_noprefix \${git_basename} && \
 		git --no-pager -C \${git} diff --color=always ${OVE_DIFF_OPTIONS})"
 
-	if [ $# -eq 0 ]; then
-		for git in $(ove_dirty_repos); do
-			ove_revtab_forsome "${cmd}" "${git}"
-		done | ${OVE_PAGER}
-	else
-		ove_revtab_forsome "${cmd}" "$@" | ${OVE_PAGER}
-	fi
+	[ $# -eq 0 ] && repos="$(ove_dirty_repos)" || repos="$*"
+
+	ove_revtab_forsome "${cmd}" "${repos}" | ${OVE_PAGER}
 }
 
 # wdiff:[GIT...]:git diff (word diff) for all/specified git repositories
@@ -3838,19 +3831,15 @@ function ove-wdiff-cached {
 # diff-cached:[GIT...]:git diff --cached for all/specified repositories
 function ove-diff-cached {
 	local cmd
-	local git
+	local repos
 
 	cmd="git --no-pager -C \${git} diff-index --quiet --cached HEAD -- || \
 		(ove_echo_yellow_noprefix \${git_basename} && \
 		git --no-pager -C \${git} diff --color=always --cached ${OVE_DIFF_OPTIONS})"
 
-	if [ $# -eq 0 ]; then
-		for git in $(ove_dirty_repos); do
-			ove_revtab_forsome "${cmd}" "${git}"
-		done | ${OVE_PAGER}
-	else
-		ove_revtab_forsome "${cmd}" "$@" | ${OVE_PAGER}
-	fi
+	[ $# -eq 0 ] && repos="$(ove_dirty_repos)" || repos="$*"
+
+	ove_revtab_forsome "${cmd}" "${repos}" | ${OVE_PAGER}
 }
 
 # reset:[GIT...]:git reset -p for all/specified repositories
@@ -3872,35 +3861,28 @@ function ove-reset {
 # add:[GIT...]:git add -p for all/specified repositories
 function ove-add {
 	local cmd
-	local git
+	local repos
 
 	# shellcheck disable=SC2016
 	cmd='git --no-pager -C ${git} diff-files --quiet ||'
 	# shellcheck disable=SC2016
 	cmd+=' (ove_echo_yellow_noprefix ${git_basename} && git --no-pager -C ${git} add -p)'
 
-	if [ $# -eq 0 ]; then
-		for git in $(ove_dirty_repos); do
-			ove_revtab_forsome "${cmd}" "${git}"
-		done
-	else
-		ove_revtab_forsome "${cmd}" "$@"
-	fi
+	[ $# -eq 0 ] && repos="$(ove_dirty_repos)" || repos="$*"
+
+	ove_revtab_forsome "${cmd}" "${repos}"
 }
 
 # commit:[GIT...]:git commit for all/specified git repositories
 function ove-commit {
 	local cmd
-	local git
 
 	cmd="git --no-pager -C \${git} diff --cached --quiet || \
 		(ove_echo_yellow_noprefix \${git_basename} && \
 		git -C \${git} commit -t <(echo; echo \# git: \${git}; echo \#; git -C \${git} diff --cached -U0 | sed 's/^/# /g'))"
 
 	if [ $# -eq 0 ]; then
-		for git in $(ove_dirty_repos); do
-			ove_revtab_forsome "${cmd}" "${git}"
-		done
+		ove_revtab_forsome "${cmd}" "$(ove_dirty_repos)"
 	else
 		ove_revtab_forsome "${cmd}" "$@"
 	fi
@@ -4858,7 +4840,6 @@ function ove-log {
 function ove-checkout {
 	local cmd
 	local dirty_repos
-	local git
 	local m
 	local proj
 	local repo
@@ -4869,11 +4850,9 @@ function ove-checkout {
 	if [ $# -eq 0 ]; then
 		dirty_repos=$(ove_dirty_repos)
 
-		for git in ${dirty_repos}; do
-			# shellcheck disable=SC2016
-			cmd='git -C ${git} diff --quiet || (ove_echo_yellow_noprefix ${git_basename}; git -C ${git} checkout -p)'
-			ove_revtab_forsome "${cmd}" "${git}"
-		done
+		# shellcheck disable=SC2016
+		cmd='git -C ${git} diff --quiet || (ove_echo_yellow_noprefix ${git_basename}; git -C ${git} checkout -p)'
+		ove_revtab_forsome "${cmd}" "${dirty_repos}"
 
 		[[ "${dirty_repos}" =~ ${OVE_PROJECT_NAME} ]] && ove_reinit
 	elif [ "$#" -eq 1 ] || [ "$#" -eq 2 ]; then
@@ -5232,14 +5211,11 @@ function ove-ls-files {
 # list-modified-files: :list modified files
 function ove-list-modified-files {
 	local cmd
-	local git
 
 	# shellcheck disable=SC2016
 	cmd='git --no-pager -C ${git} diff-index --quiet HEAD || git -C ${git} diff --name-only HEAD | sed -e "s|^|${git}/|g"'
 
-	for git in $(ove_dirty_repos); do
-		ove_revtab_forsome "${cmd}" "${git}"
-	done | LC_ALL="C" sort -u
+	ove_revtab_forsome_parallel "${cmd}" "$(ove_dirty_repos)" | LC_ALL="C" sort -u
 }
 
 # list-committed-files:[DAYS]:list committed files within 7 or DAYS day(s)
