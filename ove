@@ -3858,6 +3858,20 @@ function ove-reset {
 	fi
 }
 
+# reset-hard:[GIT...]:git reset --hard for all/specified repositories, use with care
+function ove-reset-hard {
+	local cmd
+
+	# shellcheck disable=SC2016
+	cmd='git -C ${git} reset -q --hard'
+
+	if [ $# -eq 0 ]; then
+		ove_revtab_forall "${cmd}"
+	else
+		ove_revtab_forsome "${cmd}" "$@"
+	fi
+}
+
 # add:[GIT...]:git add -p for all/specified repositories
 function ove-add {
 	local cmd
@@ -5927,6 +5941,7 @@ function ove_bash_complete {
 		[ "${subcommand}" == "diff" ] ||
 		[ "${subcommand}" == "diff-cached" ] ||
 		[ "${subcommand}" == "reset" ] ||
+		[ "${subcommand}" == "reset-hard" ] ||
 		[ "${subcommand}" == "wdiff" ] ||
 		[ "${subcommand}" == "wdiff-cached" ]; then
 		if [ ${size} -ge 2 ]; then
