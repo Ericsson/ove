@@ -7448,7 +7448,7 @@ function ove-shell-check {
 	# foo references arguments, but none are ever passed
 	exclude+="SC2120"
 
-	shellcheck -x -e ${exclude} "${OVE_SELF}" > "${OVE_TMP}/shell-check"
+	(cd "${OVE_DIR}" && shellcheck -x -e ${exclude} "${OVE_SELF}" > "${OVE_TMP}/shell-check")
 	grep -c -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" > "${OVE_TMP}/shellcheck.summary"
 	grep -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" | sort | uniq -c | sort -nr >> "${OVE_TMP}/shellcheck.summary"
 	cp -a "${OVE_TMP}/shellcheck.summary" "${OVE_DIR}/tests/.shellcheck"
