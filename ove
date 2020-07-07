@@ -1150,7 +1150,7 @@ function ove {
 		return 1
 	fi
 
-	if [ "$#" -eq 0 ]; then
+	if [ $# -eq 0 ]; then
 		ove-fzf || ove-help
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
 		re=\\b${cmd}
@@ -4088,7 +4088,7 @@ function ove-export {
 		fi
 
 		for b in $(xargs -n1 <<<${OVE_BUILD_ORDER} | sort); do
-			if [ "$#" -ge 1 ]; then
+			if [ $# -ge 1 ]; then
 				re=\\b${b}\\b
 				if ! [[ "${deps}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
 					continue
@@ -4266,12 +4266,12 @@ function ove-buildme {
 			fi
 		done
 
-		build_list="$(ove_get_deps_recursive "$*") $*"
+		build_list="$(ove_get_deps_recursive "$@") $*"
 		build_list="$(xargs -n1 <<<${build_list} | sort -u | xargs)"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -ge 1 ]; then
+		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
 			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
@@ -4294,7 +4294,7 @@ function ove-buildme {
 
 	# bootstrap
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -ge 1 ]; then
+		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
 			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
@@ -4311,7 +4311,7 @@ function ove-buildme {
 	done
 
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -ge 1 ]; then
+		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
 			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
@@ -4350,7 +4350,7 @@ function ove-buildme-parallel {
 
 	trap ove_build_post EXIT
 
-	if [ "$#" -ge 1 ]; then
+	if [ $# -ge 1 ]; then
 		for p in "$@"; do
 			if ! [[ -v ove_projects_name2index[${p}] ]]; then
 				ove_echo_error_noprefix "unknown project '${p}'"
@@ -4358,12 +4358,12 @@ function ove-buildme-parallel {
 			fi
 		done
 
-		build_list="$(ove_get_deps_recursive "$*") $*"
+		build_list="$(ove_get_deps_recursive "$@") $*"
 		build_list="$(xargs -n1 <<<${build_list} | sort -u | xargs)"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -ge 1 ]; then
+		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
 			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
@@ -4386,7 +4386,7 @@ function ove-buildme-parallel {
 
 	# bootstrap
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -ge 1 ]; then
+		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
 			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
@@ -4413,7 +4413,7 @@ function ove-buildme-parallel {
 
 	inotify_max_user_instances=$(($(cat /proc/sys/fs/inotify/max_user_instances) - 20))
 	for b in ${OVE_BUILD_ORDER}; do
-		if [ "$#" -ge 1 ]; then
+		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
 			if ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
@@ -4869,7 +4869,7 @@ function ove-checkout {
 		ove_revtab_forsome "${cmd}" "${dirty_repos}"
 
 		[[ "${dirty_repos}" =~ ${OVE_PROJECT_NAME} ]] && ove_reinit
-	elif [ "$#" -eq 1 ] || [ "$#" -eq 2 ]; then
+	elif [ $# -eq 1 ] || [ $# -eq 2 ]; then
 		if [ "$2" == "purge" ]; then
 			# shellcheck disable=SC2016
 			cmd='git -C ${git} reset; git -C ${git} checkout .'
@@ -5731,7 +5731,7 @@ function ove-dry-run {
 function ove-lastlog {
 	local cmin=60
 
-	if [ "$#" -eq 1 ]; then
+	if [ $# -eq 1 ]; then
 		if ! [[ "${1}" =~ ^[0-9]+$ ]]; then
 			echo "error: just numbers"
 			return 1
