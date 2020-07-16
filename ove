@@ -7470,7 +7470,7 @@ function ove-pre-push {
 	ove_echo "generate-doc"
 	ove-generate-doc
 	ove_echo "diff"
-	ove-diff
+	ove-diff .ove
 	ove_echo "ove-blame"
 	ove-blame "${USER}"
 }
