@@ -1817,6 +1817,7 @@ function ove_status_one_repo {
 	local git_shortpath
 	local index
 	local rev
+	local s
 
 	[ $# -ne 1 ] && return 1
 
@@ -1835,7 +1836,9 @@ function ove_status_one_repo {
 		rev="${ove_revtab_rev[${index}]}"
 	fi
 
-	printf "${git_shortpath}:${rev}:$(git -c color.status=always -C "${git_fullpath}" status -zbs -uno | tr '\0' ' ')\n"
+	s=$(git -c color.status=always -C "${git_fullpath}" status -bs -uno)
+	s=${s//$'\n'/ }
+	printf "${git_shortpath}:${rev}:$s\n"
 }
 
 function ove_validate_repo_list {
