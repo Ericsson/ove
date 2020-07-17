@@ -61,7 +61,7 @@
 | list-committed-files     | [DAYS]                                                | list committed files within 7 or DAYS day(s)                                                                          |
 | list-heads               | [GIT...]                                              | git log for all/specified git repositories                                                                            |
 | list-modified-files      |                                                       | list modified files                                                                                                   |
-| list-projects            | [long]                                                | list projects                                                                                                         |
+| list-projects            | [verbose]                                             | list projects                                                                                                         |
 | list-repositories        |                                                       | list all git repositories                                                                                             |
 | list-scripts             |                                                       | list available scripts                                                                                                |
 | list-systests            |                                                       | list available system tests                                                                                           |

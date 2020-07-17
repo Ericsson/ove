@@ -2573,28 +2573,39 @@ function ove-make {
 	fi
 }
 
-# list-projects:[long]:list projects
+# list-projects:[verbose]:list projects
 function ove-list-projects {
 	local f_basename
+	local f
 	local p
 	local projects
 
-	if [ "$1" != 'long' ]; then
-		xargs -n1 <<<${OVE_PROJECT_LIST}
-	else
+	if [ "$1" == 'verbose' ]; then
 		projects=${OVE_PROJECT_LIST}
 		for p in ${projects}; do
 			# ignore projects without a project directory
 			[ ! -d "${OVE_PROJECT_DIR}"/projects/${p} ] && continue
 
+			ove_echo_cyan_noprefix "${p}"
+			for f in bootstrap configure build install clean; do
+				[ -x ${OVE_PROJECT_DIR}/projects/${p}/${f} ] || continue
+				echo -e "\t${f}"
+				sed -e 's|^|\t\t|g' <${OVE_PROJECT_DIR}/projects/${p}/${f}
+			done
+
 			while read -r line; do
-				echo
 				f_basename=${line##*/}
-				ove_echo_green_noprefix ${p}:${f_basename}
-				cat ${OVE_PROJECT_DIR}/projects/${p}/${f_basename}
+				[[ "bootstrap configure build install clean" =~ ${f_basename} ]] && continue
+				echo -e "\t${f_basename}"
+				sed -e 's|^|\t\t|g' <${OVE_PROJECT_DIR}/projects/${p}/${f_basename}
 			done < <(find "${OVE_PROJECT_DIR}"/projects/${p} -perm -u=x -type f)
-		done
+			echo
+		done | head -n -1
+	else
+		xargs -n1 <<<${OVE_PROJECT_LIST}
 	fi
+
+	return 0
 }
 
 # digraph: :create a DOT directed graph for all projects
@@ -3905,7 +3916,7 @@ function ove-commit {
 	fi
 }
 
-# $1 = proj
+# $* = proj(s)
 function ove_get_deps_recursive {
 	local dep
 	local index
@@ -5880,6 +5891,9 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" == "list-projects" ]; then
+		[ ${size} -ne 2 ] && return
+		wordlist="verbose"
 	elif [ "${subcommand}" == "fzf" ]; then
 		[ ${size} -ne 2 ] && return
 		wordlist="loop"
