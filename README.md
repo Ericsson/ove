@@ -192,7 +192,6 @@ Doing this, OVE will check that you have the required programs installed on your
 * bash (>=4.3)
 * column
 * file
-* envsubst
 * git
 * pgrep
 * script

@@ -3114,7 +3114,7 @@ function ove_revtab_sanity_check {
 	fi
 }
 
-# revtab-diff:<rev> <rev>:print changes between two '${OVE_PROJECT_NAME}' revisions
+# revtab-diff:<rev> <rev>:print changes between two project revisions
 function ove-revtab-diff {
 	local a
 	local b
@@ -3251,7 +3251,7 @@ function ove_extract_repo_and_sha {
 	fi
 }
 
-# diff-project:<rev> <rev>:git diff the '${OVE_PROJECT_NAME}' project
+# diff-project:<rev> <rev>:diff the entire project
 function ove-diff-project {
 	local cmd
 	local diff
@@ -3327,7 +3327,7 @@ function ove-log-project {
 	ove_print_only_a_and_b $1 $2
 }
 
-# shortlog-project:<rev> <rev>:git shortlog the project '${OVE_PROJECT_NAME}'
+# shortlog-project:<rev> <rev>:git shortlog the project
 function ove-shortlog-project {
 	local diff
 	local line
@@ -3526,7 +3526,7 @@ function ove_locate_owels {
 		tee "${OVE_GLOBAL_STATE_DIR}/owel.cache"
 }
 
-# locate: :print OVE workspaces owned by '${USER}' on this host using either 'locate' or 'find ${OVE_LOCATE_SEARCH_DIR}'
+# locate: :print OVE workspaces owned by you on this host
 function ove-locate {
 	local owel
 	local owels
@@ -3545,7 +3545,7 @@ function ove-locate {
 	done | head -n -1
 }
 
-# locate-all: :print OVE workspaces on this host using either 'locate' or 'find ${OVE_LOCATE_SEARCH_DIR}'
+# locate-all: :print all OVE workspaces on this host
 function ove-locate-all {
 	local owel
 	local owels
@@ -3604,7 +3604,7 @@ function ove-switch {
 	fi
 }
 
-# branch:[GIT...]|[GIT... NAME]:list branch(es) OR create-and-checkout 'NAME' branch for 'GIT...' and update '${OVE_PROJECT_DIR}/revtab' accordingly
+# branch:[GIT...]|[GIT... NAME]:list branch(es) OR create-and-checkout 'NAME' branch for 'GIT...' and update 'revtab' accordingly
 function ove-branch {
 	local a
 	local args
@@ -4842,7 +4842,7 @@ function ove-tag {
 	git -C "${OVE_PROJECT_DIR}" log --tags --simplify-by-decoration --pretty="format:%ai %D"
 }
 
-# log: :project '${OVE_PROJECT_NAME}' commit log for branch '${OVE_PROJECT_CI_BRANCH}'
+# log: :project commit log for branch '${OVE_PROJECT_CI_BRANCH}'
 function ove-log {
 	local b
 
@@ -4948,8 +4948,7 @@ function ove-list-commands {
 	a=$(grep -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
 		grep '\#' | \
 		cut -b3-| \
-		sort | \
-		envsubst)
+		sort)
 	b=$(set | \
 		grep helptext | \
 		grep -v '\$'| \
@@ -5312,7 +5311,7 @@ function ove-vi {
 	ove_edit vi "$@"
 }
 
-# mrproper:[y|Y]:remove untracked files AND removes '${OVE_STAGE_DIR}/*' AND removes '${OVE_ARCHIVE_DIR}/*'
+# mrproper:[y|Y]:remove untracked files AND removes '${OVE_STAGE_DIR}/*' AND removes '${OVE_ARCHIVE_DIR}/*', use with care
 function ove-mrproper {
 	local archive_dir_size
 	local directories
@@ -5548,7 +5547,7 @@ function ove-ls-remote {
 	return ${ret}
 }
 
-# heads2revtab:[GIT...]:update '${OVE_PROJECT_DIR}/revtab' with current SHA-1
+# heads2revtab:[GIT...]:update 'revtab' with current SHA-1
 function ove-heads2revtab {
 	local git
 	local repos
@@ -6823,17 +6822,6 @@ function ove_command_to_package {
 		else
 			package="$1"
 		fi
-	# envsubst
-	elif [ "$1" == "envsubst" ]; then
-		if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
-			[[ ${OVE_OS} == *"Debian"* ]]; then
-			package="gettext-base"
-		elif [[ ${OVE_OS} == *"openSUSE"* ]] || \
-			[[ ${OVE_OS} == *"SLES"* ]]; then
-			package="gettext-runtime"
-		else
-			package="gettext"
-		fi
 	# file
 	elif [ "$1" == "file" ]; then
 		package="$1"
@@ -6899,7 +6887,6 @@ function ove_deps {
 	deps=()
 	deps+=('bzip2')
 	deps+=('column')
-	deps+=('envsubst')
 	deps+=('file')
 	deps+=('git')
 	deps+=('gzip')
@@ -7389,7 +7376,7 @@ function ove_watch_logs {
 	fi
 }
 
-# generate-doc: :generate OVE documentation (e.g. ${OVE_DIR}/ove-cmd-list.md)
+# generate-doc: :generate OVE documentation (ove-cmd-list.md/ove.bash)
 function ove-generate-doc {
 	local a
 	local b
