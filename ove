@@ -827,7 +827,7 @@ function ove_strace_create_graph {
 	sort -u ${OVE_PROJECT_TMP_DIR}/timing > ${o_timing}
 	rm ${OVE_PROJECT_TMP_DIR}/timing
 
-	du -sh ${1} ${o_dot}
+	du -sh ${o_dot}
 	if command -v dot > /dev/null; then
 		if ! dot -Tsvg ${o_dot} > ${o_svg}; then
 			return 1
