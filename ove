@@ -3701,6 +3701,25 @@ function ove-remote {
 	fi
 }
 
+# remote-set-url:URL [GIT...]:change the URL of 'origin' remote for all/specified repositories
+function ove-remote-set-url {
+	local cmd
+	local url
+
+	[ $# -eq 0 ] && return 1
+	url=$1
+	shift
+
+	# shellcheck disable=SC2016
+	cmd='ove_echo_yellow_noprefix ${git_basename} && git --no-pager -C ${git} remote set-url origin ${url}/${git_basename} && git --no-pager -C ${git} remote -v'
+
+	if [ $# -eq 0 ]; then
+		ove_revtab_forall "${cmd}"
+	else
+		ove_revtab_forsome "${cmd}" "$@"
+	fi
+}
+
 # remote-check: :sanity check that all remotes are online
 function ove-remote-check {
 	local count

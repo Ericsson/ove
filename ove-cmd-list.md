@@ -83,6 +83,7 @@
 | refresh                  |                                                       | refresh projects found by ove-locate                                                                                  |
 | remote                   | [GIT...]                                              | git remote -v for all/specified git repositories                                                                      |
 | remote-check             |                                                       | sanity check that all remotes are online                                                                              |
+| remote-set-url           | URL [GIT...]                                          | change the URL of 'origin' remote for all/specified repositories                                                      |
 | replicate                | HOST                                                  | replicate OVE workspace on HOST                                                                                       |
 | reset                    | [GIT...]                                              | git reset -p for all/specified repositories                                                                           |
 | reset-ahead              |                                                       | git reset --hard HEAD~N where N is #commits ahead for ALL repositories                                                |
