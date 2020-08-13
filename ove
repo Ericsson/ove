@@ -2209,11 +2209,19 @@ function ove_revtab_forall_parallel {
 	(
 	local git
 	local git_basename
+	local job_list
+	local max_parallel=0
+
+	[ $# -eq 2 ] && max_parallel=$2
 
 	for git in ${OVE_REPO_LIST}; do
 		! [ -d "${git}" ] && continue
 		git_basename=${git/${OVE_BASE_DIR}\/}
 		pushd "${git}" &>/dev/null && eval "$1" &
+
+		[ ${max_parallel} -eq 0 ] && continue
+		mapfile -t job_list < <(jobs -p -r)
+		[ "${#job_list[@]}" -eq "${max_parallel}" ] && wait -n
 	done
 	wait
 	)
@@ -2381,7 +2389,7 @@ function ove_revtab_fetch {
 	[ "${co_list}" != "" ] && ove_revtab_clone_and_checkout ${co_list}
 
 	m=$(xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | wc -L)
-	ove_revtab_forall_parallel "git -C \${git} fetch --all --tags | sed -e \"s|^|\${git_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#git_basename}))}))|g\""
+	ove_revtab_forall_parallel "git -C \${git} fetch --all --tags | sed -e \"s|^|\${git_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#git_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
 	return $?
 }
 
@@ -6398,6 +6406,12 @@ function ove_init {
 		OVE_DRY_RUN=0
 		export OVE_DRY_RUN
 	fi
+
+	if [ -z "${OVE_FETCH_MAX_PARALLEL+x}" ]; then
+		OVE_FETCH_MAX_PARALLEL=0
+		export OVE_FETCH_MAX_PARALLEL
+	fi
+
 	if [ -z "${OVE_LOCATE_SEARCH_DIR+x}" ]; then
 		OVE_LOCATE_SEARCH_DIR=$(readlink -f $(dirname ${HOME}))
 		export OVE_LOCATE_SEARCH_DIR
