@@ -6469,7 +6469,7 @@ function ove_init {
 	export OVE_STAGE_DIR
 	OVE_ARCHIVE_DIR=${OVE_BASE_DIR}/archives
 	export OVE_ARCHIVE_DIR
-	OVE_PREFIX="/usr"
+	: "${OVE_PREFIX:=/usr}"
 	export OVE_PREFIX
 	OVE_LDFLAGS=" -L${OVE_STAGE_DIR}${OVE_PREFIX}/lib -Wl,-rpath-link=${OVE_STAGE_DIR}${OVE_PREFIX}/lib"
 	export OVE_LDFLAGS
