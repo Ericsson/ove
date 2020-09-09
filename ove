@@ -7495,7 +7495,7 @@ function ove-shell-check {
 	\cp -a "${OVE_TMP}/shellcheck.summary" "${OVE_DIR}/tests/.shellcheck"
 	\git --no-pager -C "${OVE_DIR}" diff -- tests/.shellcheck
 
-	if \git diff-files  --quiet -- tests/.shellcheck; then
+	if \git -C "${OVE_DIR}" diff-files  --quiet -- tests/.shellcheck; then
 		return 0
 	else
 		return 1
