@@ -7501,6 +7501,64 @@ function ove-shell-check {
 	fi
 }
 
+function ove_externals {
+	local cmds=()
+	local cmd
+
+	cmds+=('ag')
+	cmds+=('awk')
+	cmds+=('cat')
+	cmds+=('column')
+	cmds+=('comm')
+	cmds+=('cp')
+	cmds+=('csplit')
+	cmds+=('cut')
+	cmds+=('date')
+	cmds+=('dirname')
+	cmds+=('du')
+	cmds+=('file')
+	cmds+=('find')
+	cmds+=('fold')
+	cmds+=('git')
+	cmds+=('grep')
+	cmds+=('head')
+	cmds+=('inotifywait')
+	cmds+=('less')
+	cmds+=('locate')
+	cmds+=('lsb_release')
+	cmds+=('md5sum')
+	cmds+=('mkdir')
+	cmds+=('mktemp')
+	cmds+=('pgrep')
+	cmds+=('readlink')
+	cmds+=('rev')
+	cmds+=('rm')
+	cmds+=('rmdir')
+	cmds+=('sed')
+	cmds+=('sort')
+	cmds+=('ssh')
+	cmds+=('stat')
+	cmds+=('tac')
+	cmds+=('tail')
+	cmds+=('tar')
+	cmds+=('tee')
+	cmds+=('timeout')
+	cmds+=('tr')
+	cmds+=('tree')
+	cmds+=('tsort')
+	cmds+=('uname')
+	cmds+=('uniq')
+	cmds+=('wc')
+	cmds+=('which')
+	cmds+=('xargs')
+
+	for cmd in "${cmds[@]}"; do
+		echo "${cmd}:"
+		\grep -v "\\\\${cmd} " ${OVE_SELF} | \
+			\grep "[[:blank:] ()]\+${cmd}\b" --color=always | \sed -e "s|^#.*${cmd}.*||g" -e "s|^\t\+#.*${cmd}.*||g" -e "s|.*command.*${cmd}.*||g" -e '/^$/d'
+	done
+}
+
 # pre-push: :shell-check+unittest+generate-doc combo
 function ove-pre-push {
 	ove_echo "shell-check"
@@ -7513,6 +7571,7 @@ function ove-pre-push {
 	ove-diff .ove
 	ove_echo "ove-blame"
 	ove-blame "${USER}"
+	ove_externals
 }
 
 ove_main "$@"
