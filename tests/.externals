@@ -1,0 +1,129 @@
+ag:
+
+awk:
+
+cat:
+	\find ${OVE_PROJECT_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \xargs -0 cat >> ${o_dot}
+
+column:
+
+comm:
+
+cp:
+		echo " cp ${OVE_DIR}/ove.bash ${HOME}/.ove.bash && echo '[ -f ~/.ove.bash ] && source ~/.ove.bash' >> ${HOME}/.bashrc"
+
+csplit:
+			ove_echo_error_noprefix "ops, csplit failed"
+
+cut:
+
+date:
+
+dirname:
+	repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | \sort -u)
+					\xargs -n1 dirname | \
+
+du:
+
+file:
+		echo "error: file '${f}' is not found or file size is 0"
+		ove_echo_error_noprefix "'$1' patch file not found"
+					\xargs file
+		ove_echo_error_noprefix "'${f}' is not a text file, use xxd/hexdump"
+			\xargs -0 -P"$(nproc)" file | \
+		ove_echo_error_noprefix "you already have a file/directory named '${dir}/ove', rename/remove to proceed"
+		ove_echo_error_noprefix "'${OVE_PROJECT_DIR}/SETUP' file not found"
+			ove_echo_error_noprefix "not possible to transfer patch file to '${host}'"
+
+find:
+				ove_echo_error_noprefix "${FUNCNAME[0]}:can not find '${test_name}'"
+
+fold:
+
+git:
+			read -p "Proceed to run '${cmd}' for all git repositories? (y/N) " -r
+			read -r -p "Directory to scan for git repositories? Leave blank to search in '$PWD': "
+		ove_echo_error_noprefix "no git repositories found here: '${dir}'"
+		echo "* created a empty git repository here: '${dir}/${owel_name}'"
+
+grep:
+	$ ove grep DEADBEEF
+		mapfile -t res < <(\git -C "${repo}" --no-pager grep --no-color -I -n "${s}" | \cut -d: -f1,2)
+
+head:
+
+inotifywait:
+				ove_echo_cyan_error "0 files touched, not using inotifywait"
+
+less:
+
+locate:
+
+lsb_release:
+
+md5sum:
+
+mkdir:
+
+mktemp:
+	d=$(\ssh ${host} mktemp -d)
+
+pgrep:
+
+readlink:
+				<(echo ${OVE_REPO_LIST} | \tr ' ' '\n' | \xargs readlink -f | \sort) \
+
+rev:
+
+rm:
+	\find ${OVE_PROJECT_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \xargs -0 rm &> /dev/null
+	\find ${OVE_PROJECT_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \xargs -0 rm
+	\find ${OVE_PROJECT_TMP_DIR}/ -name "inotifywait-*-${1}*" -exec rm {} \;
+	\find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
+	\find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
+	\find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
+			echo "$ rm -rf ${OVE_STAGE_DIR}/*"
+			echo "$ rm -rf ${OVE_ARCHIVE_DIR}/*"
+		echo -e "\t$ rm -rf ${corrupt_repos}"
+
+rmdir:
+
+sed:
+					echo " ${prefix} bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope; sed -i -e \"s/kernel.yama.ptrace_scope.*/kernel.yama.ptrace_scope = 0/g\" ${sysctl_f}'"
+
+sort:
+
+ssh:
+		ove_echo_error_noprefix "'${host}' is not reachable via ssh"
+		echo $ ssh ${host};
+
+stat:
+		\xargs -0 stat --format '%Y:%n:%s' | \
+
+tac:
+
+tail:
+
+tar:
+
+tee:
+
+timeout:
+		echo "error: timeout: just numbers"
+		echo "error: timeout: just numbers"
+
+tr:
+
+tree:
+
+tsort:
+
+uname:
+
+uniq:
+
+wc:
+
+which:
+
+xargs:
