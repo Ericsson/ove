@@ -59,7 +59,7 @@ parser.add_argument('-v', '--verbose', action = 'store_true', help='verbose outp
 
 args = parser.parse_args()
 
-yamldata = yaml.load(open(args.filename, 'r'));
+yamldata = yaml.load(open(args.filename, 'r'), Loader=yaml.SafeLoader);
 
 if args.groups is None:
     sys.stderr.write("Empty search criteria, extracting content from all groups\n")
