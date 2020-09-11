@@ -7452,7 +7452,7 @@ function ove-generate-doc {
 		\grep helptext | \
 		\grep -v '\$'| \
 		\cut -d'"' -f2 | \
-		\grep -v -f<(\xargs -n1 <<<${OVE_SCRIPTS_LIST}))
+		\grep -v -f<(\xargs -n1 <<<${OVE_SCRIPTS_LIST} | \sed -e 's|^|^|g' -e 's|$|:|g'))
 
 	header="| Command:| Arguments:| Description: |"
 	sorted=$(printf "${a}\n${b}" | \
