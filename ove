@@ -115,7 +115,7 @@ function ove_welcome_msg {
 	( set -o posix ; set ) | \
 		\cut -d= -f1 > ${OVE_TMP}/bash-vars-after
 
-	mapfile ove_bash_vars_diff <<<$(\comm -1 -3 <(\sort ${OVE_TMP}/bash-vars-before) <(\sort ${OVE_TMP}/bash-vars-after) | \sort)
+	mapfile ove_bash_vars_diff <<<$(LC_COLLATE="C" \comm -1 -3 <(LC_ALL="C" \sort ${OVE_TMP}/bash-vars-before) <(LC_ALL="C" \sort ${OVE_TMP}/bash-vars-after) | LC_ALL="C" \sort)
 	\rm ${OVE_TMP}/bash-vars-after ${OVE_TMP}/bash-vars-before
 	echo "* add ${#ove_bash_vars_diff[@]} bash variables:"
 	\xargs -n1 <<<${ove_bash_vars_diff[*]} | \column
@@ -258,7 +258,7 @@ function ove_analyze_strace_execve_timing {
 		done
 		wait
 		break
-	done | \sort -n$([ ${OVE_LOGLEVEL} -eq 4 ] && echo r)
+	done | LC_ALL="C" \sort -n$([ ${OVE_LOGLEVEL} -eq 4 ] && echo r)
 }
 
 function ove_line2ipv4 {
@@ -438,10 +438,10 @@ function ove_update_connect_db {
 
 	if command -v ag > /dev/null; then
 		\ag --nobreak --nofilename -o --nonumbers 'AF_INET,.* =' $1 | \
-			\sort -u > ${OVE_PROJECT_TMP_DIR}/af_inet
+			LC_ALL="C" \sort -u > ${OVE_PROJECT_TMP_DIR}/af_inet
 	else
 		\grep -E -R -o -h 'AF_INET,.* =' $1 | \
-			\sort -u > ${OVE_PROJECT_TMP_DIR}/af_inet
+			LC_ALL="C" \sort -u > ${OVE_PROJECT_TMP_DIR}/af_inet
 	fi
 
 	if ! [ -s "${OVE_PROJECT_TMP_DIR}/af_inet" ]; then
@@ -478,7 +478,7 @@ function ove_update_connect_db {
 	\rm ${OVE_PROJECT_TMP_DIR}/af_inet
 
 	for line in ${OVE_GLOBAL_STATE_DIR}/{ip2host,ip2org,port2service}.cache; do
-		\sort -V -o ${line} ${line} &
+		LC_ALL="C" \sort -V -o ${line} ${line} &
 	done
 	wait
 }
@@ -501,7 +501,7 @@ function ove_analyze_strace_connect {
 		done
 		wait
 		break
-	done | \sort -n
+	done | LC_ALL="C" \sort -n
 }
 
 # $1: pid
@@ -824,7 +824,7 @@ function ove_strace_create_graph {
 
 	echo "}" >> ${o_dot}
 
-	\sort -u ${OVE_PROJECT_TMP_DIR}/timing > ${o_timing}
+	LC_ALL="C" \sort -u ${OVE_PROJECT_TMP_DIR}/timing > ${o_timing}
 	\rm ${OVE_PROJECT_TMP_DIR}/timing
 
 	\du -sh ${o_dot}
@@ -943,7 +943,7 @@ function ove_loop_command {
 			\rm ${all_files}
 
 			# remove doublets and only regular files
-			for f in $(\sort -u ${files_modified_by_command}); do
+			for f in $(LC_ALL="C" \sort -u ${files_modified_by_command}); do
 				[ -f ${f} ] && echo ${f};
 			done > ${files_modified_by_command}.uniq
 			\rm ${files_modified_by_command}
@@ -1344,7 +1344,7 @@ function ove-fzf {
 			fi
 		else
 			args=$(printf '%s\n' "${COMPREPLY[@]}" | \
-				\sort -u | \
+				LC_ALL="C" \sort -u | \
 				fzf \
 					--cycle \
 					--preview "echo ESC\|CTRL+C to skip args $ ove ${cmd} {}" \
@@ -1412,7 +1412,7 @@ function ove_project_commands_list {
 		echo ${f#*/}
 	done | \
 		\grep -v '[-_]' | \
-		\sort -u | \
+		LC_ALL="C" \sort -u | \
 		\xargs
 }
 
@@ -1422,7 +1422,7 @@ function ove_projects_attributes {
 		\grep -E -o '  \w+:' "${OVE_PROJECT_DIR}"/projs | \
 			\cut -d: -f1 | \
 			\tr -d ' ' | \
-			\sort -u
+			LC_ALL="C" \sort -u
 	fi
 }
 
@@ -1440,7 +1440,7 @@ function ove_list_tags_and_branches {
 		\tr -d '*' | \
 		\xargs | \
 		\tr ' ' '\n'
-	) | \sort -V
+	) | LC_ALL="C" \sort -V
 }
 
 # $1: dir (optional)
@@ -1456,7 +1456,7 @@ function ove_list_branches {
 		\tr -d '*' | \
 		\xargs | \
 		\tr ' ' '\n'
-	) | \sort -V
+	) | LC_ALL="C" \sort -V
 }
 
 # iterate through projects
@@ -1853,7 +1853,7 @@ function ove_validate_repo_list {
 		shift
 	done
 
-	echo -e "${repos}" | \sort -u | \xargs -n1
+	echo -e "${repos}" | LC_ALL="C" \sort -u | \xargs -n1
 }
 
 function ove_revtab_status {
@@ -2092,7 +2092,7 @@ function ove_update_checksum {
 		export OVE_PROJS_MD5
 	fi
 
-	OVE_SCRIPTS_MD5=$(ove_dir_fingerprint $(\xargs -n1 <<<${ove_scripts_name2path[*]} | \sort -u))
+	OVE_SCRIPTS_MD5=$(ove_dir_fingerprint $(\xargs -n1 <<<${ove_scripts_name2path[*]} | LC_ALL="C" \sort -u))
 	export OVE_SCRIPTS_MD5
 
 	OVE_REPOS_FETCHED=$(ove_repos_fetched)
@@ -2437,7 +2437,7 @@ export -f ove_get_base_dir
 function ove_list_projects {
 	if [ -f "${OVE_PROJECT_DIR}"/projs ]; then
 		\grep -o '^[a-zA-Z0-9_]\+' ${OVE_PROJECT_DIR}/projs | \
-			\sort | \
+			LC_ALL="C" \sort | \
 			\xargs "${OVE_ECHO}"
 	fi
 }
@@ -2469,7 +2469,7 @@ function ove_dir_fingerprint {
 	fi
 
 	ove_dir_md5sum_parallel "${@}" | \
-		\sort -k 2 | \
+		LC_ALL="C" \sort -k 2 | \
 		\md5sum | \
 		\cut -d' ' -f1
 }
@@ -2668,9 +2668,9 @@ function ove-build-order {
 	fi
 
 	topology=$(ove_build_topology)
-	autonomous_projs=$(\comm -3 \
+	autonomous_projs=$(LC_COLLATE="C" \comm -3 \
 		<(printf "%s\n" ${OVE_PROJECT_LIST}) \
-		<(\tr ' ' '\n' <<<${topology} | \sort))
+		<(\tr ' ' '\n' <<<${topology} | LC_ALL="C" \sort))
 
 	echo ${autonomous_projs} ${topology}
 }
@@ -2744,7 +2744,7 @@ function ove-list-systests {
 	if [ -e ${OVE_PROJECT_DIR}/systests-groups ]; then
 		\grep : "${OVE_PROJECT_DIR}"/systests-groups | \
 			\sed 's|[-:[:space:]]||g'
-	fi) | \sort
+	fi) | LC_ALL="C" \sort
 }
 
 # list-systests-aliases: :list available system test aliases
@@ -2754,7 +2754,7 @@ function ove-list-systests-aliases {
 	\grep : "${OVE_PROJECT_DIR}"/systests | \
 		\grep -v '#' | \
 		\cut -d: -f1 | \
-		\sort
+		LC_ALL="C" \sort
 }
 
 # list-scripts: :list available scripts
@@ -2938,7 +2938,7 @@ function ove-systest {
 	else
 		groups=$(\grep : ${OVE_PROJECT_DIR}/systests-groups | \
 			\sed 's|[-:[:space:]]||g'| \
-			\sort)
+			LC_ALL="C" \sort)
 
 		if [ "${groups}" == "" ]; then
 			test_list="$*"
@@ -4138,7 +4138,7 @@ function ove-export {
 			deps=$(ove_get_deps_recursive $1)
 		fi
 
-		for b in $(\xargs -n1 <<<${OVE_BUILD_ORDER} | \sort); do
+		for b in $(\xargs -n1 <<<${OVE_BUILD_ORDER} | LC_ALL="C" \sort); do
 			if [ $# -ge 1 ]; then
 				re=\\b${b}\\b
 				if ! [[ "${deps}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
@@ -4158,7 +4158,7 @@ function ove-export {
 				tmp_var="ove_projects_${attr}[${index}]"
 				[ "${!tmp_var}" != "" ] && \
 					str+="  ${attr}:\n$(\tr ' ' '\n' <<<${!tmp_var} | \
-					\sort -u | \
+					LC_ALL="C" \sort -u | \
 					\sed -e 's|^|    |g')\n"
 
 				paths+="${OVE_BASE_DIR}/${ove_projects_path[${index}]} "
@@ -4184,7 +4184,7 @@ function ove-export {
 	# YAML header
 	\sed -i '1i ---' ${OVE_PROJECT_TMP_DIR}/export/projs
 
-	for b in $(\tr ' ' '\n' <<<${paths} | \sort -u); do
+	for b in $(\tr ' ' '\n' <<<${paths} | LC_ALL="C" \sort -u); do
 		while true; do
 			[ "${b}" == "" ] && break
 			if \xargs -n 1 <<<${OVE_REPO_LIST} 2> /dev/null | \grep -q ^${b}$; then
@@ -4234,9 +4234,9 @@ function ove_build_pre {
 	if [ $# -eq 0 ]; then
 		if [ -n "${OVE_PROJECT_LIST_BUILDABLE+x}" ] && \
 			[ "${OVE_PROJECT_LIST_BUILDABLE}" != "${OVE_PROJECT_LIST}" ]; then
-			ove_echo_error_noprefix "'$(\comm -3 \
-				<(\xargs -n1 <<<${OVE_PROJECT_LIST} | \sort) \
-				<(\xargs -n1 <<<${OVE_PROJECT_LIST_BUILDABLE} | \sort) |
+			ove_echo_error_noprefix "'$(LC_COLLATE="C" \comm -3 \
+				<(\xargs -n1 <<<${OVE_PROJECT_LIST} | LC_ALL="C" \sort) \
+				<(\xargs -n1 <<<${OVE_PROJECT_LIST_BUILDABLE} | LC_ALL="C" \sort) |
 				\xargs)' is not buildable project(s). Try: 'ove fetch'"
 			return 1
 		fi
@@ -4250,7 +4250,7 @@ function ove_build_pre {
 			if [ -n "${OVE_PROJECT_LIST_BUILDABLE+x}" ]; then
 				re=\\b$1\\b
 				if ! [[ "${OVE_PROJECT_LIST_BUILDABLE}" =~ ${re} ]]; then
-					for p in $(ove_get_paths_recursive $1 | \xargs -n1 | \sort -u); do
+					for p in $(ove_get_paths_recursive $1 | \xargs -n1 | LC_ALL="C" \sort -u); do
 						[ -d ${p} ] && continue
 						for q in ${OVE_REPO_LIST}; do
 							if [[ ${p} == *"${q}"* ]] && ! [ -d "${q}" ]; then
@@ -4259,7 +4259,7 @@ function ove_build_pre {
 						done
 					done
 					if [ "${repos}" != "" ]; then
-						repos=$(\xargs -n1 <<<${repos} | \sort -u | \xargs)
+						repos=$(\xargs -n1 <<<${repos} | LC_ALL="C" \sort -u | \xargs)
 						ove_echo_error_noprefix "'$1' is not a buildable project. Try: 'ove fetch ${repos}'"
 					fi
 					return 1
@@ -4318,7 +4318,7 @@ function ove-buildme {
 		done
 
 		build_list="$(ove_get_deps_recursive "$@") $*"
-		build_list="$(\xargs -n1 <<<${build_list} | \sort -u | \xargs)"
+		build_list="$(\xargs -n1 <<<${build_list} | LC_ALL="C" \sort -u | \xargs)"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
@@ -4410,7 +4410,7 @@ function ove-buildme-parallel {
 		done
 
 		build_list="$(ove_get_deps_recursive "$@") $*"
-		build_list="$(\xargs -n1 <<<${build_list} | \sort -u | \xargs)"
+		build_list="$(\xargs -n1 <<<${build_list} | LC_ALL="C" \sort -u | \xargs)"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
@@ -4543,7 +4543,7 @@ function ove-env {
 	done
 
 	printf "${str}" | \
-		\sort | \
+		LC_ALL="C" \sort | \
 		\column -t -s:
 }
 
@@ -4667,7 +4667,7 @@ function ove-am {
 	# unpack
 	\tar -C "${d}" -xf "$1" || return 3
 
-	repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | \sort -u)
+	repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | LC_ALL="C" \sort -u)
 	[ "${repos}" == "" ] && return 4
 	for r in ${repos}; do
 		r=${r/${d}\/}
@@ -4773,7 +4773,7 @@ function ove-apply {
 			return 1
 		fi
 
-		patches=$(\find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' | \sort)
+		patches=$(\find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' | LC_ALL="C" \sort)
 	fi
 
 	for p in ${patches}; do
@@ -4996,14 +4996,14 @@ function ove-list-commands {
 	a=$(\grep -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
 		\grep '\#' | \
 		\cut -b3-| \
-		\sort)
+		LC_ALL="C" \sort)
 	b=$(set | \
 		\grep helptext | \
 		\grep -v '\$'| \
 		\cut -d'"' -f2)
 
 	printf "${a}\n${b}" | \
-		\sort | \
+		LC_ALL="C" \sort | \
 		\column -s: -t
 }
 
@@ -5233,7 +5233,7 @@ function ove-config {
 	if [ $# -eq 0 ]; then
 			\grep -v '^#' ${cfg} | \
 				\grep -v '^$' | \
-				\sort | \
+				LC_ALL="C" \sort | \
 				\grep -E --color "${grep_pattern}"
 	elif [ $# -eq 1 ]; then
 		if ! \grep -q -i $1 ${cfg}; then
@@ -5270,7 +5270,7 @@ function ove-ls-files {
 		cmd="re=$*; \git -C \${repo} ls-files | while read line; do [[ \${PWD}/\${line} =~ \${re} ]] && echo -e \${PWD}/\${line}; done"
 	fi
 
-	ove_revtab_forall_parallel "${cmd}" | \sort
+	ove_revtab_forall_parallel "${cmd}" | LC_ALL="C" \sort
 }
 
 # list-modified-files: :list modified files
@@ -5293,7 +5293,7 @@ function ove-list-committed-files {
 	# shellcheck disable=SC2016
 	cmd='\git --no-pager -C ${repo} log --all --no-merges --author="$(\git config --get user.name)" --name-only --pretty=format:"" --since="'${days}' days" | while read line; do [ -f ${PWD}/${line} ] && echo -e ${PWD}/${line}; done'
 
-	ove_revtab_forall "${cmd}" | \sort -u
+	ove_revtab_forall "${cmd}" | LC_ALL="C" \sort -u
 }
 
 function ove_edit {
@@ -5318,7 +5318,7 @@ function ove_edit {
 
 	# stat every file
 	files_by_epoch=$(for f in ${files}; do echo $(\stat --format '%Y' ${f}):${f}; done | \
-		\sort -r | \
+		LC_ALL="C" \sort -r | \
 		\cut -d: -f2)
 
 	if [ $# -eq 0 ]; then
@@ -5391,28 +5391,28 @@ function ove-mrproper {
 			if [ "${sub_dirs}" != "" ]; then
 				repo_sub_dirs=$(echo ${sub_dirs} | \
 					\xargs -n1 dirname | \
-					\sort -u | \
+					LC_ALL="C" \sort -u | \
 					\sed -e "s|^|${OVE_BASE_DIR}/|g")
 			fi
 
 			# find some directories
 			directories=$(\find $(\readlink -f ${OVE_BASE_DIR}) ${repo_sub_dirs} -maxdepth 1 -mindepth 1 -type d | \
-				\sort)
+				LC_ALL="C" \sort)
 
 
 			if [ "${sub_dirs}" == "" ]; then
-				directories_uniq=$(\find $(\readlink -f ${OVE_BASE_DIR}) -maxdepth 1 -mindepth 1 -type d | \sort)
+				directories_uniq=$(\find $(\readlink -f ${OVE_BASE_DIR}) -maxdepth 1 -mindepth 1 -type d | LC_ALL="C" \sort)
 			else
 				# remove common paths
-				directories_uniq=$(\comm -3 \
+				directories_uniq=$(LC_COLLATE="C" \comm -3 \
 					<(printf "%s\n" ${repo_sub_dirs}) \
 					<(printf "%s\n" ${directories}) | \
 					\xargs -n1)
 			fi
 
 			# now we can start to identify directories that can be removed
-			for o in $(\comm -3 \
-				<(echo ${OVE_REPO_LIST} | \tr ' ' '\n' | \xargs readlink -f | \sort) \
+			for o in $(LC_COLLATE="C" \comm -3 \
+				<(echo ${OVE_REPO_LIST} | \tr ' ' '\n' | \xargs readlink -f | LC_ALL="C" \sort) \
 				<(printf "%s\n" ${directories_uniq}) | \
 				\grep -Ev "archives$|stage$|${OVE_DIR}"); do
 				[ -d ${o} ] && objects+="${o} "
@@ -5426,7 +5426,7 @@ function ove-mrproper {
 			if [ "${objects}" != "" ]; then
 				echo ${objects} | \
 					\tr ' ' '\n' | \
-					\sort | \
+					LC_ALL="C" \sort | \
 					\xargs file
 				echo
 				read -p "Proceed to remove $(echo ${objects} | \wc -w) files/directories (list above) using 'rm -rf'? (y/N) " -r
@@ -5660,9 +5660,9 @@ function ove-what-is {
 		\find "${dir}" -not -path '*.git*' -print0 | \
 			\xargs -0 -P"$(nproc)" file | \
 			\awk '{$1=""; print $0}' | \
-			\sort | \
+			LC_ALL="C" \sort | \
 			\uniq -c | \
-			\sort -nr
+			LC_ALL="C" \sort -nr
 	done
 }
 
@@ -5793,7 +5793,7 @@ function ove-lastlog {
 
 	\find ${OVE_LOG_DIR} -type f -cmin -${cmin} -print0 | \
 		\xargs -0 stat --format '%Y:%n:%s' | \
-		\sort -nr | \
+		LC_ALL="C" \sort -nr | \
 		\cut -d: -f2- | \
 		\grep -v ${FUNCNAME[0]} | \
 		\sed "s/\(^.*-ove-\(.*\)-${HOSTNAME}-\(.*\).log\):\(.*\)/\3@\2@\1@\4/g" | \
@@ -5832,14 +5832,14 @@ function ove-authors {
 
 		\git --no-pager -C "${repo}" log --pretty="%ae"
 	done | \
-		\sort | \
+		LC_ALL="C" \sort | \
 		\uniq -c | \
-		\sort -nr
+		LC_ALL="C" \sort -nr
 }
 
 # domains: :list email domain summary for all git repositories
 function ove-domains {
-	ove-authors | \grep '@' | \cut -d@ -f2 | \sort | \uniq -c | \sort -nr
+	ove-authors | \grep '@' | \cut -d@ -f2 | LC_ALL="C" \sort | \uniq -c | LC_ALL="C" \sort -nr
 }
 
 function ove_bash_complete {
@@ -6103,7 +6103,7 @@ function ove_bash_complete {
 function ove_get_built_ins {
 	\grep -o '^function ove-.* ' ${OVE_SELF} | \
 		\sed -e ':a;N;$!ba;s/function ove-//g' | \
-		\sort | \
+		LC_ALL="C"  \sort | \
 		\tr '\n' ' ' | \
 		\xargs "${OVE_ECHO}"
 }
@@ -6117,7 +6117,7 @@ function ove_update_tab_complete {
 		\grep ': :' | \
 		\cut -b3- | \
 		\cut -d: -f1 | \
-		\sort | \
+		LC_ALL="C" \sort | \
 		\tr '\n' ' ' | \
 		\xargs "${OVE_ECHO}")
 
@@ -6143,7 +6143,7 @@ function ove_update_tab_complete {
 
 	array=(${OVE_ALL_COMMANDS})
 	oldIFS=${IFS}
-	IFS=$'\n' OVE_ALL_COMMANDS=$(\xargs "${OVE_ECHO}" <<<$(\sort <<<"${array[*]}"))
+	IFS=$'\n' OVE_ALL_COMMANDS=$(\xargs "${OVE_ECHO}" <<<$(LC_ALL="C" \sort <<<"${array[*]}"))
 	IFS=${oldIFS}
 
 	export OVE_ALL_COMMANDS
@@ -6227,7 +6227,7 @@ function ove_scripts_init {
 
 	array=(${OVE_SCRIPTS_LIST})
 	oldIFS=${IFS}
-	IFS=$'\n' OVE_SCRIPTS_LIST=$(\xargs "${OVE_ECHO}" <<<$(\sort <<<"${array[*]}"))
+	IFS=$'\n' OVE_SCRIPTS_LIST=$(\xargs "${OVE_ECHO}" <<<$(LC_ALL="C" \sort <<<"${array[*]}"))
 	IFS=${oldIFS}
 }
 
@@ -6531,7 +6531,7 @@ function ove_post_checks {
 		mapfile -t doublets < <(\grep -E -v '#|^$' ${OVE_PROJECT_DIR}/systests | \
 			\awk '{print $1}' | \
 			\cut -d: -f1 | \
-			\sort | \
+			LC_ALL="C" \sort | \
 			\uniq -d)
 		if [ "${doublets[*]}" != "" ]; then
 			echo
@@ -6544,8 +6544,8 @@ function ove_post_checks {
 
 	# inform the user if .oveconfig was updated within the project
 	if [ -e ${HOME}/.oveconfig ] && [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
-		res=$(\comm -3 <(\grep -E -v '(^#.*$)|(^$)' ${HOME}/.oveconfig | \awk '{ print $1 }' | \sort) \
-			<(\grep -E -v '(^#.*$)|(^$)' ${OVE_PROJECT_DIR}/.oveconfig | \awk '{ print $1 }' | \sort))
+		res=$(LC_COLLATE="C" \comm -3 <(\grep -E -v '(^#.*$)|(^$)' ${HOME}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort) \
+			<(\grep -E -v '(^#.*$)|(^$)' ${OVE_PROJECT_DIR}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort))
 		if [ "${res}" != "" ]; then
 			echo
 			echo "--->"
@@ -6556,8 +6556,8 @@ function ove_post_checks {
 			echo
 			echo "...are different. Do a merge!?"
 			echo
-			\diff <(\grep -E -v '(^#.*$)|(^$)' ${HOME}/.oveconfig | \awk '{ print $1 }' | \sort) \
-				<(\grep -E -v '(^#.*$)|(^$)' ${OVE_PROJECT_DIR}/.oveconfig | \awk '{ print $1 }' | \sort)
+			\diff <(\grep -E -v '(^#.*$)|(^$)' ${HOME}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort) \
+				<(\grep -E -v '(^#.*$)|(^$)' ${OVE_PROJECT_DIR}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort)
 			echo "<---"
 		fi
 	fi
@@ -6566,7 +6566,7 @@ function ove_post_checks {
 	for f in ${HOME}/.oveconfig ${OVE_PROJECT_DIR}/.oveconfig; do
 		[ -e ${f} ] || continue
 
-		mapfile -t doublets < <(\grep -E -v '#|^$' ${f} | \awk '{print $1}' | \sort | \uniq -d)
+		mapfile -t doublets < <(\grep -E -v '#|^$' ${f} | \awk '{print $1}' | LC_ALL="C" \sort | \uniq -d)
 		if [ "${doublets[*]}" != "" ]; then
 			echo
 			ove_echo_yellow_noprefix "warning: found ${#doublets[*]} config duplicate(s):"
@@ -6583,7 +6583,7 @@ function ove_post_checks {
 
 	# check for script doublets
 	mapfile -t doublets < <(for script in $(ove-list-scripts); do echo ${script##*/}; done | \
-		\sort | \
+		LC_ALL="C" \sort | \
 		\uniq -d)
 	if [ "${doublets[*]}" != "" ]; then
 		echo
@@ -6656,9 +6656,9 @@ function ove_buildable_projects {
 		done
 	done
 
-	OVE_PROJECT_LIST_BUILDABLE=$(\comm -3 \
-		<(echo ${OVE_PROJECT_LIST} | \xargs -n1 | \sort) \
-		<(\xargs -n1 <<<"${projs_and_deps_not_buildable}" | \sort) |
+	OVE_PROJECT_LIST_BUILDABLE=$(LC_COLLATE="C" \comm -3 \
+		<(echo ${OVE_PROJECT_LIST} | \xargs -n1 | LC_ALL="C" \sort) \
+		<(\xargs -n1 <<<"${projs_and_deps_not_buildable}" | LC_ALL="C" \sort) |
 		\xargs)
 	export OVE_PROJECT_LIST_BUILDABLE
 }
@@ -6830,10 +6830,10 @@ function ove-init {
 	revtab_file="${dir}/${owel_name}/revtab"
 	printf "${str}" | \
 		\column -t | \
-		\sort > ${revtab_file}
+		LC_ALL="C" \sort > ${revtab_file}
 
 	# inform user on repos with same fetch url
-	mapfile -t doublets < <(\awk '{print $2}' ${revtab_file} | \grep -v noremote | \sort | \uniq -d)
+	mapfile -t doublets < <(\awk '{print $2}' ${revtab_file} | \grep -v noremote | LC_ALL="C" \sort | \uniq -d)
 	if [ "${doublets[*]}" != "" ]; then
 		ove_echo_yellow_noprefix "NOTE: found a few repos with the same fetch url:"
 		for d in ${doublets[*]}; do
@@ -6969,7 +6969,7 @@ function ove_deps {
 		echo
 		for dep in ${str_cmds}; do
 			echo -e "\t${dep}"
-		done | \sort
+		done | LC_ALL="C" \sort
 		echo
 		echo "To fix this, run the following command:"
 		echo
@@ -6986,16 +6986,16 @@ function ove_packages_not_installed {
 
 	[ $# -eq 0 ] && return
 
-	p_sort=$(\xargs -n1 <<<"$@" | \sort -u)
+	p_sort=$(\xargs -n1 <<<"$@" | LC_ALL="C" \sort -u)
 
 	if [[ ${OVE_OS} == *"Arch Linux"* ]]; then
-		\comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\pacman -Q | \awk '{print $1}')
+		LC_COLLATE="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\pacman -Q | \awk '{print $1}')
 	elif [[ ${OVE_OS} == *"Alpine"* ]]; then
-		\comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\apk info | \sort)
+		LC_COLLATE="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\apk info | LC_ALL="C" \sort)
 	elif [[ ${OVE_OS} == *"CentOS"* ]] || \
 		[[ ${OVE_OS} == *"Fedora"* ]] || \
 		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]]; then
-		\comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\rpm -qa --qf "%{NAME}\n"| \sort)
+		LC_COLLATE="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\rpm -qa --qf "%{NAME}\n"| LC_ALL="C" \sort)
 	elif [[ ${OVE_OS} == *"Debian"* ]] || \
 		[[ ${OVE_OS} == *"Raspbian"* ]] || \
 		[[ ${OVE_OS} == *"Ubuntu"* ]]; then
@@ -7004,9 +7004,9 @@ function ove_packages_not_installed {
 			\sed -e 's/dpkg-query: no packages found matching //g' -e 's/:.*//g' | \
 			\xargs
 	elif [[ ${OVE_OS} == *"void"* ]]; then
-		\comm -2 -3 \
+		LC_COLLATE="C" \comm -2 -3 \
 			<(\xargs -n1 <<<${p_sort}) \
-			<(\xbps-query --list-pkgs | \awk '{print $2}' | \rev | \cut -d- -f2- | \rev | \sort | \xargs -n1)
+			<(\xbps-query --list-pkgs | \awk '{print $2}' | \rev | \cut -d- -f2- | \rev | LC_ALL="C" \sort | \xargs -n1)
 	else
 		ove_echo_error_noprefix "function '${FUNCNAME[0]}' is not implemented for ${OVE_OS}"
 	fi
@@ -7304,7 +7304,7 @@ function ove-unittest {
 
 		if [ "${tests}" == "" ]; then
 			echo "error: select test(s) from:"
-			\find ${OVE_DIR}/tests -name 't*.test' -type f -exec basename {} .test \; | \sort
+			\find ${OVE_DIR}/tests -name 't*.test' -type f -exec basename {} .test \; | LC_ALL="C" \sort
 			return 1
 		fi
 	fi
@@ -7397,7 +7397,7 @@ function ove_watch_logs {
 
 			log=$(\find ${d}/${u}/ove/logs/current/ -type f | \
 				\grep -v -E "${ignore}" | \
-				\sort | \
+				LC_ALL="C" \sort | \
 				\tail -1)
 
 			if [ "${cmd}" == "less" ]; then
@@ -7432,7 +7432,7 @@ function ove_watch_logs {
 		[ -d "${d}/${u}" ] || return 3
 		log=$(\find ${d}/${u}/ove/logs/current/ -type f | \
 			\grep -v -E "${ignore}" | \
-			\sort | \
+			LC_ALL="C" \sort | \
 			\tail -1)
 		eval ${cmd} ${log}
 	fi
@@ -7502,7 +7502,7 @@ function ove-shell-check {
 
 	(cd "${OVE_DIR}" && \shellcheck -x -e ${exclude} "${OVE_SELF}" > "${OVE_TMP}/shell-check")
 	\grep -c -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" > "${OVE_TMP}/shellcheck.summary"
-	\grep -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" | \sort | \uniq -c | \sort -nr >> "${OVE_TMP}/shellcheck.summary"
+	\grep -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" | LC_ALL="C" \sort | \uniq -c | LC_ALL="C" \sort -nr >> "${OVE_TMP}/shellcheck.summary"
 	\cp -a "${OVE_TMP}/shellcheck.summary" "${OVE_DIR}/tests/.shellcheck"
 	\git --no-pager -C "${OVE_DIR}" diff -- tests/.shellcheck
 

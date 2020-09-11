@@ -20,7 +20,7 @@ cut:
 date:
 
 dirname:
-	repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | \sort -u)
+	repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | LC_ALL="C" \sort -u)
 					\xargs -n1 dirname | \
 
 du:
@@ -71,7 +71,7 @@ mktemp:
 pgrep:
 
 readlink:
-				<(echo ${OVE_REPO_LIST} | \tr ' ' '\n' | \xargs readlink -f | \sort) \
+				<(echo ${OVE_REPO_LIST} | \tr ' ' '\n' | \xargs readlink -f | LC_ALL="C" \sort) \
 
 rev:
 
