@@ -7590,11 +7590,12 @@ function ove-pre-push {
 	ove-unittest
 	ove_echo "generate-doc"
 	ove-generate-doc
-	ove_echo "diff"
-	ove-diff .ove
-	ove_echo "ove-blame"
+	ove_echo "blame"
 	ove-blame "${USER}"
+	ove_echo "externals"
 	ove_externals
+	ove_echo "status"
+	ove-status .ove
 }
 
 ove_main "$@"
