@@ -271,12 +271,12 @@ function ove_ip2host {
 	local ip_lookup
 
 	if ! command -v dig > /dev/null; then
-		ove_echo_error_noprefix "'dig' is not found"
+		ove_echo_command_not_found "dig"
 		return 1
 	fi
 
 	if ! command -v whois > /dev/null; then
-		ove_echo_error_noprefix "'whois' is not found"
+		ove_echo_command_not_found "whois"
 		return 1
 	fi
 
@@ -305,7 +305,7 @@ function ove_ip2org {
 	local org
 
 	if ! command -v whois > /dev/null; then
-		ove_echo_error_noprefix "'whois' is not found"
+		ove_echo_command_not_found "whois"
 		return 1
 	fi
 
@@ -1094,7 +1094,7 @@ function ove-loop {
 	fi
 
 	if [ "${use_inotify}" -eq 1 ] && ! command -v inotifywait > /dev/null; then
-		echo "duckduckgo.com/?q=inotifywait"
+		ove_echo_command_not_found "inotifywait"
 		return 1
 	fi
 
@@ -2893,8 +2893,16 @@ function ove_echo_warning_noprefix {
 function ove_echo_stderr {
 	ove_echo "$@" 1>&2;
 }
+
 function ove_echo_stderr_noprefix {
 	echo "$@" 1>&2;
+}
+
+function ove_echo_command_not_found {
+	local msg="command '$1' not found"
+
+	[ $# -eq 2 ] && msg+=". $2"
+	ove_echo_error_noprefix "${msg}"
 }
 
 # systest:[TEST|GROUP...]:run one or more system tests/groups described in ${OVE_PROJECT_DIR}/systests-groups and ${OVE_PROJECT_DIR}/systests
@@ -4086,7 +4094,7 @@ function ove_install_packages {
 	fi
 
 	if ! command -v ${OVE_OS_PACKAGE_MANAGER} > /dev/null; then
-		ove_echo_error_noprefix "${FUNCNAME[0]}: fatal: '${OVE_OS_PACKAGE_MANAGER}' not found"
+		ove_echo_command_not_found "${OVE_OS_PACKAGE_MANAGER}"
 		return 2
 	fi
 
@@ -4720,7 +4728,7 @@ function ove-apply {
 	fi
 
 	if ! command -v csplit > /dev/null; then
-		ove_echo_error_noprefix "command 'csplit' not found"
+		ove_echo_command_not_found "csplit"
 		return 1
 	fi
 
@@ -5125,6 +5133,7 @@ EOF
 # ag:PATTERN:search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]
 function ove-ag {
 	if ! command -v ag > /dev/null; then
+		ove_echo_command_not_found "ag"
 		return 1
 	fi
 
@@ -5303,7 +5312,7 @@ function ove_edit {
 
 	# sanity check
 	if ! command -v ${editor} > /dev/null; then
-		ove_echo_stderr_noprefix "${editor} is not installed?"
+		ove_echo_command_not_found "${editor}"
 		return 1
 	fi
 
@@ -5698,7 +5707,7 @@ function ove-loglevel {
 	elif [ $# -eq 1 ]; then
 		if [ $1 -gt 2 ] && [ $1 -lt 7 ]; then
 			if ! command -v strace > /dev/null; then
-				ove_echo_error_noprefix "'strace' is not found"
+				ove_echo_command_not_found "strace"
 				return 1
 			fi
 
@@ -7279,7 +7288,7 @@ function ove-unittest {
 	local tests
 
 	if ! command -v shelltest > /dev/null; then
-		echo "shelltestrunner is not found. Version 1.9 or greater is needed"
+		ove_echo_command_not_found "shelltestrunner" "Version 1.9 or greater is needed."
 		return 1
 	fi
 
@@ -7469,7 +7478,7 @@ function ove-shell-check {
 	local exclude
 
 	if ! command -v shellcheck > /dev/null; then
-		ove_echo_error_noprefix "'shellcheck' is not found"
+		ove_echo_command_not_found "shellcheck"
 		return 1
 	fi
 
