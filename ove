@@ -2118,8 +2118,8 @@ function ove_revtab_check_one {
 
 	if [ -d "${OVE_BASE_DIR}/${name}/.git" ]; then
 		sha_a=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
-		sha_b=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} --)
-		[ $? -ne 0 ] &&  b=""
+		sha_b=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null)
+		[ $? -ne 0 ] && sha_b=""
 
 		if [ "${sha_a}" != "${sha_b}" ]; then
 			# diff => checkout
