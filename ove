@@ -2107,7 +2107,6 @@ function ove_revtab_check_one {
 	local detached=0
 	local m
 	local name
-	local re
 	local rev_is_branch=0
 	local revision
 	local sha_a
@@ -2125,9 +2124,8 @@ function ove_revtab_check_one {
 			# diff => checkout
 			co=1
 		else
-			re=\\b${revision}\\b
 			\git -C "${OVE_BASE_DIR}/${name}" symbolic-ref -q HEAD > /dev/null || detached=1
-			[[ "$(ove_list_branches ${OVE_BASE_DIR}/${name} | \xargs)" =~ ${re} ]] && rev_is_branch=1
+			[[ "$(ove_list_branches ${OVE_BASE_DIR}/${name} | \xargs)" =~ (^| )${revision}($| ) ]] && rev_is_branch=1
 
 			# detached and rev is a branch => checkout
 			if [ ${detached} -eq 1 ] && [ ${rev_is_branch} -eq 1 ]; then
