@@ -1470,7 +1470,13 @@ function ove_projects_parse {
 
 	[ ! -e "${OVE_PROJECT_DIR}/projs" ] && return
 
-	eval $(ove_parse_yaml "${OVE_PROJECT_DIR}/projs")
+	if ! eval $(ove_parse_yaml "${OVE_PROJECT_DIR}/projs") 2> /dev/null; then
+		ove_echo_error_noprefix "possible format error(s) in '${OVE_PROJECT_DIR}/projs'"
+		if command -v yamllint > /dev/null; then
+			\yamllint "${OVE_PROJECT_DIR}/projs"
+		fi
+		return 1
+	fi
 
 	# create ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
@@ -7554,6 +7560,7 @@ function ove_externals {
 	cmds+=('wc')
 	cmds+=('which')
 	cmds+=('xargs')
+	cmds+=('yamllint')
 
 	for cmd in "${cmds[@]}"; do
 		echo "${cmd}:"
