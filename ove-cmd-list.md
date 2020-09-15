@@ -55,6 +55,7 @@
 | init                     | \|[DIR]\|[DIR NAME]                                   | scan directories and look for git repositories, if found create/update a OVE workspace                                |
 | install                  | [PROJECT...]                                          | run the 'install' step for all or individual projects                                                                 |
 | install-parallel         | [PROJECT...]                                          | run the 'install' step for all or individual projects (in parallel)                                                   |
+| install-pkg              | [PROJECT...]                                          | install needed OS packages                                                                                            |
 | lastlog                  | [cmin]                                                | list OVE logs created within last 60 min or cmin min                                                                  |
 | less-lastlog             | [USER]                                                | peek into user(s) last OVE log using less                                                                             |
 | list-commands            |                                                       | list commands                                                                                                         |

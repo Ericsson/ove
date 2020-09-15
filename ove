@@ -4291,8 +4291,17 @@ function ove_build_post {
 	[ "${f}" != "" ] && \rmdir ${f}
 }
 
-# buildme:[PROJECT...]:build project(s) from scratch (=bootstrap, configure, build, install)
-function ove-buildme {
+function ove_get_build_list {
+	local b
+
+	b="$(ove_get_deps_recursive "$@") $*"
+	b="$(\xargs -n1 <<<${b} | LC_ALL="C" \sort -u | \xargs)"
+
+	echo ${b}
+}
+
+# install-pkg:[PROJECT...]:install needed OS packages
+function ove-install-pkg {
 	local b
 	local build_list
 	local index
@@ -4315,8 +4324,7 @@ function ove-buildme {
 			fi
 		done
 
-		build_list="$(ove_get_deps_recursive "$@") $*"
-		build_list="$(\xargs -n1 <<<${build_list} | LC_ALL="C" \sort -u | \xargs)"
+		build_list="$(ove_get_build_list "$@")"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
@@ -4339,6 +4347,23 @@ function ove-buildme {
 			ove_echo_error_noprefix "${FUNCNAME[0]}: missing package(s)"
 			return 1
 		fi
+	fi
+}
+
+# buildme:[PROJECT...]:build project(s) from scratch (=bootstrap, configure, build, install)
+function ove-buildme {
+	local b
+	local build_list
+	local p
+	local re
+
+	# install packages
+	if ! ove-install-pkg "$@"; then
+		return 1
+	fi
+
+	if [ $# -ge 1 ]; then
+		build_list="$(ove_get_build_list "$@")"
 	fi
 
 	# bootstrap
@@ -4385,52 +4410,19 @@ function ove-buildme-parallel {
 	local build_list
 	local dep
 	local inotify_max_user_instances
-	local n
 	local p
-	local pack_list
 	local pid
 	local pids
 	local re
 	local wait_for_deps
 
-	if ! ove_build_pre "$@"; then
+	# install packages
+	if ! ove-install-pkg "$@"; then
 		return 1
 	fi
 
-	trap ove_build_post EXIT
-
 	if [ $# -ge 1 ]; then
-		for p in "$@"; do
-			if ! [[ -v ove_projects_name2index[${p}] ]]; then
-				ove_echo_error_noprefix "unknown project '${p}'"
-				return 1
-			fi
-		done
-
-		build_list="$(ove_get_deps_recursive "$@") $*"
-		build_list="$(\xargs -n1 <<<${build_list} | LC_ALL="C" \sort -u | \xargs)"
-	fi
-
-	for b in ${OVE_BUILD_ORDER}; do
-		if [ $# -ge 1 ]; then
-			re=\\b${b}\\b
-			if ! [[ "${build_list}" =~ ${re} ]]; then
-				continue
-			fi
-		fi
-
-		index=${ove_projects_name2index[${b}]}
-		for n in ${ove_projects_needs[${index}]}; do
-			pack_list+="${n} "
-		done
-	done
-
-	# install packages
-	if [ "${pack_list}" != "" ]; then
-		if ! ove_install_packages ${pack_list}; then
-			ove_echo_error_noprefix "${FUNCNAME[0]}: missing package(s)"
-			return 1
-		fi
+		build_list="$(ove_get_build_list "$@")"
 	fi
 
 	# bootstrap
@@ -5897,7 +5889,8 @@ function ove_bash_complete {
 			return
 		fi
 	elif [ "${subcommand}" == "buildme" ] ||
-		[ "${subcommand}" == "buildme-parallel" ]; then
+		[ "${subcommand}" == "buildme-parallel" ] ||
+		[ "${subcommand}" == "install-pkg" ]; then
 		wordlist=${OVE_PROJECT_LIST}
 	elif [ "${subcommand}" == "run" ]; then
 		if [ ${size} -eq 2 ]; then
