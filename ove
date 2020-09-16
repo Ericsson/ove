@@ -92,7 +92,7 @@ function ove-unsource {
 		\grep -E '^ove($|[-_])' | \
 		\awk '{print $1}') \
 		${FUNCNAME[0]}
-	echo "ove has been removed from this bash shell [pid:${BASHPID}]" 1>&2
+	echo "OVE has been removed from this bash shell [pid:${BASHPID}]" 1>&2
 }
 
 # interactive shell? clean up
@@ -102,28 +102,6 @@ function ove_welcome_msg {
 	local script_ver
 
 	ove-version
-	echo
-	echo "This script will do a few things:"
-	echo
-
-	echo "* add $(set | \grep -c ^ove-) bash functions:"
-	set | \
-		\grep ^ove- | \
-		\cut -d' ' -f1 | \
-		\column
-	echo
-	( set -o posix ; set ) | \
-		\cut -d= -f1 > ${OVE_TMP}/bash-vars-after
-
-	mapfile ove_bash_vars_diff <<<$(LC_COLLATE="C" \comm -1 -3 <(LC_ALL="C" \sort ${OVE_TMP}/bash-vars-before) <(LC_ALL="C" \sort ${OVE_TMP}/bash-vars-after) | LC_ALL="C" \sort)
-	\rm ${OVE_TMP}/bash-vars-after ${OVE_TMP}/bash-vars-before
-	echo "* add ${#ove_bash_vars_diff[@]} bash variables:"
-	\xargs -n1 <<<${ove_bash_vars_diff[*]} | \column
-	unset ove_bash_vars_diff
-
-	echo
-	echo "* enable tab completion for ove"
-
 	if ! [ -e "${HOME}/.ove.bash" ]; then
 		echo
 		echo "Do you want to skip the initial 'source ove' step? Run this:"
@@ -133,11 +111,8 @@ function ove_welcome_msg {
 	script_ver=$(\script --version | \awk '{print $NF}')
 	if [[ ${script_ver} =~ ^2.3[12] ]]; then
 		echo
-		echo "NOTE: due to a bug in $(command -v script) 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any ove command. Upgrade package: '$(ove_command_to_package script)'."
+		echo "NOTE: due to a bug in $(command -v script) 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any OVE command. Upgrade package: '$(ove_command_to_package script)'."
 	fi
-
-	echo
-	echo "Now what? Run 'ove fetch' to sync with the outside world or 'ove help' for more information."
 }
 
 function ove_main {
@@ -170,14 +145,6 @@ function ove_main {
 	if [[ $- == *i* ]]; then
 		# turn off monitor mode to get rid of "Done" messages
 		set +m
-
-		if [[ "$*" == *"hush"* ]]; then
-			:
-		else
-			( set -o posix ; set ) | \
-				\cut -d= -f1 | \
-				\grep -v ^OVE > ${OVE_TMP}/bash-vars-before
-		fi
 
 		if ! ove_deps; then
 			ove-unsource
@@ -2933,7 +2900,7 @@ function ove-systest {
 	[ -e ${OVE_PROJECT_DIR}/systests ] || return 1
 
 	if [ $# -eq 0 ]; then
-		echo "Need arguments, plz see ove help systest"
+		ove-help "^${FUNCNAME/ove-/} "
 		return 1
 	fi
 
@@ -4877,7 +4844,6 @@ function ove-fetch {
 
 	[ $# -eq 0 ] && ove_patch_repositories
 
-	echo
 	ove-status ${repos}
 }
 
