@@ -209,18 +209,6 @@ After successfully sourcing OVE, further instructions are given to enter the OVE
     $ cd abc
     $ source ove
     OVE [SHA-1: ... @ Ubuntu 19.10]
-    This script will do a few things:
-
-    * add 75 bash functions:
-    ...
-
-    * add 39 bash variables:
-    ...
-
-    * enable tab completion for ove
-
-    Now what? Run 'ove fetch' to sync with the outside world or 'ove help' for more information
-
     $ ove fetch
     Cloning into 'repoX'...
     Cloning into 'repoY'...
