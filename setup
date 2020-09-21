@@ -26,10 +26,6 @@
 set -e
 
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
-	owel_name="xyz-top"
-	path="xyz"
-	url="xyz"
-
 	cat << EOF
 USAGE
 	setup <path> <url> [<rev>]
@@ -65,13 +61,13 @@ mkdir -vp "${path}"
 cd "${path}"
 
 if ! git clone "${url}"; then
-	echo "error: 'git clone "${url}"' failed"
+	echo "error: 'git clone ${url}' failed"
 	exit 3
 fi
 
 ove_url="https://github.com/Ericsson/ove.git"
 if ! git clone ${ove_url} .ove; then
-	echo "error: 'git clone "${ove_url}" .ove' failed"
+	echo "error: 'git clone ${ove_url} .ove' failed"
 	exit 4
 fi
 
