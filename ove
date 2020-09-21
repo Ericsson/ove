@@ -839,6 +839,7 @@ function ove_loop_command {
 	local cmd
 	local counter
 	local f
+	local f_stderr
 	local files_modified_by_command
 	local max_count
 	local prefix
@@ -873,25 +874,41 @@ function ove_loop_command {
 			# shellcheck disable=SC2016
 			cmd='for f in $(\git -C ${repo} ls-files); do [ -f ${f} ] && echo ${PWD}/${f}; done; echo ${PWD}/.git'
 			ove_revtab_forall_parallel "${cmd}" > ${all_files}
-			files_modified_by_command=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}
 
+			files_modified_by_command=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}
+			f_stderr=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}-stderr
+			true > ${f_stderr}
 			if [ $(\cat /proc/sys/fs/inotify/max_user_watches) -lt $(\wc -l < ${all_files}) ]; then
 				ove_echo_error_noprefix "you need to increase the number of inotify user watches. Try:"
 				echo
 				[ $(id -u) != 0 ] && prefix="sudo"
 				echo "$ ${prefix} bash -c 'echo $(\wc -l < ${all_files}) > /proc/sys/fs/inotify/max_user_watches'"
-				read -r -p ""
+				[ -n "${TMUX}" ] && read -r -p ""
 				return 1
 			fi
 
 			\inotifywait \
-				-q \
 				-m \
 				--format '%w%f' \
-				--fromfile ${all_files} > ${files_modified_by_command} &
+				--fromfile ${all_files} > ${files_modified_by_command} 2>> ${f_stderr} &
 			inotifywait_pid=${!}
-			# let inotify start up
-			sleep 1
+
+			# wait for inotifywait
+			# shellcheck disable=SC2002
+			\timeout 30 tail -f ${f_stderr} | \grep -E -q "Watches established.|Failed to watch" | { \cat; echo >> ${f_stderr}; }
+			if [ ${PIPESTATUS[0]} -eq 124 ]; then
+				[ -s "${f_stderr}" ] && \cat ${f_stderr}
+				ove_echo_error_noprefix "inotifywait did not established watches within 30 sec"
+				[ -n "${TMUX}" ] && read -r -p ""
+				return 1
+			fi
+
+			if \grep -q "Failed to watch" ${f_stderr}; then
+				[ -s "${f_stderr}" ] && \cat ${f_stderr}
+				ove_echo_error_noprefix "inotifywait did not established watches"
+				[ -n "${TMUX}" ] && read -r -p ""
+				return 1
+			fi
 
 			# still running?
 			if ! kill -0 ${inotifywait_pid} > /dev/null 2>&1; then
@@ -919,7 +936,7 @@ function ove_loop_command {
 				ove_echo_cyan_error "0 files touched, not using inotifywait"
 			else
 				echo
-				echo "$(\wc -l < ${files_modified_by_command}.uniq) uniq file(s) was touched by '${1} ${*:2}'"
+				echo "$(\wc -l < ${files_modified_by_command}.uniq) file(s) was touched by '${1} ${*:2}'"
 				echo "$ ove head-tail ${files_modified_by_command}.uniq"
 				ove-head-tail ${files_modified_by_command}.uniq
 			fi

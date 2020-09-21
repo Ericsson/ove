@@ -103,6 +103,7 @@ stat:
 tac:
 
 tail:
+			\timeout 30 tail -f ${f_stderr} | \grep -E -q "Watches established.|Failed to watch" | { \cat; echo >> ${f_stderr}; }
 
 tar:
 
