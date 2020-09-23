@@ -1,4 +1,4 @@
-87
+83
      21  SC2059: Don't use variables in the printf format string. Use printf "..%s.." "$foo".
       7  SC2031: all_files was modified in a subshell. That change might be lost.
       6  SC2175: Quote this invalid brace expansion since it should be passed literally to eval.
@@ -7,7 +7,6 @@
       4  SC2206: Quote to prevent word splitting/globbing, or split robustly with mapfile or read -a.
       4  SC2164: Use 'pushd ... || exit' or 'pushd ... || return' in case pushd fails.
       4  SC2044: For loops over find output are fragile. Use find -exec or a while read loop.
-      4  SC2031: i was modified in a subshell. That change might be lost.
       4  SC2013: To read lines rather than words, pipe/redirect to a 'while read' loop.
       4  SC2004: $/${} is unnecessary on arithmetic variables.
       3  SC2207: Prefer mapfile or read -a to split command output (or quote to avoid splitting).

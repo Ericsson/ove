@@ -17,7 +17,7 @@
 | build-parallel           | [PROJECT...]                                          | run the 'build' step for all or individual projects (in parallel)                                                     |
 | buildme                  | [PROJECT...]                                          | build project(s) from scratch (=bootstrap, configure, build, install)                                                 |
 | buildme-parallel         | [PROJECT...]                                          | build project(s) from scratch (=bootstrap, configure, build, install)                                                 |
-| cd                       |                                                       | helper for 'cd ${OVE_BASE_DIR}'                                                                                       |
+| cd                       | [PATTERN\|?]                                          | 'cd ${OVE_BASE_DIR}' OR switch to a OVE workspace specified by PATTERN                                                |
 | checkout                 | [rev[ [purge\|autostash]]]                            | git checkout -p for all git repositories OR checkout a new project revision, use 'purge' with care                    |
 | clean                    | [PROJECT...]                                          | run the 'clean' step for all or individual projects                                                                   |
 | clean-parallel           | [PROJECT...]                                          | run the 'clean' step for all or individual projects (in parallel)                                                     |
@@ -81,7 +81,7 @@
 | pre-push                 |                                                       | shell-check+unittest+generate-doc combo                                                                               |
 | pull                     | [GIT...]                                              | git pull --rebase for all/specified repositories                                                                      |
 | readme                   | [GIT...]                                              | display README files for all/specified git repositories                                                               |
-| refresh                  |                                                       | refresh projects found by ove-locate                                                                                  |
+| refresh                  |                                                       | refresh OVE workspaces found by 'locate'                                                                              |
 | remote                   | [GIT...]                                              | git remote -v for all/specified git repositories                                                                      |
 | remote-check             |                                                       | sanity check that all remotes are online                                                                              |
 | remote-set-url           | URL [GIT...]                                          | change the URL of 'origin' remote for all/specified repositories                                                      |
@@ -106,7 +106,6 @@
 | strace-execve-time       | DIR                                                   | run strace execve time analysis on DIR                                                                                |
 | strace-execve-timeline   | DIR                                                   | run strace execve timeline analysis on DIR                                                                            |
 | strace-graph             | DIR                                                   | run strace graph analysis on DIR                                                                                      |
-| switch                   | [PATTERN]                                             | switch to another OVE project                                                                                         |
 | systest                  | [TEST\|GROUP...]                                      | run one or more system tests/groups described in ${OVE_PROJECT_DIR}/systests-groups and ${OVE_PROJECT_DIR}/systests   |
 | tag                      |                                                       | list all project tags                                                                                                 |
 | tail-lastlog             | [USER]                                                | peek into user(s) last OVE log using tail -f                                                                          |

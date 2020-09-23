@@ -1172,7 +1172,6 @@ function ove {
 		[ "${cmd}" == "config" ] || \
 		[ "${cmd}" == "loglevel" ] || \
 		[ "${cmd}" == "checkout" ] || \
-		[ "${cmd}" == "switch" ] || \
 		[ "${cmd}" == "unsource" ]; then
 		ove-${cmd} "${@:2}"
 	else
@@ -3387,9 +3386,9 @@ function ove-shortlog-project {
 	ove_print_only_a_and_b $1 $2
 }
 
-# help function that will print OVE project info
+# help function that will print OVE workspace info
 #
-# $1 = path to OVE project directory
+# $1 = path to OVE workspace directory
 function ove_locate_print {
 	local num_projs
 	local num_repos
@@ -3420,7 +3419,7 @@ function ove-setup {
 	return 0
 }
 
-# refresh: :refresh projects found by ove-locate
+# refresh: :refresh OVE workspaces found by 'locate'
 function ove-refresh {
 	local i
 	local projs
@@ -3555,7 +3554,7 @@ function ove-locate {
 	owels=$(ove_locate_owels)
 
 	if [ "${owels}" == "" ]; then
-		ove_echo_error_noprefix "no OVE projects found"
+		ove_echo_error_noprefix "no OVE workspace(s) found"
 		return 1
 	fi
 
@@ -3574,7 +3573,7 @@ function ove-locate-all {
 	owels=$(ove_locate_owels)
 
 	if [ "${owels}" == "" ]; then
-		ove_echo_error_noprefix "no OVE project(s) found"
+		ove_echo_error_noprefix "no OVE workspace(s) found"
 		return 1
 	fi
 
@@ -3583,23 +3582,32 @@ function ove-locate-all {
 	done | \head -n -1
 }
 
-# switch:[PATTERN]:switch to another OVE project
-function ove-switch {
-	local i
+# helper for ove_set_workspace
+function ove_list_workspaces {
+	local i=0
+
+	[ -z ${projs+x} ] && return 1
+	[ ${#projs[@]} -eq 0 ] && return 1
+	while ((i < ${#projs[@]})); do
+		printf "%d # %s # %s\n" $((i + 1)) $(ove_echo_green_noprefix ${projs[i]##*/}) ${projs[i]}
+		# shellcheck disable=SC2030
+		(( i+=1 ))
+	done | \column -t -s#
+}
+
+# move to a specific OVE workspace
+# $1: PATTERN
+function ove_set_workspace {
+	local i=0
+	local p
 	local projs
 
-	i=0
 	mapfile -t projs < <(ove-locate | \grep '^/')
 	[ ${#projs[@]} -eq 0 ] && return 1
 	if [ $# -eq 0 ]; then
-		while ((i < ${#projs[@]})); do
-			printf "%d: %s # %s\n" $((i + 1)) ${projs[i]} $(ove_echo_green_noprefix $(\basename ${projs[i]}))
-			# shellcheck disable=SC2030
-			(( i+=1 ))
-		done | \column -t -s#
-
+		ove_list_workspaces
 		echo
-		read -r -p "Proj: "
+		read -r -p "Workspace#: "
 		if ! [[ "${REPLY}" =~ ^[0-9]+$ ]]; then
 			[ "${REPLY}" != "" ] && \
 				echo "error: just numbers"
@@ -3614,14 +3622,17 @@ function ove-switch {
 		eval $(printf "cd %s; . ove > /dev/null\n" ${projs[$((REPLY - 1))]})
 	elif [ $# -eq 1 ]; then
 		while ((i < ${#projs[@]})); do
-			if \basename ${projs[i]} | \grep -i -q $1; then
+			p=${projs[i]##*/}
+			if [[ "${p,,}" =~ ${1,,} ]]; then
 				eval $(printf "cd %s; . ove > /dev/null\n" ${projs[i]})
 				return
 			fi
 			(( i+=1 ))
 		done
 
-		echo "error: project '$1' not found"
+		echo "error: workspace '$1' not found"
+		echo "Your OVE workspace(s) on this host:"
+		ove_list_workspaces
 		return 1
 	fi
 }
@@ -5669,9 +5680,15 @@ function ove-show {
 	done
 }
 
-# cd: :helper for 'cd ${OVE_BASE_DIR}'
+# cd:[PATTERN|?] :'cd ${OVE_BASE_DIR}' OR switch to a OVE workspace specified by PATTERN
 function ove-cd {
-	cd "${OVE_BASE_DIR}"
+	if [ $# -eq 0 ]; then
+		cd "${OVE_BASE_DIR}"
+	elif [ $# -eq 1 ] && [ "$1" == "?" ]; then
+		ove_set_workspace
+	else
+		ove_set_workspace "$@"
+	fi
 }
 
 # version: :print OVE version
@@ -5954,7 +5971,7 @@ function ove_bash_complete {
 		elif [ ${size} -gt 3 ]; then
 			return
 		fi
-	elif [ "${subcommand}" == "switch" ]; then
+	elif [ "${subcommand}" == "cd" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist=$(ove-locate | \
 				\grep -v '^\s' | \
@@ -6353,7 +6370,7 @@ function ove_reinit {
 	ove_post_checks
 }
 
-# init:initialize OVE project
+# init:initialize OVE workspace
 function ove_init {
 	local base_dir
 
