@@ -25,8 +25,7 @@
 function ove {
 	local r s
 
-	pushd . &> /dev/null
-	s=$(pwd -P)
+	s=$(\pwd -P)
 	while [ "${s}" != "" ]; do
 		[[ -L ${s}/ove && -L ${s}/.owel ]] && break
 		s=${s%/*}
@@ -38,7 +37,6 @@ function ove {
 		ove ${*}
 		r=${?}
 	fi
-	popd > /dev/null
 	return ${r}
 }
 
