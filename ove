@@ -2346,6 +2346,13 @@ function ove_revtab_pull_one {
 		# need to push
 		:
 	else
+		if [ "$(ove_revtab_status_parse_one ahead ${repo})" != "" ]; then
+			if [ "$(\git config --global user.email)" == "" ] || [ "$(\git config --global user.name)" == "" ]; then
+				ove_echo_error_noprefix "not possible to 'git pull --rebase' '${repo}' as git user.email/user.name is not set"
+				return 1
+			fi
+		fi
+
 		ove_echo_yellow_noprefix "${repo}"
 		cmd="\git -C ${repo_fullpath} pull --rebase"
 		if ! eval ${cmd}; then
@@ -4696,6 +4703,9 @@ function ove-pull {
 
 	for repo in ${repos}; do
 		ove_revtab_pull_one ${repo} | \grep -v '^\['
+		if [ ${PIPESTATUS[0]} -ne 0 ]; then
+			return 1
+		fi
 
 		if [ "${repo##*/}" == "${OVE_PROJECT_NAME}" ]; then
 			ove_revtab_check
