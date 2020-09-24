@@ -7585,7 +7585,7 @@ function ove_externals {
 			\sed -e "s|^#.*${cmd}.*||g" -e "s|^\t\+#.*${cmd}.*||g" -e "s|.*command.*${cmd}.*||g" -e '/^$/d' | \
 			\grep --color=auto -w ${cmd}
 		echo
-	done | \head -n -1 > "${OVE_DIR}/tests/.externals"
+	done | \head -n -1 | \sed 's|^\s\+||g' > "${OVE_DIR}/tests/.externals"
 
 	\git --no-pager -C "${OVE_DIR}" diff -- tests/.externals
 	if \git -C "${OVE_DIR}" diff-files  --quiet -- tests/.externals; then
