@@ -6920,26 +6920,22 @@ function ove_command_to_package {
 		if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
 			[[ ${OVE_OS} == *"Debian"* ]]; then
 			package="bsdmainutils"
-		elif [[ ${OVE_OS} == *"Alpine"* ]] || \
-			[[ ${OVE_OS} == *"Fedora"* ]]; then
-			package="util-linux"
-		elif [[ ${OVE_OS} == *"Gentoo"* ]] || \
-			[[ ${OVE_OS} == *"CentOS"* ]]; then
-			package=""
+		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
+			package="sys-apps/util-linux"
 		else
-			package="$1"
+			package="util-linux"
 		fi
-	# file
-	elif [ "$1" == "file" ]; then
-		package="$1"
 	# git
 	elif [ "$1" == "git" ]; then
 		if [[ ${OVE_OS} == *"Alpine"* ]]; then
 			package="git git-perl"
 		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
 			package="dev-vcs/git"
-		else
-			package="git"
+		fi
+	# less
+	elif [ "$1" == "less" ]; then
+		if [[ ${OVE_OS} == *"Gentoo"* ]]; then
+			package="sys-apps/less"
 		fi
 	# locate
 	elif [ "$1" == "locate" ]; then
@@ -6957,6 +6953,8 @@ function ove_command_to_package {
 			package="bsdutils"
 		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
 			package="sys-apps/util-linux"
+		else
+			package="util-linux"
 		fi
 	# tree
 	elif [ "$1" == "tree" ]; then
@@ -6973,8 +6971,6 @@ function ove_command_to_package {
 			package="xz-utils"
 		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
 			package="app-arch/xz"
-		else
-			package="xz"
 		fi
 	fi
 
@@ -6997,6 +6993,7 @@ function ove_deps {
 	deps+=('file')
 	deps+=('git')
 	deps+=('gzip')
+	deps+=('less')
 	deps+=('pgrep')
 	deps+=('script')
 	deps+=('tree')
