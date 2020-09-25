@@ -115,17 +115,54 @@ function ove_welcome_msg {
 	fi
 }
 
+function ove_version_check_early {
+	local ret=0
+
+	if command -v dpkg > /dev/null; then
+		\dpkg --compare-versions ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} ge 4.3 || ret=1
+	else
+		if [ ${BASH_VERSINFO[0]} -lt 4 ]; then
+			ret=1
+		elif [ ${BASH_VERSINFO[0]} -eq 4 ] && [ ${BASH_VERSINFO[1]} -lt 3 ]; then
+			ret=1
+		fi
+	fi
+
+	[ ${ret} -eq 0 ] || echo "error: bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} is too old. I need bash>=4.3"
+	return ${ret}
+}
+
+function ove_version_check {
+	local ret=0
+	local git_arr
+	local git_ver
+
+	git_ver=$(\git --version)
+	git_ver=${git_ver/git version /}
+	IFS='.' read -r -a git_arr <<< "${git_ver}"
+	if command -v dpkg > /dev/null; then
+		\dpkg --compare-versions ${git_arr[0]}.${git_arr[1]}.${git_arr[2]} ge 1.8.5 || ret=1
+	else
+		if [ ${git_arr[0]} -lt 2 ]; then
+			if [ ${git_arr[0]} -eq 1 ] && [ ${git_arr[1]} -lt 8 ]; then
+				ret=1
+			elif [ ${git_arr[0]} -eq 1 ] && [ ${git_arr[1]} -eq 8 ] && [ ${git_arr[2]} -lt 5 ]; then
+				ret=1
+			elif [ ${git_arr[0]} -eq 0 ]; then
+				ret=1
+			fi
+		fi
+	fi
+
+	[ ${ret} -eq 0 ] || ove_echo_error_noprefix "git ${git_ver} is too old. I need >=1.8.5"
+	return ${ret}
+}
+
 function ove_main {
 	/proc/self/exe --version | \grep -q 'GNU bash'
 	test $? -ne 0 && echo 'error: run this in bash' && return 1
 
-	if [ ${BASH_VERSINFO[0]} -lt 4 ]; then
-		echo "error: bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} is way too old. I need bash 4.3+"
-		return 1
-	elif [ ${BASH_VERSINFO[0]} -eq 4 ] && [ ${BASH_VERSINFO[1]} -lt 3 ]; then
-		echo "error: bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} is too old. I need bash 4.3+"
-		return 1
-	fi
+	ove_version_check_early || return 1
 
 	ove_green="\033[1;32;7m"
 	ove_cyan="\033[1;36;7m"
@@ -6989,6 +7026,10 @@ function ove_deps {
 		echo
 		return 1
 	fi
+
+	ove_version_check || return 1
+
+	return 0
 }
 
 # $*: list of packages
