@@ -2122,8 +2122,7 @@ function ove_update_checksum {
 		OVE_PROJS_MD5=${md5}
 		export OVE_PROJS_MD5
 	fi
-
-	OVE_SCRIPTS_MD5=$(ove_dir_fingerprint $(\xargs -n1 <<<${ove_scripts_name2path[*]} | LC_ALL="C" \sort -u))
+	OVE_SCRIPTS_MD5=$(ove_dir_fingerprint "${!ove_scripts_paths[@]}")
 	export OVE_SCRIPTS_MD5
 
 	OVE_REPOS_FETCHED=$(ove_repos_fetched)
@@ -6212,7 +6211,7 @@ function ove_add_script_func {
 	script=$2
 
 	ove_scripts_name2path[${script}]=${script_dir}
-
+	ove_scripts_paths[${script_dir}]=
 	if [ -f ${script_dir}/${script}.help ]; then
 		htext=$(<${script_dir}/${script}.help)
 		eval "ove-${script}() {
@@ -6237,6 +6236,7 @@ function ove_scripts_init {
 	local script
 	local script_list
 	declare -A -g ove_scripts_name2path
+	declare -A -g ove_scripts_paths
 
 	OVE_SCRIPTS_LIST=
 
