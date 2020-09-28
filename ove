@@ -1411,7 +1411,7 @@ function ove_parse_yaml {
 
 	while IFS=: read -r line; do
 		[[ ${line} == "---" ]] && continue
-		(\sed -e 's/: /:/g' -e "s/\([a-z]\+\):/\" ove_${line%%:*}_\1=\"/g" -e "s/$/\"/g" -e "s/^\" //g" -e "s/ \"/\"/g" <<<${line#*: } & )
+		\sed -e 's/: /:/g' -e "s/\([a-z]\+\):/\" ove_${line%%:*}_\1=\"/g" -e "s/$/\"/g" -e "s/^\" //g" -e "s/ \"/\"/g" <<<${line#*: } &
 	done < <(\sed -e 's/^\([a-z]\+:$\)/\n\1/g' -e 's/#.*//g' $1 | \awk NF=NF RS= OFS=' ')
 	wait
 }
