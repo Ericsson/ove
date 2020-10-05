@@ -7423,6 +7423,45 @@ function ove_watch_logs {
 	fi
 }
 
+# add-repo:URL|URL NAME:add a new repo to this OVE workspace
+function ove-add-repo {
+	local name
+	local url
+
+	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
+		ove-help "^${FUNCNAME/ove-/} "
+		return 1
+	fi
+
+	url="${1}"
+	if [ $# -eq 1 ]; then
+		name="${1##*/}"
+		name="${name%%.*}"
+
+		read -r -p "name? (leave empty to name it '${name}'): "
+		[ "${REPLY}" != "" ] && name="${REPLY}"
+
+	else
+		name="${2}"
+	fi
+
+	# update revtab
+	echo "${name} ${url} none master" | \tee -a "${OVE_PROJECT_DIR}/revtab"
+
+	# parse revtab
+	if ! ove_revtab_parse; then
+		# remove last line
+		\sed -i '$ d' "${OVE_PROJECT_DIR}/revtab"
+		return 1
+	fi
+
+	if ! ove-fetch "${name}"; then
+		return 1
+	fi
+
+	return 0
+}
+
 # generate-doc: :generate OVE documentation (ove-cmd-list.md/ove.bash)
 function ove-generate-doc {
 	local a
