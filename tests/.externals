@@ -21,14 +21,12 @@ date:
 
 dirname:
 repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | LC_ALL="C" \sort -u)
-\xargs -n1 dirname | \
 
 du:
 
 file:
 echo "error: file '${f}' is not found or file size is 0"
 ove_echo_error_noprefix "'$1' patch file not found"
-\xargs file
 ove_echo_error_noprefix "'${f}' is not a text file, use xxd/hexdump"
 \xargs -0 -P"$(nproc)" file | \
 ove_echo_error_noprefix "you already have a file/directory named '${dir}/ove', rename/remove to proceed"
@@ -72,7 +70,6 @@ d=$(\ssh ${host} mktemp -d)
 pgrep:
 
 readlink:
-<(echo ${OVE_REPO_LIST} | \tr ' ' '\n' | \xargs readlink -f | LC_ALL="C" \sort) \
 
 rev:
 

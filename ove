@@ -5401,90 +5401,23 @@ function ove-vi {
 	ove_edit vi "$@"
 }
 
-# mrproper:[y|Y]:remove untracked files AND removes '${OVE_STAGE_DIR}/*' AND removes '${OVE_ARCHIVE_DIR}/*', use with care
+# mrproper:[y]:remove untracked files AND removes '${OVE_STAGE_DIR}/*' AND removes '${OVE_ARCHIVE_DIR}/*', use with care
 function ove-mrproper {
 	local archive_dir_size
-	local directories
-	local directories_uniq
 	local nbr_untracked_files
-	local o
-	local objects
-	local repo_sub_dirs
 	local stage_dir_size
 
-	# shellcheck disable=SC2016
-	nbr_untracked_files=$(ove_revtab_forall_parallel '\git -C ${repo} clean -dffxn'| \wc -l)
-	stage_dir_size="$(\tree ${OVE_STAGE_DIR} | \tail -1)"
-	archive_dir_size="$(\tree ${OVE_ARCHIVE_DIR} | \tail -1)"
-
-	if [ "$1" == "y" ] || [ "$1" == "Y" ]; then
+	if [ "$1" == "y" ]; then
 		# shellcheck disable=SC2016
 		ove_revtab_forall '\git --no-pager -C ${repo} clean -dffx > /dev/null'
 		! [ "${OVE_STAGE_DIR}" == "" ] && \rm -rf ${OVE_STAGE_DIR:?}/*
 		! [ "${OVE_ARCHIVE_DIR}" == "" ] && \rm -rf ${OVE_ARCHIVE_DIR:?}/*
 
-		if [ "$1" == "Y" ]; then
-			# untracked directories
-
-			# list of sub directories where we have git repositories
-			sub_dirs=$(for a in ${OVE_REPO_LIST}; do echo ${a/${OVE_BASE_DIR}\//}; done | \grep '/')
-
-			if [ "${sub_dirs}" != "" ]; then
-				repo_sub_dirs=$(echo ${sub_dirs} | \
-					\xargs -n1 dirname | \
-					LC_ALL="C" \sort -u | \
-					\sed -e "s|^|${OVE_BASE_DIR}/|g")
-			fi
-
-			# find some directories
-			directories=$(\find $(\readlink -f ${OVE_BASE_DIR}) ${repo_sub_dirs} -maxdepth 1 -mindepth 1 -type d | \
-				LC_ALL="C" \sort)
-
-
-			if [ "${sub_dirs}" == "" ]; then
-				directories_uniq=$(\find $(\readlink -f ${OVE_BASE_DIR}) -maxdepth 1 -mindepth 1 -type d | LC_ALL="C" \sort)
-			else
-				# remove common paths
-				directories_uniq=$(LC_COLLATE="C" \comm -3 \
-					<(printf "%s\n" ${repo_sub_dirs}) \
-					<(printf "%s\n" ${directories}) | \
-					\xargs -n1)
-			fi
-
-			# now we can start to identify directories that can be removed
-			for o in $(LC_COLLATE="C" \comm -3 \
-				<(echo ${OVE_REPO_LIST} | \tr ' ' '\n' | \xargs readlink -f | LC_ALL="C" \sort) \
-				<(printf "%s\n" ${directories_uniq}) | \
-				\grep -Ev "archives$|stage$|${OVE_DIR}"); do
-				[ -d ${o} ] && objects+="${o} "
-			done
-
-			# untracked files
-			for o in $(\find $(\readlink -f ${OVE_BASE_DIR}) ${repo_sub_dirs} -maxdepth 1 -mindepth 1 -type f); do
-				objects+="${o} "
-			done
-
-			if [ "${objects}" != "" ]; then
-				echo ${objects} | \
-					\tr ' ' '\n' | \
-					LC_ALL="C" \sort | \
-					\xargs file
-				echo
-				read -p "Proceed to remove $(echo ${objects} | \wc -w) files/directories (list above) using 'rm -rf'? (y/N) " -r
-				echo
-				if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-					read -p "Are you really sure? (y/N) " -r
-					echo
-					if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-						\rm -rfv ${objects}
-					fi
-				fi
-			fi
-		fi
-
-		return
+		return 0
 	fi
 
+	# shellcheck disable=SC2016
+	nbr_untracked_files=$(ove_revtab_forall_parallel '\git -C ${repo} clean -dffxn'| \wc -l)
 	if [ "${nbr_untracked_files}" -ne 0 ]; then
 		# dry-run first
 		# shellcheck disable=SC2016
@@ -5502,6 +5435,7 @@ function ove-mrproper {
 		fi
 	fi
 
+	stage_dir_size="$(\tree ${OVE_STAGE_DIR} | \tail -1)"
 	if [ "${stage_dir_size}" != "0 directories, 0 files" ]; then
 		# all but the last line
 		\tree -C ${OVE_STAGE_DIR} | \head -n -1
@@ -5521,6 +5455,7 @@ function ove-mrproper {
 		fi
 	fi
 
+	archive_dir_size="$(\tree ${OVE_ARCHIVE_DIR} | \tail -1)"
 	if [ "${archive_dir_size}" != "0 directories, 0 files" ]; then
 		# all but the last line
 		\tree -C ${OVE_ARCHIVE_DIR} | \head -n -1
