@@ -2819,28 +2819,22 @@ function ove-list-scripts {
 }
 
 function ove_list_scripts_directories {
+	local d
 	local repo
 
 	while true; do
 		# project scripts
-		if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
-			\find ${OVE_PROJECT_DIR}/scripts -perm -u=x -not -name '*.help' -type f -printf "%h\n" -quit
-		fi
-
+		[ -d "${OVE_PROJECT_DIR}/scripts" ] && d+="${OVE_PROJECT_DIR}/scripts "
 		# OVE scripts
-		if [ -d "${OVE_DIR}/scripts" ]; then
-			\find ${OVE_DIR}/scripts -perm -u=x -not -name '*.help' -type f -printf "%h\n" -quit
-		fi
-
+		[ -d "${OVE_DIR}/scripts" ] && d+="${OVE_DIR}/scripts "
 		# repo scripts
 		for repo in ${OVE_REPO_LIST}; do
 			[ -d "${repo}/.ove/scripts" ] || continue
-			\find -L ${repo}/.ove/scripts -perm -u=x -not -name '*.help' -type f -printf "%h\n" -quit &
+			d+="${repo}/.ove/scripts "
 		done
-
-		wait
+		\find -L ${d} -perm -u=x -not -name '*.help' -type f
 		break
-	done | LC_ALL="C" \sort -u
+	done | \xargs dirname | LC_ALL="C" \sort -u
 }
 
 function ove_echo {

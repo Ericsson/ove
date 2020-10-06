@@ -20,6 +20,7 @@ cut:
 date:
 
 dirname:
+done | \xargs dirname | LC_ALL="C" \sort -u
 repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | LC_ALL="C" \sort -u)
 
 du:
