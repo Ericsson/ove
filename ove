@@ -2131,57 +2131,80 @@ function ove_update_checksum {
 
 # $1: name
 # $2: rev
+# $3: fetch url
+# $4: push url
 function ove_revtab_check_one {
 	local branch_name
 	local co=0
 	local detached=0
 	local m
 	local name
+	local remote_url
 	local rev_is_branch=0
+	local revtab_url
 	local revision
 	local sha_a
 	local sha_b
 
 	name=$1
+	[ -d "${OVE_BASE_DIR}/${name}/.git" ] || return
+
 	revision=$2
+	sha_a=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
+	sha_b=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null)
+	[ $? -ne 0 ] && sha_b=""
 
-	if [ -d "${OVE_BASE_DIR}/${name}/.git" ]; then
-		sha_a=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
-		sha_b=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null)
-		[ $? -ne 0 ] && sha_b=""
+	if [ "${sha_a}" != "${sha_b}" ]; then
+		# diff => checkout
+		co=1
+	else
+		\git -C "${OVE_BASE_DIR}/${name}" symbolic-ref -q HEAD > /dev/null || detached=1
+		[[ "$(ove_list_branches ${OVE_BASE_DIR}/${name} | \xargs)" =~ (^| )${revision}($| ) ]] && rev_is_branch=1
 
-		if [ "${sha_a}" != "${sha_b}" ]; then
-			# diff => checkout
+		# detached and rev is a branch => checkout
+		if [ ${detached} -eq 1 ] && [ ${rev_is_branch} -eq 1 ]; then
 			co=1
+		# not detached and rev is not a branch => checkout
+		elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 0 ]; then
+			co=1
+		# switched branch?
+		elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 1 ]; then
+			branch_name=$(\git -C ${OVE_BASE_DIR}/${name} rev-parse --abbrev-ref HEAD)
+			if [ "${branch_name}" != "${revision}" ]; then
+				co=1
+			fi
+		fi
+	fi
+
+	if [ ${co} -eq 1 ]; then
+		if test -z "$(\git -C ${OVE_BASE_DIR}/${name} --no-pager status --porcelain -uno)"; then
+			m=$(\xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
+			ove_revtab_checkout ${name} |& \sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#name}))}))|g" \
+				-e "2,10s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
+			ove_patch_repositories
 		else
-			\git -C "${OVE_BASE_DIR}/${name}" symbolic-ref -q HEAD > /dev/null || detached=1
-			[[ "$(ove_list_branches ${OVE_BASE_DIR}/${name} | \xargs)" =~ (^| )${revision}($| ) ]] && rev_is_branch=1
-
-			# detached and rev is a branch => checkout
-			if [ ${detached} -eq 1 ] && [ ${rev_is_branch} -eq 1 ]; then
-				co=1
-			# not detached and rev is not a branch => checkout
-			elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 0 ]; then
-				co=1
-			# switched branch?
-			elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 1 ]; then
-				branch_name=$(\git -C ${OVE_BASE_DIR}/${name} rev-parse --abbrev-ref HEAD)
-				if [ "${branch_name}" != "${revision}" ]; then
-					co=1
-				fi
-			fi
+			ove_echo_yellow_noprefix "${name}: cannot checkout '${revision}' as repo is dirty:"
 		fi
+	fi
 
-		if [ ${co} -eq 1 ]; then
-			if test -z "$(\git -C ${OVE_BASE_DIR}/${name} --no-pager status --porcelain -uno)"; then
-				m=$(\xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
-				ove_revtab_checkout ${name} |& \sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#name}))}))|g" \
-					-e "2,10s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
-				ove_patch_repositories
-			else
-				ove_echo_yellow_noprefix "${name}: cannot checkout '${revision}' as repo is dirty:"
-			fi
-		fi
+	# fetch URL
+	if ! remote_url=$(\git -C "${OVE_BASE_DIR}/${name}" remote get-url origin 2> /dev/null); then
+		return
+	fi
+	revtab_url="$3"
+	if [ "${remote_url}" != "${revtab_url}" ]; then
+		ove_echo_yellow_noprefix "${name}: fetch URL changed from '${remote_url}' to '${revtab_url}'"
+		\git -C "${OVE_BASE_DIR}/${name}" remote set-url origin "${revtab_url}"
+	fi
+
+	# push URL
+	if ! remote_url=$(\git -C "${OVE_BASE_DIR}/${name}" remote get-url --push origin 2> /dev/null); then
+		return
+	fi
+	revtab_url="$4"
+	if [ "${remote_url}" != "${revtab_url}" ]; then
+		ove_echo_yellow_noprefix "${name}: push URL changed from '${remote_url}' to '${revtab_url}'"
+		\git -C "${OVE_BASE_DIR}/${name}" remote set-url --push origin "${revtab_url}"
 	fi
 }
 
@@ -2194,7 +2217,11 @@ function ove_revtab_check {
 
 	count=0
 	while ((count < ove_revtab_num_repositories)); do
-		ove_revtab_check_one ${ove_revtab_git_name[${count}]} ${ove_revtab_rev[${count}]} &
+		ove_revtab_check_one \
+			${ove_revtab_git_name[${count}]} \
+			${ove_revtab_rev[${count}]} \
+			${ove_revtab_fetch_url[${count}]} \
+			${ove_revtab_push_url[${count}]} &
 		(( count+=1 ))
 	done | \grep -v '^\['
 	wait
