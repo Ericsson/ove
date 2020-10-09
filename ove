@@ -2730,7 +2730,7 @@ function ove-build-order {
 	fi
 
 	topology=$(ove_build_topology)
-	autonomous_projs=$(LC_COLLATE="C" \comm -3 \
+	autonomous_projs=$(LC_ALL="C" \comm -3 \
 		<(printf "%s\n" ${OVE_PROJECT_LIST}) \
 		<(\tr ' ' '\n' <<<${topology} | LC_ALL="C" \sort))
 
@@ -3234,17 +3234,17 @@ function ove-revtab-diff {
 
 	while true; do
 		# repos only in A
-		for r in $(LC_COLLATE="C" \comm -2 -3 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B); do
+		for r in $(LC_ALL="C" \comm -2 -3 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B); do
 			\grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_A | \sed -e 's/^/a /g'
 		done
 
 		# repos only in B
-		for r in $(LC_COLLATE="C" \comm -1 -3 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B); do
+		for r in $(LC_ALL="C" \comm -1 -3 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B); do
 			\grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_B | \sed -e 's/^/b /g'
 		done
 
 		# repos common for A and B
-		for r in $(LC_COLLATE="C" \comm -1 -2 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B); do
+		for r in $(LC_ALL="C" \comm -1 -2 ${OVE_PROJECT_TMP_DIR}/repos_A ${OVE_PROJECT_TMP_DIR}/repos_B); do
 			sha_1=$(\grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_A | \
 				\awk '{print $2}')
 			sha_2=$(\grep "^${r} " ${OVE_PROJECT_TMP_DIR}/rev_B | \
@@ -4338,7 +4338,7 @@ function ove_build_pre {
 	if [ $# -eq 0 ]; then
 		if [ -n "${OVE_PROJECT_LIST_BUILDABLE+x}" ] && \
 			[ "${OVE_PROJECT_LIST_BUILDABLE}" != "${OVE_PROJECT_LIST}" ]; then
-			ove_echo_error_noprefix "'$(LC_COLLATE="C" \comm -3 \
+			ove_echo_error_noprefix "'$(LC_ALL="C" \comm -3 \
 				<(\xargs -n1 <<<${OVE_PROJECT_LIST} | LC_ALL="C" \sort) \
 				<(\xargs -n1 <<<${OVE_PROJECT_LIST_BUILDABLE} | LC_ALL="C" \sort) |
 				\xargs)' is not buildable project(s). Try: 'ove fetch'"
@@ -6587,7 +6587,7 @@ function ove_post_checks {
 
 	# inform the user if .oveconfig was updated within the project
 	if [ -e ${HOME}/.oveconfig ] && [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
-		res=$(LC_COLLATE="C" \comm -3 <(\grep -E -v '(^#.*$)|(^$)' ${HOME}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort) \
+		res=$(LC_ALL="C" \comm -3 <(\grep -E -v '(^#.*$)|(^$)' ${HOME}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort) \
 			<(\grep -E -v '(^#.*$)|(^$)' ${OVE_PROJECT_DIR}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort))
 		if [ "${res}" != "" ]; then
 			echo
@@ -6699,7 +6699,7 @@ function ove_buildable_projects {
 		done
 	done
 
-	OVE_PROJECT_LIST_BUILDABLE=$(LC_COLLATE="C" \comm -3 \
+	OVE_PROJECT_LIST_BUILDABLE=$(LC_ALL="C" \comm -3 \
 		<(echo ${OVE_PROJECT_LIST} | \xargs -n1 | LC_ALL="C" \sort) \
 		<(\xargs -n1 <<<"${projs_and_deps_not_buildable}" | LC_ALL="C" \sort) |
 		\xargs)
@@ -7033,13 +7033,13 @@ function ove_packages_not_installed {
 	p_sort=$(\xargs -n1 <<<"$@" | LC_ALL="C" \sort -u)
 
 	if [[ ${OVE_OS} == *"Arch Linux"* ]]; then
-		LC_COLLATE="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\pacman -Q | \awk '{print $1}')
+		LC_ALL="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\pacman -Q | \awk '{print $1}')
 	elif [[ ${OVE_OS} == *"Alpine"* ]]; then
-		LC_COLLATE="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\apk info | LC_ALL="C" \sort)
+		LC_ALL="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\apk info | LC_ALL="C" \sort)
 	elif [[ ${OVE_OS} == *"CentOS"* ]] || \
 		[[ ${OVE_OS} == *"Fedora"* ]] || \
 		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]]; then
-		LC_COLLATE="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\rpm -qa --qf "%{NAME}\n"| LC_ALL="C" \sort)
+		LC_ALL="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\rpm -qa --qf "%{NAME}\n"| LC_ALL="C" \sort)
 	elif [[ ${OVE_OS} == *"Debian"* ]] || \
 		[[ ${OVE_OS} == *"Raspbian"* ]] || \
 		[[ ${OVE_OS} == *"Ubuntu"* ]]; then
@@ -7048,7 +7048,7 @@ function ove_packages_not_installed {
 			\sed -e 's/dpkg-query: no packages found matching //g' -e 's/:.*//g' | \
 			\xargs
 	elif [[ ${OVE_OS} == *"void"* ]]; then
-		LC_COLLATE="C" \comm -2 -3 \
+		LC_ALL="C" \comm -2 -3 \
 			<(\xargs -n1 <<<${p_sort}) \
 			<(\xbps-query --list-pkgs | \awk '{print $2}' | \rev | \cut -d- -f2- | \rev | LC_ALL="C" \sort | \xargs -n1)
 	else
