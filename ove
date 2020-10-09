@@ -5699,7 +5699,7 @@ function ove-what-is {
 	done
 }
 
-# show:[revision...]:ove list-heads or search for 'revision' within all git repositories. If found run 'git show SHA-1|TAG'
+# show:[rev...]:ove list-heads or search for 'rev' within all git repositories. If found run 'git show rev'
 function ove-show {
 	local SHA
 

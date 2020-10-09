@@ -96,7 +96,7 @@
 | setup                    |                                                       | print how to set this project up                                                                                      |
 | shell-check              |                                                       | run shellcheck on OVE                                                                                                 |
 | shortlog-project         | <rev> <rev>                                           | git shortlog the project                                                                                              |
-| show                     | [revision...]                                         | ove list-heads or search for 'revision' within all git repositories. If found run 'git show SHA-1\|TAG'               |
+| show                     | [rev...]                                              | ove list-heads or search for 'rev' within all git repositories. If found run 'git show rev'                           |
 | show-ahead               | [GIT...]                                              | run 'ove show' on local commits not yet published for all/specified repositories                                      |
 | show-configuration       |                                                       | show current build configuration for each project                                                                     |
 | show-dangling            | [GIT...]                                              | show dangling git objects (=blob\|commit\|tag\|tree) for all/specified git repositories                               |
