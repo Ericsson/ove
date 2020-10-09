@@ -82,7 +82,7 @@
 | pre-push                 |                                                       | shell-check+unittest+generate-doc combo                                                                               |
 | pull                     | [GIT...]                                              | git pull --rebase for all/specified repositories                                                                      |
 | readme                   | [GIT...]                                              | display README files for all/specified git repositories                                                               |
-| refresh                  |                                                       | refresh OVE workspaces found by 'locate'                                                                              |
+| refresh                  | [PATTERN...]                                          | refresh OVE workspaces on this host                                                                                   |
 | remote                   | [GIT...]                                              | git remote -v for all/specified git repositories                                                                      |
 | remote-check             |                                                       | sanity check that all remotes are online                                                                              |
 | remote-set-url           | URL [GIT...]                                          | change the URL of 'origin' remote for all/specified repositories                                                      |
