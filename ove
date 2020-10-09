@@ -7368,7 +7368,7 @@ function ove-unittest {
 	fi
 
 	[ ${do_preparations} -eq 1 ] && \
-		GIT_TRACE=1 ove_unittest_preparations ${nbr_of_files} ${nbr_of_projs} ${nbr_of_repos} ${nbr_of_systests}
+		ove_unittest_preparations ${nbr_of_files} ${nbr_of_projs} ${nbr_of_repos} ${nbr_of_systests}
 
 	# launch shelltestrunner
 	cd ${OVE_PROJECT_TMP_DIR}/unittest || return 2
