@@ -72,7 +72,7 @@
 | locate-all               |                                                       | print all OVE workspaces on this host                                                                                 |
 | log                      |                                                       | project commit log for branch '${OVE_PROJECT_CI_BRANCH}'                                                              |
 | log-project              | <rev> <rev>                                           | git log the project '${OVE_PROJECT_NAME}'                                                                             |
-| loglevel                 | [LEVEL]                                               | show or change loglevel [0-6]                                                                                         |
+| loglevel                 | [LEVEL]                                               | show or change loglevel [0-7]                                                                                         |
 | loop                     | \|[TIMEOUT\|x] [INOTIFY\|x] [MAX-COUNT\|x] COMMAND]   | loop one OVE command                                                                                                  |
 | ls-files                 | [PATTERN]                                             | git ls-files for all git repositories                                                                                 |
 | ls-remote                |                                                       | git ls-remote <URL> HEAD for all git repositories                                                                     |

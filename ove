@@ -1224,10 +1224,10 @@ function ove {
 				[[ "${script_help}" == *"-f"* ]] && script_opts+="-f "
 			fi
 
-			if [ ${OVE_LOGLEVEL} -gt 2 ] && [ ${OVE_LOGLEVEL} -lt 7 ]; then
-				[ -e ${OVE_PROJECT_TMP_DIR}/strace-${cmd} ] && \
-					\rm -rf ${OVE_PROJECT_TMP_DIR}/strace-${cmd}
-				\mkdir -p ${OVE_PROJECT_TMP_DIR}/strace-${cmd}
+			if [ ${OVE_LOGLEVEL} -gt 2 ] && [ ${OVE_LOGLEVEL} -lt 8 ]; then
+				[ -e ${OVE_PROJECT_TMP_DIR}/trace-${cmd} ] && \
+					\rm -rf ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
+				\mkdir -p ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
 
 				if [ ${OVE_LOGLEVEL} -eq 5 ]; then
 					strace_expression="connect,bind,execve"
@@ -1237,32 +1237,53 @@ function ove {
 					strace_expression="execve"
 				fi
 
-				OVE_ANALYZE_EXECVE="strace \
-					-s 1024 \
-					-q \
-					-o ${OVE_PROJECT_TMP_DIR}/strace-${cmd}/strace-${cmd} \
-					-ff \
-					-T \
-					-e ${strace_expression} \
-					-ttt"
-				export OVE_ANALYZE_EXECVE
+				if [ ${OVE_LOGLEVEL} -eq 7 ]; then
+					if [ ${EUID} != 0 ]; then
+						if ! sudo -n true; then
+							if ! sudo true; then
+								ove_echo_error_noprefix "'execsnoop' need non-interactive 'sudo'"
+								return 1
+							fi
+						fi
+						OVE_TRACE_CMD="sudo "
+					fi
+					OVE_TRACE_CMD+="python3 /usr/share/bcc/tools/execsnoop "
+					OVE_TRACE_CMD+="-t "
+					OVE_TRACE_CMD+="-u ${USER} "
+					OVE_TRACE_CMD+="> ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd} "
+					OVE_TRACE_CMD+="2> /dev/null"
+				else
+					OVE_TRACE_CMD="strace "
+					OVE_TRACE_CMD+="-s 1024 "
+					OVE_TRACE_CMD+="-q "
+					OVE_TRACE_CMD+="-o ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd} "
+					OVE_TRACE_CMD+="-ff "
+					OVE_TRACE_CMD+="-T "
+					OVE_TRACE_CMD+="-e ${strace_expression} "
+					OVE_TRACE_CMD+="-ttt "
+				fi
+				export OVE_TRACE_CMD
 			else
-				unset OVE_ANALYZE_EXECVE
+				unset OVE_TRACE_CMD
 			fi
 
-			if [ -n "${OVE_ANALYZE_EXECVE+x}" ]; then
-				[ -e ${OVE_PROJECT_TMP_DIR}/strace.pid ] && \
-					\rm ${OVE_PROJECT_TMP_DIR}/strace.pid
-				[ -e ${OVE_PROJECT_TMP_DIR}/strace.cont ] && \
-					\rm ${OVE_PROJECT_TMP_DIR}/strace.cont
+			if [ -n "${OVE_TRACE_CMD+x}" ]; then
+				[ -e ${OVE_PROJECT_TMP_DIR}/trace.pid ] && \
+					\rm ${OVE_PROJECT_TMP_DIR}/trace.pid
+				[ -e ${OVE_PROJECT_TMP_DIR}/trace.cont ] && \
+					\rm ${OVE_PROJECT_TMP_DIR}/trace.cont
 
 				{
-					while true; do [ -e ${OVE_PROJECT_TMP_DIR}/strace.pid ] && break; done
+					while true; do [ -e ${OVE_PROJECT_TMP_DIR}/trace.pid ] && break; done
 
-					# launch strace in background and let strace start up
-					(${OVE_ANALYZE_EXECVE} -p $(\cat ${OVE_PROJECT_TMP_DIR}/strace.pid) &)
+					# launch trace in background and let it start up
+					if [ ${OVE_LOGLEVEL} -eq 7 ]; then
+						(eval ${OVE_TRACE_CMD} &)
+					else
+						(${OVE_TRACE_CMD} -p $(\cat ${OVE_PROJECT_TMP_DIR}/trace.pid) &)
+					fi
 					sleep 1
-					true > ${OVE_PROJECT_TMP_DIR}/strace.cont
+					true > ${OVE_PROJECT_TMP_DIR}/trace.cont
 				} &
 			fi
 
@@ -1274,25 +1295,36 @@ function ove {
 				${OVE_LAST_COMMAND}
 			ret=$?
 
-			if [ -n "${OVE_ANALYZE_EXECVE+x}" ]; then
-				pkill -SIGTERM -f strace
-				[ -e ${OVE_PROJECT_TMP_DIR}/strace.pid ] && \
-					\rm ${OVE_PROJECT_TMP_DIR}/strace.pid
-				[ -e ${OVE_PROJECT_TMP_DIR}/strace.cont ] && \
-					\rm ${OVE_PROJECT_TMP_DIR}/strace.cont
+			if [ -n "${OVE_TRACE_CMD+x}" ]; then
+				if [ ${OVE_LOGLEVEL} -eq 7 ]; then
+					if [ ${EUID} != 0 ]; then
+						sudo pkill -SIGINT -f execsnoop
+					else
+						\pkill -SIGINT -f execsnoop
+					fi
+				else
+					\pkill -SIGINT -f strace
+				fi
+
+				[ -e ${OVE_PROJECT_TMP_DIR}/trace.pid ] && \
+					\rm ${OVE_PROJECT_TMP_DIR}/trace.pid
+				[ -e ${OVE_PROJECT_TMP_DIR}/trace.cont ] && \
+					\rm ${OVE_PROJECT_TMP_DIR}/trace.cont
 
 				while true; do
 					if [ ${OVE_LOGLEVEL} -eq 3 ] || [ ${OVE_LOGLEVEL} -eq 4 ]; then
-						ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP_DIR}/strace-${cmd}
+						ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
 					elif [ ${OVE_LOGLEVEL} -eq 5 ]; then
-						ove_analyze_strace_connect ${OVE_PROJECT_TMP_DIR}/strace-${cmd}
+						ove_analyze_strace_connect ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
 					elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
-						ove_strace_create_graph ${OVE_PROJECT_TMP_DIR}/strace-${cmd} ${cmd}
+						ove_strace_create_graph ${OVE_PROJECT_TMP_DIR}/trace-${cmd} ${cmd}
+					elif [ ${OVE_LOGLEVEL} -eq 7 ]; then
+						\head -n -1 ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd}
 					fi
 					break
 				done | \tee -a ${OVE_LAST_COMMAND}
 
-				unset OVE_ANALYZE_EXECVE
+				unset OVE_TRACE_CMD
 			fi
 
 			\sed -i -e 's/\r$//' -e 's/\x0//' ${OVE_LAST_COMMAND}
@@ -5734,14 +5766,14 @@ function ove-version {
 	echo "OVE [SHA-1: ${OVE_SHA} @ ${OVE_OS} ${OVE_OS_VER}]"
 }
 
-# loglevel:[LEVEL] :show or change loglevel [0-6]
+# loglevel:[LEVEL] :show or change loglevel [0-7]
 function ove-loglevel {
 	local prefix
 	local sysctl_f
 
 	set +x
-	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-6]$ ]]; then
-		echo "error: try 0-6"
+	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-7]$ ]]; then
+		echo "error: try 0-7"
 		return 1
 	elif [ $# -eq 1 ]; then
 		if [ $1 -gt 2 ] && [ $1 -lt 7 ]; then
@@ -5768,6 +5800,27 @@ function ove-loglevel {
 			fi
 		fi
 
+		if [ $1 -eq 7 ]; then
+			if ! command -v python3 > /dev/null; then
+				ove_echo_command_not_found "python3" "Needed by 'execsnoop'."
+				return 1
+			fi
+
+			if ! [ -e /usr/share/bcc/tools/execsnoop ]; then
+				ove_echo_error_noprefix "'/usr/share/bcc/tools/execsnoop' not found."
+				return 1
+			fi
+
+			if [ ${EUID} != 0 ]; then
+				if ! sudo -n true; then
+					if ! sudo true; then
+						ove_echo_error_noprefix "'execsnoop' need non-interactive 'sudo'"
+						return 1
+					fi
+				fi
+			fi
+		fi
+
 		OVE_LOGLEVEL=$1
 		if [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
 			if ! [ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ]; then
@@ -5781,11 +5834,12 @@ function ove-loglevel {
 	while true; do
 		echo "0: silence is golden"
 		echo "1: normal"
-		echo "2: debug"
-		echo "3: execve timeline"
-		echo "4: execve time analysis"
-		echo "5: connect analysis"
-		echo "6: graph analysis"
+		echo "2: debug                [set -x]"
+		echo "3: execve timeline      [strace]"
+		echo "4: execve time analysis [strace]"
+		echo "5: connect analysis     [strace]"
+		echo "6: graph analysis       [strace]"
+		echo "7: execsnoop            [bcc]"
 		break
 	done | \grep -E --color "$|${OVE_LOGLEVEL}"
 
@@ -6450,10 +6504,10 @@ function ove_init {
 		set -x
 	fi
 
-	if [ -n "${OVE_ANALYZE_EXECVE+x}" ]; then
-		echo ${BASHPID} > ${OVE_PROJECT_TMP_DIR}/strace.pid
+	if [ -n "${OVE_TRACE_CMD+x}" ]; then
+		echo ${BASHPID} > ${OVE_PROJECT_TMP_DIR}/trace.pid
 		while true; do
-			[ -e ${OVE_PROJECT_TMP_DIR}/strace.cont ] && break
+			[ -e ${OVE_PROJECT_TMP_DIR}/trace.cont ] && break
 		done
 	fi
 
@@ -7625,6 +7679,7 @@ function ove_externals {
 	cmds+=('mkdir')
 	cmds+=('mktemp')
 	cmds+=('pgrep')
+	cmds+=('pkill')
 	cmds+=('readlink')
 	cmds+=('rev')
 	cmds+=('rm')
