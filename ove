@@ -7602,7 +7602,7 @@ function ove-add-repo {
 	fi
 
 	# update revtab
-	echo "${name} ${url} none master" | \tee -a "${OVE_PROJECT_DIR}/revtab"
+	echo "${name} ${url} ${url} master" | \tee -a "${OVE_PROJECT_DIR}/revtab"
 
 	# parse revtab
 	if ! ove_revtab_parse; then
