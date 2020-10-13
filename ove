@@ -874,10 +874,10 @@ function ove_inotify_cleanup {
 function ove_loop_command {
 	local all_files
 	local cmd
-	local counter
 	local f
 	local f_stderr
 	local files_modified_by_command
+	local i
 	local max_count
 	local prefix
 	local read_args
@@ -891,15 +891,15 @@ function ove_loop_command {
 	use_inotify=$2
 	max_count=$3
 	shift 3
-	(( counter=0 ))
+	(( i=0 ))
 	while true; do
-		(( counter+=1 ))
-		[ ${max_count} -ne 0 ] && [ ${counter} -gt ${max_count} ] && break
+		(( i+=1 ))
+		[ ${max_count} -ne 0 ] && [ ${i} -gt ${max_count} ] && break
 		clear
-		ove_echo_cyan_error "ove-${*} [c:${counter} t:${_timeout} i:${use_inotify} m:${max_count}]"
+		ove_echo_cyan_error "ove-${*} [c:${i} t:${_timeout} i:${use_inotify} m:${max_count}]"
 
 		# inotify: first iteration?
-		if [ ${use_inotify} -eq 1 ] && [ ${counter} -eq 1 ]; then
+		if [ ${use_inotify} -eq 1 ] && [ ${i} -eq 1 ]; then
 			all_files=$(\mktemp -u -p ${OVE_PROJECT_TMP_DIR} inotifywait-fromfile-XXXXXXXXXX)
 
 			# trap to be able to cleanup files
@@ -962,7 +962,7 @@ function ove_loop_command {
 		OVE_PAGER='\tee /dev/null' ove-${1} ${*:2}
 
 		# inotify: first iteration?
-		if [ ${use_inotify} -eq 1 ] && [ ${counter} -eq 1 ]; then
+		if [ ${use_inotify} -eq 1 ] && [ ${i} -eq 1 ]; then
 			sleep 1
 			kill -9 ${inotifywait_pid} &> /dev/null
 			wait &> /dev/null
@@ -1546,7 +1546,7 @@ function ove_projects_parse {
 	# create ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
 		eval "ove-${m}() {
-			local count
+			local i
 			local helptext=\"${m}:[PROJECT...]:run the '${m}' step for all or individual projects\"
 			local p
 
@@ -1560,12 +1560,12 @@ function ove_projects_parse {
 			fi
 
 			if [ \$# -eq 0 ]; then
-				count=0
-				while ((count < ove_number_of_projects)); do
-					if ! ove_projects_cmd "\${ove_projects_name[\${count}]}" ${m}; then
+				i=0
+				while ((i < ove_number_of_projects)); do
+					if ! ove_projects_cmd "\${ove_projects_name[\${i}]}" ${m}; then
 						return 1
 					fi
-					(( count+=1 ))
+					(( i+=1 ))
 				done
 			else
 				for p in \$@; do
@@ -1585,7 +1585,7 @@ function ove_projects_parse {
 	# create parallel ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
 		eval "ove-${m}-parallel() {
-			local count
+			local i
 			local helptext=\"${m}-parallel:[PROJECT...]:run the '${m}' step for all or individual projects (in parallel)\"
 			local p
 
@@ -1599,14 +1599,14 @@ function ove_projects_parse {
 			fi
 
 			if [ \$# -eq 0 ]; then
-				count=0
-				while ((count < ove_number_of_projects)); do
+				i=0
+				while ((i < ove_number_of_projects)); do
 					{
-						if ! ove_projects_cmd "\${ove_projects_name[\${count}]}" ${m}; then
+						if ! ove_projects_cmd "\${ove_projects_name[\${i}]}" ${m}; then
 							kill -USR1 \$\$
 						fi
 					} &
-					(( count+=1 ))
+					(( i+=1 ))
 				done
 			else
 				for p in \$@; do
@@ -1717,7 +1717,7 @@ function ove_list_projects_paths {
 # $2: command
 function ove_projects_cmd {
 	local cmd
-	local index
+	local i
 	local path
 	local re
 	local ret
@@ -1730,13 +1730,13 @@ function ove_projects_cmd {
 	# sanity check
 	! [ -e "${OVE_PROJECT_DIR}/projects/${target}/${cmd}" ] && return
 
-	index=${ove_projects_name2index[${target}]}
+	i=${ove_projects_name2index[${target}]}
 
 	# create dir if needed
-	[ ! -d "${OVE_BASE_DIR}"/"${ove_projects_path[${index}]}" ] \
-		&& \mkdir -vp "${OVE_BASE_DIR}"/"${ove_projects_path[${index}]}"
+	[ ! -d "${OVE_BASE_DIR}"/"${ove_projects_path[${i}]}" ] \
+		&& \mkdir -vp "${OVE_BASE_DIR}"/"${ove_projects_path[${i}]}"
 
-	path="${OVE_BASE_DIR}/${ove_projects_path[${index}]}"
+	path="${OVE_BASE_DIR}/${ove_projects_path[${i}]}"
 
 	if [ ${OVE_LOGLEVEL} -ne 0 ]; then
 		ove_echo_cyan_error "${target}: ${cmd}"
@@ -1768,7 +1768,7 @@ function ove_projects_cmd {
 
 		if [ ${OVE_DRY_RUN} -eq 0 ]; then
 			# run it
-			eval "${target}_version=${ove_projects_version[${index}]} \
+			eval "${target}_version=${ove_projects_version[${i}]} \
 				${OVE_PROJECT_DIR}/projects/${target}/${cmd} \
 				${OVE_REDIRECT_OUTPUT}"
 		else
@@ -1849,7 +1849,7 @@ function ove_revtab_parse {
 
 # $1: repo name (either 'name' or '${OVE_BASE_DIR}/'name')
 function ove_repo2fullpath {
-	local index
+	local i
 	local name
 	local repo_fullpath
 
@@ -1857,8 +1857,8 @@ function ove_repo2fullpath {
 	if [ "${name}" == "${OVE_PROJECT_NAME}" ]; then
 		repo_fullpath="${OVE_BASE_DIR}/${OVE_PROJECT_NAME}"
 	elif [ -v ove_revtab_name2index[${name}] ]; then
-		index=${ove_revtab_name2index[${name}]}
-		repo_fullpath="${OVE_BASE_DIR}/${ove_revtab_git_name[${index}]}"
+		i=${ove_revtab_name2index[${name}]}
+		repo_fullpath="${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}"
 	fi
 
 	echo ${repo_fullpath}
@@ -1866,7 +1866,7 @@ function ove_repo2fullpath {
 
 # $1: repo name (either 'name' or '${OVE_BASE_DIR}/'name')
 function ove_repo2shortpath {
-	local index
+	local i
 	local name
 	local repo_shortpath
 
@@ -1876,8 +1876,8 @@ function ove_repo2shortpath {
 	if [ "${name}" == "${OVE_PROJECT_NAME}" ]; then
 		repo_shortpath="${OVE_PROJECT_NAME}"
 	elif [ -v ove_revtab_name2index[${name}] ]; then
-		index=${ove_revtab_name2index[${name}]}
-		repo_shortpath="${ove_revtab_git_name[${index}]}"
+		i=${ove_revtab_name2index[${name}]}
+		repo_shortpath="${ove_revtab_git_name[${i}]}"
 	fi
 
 	echo ${repo_shortpath}
@@ -1885,7 +1885,7 @@ function ove_repo2shortpath {
 
 # $1: repo
 function ove_status_one_repo {
-	local index
+	local i
 	local repo_fullpath
 	local repo_shortpath
 	local revision
@@ -1899,13 +1899,13 @@ function ove_status_one_repo {
 	fi
 
 	repo_shortpath="$(ove_repo2shortpath $1)"
-	index=${ove_revtab_name2index[${repo_shortpath}]}
+	i=${ove_revtab_name2index[${repo_shortpath}]}
 
 	if [ "${repo_shortpath}" == "${OVE_PROJECT_NAME}" ]; then
 		revision="$(\git -C "${OVE_PROJECT_DIR}" describe --tags --always 2> /dev/null)"
 		[ -n "${revision}" ] || revision=" "
 	else
-		revision="${ove_revtab_rev[${index}]}"
+		revision="${ove_revtab_rev[${i}]}"
 	fi
 
 	s=$(\git -c color.status=always -C "${repo_fullpath}" status -bs -uno)
@@ -2047,20 +2047,20 @@ function ove_revtab_status_parse {
 }
 
 function ove_revtab_list {
-	local count
+	local i
 	local str
 	local url
 
-	count=0
+	i=0
 
 	if [ "${ove_revtab_num_repositories}" == 0 ]; then
 		echo "run 'ove fetch' first!"
 		return 1
 	fi
 
-	while ((count < ove_revtab_num_repositories)); do
-		str+="${ove_revtab_git_name[${count}]} ${ove_revtab_fetch_url[${count}]} ${ove_revtab_push_url[${count}]} ${ove_revtab_rev[${count}]}\n"
-		(( count+=1 ))
+	while ((i < ove_revtab_num_repositories)); do
+		str+="${ove_revtab_git_name[${i}]} ${ove_revtab_fetch_url[${i}]} ${ove_revtab_push_url[${i}]} ${ove_revtab_rev[${i}]}\n"
+		(( i+=1 ))
 	done
 
 	url=$(\git -C "${OVE_PROJECT_DIR}" config --get remote.origin.url)
@@ -2170,18 +2170,48 @@ function ove_update_checksum {
 }
 
 # $1: name
-# $2: rev
-# $3: fetch url
-# $4: push url
+# $2: fetch url
+# $3: push url
+function ove_revtab_check_fetch_push {
+	local name
+	local remote_url
+	local revtab_url
+
+	name=$1
+	[ -d "${OVE_BASE_DIR}/${name}/.git" ] || return
+
+	# fetch URL
+	if ! remote_url=$(\git -C "${OVE_BASE_DIR}/${name}" remote get-url origin 2> /dev/null); then
+		return
+	fi
+	revtab_url="$2"
+	if [ "${remote_url}" != "${revtab_url}" ]; then
+		ove_echo_yellow_noprefix "${name}: fetch URL changed from '${remote_url}' to '${revtab_url}'"
+		\git -C "${OVE_BASE_DIR}/${name}" remote set-url origin "${revtab_url}"
+	fi
+
+	# push URL
+	if ! remote_url=$(\git -C "${OVE_BASE_DIR}/${name}" remote get-url --push origin 2> /dev/null); then
+		return
+	fi
+	revtab_url="$3"
+	if [ "${remote_url}" != "${revtab_url}" ]; then
+		ove_echo_yellow_noprefix "${name}: push URL changed from '${remote_url}' to '${revtab_url}'"
+		\git -C "${OVE_BASE_DIR}/${name}" remote set-url --push origin "${revtab_url}"
+	fi
+}
+
+# $1: name
+# $2: fetch url
+# $3: push url
+# $4: rev
 function ove_revtab_check_one {
 	local branch_name
 	local co=0
 	local detached=0
 	local m
 	local name
-	local remote_url
 	local rev_is_branch=0
-	local revtab_url
 	local revision
 	local sha_a
 	local sha_b
@@ -2189,7 +2219,7 @@ function ove_revtab_check_one {
 	name=$1
 	[ -d "${OVE_BASE_DIR}/${name}/.git" ] || return
 
-	revision=$2
+	revision=$4
 	sha_a=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
 	sha_b=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null)
 	[ $? -ne 0 ] && sha_b=""
@@ -2227,42 +2257,24 @@ function ove_revtab_check_one {
 		fi
 	fi
 
-	# fetch URL
-	if ! remote_url=$(\git -C "${OVE_BASE_DIR}/${name}" remote get-url origin 2> /dev/null); then
-		return
-	fi
-	revtab_url="$3"
-	if [ "${remote_url}" != "${revtab_url}" ]; then
-		ove_echo_yellow_noprefix "${name}: fetch URL changed from '${remote_url}' to '${revtab_url}'"
-		\git -C "${OVE_BASE_DIR}/${name}" remote set-url origin "${revtab_url}"
-	fi
-
-	# push URL
-	if ! remote_url=$(\git -C "${OVE_BASE_DIR}/${name}" remote get-url --push origin 2> /dev/null); then
-		return
-	fi
-	revtab_url="$4"
-	if [ "${remote_url}" != "${revtab_url}" ]; then
-		ove_echo_yellow_noprefix "${name}: push URL changed from '${remote_url}' to '${revtab_url}'"
-		\git -C "${OVE_BASE_DIR}/${name}" remote set-url --push origin "${revtab_url}"
-	fi
+	ove_revtab_check_fetch_push "$1" "$2" "$3"
 }
 
 function ove_revtab_check {
-	local count
+	local i
 
 	[ "${ove_revtab_num_repositories}" == 0 ] && return 1
 
 	set +m
 
-	count=0
-	while ((count < ove_revtab_num_repositories)); do
+	i=0
+	while ((i < ove_revtab_num_repositories)); do
 		ove_revtab_check_one \
-			${ove_revtab_git_name[${count}]} \
-			${ove_revtab_rev[${count}]} \
-			${ove_revtab_fetch_url[${count}]} \
-			${ove_revtab_push_url[${count}]} &
-		(( count+=1 ))
+			${ove_revtab_git_name[${i}]} \
+			${ove_revtab_fetch_url[${i}]} \
+			${ove_revtab_push_url[${i}]} \
+			${ove_revtab_rev[${i}]} &
+		(( i+=1 ))
 	done | \grep -v '^\['
 	wait
 }
@@ -2356,11 +2368,27 @@ function ove_revtab_forsome_parallel {
 	)
 }
 
+function ove_revtab_clone_and_checkout_one {
+	local i=$1
+	local fetch_url
+	local name
+	local push_url
+
+	fetch_url="${ove_revtab_fetch_url[${i}]}"
+	push_url="${ove_revtab_push_url[${i}]}"
+	name="${ove_revtab_git_name[${i}]}"
+	if ! \git clone "${fetch_url}" "${OVE_BASE_DIR}/${name}"; then
+		return 1
+	fi
+
+	ove_revtab_checkout "${name}"
+	ove_revtab_check_fetch_push "${name}" "${fetch_url}" "${push_url}"
+}
+
 # $*: optional list of repositories
 function ove_revtab_clone_and_checkout {
 	(
-	local count
-	local index
+	local i
 	local repo
 	local repos
 
@@ -2368,19 +2396,19 @@ function ove_revtab_clone_and_checkout {
 		repos=$(ove_validate_repo_list "$@")
 		[ "${repos}" == "" ] && return 1
 		for repo in ${repos}; do
-			index=${ove_revtab_name2index[${1}]}
 			if [ ! -d "${OVE_BASE_DIR}/${repo}" ]; then
-				\git clone "${ove_revtab_fetch_url[${index}]}" "${OVE_BASE_DIR}/${ove_revtab_git_name[${index}]}" && ove_revtab_checkout ${1} &
+				i=${ove_revtab_name2index[${1}]}
+				ove_revtab_clone_and_checkout_one ${i} &
 			fi
 			shift
 		done
 	else
-		count=0
-		while ((count < ove_revtab_num_repositories)); do
-			if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${count}]}" ]; then
-				\git clone "${ove_revtab_fetch_url[${count}]}" "${OVE_BASE_DIR}/${ove_revtab_git_name[${count}]}" && ove_revtab_checkout ${ove_revtab_git_name[${count}]} &
+		i=0
+		while ((i < ove_revtab_num_repositories)); do
+			if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" ]; then
+				ove_revtab_clone_and_checkout_one ${i} &
 			fi
-			(( count+=1 ))
+			(( i+=1 ))
 		done
 	fi
 
@@ -2391,8 +2419,7 @@ function ove_revtab_clone_and_checkout {
 # $*: optional list of repositories
 function ove_revtab_checkout {
 	(
-	local count
-	local index
+	local i
 	local repo
 	local repos
 
@@ -2400,15 +2427,15 @@ function ove_revtab_checkout {
 		repos=$(ove_validate_repo_list "$@")
 		[ "${repos}" == "" ] && return 1
 		for repo in ${repos}; do
-			index=${ove_revtab_name2index[${1}]}
-			\git -C "${OVE_BASE_DIR}/${ove_revtab_git_name[${index}]}" -c advice.detachedHead=false checkout "${ove_revtab_rev[${index}]}" &
+			i=${ove_revtab_name2index[${1}]}
+			\git -C "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" -c advice.detachedHead=false checkout "${ove_revtab_rev[${i}]}" &
 			shift
 		done
 	else
-		count=0
-		while ((count < ove_revtab_num_repositories)); do
-			\git -C "${OVE_BASE_DIR}/${ove_revtab_git_name[${count}]}" -c advice.detachedHead=false checkout "${ove_revtab_rev[${count}]}" &
-			(( count+=1 ))
+		i=0
+		while ((i < ove_revtab_num_repositories)); do
+			\git -C "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" -c advice.detachedHead=false checkout "${ove_revtab_rev[${i}]}" &
+			(( i+=1 ))
 		done
 	fi
 
@@ -2467,7 +2494,7 @@ function ove_revtab_pull_one {
 # $*: optional list of repositories
 function ove_revtab_fetch {
 	local co_list
-	local count
+	local i
 	local m
 
 	if ! ove_revtab_parse; then
@@ -2481,12 +2508,12 @@ function ove_revtab_fetch {
 		return $?
 	fi
 
-	count=0
-	while ((count < ove_revtab_num_repositories)); do
-		if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${count}]}" ]; then
-			co_list+="${ove_revtab_git_name[${count}]} "
+	i=0
+	while ((i < ove_revtab_num_repositories)); do
+		if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" ]; then
+			co_list+="${ove_revtab_git_name[${i}]} "
 		fi
-		(( count+=1 ))
+		(( i+=1 ))
 	done
 
 	[ "${co_list}" != "" ] && ove_revtab_clone_and_checkout ${co_list}
@@ -2580,7 +2607,7 @@ function ove_dir_fingerprint {
 function ove-make {
 	local fingerprint_a
 	local fingerprint_b
-	local index
+	local i
 	local proj
 	local stage_dir_updated_by
 	local target
@@ -2603,12 +2630,12 @@ function ove-make {
 		fi
 
 		for proj in ${OVE_BUILD_ORDER}; do
-			index=${ove_projects_name2index[${proj}]}
+			i=${ove_projects_name2index[${proj}]}
 
 			# does proj have any dependencies?
-			if [ "${ove_projects_deps[${index}]}" != "" ]; then
+			if [ "${ove_projects_deps[${i}]}" != "" ]; then
 				# check if some of the deps has modified the stage dir
-				for dep in ${ove_projects_deps[${index}]}; do
+				for dep in ${ove_projects_deps[${i}]}; do
 					if [[ "${stage_dir_updated_by}" == *"${dep}"* ]]; then
 						ove_projects_cmd "${proj}" clean
 						break
@@ -2639,14 +2666,14 @@ function ove-make {
 				_ove_projects_built=""
 			fi
 
-			index=${ove_projects_name2index[${target}]}
-			[ "${index}" == "" ] && echo "${FUNCNAME[0]}: unknown target '${target}'" && return 1
+			i=${ove_projects_name2index[${target}]}
+			[ "${i}" == "" ] && echo "${FUNCNAME[0]}: unknown target '${target}'" && return 1
 
 			# has deps?
-			if [ "${ove_projects_deps[${index}]}" != "" ]; then
+			if [ "${ove_projects_deps[${i}]}" != "" ]; then
 				fingerprint_a=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
 
-				for dep in ${ove_projects_deps[${index}]}; do
+				for dep in ${ove_projects_deps[${i}]}; do
 					# already built? next!
 					if [[ "${_ove_projects_built}" == *"${dep}"* ]]; then
 						continue
@@ -3784,7 +3811,7 @@ function ove-branch {
 	local branch_name
 	local branch_start_point
 	local cmd
-	local index
+	local i
 	local r
 	local repos
 
@@ -3836,8 +3863,8 @@ function ove-branch {
 		[ "${OVE_PROJECT_NAME}" == "${r}" ] && continue
 
 		# update revtab
-		index=${ove_revtab_name2index[${r}]}
-		\sed -i "s|^\(${r} .*\)${ove_revtab_rev[${index}]}|\1${branch_name}|g" "${OVE_PROJECT_DIR}/revtab"
+		i=${ove_revtab_name2index[${r}]}
+		\sed -i "s|^\(${r} .*\)${ove_revtab_rev[${i}]}|\1${branch_name}|g" "${OVE_PROJECT_DIR}/revtab"
 	done
 }
 
@@ -3876,15 +3903,15 @@ function ove-remote-set-url {
 
 # remote-check: :sanity check that all remotes are online
 function ove-remote-check {
-	local count
+	local i
 
-	count=0
-	while ((count < ove_revtab_num_repositories)); do
-		if ! \git -C "${PWD}" ls-remote ${ove_revtab_fetch_url[${count}]} HEAD > /dev/null; then
+	i=0
+	while ((i < ove_revtab_num_repositories)); do
+		if ! \git -C "${PWD}" ls-remote ${ove_revtab_fetch_url[${i}]} HEAD > /dev/null; then
 			return 1
 		fi
 
-		(( count+=1 ))
+		(( i+=1 ))
 	done
 }
 
@@ -4100,12 +4127,12 @@ function ove-commit {
 # $* = proj(s)
 function ove_get_deps_recursive {
 	local dep
-	local index
+	local i
 	local proj
 
 	for proj in "$@"; do
-		index=${ove_projects_name2index[${proj}]}
-		for dep in ${ove_projects_deps[${index}]}; do
+		i=${ove_projects_name2index[${proj}]}
+		for dep in ${ove_projects_deps[${i}]}; do
 			echo -n "${dep} "
 			ove_get_deps_recursive ${dep}
 		done
@@ -4115,21 +4142,21 @@ function ove_get_deps_recursive {
 # $1 = proj
 function ove_get_paths_recursive {
 	local dep
-	local index
+	local i
 
 	if [ $# -ne 1 ]; then
 		ove_echo_error_noprefix "${FUNCNAME[0]}: need one arg"
 		return 1
 	fi
 
-	index=${ove_projects_name2index[$1]}
-	if [ "${ove_projects_deps[${index}]}" == "" ]; then
-		echo -n "${OVE_BASE_DIR}/${ove_projects_path[${index}]} "
+	i=${ove_projects_name2index[$1]}
+	if [ "${ove_projects_deps[${i}]}" == "" ]; then
+		echo -n "${OVE_BASE_DIR}/${ove_projects_path[${i}]} "
 		return
 	fi
 
-	for dep in ${ove_projects_deps[${index}]}; do
-		echo -n "${OVE_BASE_DIR}/${ove_projects_path[${index}]} "
+	for dep in ${ove_projects_deps[${i}]}; do
+		echo -n "${OVE_BASE_DIR}/${ove_projects_path[${i}]} "
 		ove_get_paths_recursive ${dep}
 	done
 }
@@ -4259,7 +4286,7 @@ function ove-export {
 	local attr
 	local b
 	local deps
-	local index
+	local i
 	local paths
 	local projs
 	local re
@@ -4297,15 +4324,15 @@ function ove-export {
 
 			projs+="${b} "
 			str+="${b}:\n"
-			index=${ove_projects_name2index[${b}]}
+			i=${ove_projects_name2index[${b}]}
 			for attr in $(ove_projects_attributes); do
-				tmp_var="ove_projects_${attr}[${index}]"
+				tmp_var="ove_projects_${attr}[${i}]"
 				[ "${!tmp_var}" != "" ] && \
 					str+="  ${attr}:\n$(\tr ' ' '\n' <<<${!tmp_var} | \
 					LC_ALL="C" \sort -u | \
 					\sed -e 's|^|    |g')\n"
 
-				paths+="${OVE_BASE_DIR}/${ove_projects_path[${index}]} "
+				paths+="${OVE_BASE_DIR}/${ove_projects_path[${i}]} "
 			done
 			str+="\n"
 		done
@@ -4450,7 +4477,7 @@ function ove_get_build_list {
 function ove-install-pkg {
 	local b
 	local build_list
-	local index
+	local i
 	local n
 	local p
 	local pack_list
@@ -4481,8 +4508,8 @@ function ove-install-pkg {
 			fi
 		fi
 
-		index=${ove_projects_name2index[${b}]}
-		for n in ${ove_projects_needs[${index}]}; do
+		i=${ove_projects_name2index[${b}]}
+		for n in ${ove_projects_needs[${i}]}; do
 			pack_list+="${n} "
 		done
 	done
@@ -5626,19 +5653,19 @@ function ove-list-heads {
 
 # ls-remote: :git ls-remote <URL> HEAD for all git repositories
 function ove-ls-remote {
-	local count
+	local i
 	local repo
 	local ret
 	local sha
 	local str
 	local url
 
-	count=0
+	i=0
 	ret=0
-	while ((count < ove_revtab_num_repositories)); do
-		repo="${ove_revtab_git_name[${count}]}"
-		url="${ove_revtab_fetch_url[${count}]}"
-		[ "${url}" == "noremote" ] && (( count+=1 )) && continue
+	while ((i < ove_revtab_num_repositories)); do
+		repo="${ove_revtab_git_name[${i}]}"
+		url="${ove_revtab_fetch_url[${i}]}"
+		[ "${url}" == "noremote" ] && (( i+=1 )) && continue
 
 		sha=$(\git ls-remote ${url} HEAD | \awk '{print $1}')
 		if [ "${sha}" == "" ]; then
@@ -5647,7 +5674,7 @@ function ove-ls-remote {
 		else
 			str+="${repo}:${sha}\n"
 		fi
-		(( count+=1 ))
+		(( i+=1 ))
 	done
 
 	url=$(\git -C "${OVE_PROJECT_DIR}" config --get remote.origin.url)
@@ -6725,7 +6752,7 @@ function ove_post_checks {
 
 function ove_buildable_projects {
 	local deps
-	local index
+	local i
 	local proj
 	local proj_path
 	local projs_and_deps_not_buildable
@@ -6736,8 +6763,8 @@ function ove_buildable_projects {
 
 	# remove projects with paths within git repos not yet fetched
 	for proj in ${OVE_PROJECT_LIST}; do
-		index=${ove_projects_name2index[${proj}]}
-		proj_path="${OVE_BASE_DIR}/${ove_projects_path[${index}]}"
+		i=${ove_projects_name2index[${proj}]}
+		proj_path="${OVE_BASE_DIR}/${ove_projects_path[${i}]}"
 		for q in ${OVE_REPO_LIST}; do
 			if [[ ${proj_path} == *"${q}"* ]] && ! [ -d "${q}" ]; then
 				test "${projs_hash["${proj}"]+isset}" && continue
