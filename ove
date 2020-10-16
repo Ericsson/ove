@@ -2311,9 +2311,19 @@ function ove_revtab_forall {
 	done
 }
 
+function ove_cap_jobs {
+	local job_list
+
+	if [ $# -ne 1 ] || [ $1 -eq 0 ]; then
+		return
+	fi
+
+	mapfile -t job_list < <(jobs -p -r)
+	[ "${#job_list[@]}" -ge "${1}" ] && wait -n
+}
+
 function ove_revtab_forall_parallel {
 	(
-	local job_list
 	local max_parallel=0
 	local repo
 	local repo_basename
@@ -2324,10 +2334,7 @@ function ove_revtab_forall_parallel {
 		! [ -d "${repo}" ] && continue
 		repo_basename=${repo/${OVE_BASE_DIR}\/}
 		pushd "${repo}" &>/dev/null && eval "$1" &
-
-		[ ${max_parallel} -eq 0 ] && continue
-		mapfile -t job_list < <(jobs -p -r)
-		[ "${#job_list[@]}" -eq "${max_parallel}" ] && wait -n
+		ove_cap_jobs ${max_parallel}
 	done
 	wait
 	)
@@ -2349,16 +2356,20 @@ function ove_revtab_forsome {
 	done
 }
 
+# $1  : cmd
+# $2  : max jobs
+# $3..: repos
 function ove_revtab_forsome_parallel {
 	(
 	local repo
 	local i
 
-	for i in ${*:2}; do
+	for i in ${*:3}; do
 		for repo in ${OVE_REPO_LIST}; do
 			! [ -d "${repo}" ] && continue
 			if [ "${repo}" == "${OVE_BASE_DIR}/${i}" ]; then
 				eval "pushd ${repo} &>/dev/null; $1; popd&>/dev/null" &
+				ove_cap_jobs ${2}
 			fi
 		done
 	done
@@ -2375,9 +2386,12 @@ function ove_revtab_clone_and_checkout_one {
 	fetch_url="${ove_revtab_fetch_url[${i}]}"
 	push_url="${ove_revtab_push_url[${i}]}"
 	name="${ove_revtab_git_name[${i}]}"
-	if ! \git clone "${fetch_url}" "${OVE_BASE_DIR}/${name}"; then
-		return 1
-	fi
+	while true; do
+		if ! \git clone "${fetch_url}" "${OVE_BASE_DIR}/${name}"; then
+			return 1
+		fi
+		break
+	done |& \sed "s|^|${name}  |g"
 
 	ove_revtab_checkout "${name}"
 	ove_revtab_check_fetch_push "${name}" "${fetch_url}" "${push_url}"
@@ -2397,6 +2411,7 @@ function ove_revtab_clone_and_checkout {
 			if [ ! -d "${OVE_BASE_DIR}/${repo}" ]; then
 				i=${ove_revtab_name2index[${1}]}
 				ove_revtab_clone_and_checkout_one ${i} &
+				ove_cap_jobs ${OVE_CLONE_MAX_PARALLEL}
 			fi
 			shift
 		done
@@ -2405,6 +2420,7 @@ function ove_revtab_clone_and_checkout {
 		while ((i < ove_revtab_num_repositories)); do
 			if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" ]; then
 				ove_revtab_clone_and_checkout_one ${i} &
+				ove_cap_jobs ${OVE_CLONE_MAX_PARALLEL}
 			fi
 			(( i+=1 ))
 		done
@@ -2412,6 +2428,20 @@ function ove_revtab_clone_and_checkout {
 
 	wait
 	)
+}
+
+function ove_revtab_checkout_one {
+	local name
+	local revision
+
+	name=${ove_revtab_git_name[${1}]}
+	revision=${ove_revtab_rev[${1}]}
+	while true; do
+		if ! \git -C "${OVE_BASE_DIR}/${name}" -c advice.detachedHead=false checkout "${revision}"; then
+			return 1
+		fi
+		break
+	done |& \sed -e "s|^|${name}  |g"
 }
 
 # $*: optional list of repositories
@@ -2426,13 +2456,13 @@ function ove_revtab_checkout {
 		[ "${repos}" == "" ] && return 1
 		for repo in ${repos}; do
 			i=${ove_revtab_name2index[${1}]}
-			\git -C "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" -c advice.detachedHead=false checkout "${ove_revtab_rev[${i}]}" &
+			ove_revtab_checkout_one ${i} &
 			shift
 		done
 	else
 		i=0
 		while ((i < ove_revtab_num_repositories)); do
-			\git -C "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" -c advice.detachedHead=false checkout "${ove_revtab_rev[${i}]}" &
+			ove_revtab_checkout_one ${i} &
 			(( i+=1 ))
 		done
 	fi
@@ -2502,7 +2532,7 @@ function ove_revtab_fetch {
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout "$@"
 		m=$(\xargs -n1 <<<"$@" | \wc -L)
-		ove_revtab_forsome_parallel "\git -C \${repo} fetch --all --tag | \sed -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#i}))}))|g\"" "$@"
+		ove_revtab_forsome_parallel "\git -C \${repo} fetch --all --tag |& \sed -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#i}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL} "$@"
 		return $?
 	fi
 
@@ -2517,7 +2547,7 @@ function ove_revtab_fetch {
 	[ "${co_list}" != "" ] && ove_revtab_clone_and_checkout ${co_list}
 
 	m=$(\xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
-	ove_revtab_forall_parallel "\git -C \${repo} fetch --all --tags | \sed -e \"s|^|\${repo_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#repo_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
+	ove_revtab_forall_parallel "\git -C \${repo} fetch --all --tags |& \sed -e \"s|^|\${repo_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#repo_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
 	return $?
 }
 
@@ -5443,7 +5473,7 @@ function ove-list-modified-files {
 	# shellcheck disable=SC2016
 	cmd='\git --no-pager -C ${repo} diff-index --quiet HEAD || \git -C ${repo} diff --name-only HEAD | \sed -e "s|^|${repo}/|g"'
 
-	ove_revtab_forsome_parallel "${cmd}" "$(ove_dirty_repos)" | LC_ALL="C" \sort -u
+	ove_revtab_forsome_parallel "${cmd}" 0 "$(ove_dirty_repos)" | LC_ALL="C" \sort -u
 }
 
 # list-committed-files:[DAYS]:list committed files within 7 or DAYS day(s)
@@ -6578,6 +6608,11 @@ function ove_init {
 	if [ -z "${OVE_FETCH_MAX_PARALLEL+x}" ]; then
 		OVE_FETCH_MAX_PARALLEL=0
 		export OVE_FETCH_MAX_PARALLEL
+	fi
+
+	if [ -z "${OVE_CLONE_MAX_PARALLEL+x}" ]; then
+		OVE_CLONE_MAX_PARALLEL=0
+		export OVE_CLONE_MAX_PARALLEL
 	fi
 
 	if [ -z "${OVE_LOCATE_SEARCH_DIR+x}" ]; then
