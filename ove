@@ -2186,7 +2186,6 @@ function ove_revtab_check_fetch_push {
 	fi
 	revtab_url="$2"
 	if [ "${remote_url}" != "${revtab_url}" ]; then
-		ove_echo_yellow_noprefix "${name}: fetch URL changed from '${remote_url}' to '${revtab_url}'"
 		\git -C "${OVE_BASE_DIR}/${name}" remote set-url origin "${revtab_url}"
 	fi
 
@@ -2196,7 +2195,6 @@ function ove_revtab_check_fetch_push {
 	fi
 	revtab_url="$3"
 	if [ "${remote_url}" != "${revtab_url}" ]; then
-		ove_echo_yellow_noprefix "${name}: push URL changed from '${remote_url}' to '${revtab_url}'"
 		\git -C "${OVE_BASE_DIR}/${name}" remote set-url --push origin "${revtab_url}"
 	fi
 }
