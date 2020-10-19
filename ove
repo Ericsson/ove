@@ -2260,7 +2260,9 @@ function ove_revtab_check_one {
 
 function ove_revtab_check {
 	local i
+	local n=${FUNCNAME^^}
 
+	[ -n "${!n}" ] && [ "${!n}" -eq 0 ] && return
 	[ "${ove_revtab_num_repositories}" == 0 ] && return 1
 
 	set +m
