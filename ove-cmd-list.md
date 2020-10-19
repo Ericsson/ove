@@ -62,6 +62,7 @@
 | list-commands            |                                                       | list commands                                                                                                         |
 | list-committed-files     | [DAYS]                                                | list committed files within 7 or DAYS day(s)                                                                          |
 | list-heads               | [GIT...]                                              | git log for all/specified git repositories                                                                            |
+| list-missing-projects    | [PROJ...]                                             | list any missing project(s)                                                                                           |
 | list-modified-files      |                                                       | list modified files                                                                                                   |
 | list-projects            | [verbose]                                             | list projects                                                                                                         |
 | list-repositories        |                                                       | list all git repositories                                                                                             |

@@ -2696,14 +2696,22 @@ function ove-make {
 				_ove_projects_built=""
 			fi
 
-			i=${ove_projects_name2index[${target}]}
-			[ "${i}" == "" ] && echo "${FUNCNAME[0]}: unknown target '${target}'" && return 1
+			if ! [[ -v ove_projects_name2index[${target}] ]]; then
+				ove_echo_error_noprefix "unknown target '${target}'"
+				return 1
+			fi
 
+			i=${ove_projects_name2index[${target}]}
 			# has deps?
 			if [ "${ove_projects_deps[${i}]}" != "" ]; then
 				fingerprint_a=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
 
 				for dep in ${ove_projects_deps[${i}]}; do
+					if ! [[ -v ove_projects_name2index[${dep}] ]]; then
+						ove_echo_yellow_noprefix "warning: project '${dep}' not found, skipping"
+						continue
+					fi
+
 					# already built? next!
 					if [[ "${_ove_projects_built}" == *"${dep}"* ]]; then
 						continue
@@ -2770,7 +2778,8 @@ function ove-list-projects {
 			echo
 		done | \head -n -1
 	else
-		\xargs -n1 <<<${OVE_PROJECT_LIST}
+		[ "${OVE_PROJECT_LIST}" != "" ] &&
+			\xargs -n1 <<<${OVE_PROJECT_LIST}
 	fi
 
 	return 0
@@ -2806,6 +2815,7 @@ function ove_build_topology {
 	while ((i < ove_number_of_projects)); do
 		if [ "${ove_projects_deps[${i}]}" != "" ]; then
 			for d in ${ove_projects_deps[${i}]}; do
+				[[ -v ove_projects_name2index[${d}] ]] || continue
 				echo "${ove_projects_name[${i}]} ${d}"
 			done
 		fi
@@ -4154,6 +4164,27 @@ function ove-commit {
 	fi
 }
 
+# list-missing-projects:[PROJ...]:list any missing project(s)
+function ove-list-missing-projects {
+	local d
+	declare -A m
+	local projs
+
+	if [ $# -eq 0 ]; then
+		projs="${OVE_PROJECT_LIST}"
+	else
+		projs="${*}"
+	fi
+
+	for d in $(ove_get_deps_recursive ${projs}); do
+		[[ -v ove_projects_name2index[${d}] ]] || m[${d}]=
+	done
+
+	if [ ${#m[@]} -ne 0 ]; then
+		\xargs -n1 <<<"${!m[@]}" | LC_ALL="C" \sort
+	fi
+}
+
 # $* = proj(s)
 function ove_get_deps_recursive {
 	local dep
@@ -4161,6 +4192,7 @@ function ove_get_deps_recursive {
 	local proj
 
 	for proj in "$@"; do
+		[[ -v ove_projects_name2index[${proj}] ]] || continue
 		i=${ove_projects_name2index[${proj}]}
 		for dep in ${ove_projects_deps[${i}]}; do
 			echo -n "${dep} "
@@ -4174,12 +4206,11 @@ function ove_get_paths_recursive {
 	local dep
 	local i
 
-	if [ $# -ne 1 ]; then
-		ove_echo_error_noprefix "${FUNCNAME[0]}: need one arg"
-		return 1
-	fi
+	[ $# -ne 1 ] && return 1
 
+	[[ -v ove_projects_name2index[${proj}] ]] || return
 	i=${ove_projects_name2index[$1]}
+
 	if [ "${ove_projects_deps[${i}]}" == "" ]; then
 		echo -n "${OVE_BASE_DIR}/${ove_projects_path[${i}]} "
 		return
@@ -6362,10 +6393,11 @@ function ove_scripts_init {
 	OVE_SCRIPTS_LIST=
 
 	# unset any ove- functions marked with "__scriptname"
-	prev_scripts=$(set | \grep '^    local __scriptname=.*')
-	prev_scripts=${prev_scripts//    local __scriptname=}
-	prev_scripts=${prev_scripts//;}
-	[ "${prev_scripts}" != "" ] && unset -f ${prev_scripts}
+	if prev_scripts=$(set | \grep '^    local __scriptname=.*'); then
+		prev_scripts=${prev_scripts//    local __scriptname=}
+		prev_scripts=${prev_scripts//;}
+		[ "${prev_scripts}" != "" ] && unset -f ${prev_scripts}
+	fi
 
 	# project scripts
 	if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
