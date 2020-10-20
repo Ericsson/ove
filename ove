@@ -4167,7 +4167,7 @@ function ove-commit {
 	fi
 }
 
-# list-missing-projects:[PROJ...]:list any missing project(s)
+# list-missing-projects:[PROJECT...]:list any missing project(s)
 function ove-list-missing-projects {
 	local d
 	declare -A m
@@ -6131,7 +6131,9 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "buildme" ] ||
 		[ "${subcommand}" == "buildme-parallel" ] ||
-		[ "${subcommand}" == "install-pkg" ]; then
+		[ "${subcommand}" == "export" ] ||
+		[ "${subcommand}" == "install-pkg" ] ||
+		[ "${subcommand}" == "list-missing-projects" ]; then
 		wordlist=${OVE_PROJECT_LIST}
 	elif [ "${subcommand}" == "run" ]; then
 		if [ ${size} -eq 2 ]; then
@@ -6269,10 +6271,6 @@ function ove_bash_complete {
 		[ "${subcommand}" == "systest-parallel" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(ove-list-systests)
-		fi
-	elif [ "${subcommand}" == "export" ]; then
-		if [ ${size} -ge 2 ]; then
-			wordlist=${OVE_PROJECT_LIST}
 		fi
 	elif [ "${subcommand}" == "apply" ]; then
 		if [ ${size} -ge 2 ]; then
