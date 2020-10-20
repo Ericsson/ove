@@ -2022,18 +2022,13 @@ function ove_revtab_status_parse {
 	tense="$1"
 	shift
 
-	# refresh status
-	ove-status > /dev/null
-
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
 
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list "$@")
-	elif [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && \grep -q "\[.*${tense}.*\]" ${OVE_PROJECT_STATE_DIR}/revtab-status; then
-		repos=$(\grep "\[.*${tense}.*\]" ${OVE_PROJECT_STATE_DIR}/revtab-status | \
-			\cut -d: -f1 | \
-			\xargs)
+	elif ove_any_repo ${tense}; then
+		repos=$(ove_list_repos ${tense})
 	else
 		repos=${OVE_REPO_LIST}
 	fi
@@ -2245,13 +2240,13 @@ function ove_revtab_check_one {
 	fi
 
 	if [ ${co} -eq 1 ]; then
-		if test -z "$(\git -C ${OVE_BASE_DIR}/${name} --no-pager status --porcelain -uno)"; then
+		if ove_repo_is_dirty ${OVE_BASE_DIR}/${name}; then
+			ove_echo_error_noprefix "${name}: cannot checkout '${revision}' as repo is dirty"
+		else
 			m=$(\xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
 			ove_revtab_checkout ${name} |& \sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#name}))}))|g" \
 				-e "2,10s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
 			ove_patch_repositories
-		else
-			ove_echo_yellow_noprefix "${name}: cannot checkout '${revision}' as repo is dirty:"
 		fi
 	fi
 
@@ -3955,11 +3950,19 @@ function ove-remote-check {
 	done
 }
 
+function ove_repo_is_dirty {
+	if test -z "$(\git --no-pager -C ${1} status --porcelain -uno)"; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 function ove_dirty_repos {
 	local repo
 
 	# shellcheck disable=SC2016
-	for repo in $(ove_revtab_forall_parallel 'test -z "$(\git --no-pager -C ${repo} status --porcelain -uno)" || echo ${PWD}'); do
+	for repo in $(ove_revtab_forall_parallel 'ove_repo_is_dirty ${repo} && echo ${PWD}'); do
 		ove_repo2shortpath ${repo}
 	done
 }
@@ -4904,6 +4907,24 @@ function ove-am {
 	done
 }
 
+# $1: behind|ahead
+function ove_any_repo {
+	ove-status > /dev/null
+
+	if \grep -q "${1}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+# $1: behind|ahead
+function ove_list_repos {
+	[ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] || return
+
+	\grep "${1}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status | \cut -d: -f1
+}
+
 # pull:[GIT...]:git pull --rebase for all/specified repositories
 function ove-pull {
 	local repo
@@ -4913,13 +4934,26 @@ function ove-pull {
 	set +m
 
 	if [ $# -ge 1 ]; then
-		repos=$(ove_validate_repo_list ${*//${OVE_BASE_DIR}\/})
-	elif [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && \grep -q 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status; then
-		repos=$(\grep 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status | \
-			\cut -d: -f1 | \
-			\xargs)
+		for repo in $(ove_validate_repo_list ${*//${OVE_BASE_DIR}\/}); do
+			if ove_repo_is_dirty ${OVE_BASE_DIR}/${repo}; then
+				ove_echo_error_noprefix "cannot pull '${repo}' as it is dirty"
+				continue
+			fi
+			repos+="${repo} "
+		done
 	else
-		repos=${OVE_REPO_LIST//${OVE_BASE_DIR}\/}
+		if ove_any_repo behind; then
+			for repo in $(ove_list_repos behind); do
+				if ove_repo_is_dirty ${OVE_BASE_DIR}/${repo}; then
+					ove_echo_error_noprefix "cannot pull '${repo}' as it is dirty"
+					continue
+				fi
+
+				repos+="${repo} "
+			done
+		else
+			repos=${OVE_REPO_LIST//${OVE_BASE_DIR}\/}
+		fi
 	fi
 
 	for repo in ${repos}; do
@@ -6215,20 +6249,15 @@ function ove_bash_complete {
 	elif [ "${subcommand}" == "news" ] ||
 		[ "${subcommand}" == "show-news" ] ||
 		[ "${subcommand}" == "pull" ]; then
-		if [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && \grep -q 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status; then
-			wordlist=$(\grep 'behind.*]' ${OVE_PROJECT_STATE_DIR}/revtab-status | \
-				\cut -d: -f1 | \
-				\xargs)
+		if ove_any_repo behind; then
+			wordlist=$(ove_list_repos behind)
 		else
 			wordlist=$(ove_revtab_list_basename)
 		fi
 	elif [ "${subcommand}" == "ahead" ] ||
 		[ "${subcommand}" == "show-ahead" ]; then
-		subcommand=${subcommand##show-}
-		if [ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] && \grep -q "${subcommand}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status; then
-			wordlist=$(\grep "${subcommand}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status | \
-				\cut -d: -f1 | \
-				\xargs)
+		if ove_any_repo ahead; then
+			wordlist=$(ove_list_repos ahead)
 		else
 			wordlist=$(ove_revtab_list_basename)
 		fi
