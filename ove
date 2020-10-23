@@ -1202,7 +1202,7 @@ function ove {
 
 	ove_sanitise_vars
 
-	if [ "$(type -t ove_verify_checksums)" == "function" ] && ! ove_verify_checksums; then
+	if ! ove_verify_checksums && ! ove_reinit; then
 		return 1
 	fi
 
@@ -2114,22 +2114,29 @@ function ove_repos_fetched {
 function ove_verify_checksums {
 	local cfgs
 	local md5
-	local reinit=0
+
+	if [ ${OVE_REVTAB_CHECK} -eq 1 ]; then
+		md5=$(ove_repos_fingerprint)
+		# got updated?
+		if [ -n "${OVE_REPOS_MD5+x}" ] && [ "${md5}" != "${OVE_REPOS_MD5}" ]; then
+			return 1
+		fi
+	fi
 
 	if [ -e "${OVE_PROJECT_DIR}/revtab" ]; then
 		md5=$(\md5sum ${OVE_PROJECT_DIR}/revtab)
 		md5=${md5% *}
 		# got updated?
 		if [ -n "${OVE_REVTAB_MD5+x}" ] && [ "${md5}" != "${OVE_REVTAB_MD5}" ]; then
-			(( reinit+=1 ))
+			return 1
 		# just created?
 		elif [ -z "${OVE_REVTAB_MD5+x}" ]; then
-			(( reinit+=1 ))
+			return 1
 		fi
 	elif [ -n "${OVE_REVTAB_MD5+x}" ]; then
 		# got removed?
 		unset OVE_REVTAB_MD5
-		(( reinit+=1 ))
+		return 1
 	fi
 
 	if [ -e "${OVE_PROJECT_DIR}/projs" ]; then
@@ -2137,15 +2144,15 @@ function ove_verify_checksums {
 		md5=${md5% *}
 		# got updated?
 		if [ -n "${OVE_PROJS_MD5+x}" ] && [ "${md5}" != "${OVE_PROJS_MD5}" ]; then
-			(( reinit+=1 ))
+			return 1
 		# just created?
 		elif [ -z "${OVE_PROJS_MD5+x}" ]; then
-			(( reinit+=1 ))
+			return 1
 		fi
 	elif [ -n "${OVE_PROJS_MD5+x}" ]; then
 		# got removed?
 		unset OVE_PROJS_MD5
-		(( reinit+=1 ))
+		return 1
 	fi
 
 	[ -e "${OVE_PROJECT_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_DIR}/.oveconfig")
@@ -2155,36 +2162,30 @@ function ove_verify_checksums {
 		md5=$(ove_file_fingerprint "${cfgs[@]}")
 		# got updated?
 		if [ -n "${OVE_CONFIG_MD5+x}" ] && [ "${md5}" != "${OVE_CONFIG_MD5}" ]; then
-			(( reinit+=1 ))
+			return 1
 		# just created?
 		elif [ -z "${OVE_CONFIG_MD5+x}" ]; then
-			(( reinit+=1 ))
+			return 1
 		fi
 	elif [ -n "${OVE_CONFIG_MD5+x}" ]; then
 		# got removed?
 		unset OVE_CONFIG_MD5
-		(( reinit+=1 ))
+		return 1
 	fi
 
 	md5=$(ove_file_fingerprint $(ove_list_scripts_directories))
 	# got updated?
 	if [ -n "${OVE_SCRIPTS_MD5+x}" ] && [ "${md5}" != "${OVE_SCRIPTS_MD5}" ]; then
-		(( reinit+=1 ))
+		return 1
 	fi
 
 	if [ "${OVE_REPOS_FETCHED}" != "" ] && [ $(ove_repos_fetched) -ne ${OVE_REPOS_FETCHED} ]; then
-		(( reinit+=1 ))
+		return 1
 	fi
 
 	# OVE_BASE_DIR got lost?
 	if [ -z "${OVE_BASE_DIR+x}" ]; then
-		(( reinit+=1 ))
-	fi
-
-	if [ ${reinit} -gt 0 ]; then
-		if ! ove_reinit; then
-			return 1
-		fi
+		return 1
 	fi
 
 	return 0
@@ -2200,6 +2201,14 @@ function ove_update_checksum_config {
 		OVE_CONFIG_MD5=$(ove_file_fingerprint "${cfgs[@]}")
 		export OVE_CONFIG_MD5
 	fi
+}
+
+function ove_repos_fingerprint {
+	local md5
+
+	md5=$(ove-forall-parallel stat --format '%Y' .git/HEAD | LC_ALL="C" \sort | \md5sum)
+	md5=${md5% *}
+	echo "${md5}"
 }
 
 function ove_update_checksum {
@@ -2220,6 +2229,11 @@ function ove_update_checksum {
 	fi
 
 	ove_update_checksum_config
+
+	if [ ${OVE_REVTAB_CHECK} -eq 1 ]; then
+		OVE_REPOS_MD5=$(ove_repos_fingerprint)
+		export OVE_REPOS_MD5
+	fi
 
 	OVE_SCRIPTS_MD5=$(ove_file_fingerprint "${!ove_scripts_paths[@]}")
 	export OVE_SCRIPTS_MD5
@@ -6280,7 +6294,7 @@ function ove_bash_complete {
 		return 1
 	fi
 
-	if [ "$(type -t ove_verify_checksums)" == "function" ] && ! ove_verify_checksums; then
+	if ! ove_verify_checksums && ! ove_reinit; then
 		return 1
 	fi
 
