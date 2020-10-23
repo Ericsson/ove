@@ -1238,6 +1238,7 @@ function ove {
 		[ "${cmd}" == "dry-run" ] || \
 		[ "${cmd}" == "config" ] || \
 		[ "${cmd}" == "loglevel" ] || \
+		[ "${cmd}" == "revtab-check" ] || \
 		[ "${cmd}" == "checkout" ] || \
 		[ "${cmd}" == "unsource" ]; then
 		ove-${cmd} "${@:2}"
@@ -5533,16 +5534,14 @@ function ove_config_one {
 
 	shift
 	if [ $# -eq 0 ]; then
-		\grep ${grep_prefix} -v '^#' ${cfg} | \
-			\grep -v '^$' | \
+		\grep ${grep_prefix} -E -v '^#|^$' ${cfg} | \
 			LC_ALL="C" \sort | \
 			\grep -E --color=always "${grep_postfix}"
 	elif [ $# -eq 1 ]; then
 		if \grep -q -i $1 ${cfg}; then
-			\grep ${grep_prefix} -v '^#' ${cfg} | \
-				\grep -v '^$' | \
-				\grep -i $1 | \
-				\grep -E --color=always "${grep_postfix}"
+			\grep ${grep_prefix} -E -v '^#|^$' ${cfg} | \
+			\grep -i $1 | \
+			\grep -E --color=always "${grep_postfix}"
 		fi
 	elif [ $# -gt 1 ]; then
 		var=$1
@@ -6067,6 +6066,33 @@ function ove-version {
 	echo "OVE [SHA-1: ${OVE_SHA} @ ${OVE_OS} ${OVE_OS_VER}]"
 }
 
+# revtab-check:[0|1]:disable/enable if OVE should keep repos in sync with 'revtab'
+function ove-revtab-check {
+	local cfg
+	local reinit=0
+
+	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-1]$ ]]; then
+		return 1
+	elif [ $# -eq 1 ]; then
+		if [ ${OVE_REVTAB_CHECK} -eq 0 ] && [ ${1} -eq 1 ]; then
+			reinit=1
+		fi
+
+		OVE_REVTAB_CHECK=$1
+
+		cfg=$(ove_config2file OVE_REVTAB_CHECK)
+		[ "${cfg}" == "" ] && cfg="${OVE_PROJECT_STATE_DIR}/.oveconfig"
+		ove-add-config ${cfg} OVE_REVTAB_CHECK ${OVE_REVTAB_CHECK}
+	fi
+
+	if [ ${OVE_REVTAB_CHECK} -eq 1 ]; then
+		echo "revtab check (=OVE_REVTAB_CHECK) is ENABLED for this workspace"
+		[ ${reinit} -eq 1 ] && ove_reinit
+	else
+		echo "revtab check (=OVE_REVTAB_CHECK) is DISABLED for this workspace"
+	fi
+}
+
 # loglevel:[LEVEL] :show or change loglevel [0-7]
 function ove-loglevel {
 	local bcc_tool
@@ -6131,7 +6157,7 @@ function ove-loglevel {
 		fi
 
 		OVE_LOGLEVEL=$1
-		cfg=$(ove-config OVE_LOGLEVEL | \tail -1 | \awk '{print $1}')
+		cfg=$(ove_config2file OVE_LOGLEVEL)
 		[ "${cfg}" == "" ] && cfg="${OVE_PROJECT_STATE_DIR}/.oveconfig"
 		ove-add-config ${cfg} OVE_LOGLEVEL $1
 	fi
@@ -6862,6 +6888,9 @@ function ove_init {
 	if [ -z "${OVE_AUTOCORRECT+x}" ]; then
 		OVE_AUTOCORRECT=0
 		export OVE_AUTOCORRECT
+	fi
+	if [ -z "${OVE_REVTAB_CHECK+x}" ]; then
+		export OVE_REVTAB_CHECK=1
 	fi
 	export OVE_REPO_LIST
 	export OVE_ECHO

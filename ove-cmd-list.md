@@ -92,6 +92,7 @@
 | reset                    | [GIT...]                                              | git reset -p for all/specified repositories                                                                           |
 | reset-ahead              |                                                       | git reset --hard HEAD~N where N is #commits ahead for ALL repositories                                                |
 | reset-hard               | [GIT...]                                              | git reset --hard for all/specified repositories, use with care                                                        |
+| revtab-check             | [0\|1]                                                | disable/enable if OVE should keep repos in sync with 'revtab'                                                         |
 | revtab-diff              | <rev> <rev>                                           | print changes between two project revisions                                                                           |
 | run                      | \|TIMEOUT COMMAND                                     | run one OVE command in terminal\|tmux                                                                                 |
 | select-configuration     | [PATTERN\|default]                                    | select build configuration for each project                                                                           |
