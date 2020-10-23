@@ -62,9 +62,16 @@ function ove_unsource {
 	# clean config variables
 	if [ -e ${HOME}/.oveconfig ]; then
 		ove_read_config ${HOME}/.oveconfig clean
-	elif [ "${OVE_PROJECT_DIR}" != "" ] && \
+	fi
+
+	if [ "${OVE_PROJECT_DIR}" != "" ] && \
 		[ -e "${OVE_PROJECT_DIR}/.oveconfig" ]; then
 		ove_read_config ${OVE_PROJECT_DIR}/.oveconfig clean
+	fi
+
+	if [ "${OVE_PROJECT_STATE_DIR}" != "" ] && \
+		[ -e "${OVE_PROJECT_STATE_DIR}/.oveconfig" ]; then
+		ove_read_config ${OVE_PROJECT_STATE_DIR}/.oveconfig clean
 	fi
 
 	# unset old ove[-_] functions
@@ -1150,6 +1157,25 @@ function ove-loop {
 	fi
 }
 
+# fix broken vars
+function ove_sanitise_vars {
+	local corrupt
+
+	# corrupt OVE_LOGLEVEL?
+	if [ -n "${OVE_LOGLEVEL}" ]; then
+		corrupt=0
+		if ! [ "${OVE_LOGLEVEL}" -eq "${OVE_LOGLEVEL}" ] 2> /dev/null; then
+			corrupt=1
+		elif ! [[ "${OVE_LOGLEVEL}" =~ ^[0-8]$ ]]; then
+			corrupt=1
+		fi
+
+		[ ${corrupt} -eq 1 ] && ove-loglevel 1 > /dev/null
+	fi
+
+	return 0
+}
+
 function ove {
 	local args
 	local bcc_tool
@@ -1173,6 +1199,8 @@ function ove {
 	if ! ove_get_base_dir > /dev/null; then
 		return 1
 	fi
+
+	ove_sanitise_vars
 
 	if [ "$(type -t ove_verify_checksums)" == "function" ] && ! ove_verify_checksums; then
 		return 1
@@ -1206,6 +1234,7 @@ function ove {
 
 		return 1
 	elif [ "${cmd}" == "!" ] || \
+		[ "${cmd}" == "add-config" ] || \
 		[ "${cmd}" == "dry-run" ] || \
 		[ "${cmd}" == "config" ] || \
 		[ "${cmd}" == "loglevel" ] || \
@@ -2082,6 +2111,7 @@ function ove_repos_fetched {
 }
 
 function ove_verify_checksums {
+	local cfgs
 	local md5
 	local reinit=0
 
@@ -2117,7 +2147,25 @@ function ove_verify_checksums {
 		(( reinit+=1 ))
 	fi
 
-	md5=$(ove_dir_fingerprint $(ove_list_scripts_directories))
+	[ -e "${OVE_PROJECT_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_DIR}/.oveconfig")
+	[ -e "${OVE_PROJECT_STATE_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_STATE_DIR}/.oveconfig")
+	[ -e "${HOME}/.oveconfig" ] && cfgs+=("${HOME}/.oveconfig")
+	if [ "${#cfgs[@]}" -ne 0 ]; then
+		md5=$(ove_file_fingerprint "${cfgs[@]}")
+		# got updated?
+		if [ -n "${OVE_CONFIG_MD5+x}" ] && [ "${md5}" != "${OVE_CONFIG_MD5}" ]; then
+			(( reinit+=1 ))
+		# just created?
+		elif [ -z "${OVE_CONFIG_MD5+x}" ]; then
+			(( reinit+=1 ))
+		fi
+	elif [ -n "${OVE_CONFIG_MD5+x}" ]; then
+		# got removed?
+		unset OVE_CONFIG_MD5
+		(( reinit+=1 ))
+	fi
+
+	md5=$(ove_file_fingerprint $(ove_list_scripts_directories))
 	# got updated?
 	if [ -n "${OVE_SCRIPTS_MD5+x}" ] && [ "${md5}" != "${OVE_SCRIPTS_MD5}" ]; then
 		(( reinit+=1 ))
@@ -2141,6 +2189,18 @@ function ove_verify_checksums {
 	return 0
 }
 
+function ove_update_checksum_config {
+	local cfgs
+
+	[ -e "${OVE_PROJECT_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_DIR}/.oveconfig")
+	[ -e "${OVE_PROJECT_STATE_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_STATE_DIR}/.oveconfig")
+	[ -e "${HOME}/.oveconfig" ] && cfgs+=("${HOME}/.oveconfig")
+	if [ ${#cfgs[@]} -ne 0 ]; then
+		OVE_CONFIG_MD5=$(ove_file_fingerprint "${cfgs[@]}")
+		export OVE_CONFIG_MD5
+	fi
+}
+
 function ove_update_checksum {
 	local md5
 
@@ -2157,7 +2217,10 @@ function ove_update_checksum {
 		OVE_PROJS_MD5=${md5}
 		export OVE_PROJS_MD5
 	fi
-	OVE_SCRIPTS_MD5=$(ove_dir_fingerprint "${!ove_scripts_paths[@]}")
+
+	ove_update_checksum_config
+
+	OVE_SCRIPTS_MD5=$(ove_file_fingerprint "${!ove_scripts_paths[@]}")
 	export OVE_SCRIPTS_MD5
 
 	OVE_REPOS_FETCHED=$(ove_repos_fetched)
@@ -2597,14 +2660,12 @@ function ove_list_projects {
 }
 export -f ove_list_projects
 
-# $*: dir...
-function ove_dir_md5sum_parallel {
-	local f
-
+# $*: file(s)
+function ove_file_md5sum_parallel {
 	[ $# -eq 0 ] && return 1
 
 	while [ $# -ne 0 ]; do
-		! [ -d ${1} ] && shift && continue
+		! [ -e ${1} ] && shift && continue
 		while read -r line; do
 			\md5sum ${line} &
 		done < <(\find ${1} -type f)
@@ -2613,8 +2674,8 @@ function ove_dir_md5sum_parallel {
 	wait
 }
 
-# $*: dir...
-function ove_dir_fingerprint {
+# $*: file(s)
+function ove_file_fingerprint {
 	[ $# -eq 0 ] && return 1
 
 	if [ -n "${OVE_DRY_RUN+x}" ] && [ "${OVE_DRY_RUN}" -eq 1 ]; then
@@ -2622,7 +2683,7 @@ function ove_dir_fingerprint {
 		return
 	fi
 
-	ove_dir_md5sum_parallel "${@}" | \
+	ove_file_md5sum_parallel "${@}" | \
 		LC_ALL="C" \sort -k 2 | \
 		\md5sum | \
 		\cut -d' ' -f1
@@ -2668,10 +2729,10 @@ function ove-make {
 				done
 			fi
 
-			fingerprint_a=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
+			fingerprint_a=$(ove_file_fingerprint ${OVE_STAGE_DIR})
 			ove_projects_cmd "${proj}" build
 			ove_projects_cmd "${proj}" install
-			fingerprint_b=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
+			fingerprint_b=$(ove_file_fingerprint ${OVE_STAGE_DIR})
 
 			# remember if project modified the stage dir
 			if [ "${fingerprint_a}" != "${fingerprint_b}" ]; then
@@ -2699,7 +2760,7 @@ function ove-make {
 			i=${ove_projects_name2index[${target}]}
 			# has deps?
 			if [ "${ove_projects_deps[${i}]}" != "" ]; then
-				fingerprint_a=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
+				fingerprint_a=$(ove_file_fingerprint ${OVE_STAGE_DIR})
 
 				for dep in ${ove_projects_deps[${i}]}; do
 					if ! [[ -v ove_projects_name2index[${dep}] ]]; then
@@ -2717,7 +2778,7 @@ function ove-make {
 					fi
 				done
 
-				fingerprint_b=$(ove_dir_fingerprint ${OVE_STAGE_DIR})
+				fingerprint_b=$(ove_file_fingerprint ${OVE_STAGE_DIR})
 
 				# clean the project if OVE_STAGE_DIR was updated
 				if [ "${fingerprint_a}" != "${fingerprint_b}" ]; then
@@ -5463,58 +5524,160 @@ function ove-blame {
 	done
 }
 
-# config:[CONFIG]:show or manipulate .oveconfig
+# $1: oveconfig file
+# $2: config
+# $3: value
+function ove_config_one {
+	local cfg=$1
+	local var
+
+	shift
+	if [ $# -eq 0 ]; then
+		\grep ${grep_prefix} -v '^#' ${cfg} | \
+			\grep -v '^$' | \
+			LC_ALL="C" \sort | \
+			\grep -E --color=always "${grep_postfix}"
+	elif [ $# -eq 1 ]; then
+		if \grep -q -i $1 ${cfg}; then
+			\grep ${grep_prefix} -v '^#' ${cfg} | \
+				\grep -v '^$' | \
+				\grep -i $1 | \
+				\grep -E --color=always "${grep_postfix}"
+		fi
+	elif [ $# -gt 1 ]; then
+		var=$1
+		if \grep -q -w ${var} ${cfg}; then
+			\sed -i -e "s|\(^${var}\s\+\).*|\1${*:2}|g" ${cfg}
+			ove_config_one ${cfg} ${var}
+		fi
+	fi
+}
+
+# add-config:FILE CONFIG VALUE:add config/value pair to one oveconfig file
+function ove-add-config {
+	local cfg
+	local val
+	local var
+
+	if [ $# -lt 3 ]; then
+		ove-help "^${FUNCNAME/ove-/} "
+		return 1
+	fi
+
+	cfg=$(\readlink -f $1)
+	if ! ove_config_validate_filename ${cfg}; then
+		return 1
+	fi
+	var=$2
+	val="${*:3}"
+
+	if [ -w "${cfg%/*}" ]; then
+		if \grep -q "^${var} " ${cfg} &> /dev/null; then
+			\sed -i "s/^${var}.*/${var} ${val}/g" ${cfg}
+		else
+			echo "${var} ${val}" >> ${cfg}
+		fi
+		ove_update_checksum_config
+		ove_config_init
+	fi
+
+	return 0
+}
+
+function ove_config_validate_filename {
+	if [ "$1" == "${OVE_PROJECT_DIR}/.oveconfig" ] ||
+		[ "$1" == "${OVE_PROJECT_STATE_DIR}/.oveconfig" ] ||
+		[ "$1" == "${HOME}/.oveconfig" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+function ove_config_validate_file {
+	local f
+
+	f=$(\readlink -f $1)
+	[ -s "$f" ] || return 1
+	ove_config_validate_filename "${f}" || return 1
+
+	return 0
+}
+
+function ove_config2file {
+	\grep -H "^${1} " \
+		${OVE_PROJECT_DIR}/.oveconfig \
+		${OVE_PROJECT_STATE_DIR}/.oveconfig \
+		${HOME}/.oveconfig 2> /dev/null | \
+		\tail -1 | \
+		\cut -d: -f1
+}
+
+# config:[FILE[CONFIG[[VALUE]]]]|[CONFIG[[VALUE]]]:show/modify .oveconfig files, configs are read in order so last config takes precedence
 function ove-config {
 	local cfg
 	local cfg_diff
+	local cfgs
 	local d
-	local grep_pattern
-	local var
+	local grep_prefix
+	local grep_postfix
 
-	if [ -e "${HOME}/.oveconfig" ]; then
-		cfg=${HOME}/.oveconfig
-		cfg_diff="$(diff -y --suppress-common-lines ${HOME}/.oveconfig <(\git -C ${OVE_PROJECT_DIR} show HEAD:.oveconfig) \
-			| \awk '{print $1}')"
-	elif [ -e "${OVE_PROJECT_DIR}/.oveconfig" ]; then
-		cfg=${OVE_PROJECT_DIR}/.oveconfig
+	if [ $# -gt 0 ] && ove_config_validate_file $1; then
+		cfgs=("${1}")
+		shift
+	else
+		cfgs=()
+		[ -e "${OVE_PROJECT_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_DIR}/.oveconfig")
+		[ -e "${OVE_PROJECT_STATE_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_STATE_DIR}/.oveconfig")
+		[ -e "${HOME}/.oveconfig" ] && cfgs+=("${HOME}/.oveconfig")
+	fi
+
+	if [ ${#cfgs[@]} -eq 0 ]; then
+		ove_echo_error_noprefix "no oveconfig found"
+		return 1
+	elif [ ${#cfgs[@]} -gt 1 ]; then
+		grep_prefix="-H"
+	fi
+
+	# try to mark any local changes in ${OVE_PROJECT_DIR}/.oveconfig
+	grep_postfix='$'
+	if \git -C ${OVE_PROJECT_DIR} ls-files --error-unmatch ${OVE_PROJECT_DIR}/.oveconfig &> /dev/null; then
 		cfg_diff="$(\git -C ${OVE_PROJECT_DIR} diff --no-color -U1 --raw ${OVE_PROJECT_DIR}/.oveconfig | \
 			\grep '^+[A-Z]\+'| \
 			\cut -b2- | \
 			\awk '{print $1}')"
-	else
-		return
+		for d in ${cfg_diff}; do
+			if [ ${#cfgs[@]} -gt 1 ]; then
+				grep_postfix+="|${OVE_PROJECT_DIR}/.oveconfig.*${d} "
+			else
+				grep_postfix+="|${d} "
+			fi
+		done
 	fi
 
-	grep_pattern="$"
-	for d in ${cfg_diff}; do
-		grep_pattern+="|${d} "
-	done
+	# shellcheck disable=SC2126
+	if [ $# -gt 1 ] && [ $(\grep "^${1} " ${cfgs[*]} | \wc -l) -gt 1 ]; then
+		ove_echo_yellow_noprefix "'${1}' is present in more than one .oveconfig:"
+		while true; do
+			\grep "^${1} " "${cfgs[@]}" | \cut -d: -f1
+			read -r -p "config: "
+			for cfg in ${cfgs[*]}; do
+				if [ "${REPLY}" == "${cfg}" ]; then
+					cfgs=("${REPLY}")
+					break 2
+				fi
+			done
+			echo "error: try again, specify one of these files:"
+		done
+	fi
 
-	if [ $# -eq 0 ]; then
-			\grep -v '^#' ${cfg} | \
-				\grep -v '^$' | \
-				LC_ALL="C" \sort | \
-				\grep -E --color "${grep_pattern}"
-	elif [ $# -eq 1 ]; then
-		if ! \grep -q -i $1 ${cfg}; then
-			echo "error: pattern '$1' not found"
-		else
-			grep_pattern+="|$1"
-			\grep -v '^#' ${cfg} | \
-				\grep -v '^$' | \
-				\grep -i $1 | \
-				\grep -E --color "${grep_pattern}"
-		fi
-	elif [ $# -gt 1 ]; then
-		var=$1
-		shift
-		if \grep -q -w ${var} ${cfg}; then
-			\sed -i -e "s|\(^${var}\s\+\).*|\1$*|g" ${cfg}
-			ove_config_init
-			ove-config ${var}
-		else
-			echo "error: config '${var}' not found"
-		fi
+	for cfg in "${cfgs[@]}"; do
+		ove_config_one ${cfg} "$@"
+	done | \column -t -s:
+
+	if [ $# -gt 1 ]; then
+		ove_update_checksum_config
+		ove_config_init
 	fi
 }
 
@@ -5907,6 +6070,7 @@ function ove-version {
 # loglevel:[LEVEL] :show or change loglevel [0-7]
 function ove-loglevel {
 	local bcc_tool
+	local cfg
 	local prefix
 	local sysctl_f
 
@@ -5967,13 +6131,9 @@ function ove-loglevel {
 		fi
 
 		OVE_LOGLEVEL=$1
-		if [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
-			if ! [ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ]; then
-				echo "OVE_LOGLEVEL $1" > ${OVE_PROJECT_STATE_DIR}/.oveconfig
-			else
-				\sed -i "s/^OVE_LOGLEVEL.*/OVE_LOGLEVEL $1/g" ${OVE_PROJECT_STATE_DIR}/.oveconfig
-			fi
-		fi
+		cfg=$(ove-config OVE_LOGLEVEL | \tail -1 | \awk '{print $1}')
+		[ "${cfg}" == "" ] && cfg="${OVE_PROJECT_STATE_DIR}/.oveconfig"
+		ove-add-config ${cfg} OVE_LOGLEVEL $1
 	fi
 
 	while true; do
@@ -6230,10 +6390,12 @@ function ove_bash_complete {
 			return
 		fi
 	elif [ "${subcommand}" == "config" ]; then
-		if [ ${size} -eq 2 ]; then
-			wordlist=$(ove-config | \awk '{print $1}')
-		elif [ ${size} -gt 2 ]; then
-			return
+		cmd="ove-config"
+		if [ ${size} -eq 3 ] && eval ove_config_validate_file ${COMP_WORDS[2]}; then
+			cmd+=" ${COMP_WORDS[2]}"
+		fi
+		if [ ${size} -ge 2 ]; then
+			wordlist=$(${cmd} | \sed  -e "s/\x1B\[[0-9;]*[mK]//g" | sed -e "s|^/.*/\.oveconfig\s\+ ||g" | \awk '{print $1}')
 		fi
 	elif [ "${subcommand}" == "add" ] ||
 		[ "${subcommand}" == "diff" ] ||
@@ -6585,15 +6747,17 @@ function ove_dirs_init {
 }
 
 function ove_config_init {
-	# own config has precedence over project config
-	if [ -e ${HOME}/.oveconfig ]; then
-		ove_read_config ${HOME}/.oveconfig
-	elif [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
+	if [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
 		ove_read_config ${OVE_PROJECT_DIR}/.oveconfig
 	fi
 
-	# project state config?
-	[ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ] && ove_read_config ${OVE_PROJECT_STATE_DIR}/.oveconfig
+	if [ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ]; then
+		ove_read_config ${OVE_PROJECT_STATE_DIR}/.oveconfig
+	fi
+
+	if [ -e ${HOME}/.oveconfig ]; then
+		ove_read_config ${HOME}/.oveconfig
+	fi
 }
 
 # re-initialize
@@ -6634,6 +6798,8 @@ function ove_init {
 		return 1
 	fi
 	ove_scripts_init
+
+	ove_sanitise_vars
 
 	if [ "${OVE_LOGLEVEL}" == "2" ]; then
 		set -x
@@ -6793,28 +6959,8 @@ function ove_post_checks {
 		fi
 	fi
 
-	# inform the user if .oveconfig was updated within the project
-	if [ -e ${HOME}/.oveconfig ] && [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
-		res=$(LC_ALL="C" \comm -3 <(\grep -E -v '(^#.*$)|(^$)' ${HOME}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort) \
-			<(\grep -E -v '(^#.*$)|(^$)' ${OVE_PROJECT_DIR}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort))
-		if [ "${res}" != "" ]; then
-			echo
-			echo "--->"
-			ove_echo_yellow_noprefix "warning: the two files:"
-			echo
-			echo "${HOME}/.oveconfig"
-			echo "${OVE_PROJECT_DIR}/.oveconfig"
-			echo
-			echo "...are different. Do a merge!?"
-			echo
-			\diff <(\grep -E -v '(^#.*$)|(^$)' ${HOME}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort) \
-				<(\grep -E -v '(^#.*$)|(^$)' ${OVE_PROJECT_DIR}/.oveconfig | \awk '{ print $1 }' | LC_ALL="C" \sort)
-			echo "<---"
-		fi
-	fi
-
 	# check for config doublets
-	for f in ${HOME}/.oveconfig ${OVE_PROJECT_DIR}/.oveconfig; do
+	for f in ${HOME}/.oveconfig ${OVE_PROJECT_DIR}/.oveconfig ${OVE_PROJECT_STATE_DIR}/.oveconfig; do
 		[ -e ${f} ] || continue
 
 		mapfile -t doublets < <(\grep -E -v '#|^$' ${f} | \awk '{print $1}' | LC_ALL="C" \sort | \uniq -d)

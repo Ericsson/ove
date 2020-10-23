@@ -2,6 +2,7 @@
 |-|-|-|
 | !                        | [PATTERN]                                             | view last command output in pager (=${OVE_PAGER}) or print lines matching PATTERN                                     |
 | add                      | [GIT...]                                              | git add -p for all/specified repositories                                                                             |
+| add-config               | FILE CONFIG VALUE                                     | add config/value pair to one oveconfig file                                                                           |
 | add-repo                 | URL\|URL NAME                                         | add a new repo to this OVE workspace                                                                                  |
 | ag                       | PATTERN                                               | search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]                                |
 | ahead                    | [GIT...]                                              | list local commits not yet published for all/specified repositories                                                   |
@@ -23,7 +24,7 @@
 | clean                    | [PROJECT...]                                          | run the 'clean' step for all or individual projects                                                                   |
 | clean-parallel           | [PROJECT...]                                          | run the 'clean' step for all or individual projects (in parallel)                                                     |
 | commit                   | [GIT...]                                              | git commit for all/specified git repositories                                                                         |
-| config                   | [CONFIG]                                              | show or manipulate .oveconfig                                                                                         |
+| config                   | [FILE[CONFIG[[VALUE]]]]\|[CONFIG[[VALUE]]]            | show/modify .oveconfig files, configs are read in order so last config takes precedence                               |
 | configure                | [PROJECT...]                                          | run the 'configure' step for all or individual projects                                                               |
 | configure-parallel       | [PROJECT...]                                          | run the 'configure' step for all or individual projects (in parallel)                                                 |
 | describe                 | [GIT...]                                              | git describe+log+status combo for all/specified git repositories                                                      |
