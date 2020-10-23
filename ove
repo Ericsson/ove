@@ -80,11 +80,10 @@ function ove_unsource {
 	# remove stage string from ${PATH}
 	if [ "${OVE_STAGE_DIR}" != "" ] && \
 		[[ ${PATH} == *"${OVE_STAGE_DIR}"* ]]; then
-		PATH=${PATH/:${OVE_STAGE_DIR}${OVE_PREFIX}\/bin/}
+		PATH=${PATH/${OVE_STAGE_DIR}${OVE_PREFIX}\/bin:/}
+		PATH=${PATH/${OVE_STAGE_DIR}${OVE_PREFIX}\/sbin:/}
 		export PATH
 	fi
-
-	unset LD_LIBRARY_PATH
 
 	for f in ${OVE_ALL_CONFIG_FILES}; do
 		[ -e "${f}" ] && ove_read_config ${f} clean
@@ -1833,6 +1832,8 @@ function ove_projects_cmd {
 		if [ ${OVE_DRY_RUN} -eq 0 ]; then
 			# run it
 			eval "${target}_version=${ove_projects_version[${i}]} \
+				LD_LIBRARY_PATH=${OVE_LD_LIBRARY_PATH}${LD_LIBRARY_PATH} \
+				PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH} \
 				${OVE_PROJECT_DIR}/projects/${target}/${cmd} \
 				${OVE_REDIRECT_OUTPUT}"
 		else
@@ -7151,7 +7152,15 @@ function ove_init {
 	export OVE_ARCHIVE_DIR
 	: "${OVE_PREFIX:=/usr}"
 	export OVE_PREFIX
-	OVE_LDFLAGS=" -L${OVE_STAGE_DIR}${OVE_PREFIX}/lib -Wl,-rpath-link=${OVE_STAGE_DIR}${OVE_PREFIX}/lib"
+	read -r -a OVE_LD_SEARCH_PATH < <(\ld --verbose | \
+		\sed -n -e '/^SEARCH_DIR/s,SEARCH_DIR("=\?,,g' -e 's,");,,gp')
+	OVE_LDFLAGS=""
+	for dir in "${OVE_LD_SEARCH_PATH[@]}"; do
+		OVE_LDFLAGS+=" -L${OVE_STAGE_DIR}${dir}"
+	done
+	for dir in "${OVE_LD_SEARCH_PATH[@]}"; do
+		OVE_LDFLAGS+=" -Wl,-rpath-link=${OVE_STAGE_DIR}${dir}"
+	done
 	export OVE_LDFLAGS
 	OVE_CPPFLAGS=" -I${OVE_STAGE_DIR}${OVE_PREFIX}/include"
 	export OVE_CPPFLAGS
@@ -7166,11 +7175,29 @@ function ove_init {
 	export OVE_PAGER
 
 	# Update executable and run-time library paths
-	PATH=${PATH}:${OVE_STAGE_DIR}${OVE_PREFIX}/bin
+	PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/sbin:${PATH}
+	PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/bin:${PATH}
 	export PATH
 
-	LD_LIBRARY_PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/lib
-	export LD_LIBRARY_PATH
+	OVE_PKG_CONFIG_PATH="${OVE_STAGE_DIR}${OVE_PREFIX}/lib/pkgconfig:"
+	OVE_LD_LIBRARY_PATH=""
+	for dir in "${OVE_LD_SEARCH_PATH[@]}"; do
+		OVE_LD_LIBRARY_PATH+="${OVE_STAGE_DIR}${dir}:"
+	done
+	unset OVE_LD_SEARCH_PATH
+
+	if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
+		[[ ${OVE_OS} == *"Debian"* ]]; then
+		OVE_LD_LIBRARY_PATH+="${OVE_STAGE_DIR}${OVE_PREFIX}/lib/x86_64-linux-gnu:"
+		OVE_LD_LIBRARY_PATH+="${OVE_STAGE_DIR}${OVE_PREFIX}/lib"
+		OVE_PKG_CONFIG_PATH+="${OVE_STAGE_DIR}${OVE_PREFIX}/lib/x86_64-linux-gnu/pkgconfig"
+	else
+		OVE_LD_LIBRARY_PATH+="${OVE_STAGE_DIR}${OVE_PREFIX}/lib:"
+		OVE_LD_LIBRARY_PATH+="${OVE_STAGE_DIR}${OVE_PREFIX}/lib64"
+		OVE_PKG_CONFIG_PATH+="${OVE_STAGE_DIR}${OVE_PREFIX}/lib64/pkgconfig"
+	fi
+	export OVE_LD_LIBRARY_PATH
+	export OVE_PKG_CONFIG_PATH
 
 	if ! ( for i in {1..205} ; do echo -n 123456789, ; done ; echo ) | \column -t -s "," &> /dev/null; then
 		OVE_COLUMN_WRAP_BUG=1
@@ -7585,6 +7612,9 @@ function ove_command_to_package {
 		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
 			package="dev-vcs/git"
 		fi
+	# ld
+	elif [ "$1" == "ld" ]; then
+		package="binutils"
 	# less
 	elif [ "$1" == "less" ]; then
 		if [[ ${OVE_OS} == *"Gentoo"* ]]; then
@@ -7646,6 +7676,7 @@ function ove_deps {
 	deps+=('file')
 	deps+=('git')
 	deps+=('gzip')
+	deps+=('ld')
 	deps+=('less')
 	deps+=('pgrep')
 	deps+=('script')
@@ -8300,6 +8331,7 @@ function ove_externals {
 	cmds+=('grep')
 	cmds+=('head')
 	cmds+=('inotifywait')
+	cmds+=('ld')
 	cmds+=('less')
 	cmds+=('locate')
 	cmds+=('lsb_release')

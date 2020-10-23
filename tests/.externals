@@ -64,6 +64,8 @@ head:
 inotifywait:
 ove_echo_cyan_error "0 files touched, not using inotifywait"
 
+ld:
+
 less:
 
 locate:
