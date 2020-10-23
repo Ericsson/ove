@@ -8050,6 +8050,11 @@ function ove_externals {
 	fi
 }
 
+# nop: :do nothing
+function ove-nop {
+	:
+}
+
 # pre-push: :shell-check+unittest+generate-doc combo
 function ove-pre-push {
 	ove_echo "shell-check"

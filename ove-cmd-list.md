@@ -81,6 +81,7 @@
 | make                     | [PROJECT[-nodeps]]                                    | build project(s)                                                                                                      |
 | mrproper                 | [y]                                                   | remove untracked files AND removes '${OVE_STAGE_DIR}/*' AND removes '${OVE_ARCHIVE_DIR}/*', use with care             |
 | news                     | [GIT...]                                              | list upstream changes for all/specified repositories                                                                  |
+| nop                      |                                                       | do nothing                                                                                                            |
 | pre-push                 |                                                       | shell-check+unittest+generate-doc combo                                                                               |
 | pull                     | [GIT...]                                              | git pull --rebase for all/specified repositories                                                                      |
 | readme                   | [GIT...]                                              | display README files for all/specified git repositories                                                               |
