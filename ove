@@ -4909,7 +4909,7 @@ function ove-am {
 
 # $1: behind|ahead
 function ove_any_repo {
-	ove-status > /dev/null
+	ove_revtab_status &> /dev/null
 
 	if \grep -q "${1}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status; then
 		return 0
@@ -5874,9 +5874,17 @@ function ove-show {
 	for SHA in "$@"; do
 		# remove dirty tags
 		SHA=${SHA%-dirty}
-		ove_revtab_forall "\git --no-pager -C \${repo} show ${SHA} -- &> /dev/null && \
-			clear && \
-			GIT_PAGER=\"less -Ps'\${repo_basename} ${SHA}'\" \git -C \${repo} show --color=always ${SHA} --"
+		ove_revtab_forall "
+		if \git --no-pager -C \${repo} show ${SHA} -- &> /dev/null; then \
+			clear; \
+			if [ ${OVE_LESS_MORE_OPTIONS} -eq 1 ]; then
+				less_opt=\"-X -R -Ps'\${repo_basename} ${SHA}'\";
+			else
+				less_opt=\"less -R\";
+			fi;
+			LESS=\${less_opt} \git -p -C \${repo} show --color=always ${SHA} --;
+			unset less_opt
+		fi"
 	done
 }
 
@@ -6614,11 +6622,6 @@ function ove_init {
 	OVE_DIR="$(cd "$(\dirname "$(\readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/})")"; pwd -P)"
 	OVE_BASENAME="$(\basename $(\readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/}))"
 	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
-	if ! ( for i in {1..205} ; do echo -n 123456789, ; done ; echo ) | \column -t -s "," &> /dev/null; then
-		OVE_COLUMN_WRAP_BUG=1
-	else
-		OVE_COLUMN_WRAP_BUG=0
-	fi
 
 	ove_dirs_init
 	ove_config_init
@@ -6736,6 +6739,20 @@ function ove_init {
 
 	LD_LIBRARY_PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/lib
 	export LD_LIBRARY_PATH
+
+	if ! ( for i in {1..205} ; do echo -n 123456789, ; done ; echo ) | \column -t -s "," &> /dev/null; then
+		OVE_COLUMN_WRAP_BUG=1
+	else
+		OVE_COLUMN_WRAP_BUG=0
+	fi
+	export OVE_COLUMN_WRAP_BUG
+
+	if \less --version |& \head -1 | \grep -q '^less [0-9]\+'; then
+		OVE_LESS_MORE_OPTIONS=1
+	else
+		OVE_LESS_MORE_OPTIONS=0
+	fi
+	export OVE_LESS_MORE_OPTIONS
 
 	return 0
 }
@@ -7635,7 +7652,7 @@ function ove_watch_logs {
 				LC_ALL="C" \sort | \
 				\tail -1)
 
-			if [ "${cmd}" == "less" ]; then
+			if [ "${cmd}" == "\less" ] && [ "${OVE_LESS_MORE_OPTIONS}" -eq 1 ]; then
 				_cmd="\less -Ps\"${log}\""
 			else
 				_cmd=${cmd}
