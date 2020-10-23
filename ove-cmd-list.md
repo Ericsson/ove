@@ -3,7 +3,7 @@
 | !                        | [PATTERN]                                             | view last command output in pager (=${OVE_PAGER}) or print lines matching PATTERN                                     |
 | add                      | [GIT...]                                              | git add -p for all/specified repositories                                                                             |
 | add-config               | FILE CONFIG VALUE                                     | add config/value pair to one oveconfig file                                                                           |
-| add-repo                 | URL\|URL NAME                                         | add a new repo to this OVE workspace                                                                                  |
+| add-repo                 | URL\|URL NAME\|URL NAME REV                           | add a new repo to this OVE workspace                                                                                  |
 | ag                       | PATTERN                                               | search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]                                |
 | ahead                    | [GIT...]                                              | list local commits not yet published for all/specified repositories                                                   |
 | am                       | FILE                                                  | apply a bz2 archive file created with 'format-patch'                                                                  |

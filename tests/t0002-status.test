@@ -1,5 +1,5 @@
 bash -c "OVE_TEST_STRING; ove status"
->>> /git-[0-9].*master.*origin/
+>>> /git-[0-9].*OVE_DEFAULT_BRANCH_NAME.*origin/
 >>>= 0
 
 bash -c "OVE_TEST_STRING; ove status | wc -l"

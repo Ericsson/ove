@@ -6840,8 +6840,6 @@ function ove_init {
 
 	[ "$1" == "quick" ] && return 0
 
-	ove_update_checksum
-
 	if ! ove_validate_self; then
 		return 1
 	fi
@@ -6857,37 +6855,36 @@ function ove_init {
 	ove_update_tab_complete
 
 	if [ -z "${OVE_DRY_RUN+x}" ]; then
-		OVE_DRY_RUN=0
-		export OVE_DRY_RUN
+		export OVE_DRY_RUN=0
 	fi
 
 	if [ -z "${OVE_FETCH_MAX_PARALLEL+x}" ]; then
-		OVE_FETCH_MAX_PARALLEL=0
-		export OVE_FETCH_MAX_PARALLEL
+		export OVE_FETCH_MAX_PARALLEL=0
 	fi
 
 	if [ -z "${OVE_CLONE_MAX_PARALLEL+x}" ]; then
-		OVE_CLONE_MAX_PARALLEL=0
-		export OVE_CLONE_MAX_PARALLEL
+		export OVE_CLONE_MAX_PARALLEL=0
 	fi
 
 	if [ -z "${OVE_LOCATE_SEARCH_DIR+x}" ]; then
 		OVE_LOCATE_SEARCH_DIR=$(\readlink -f $(\dirname ${HOME}))
 		export OVE_LOCATE_SEARCH_DIR
 	fi
-	if [ -z "${OVE_PROJECT_CI_BRANCH+x}" ]; then
-		OVE_PROJECT_CI_BRANCH="origin/master"
-		export OVE_PROJECT_CI_BRANCH
+
+	if [ -z "${OVE_DEFAULT_BRANCH_NAME+x}" ]; then
+		export OVE_DEFAULT_BRANCH_NAME="main"
 	fi
+
+	if [ -z "${OVE_PROJECT_CI_BRANCH+x}" ]; then
+		export OVE_PROJECT_CI_BRANCH="origin/${OVE_DEFAULT_BRANCH_NAME}"
+	fi
+
 	if [ -z "${OVE_LOGLEVEL+x}" ]; then
-		OVE_LOGLEVEL=1
-		OVE_REDIRECT_OUTPUT=""
-		export OVE_REDIRECT_OUTPUT
-		export OVE_LOGLEVEL
+		export OVE_LOGLEVEL=1
+		export OVE_REDIRECT_OUTPUT=""
 	fi
 	if [ -z "${OVE_AUTOCORRECT+x}" ]; then
-		OVE_AUTOCORRECT=0
-		export OVE_AUTOCORRECT
+		export OVE_AUTOCORRECT=0
 	fi
 	if [ -z "${OVE_REVTAB_CHECK+x}" ]; then
 		export OVE_REVTAB_CHECK=1
@@ -6948,6 +6945,8 @@ function ove_init {
 		OVE_LESS_MORE_OPTIONS=0
 	fi
 	export OVE_LESS_MORE_OPTIONS
+
+	ove_update_checksum
 
 	return 0
 }
@@ -7625,6 +7624,7 @@ function ove_unittest_preparations {
 		\mkdir -p ${unittest_dir}/remotes/git-${a}
 		if ! [ -d .git ]; then
 			\git init -q --bare ${unittest_dir}/remotes/git-${a}
+			git -C ${unittest_dir}/remotes/git-${a} symbolic-ref HEAD refs/heads/${OVE_DEFAULT_BRANCH_NAME}
 		fi
 	done
 
@@ -7653,8 +7653,10 @@ function ove_unittest_preparations {
 			touch ${filename}
 			\git add ${filename}
 			\git commit -q -m "${filename}"
+			[ $i -eq 1 ] && \git checkout -q -b ${OVE_DEFAULT_BRANCH_NAME} 2> /dev/null
 			\git tag 0.0.${i}
-			\git push -q origin master
+			\git push -q origin ${OVE_DEFAULT_BRANCH_NAME}
+			[ $i -eq 1 ] && \git branch -q --set-upstream-to=origin/${OVE_DEFAULT_BRANCH_NAME}
 			\git push -q --tags
 		done
 	done
@@ -7662,9 +7664,9 @@ function ove_unittest_preparations {
 	# create revtab
 	for a in $(\seq 1 ${nbr_of_repos}); do
 		if [ $((a%2)) -eq 0 ]; then
-			echo "testing/src/git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} master" >> ${unittest_dir}/git-top/revtab
+			echo "testing/src/git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} ${OVE_DEFAULT_BRANCH_NAME}" >> ${unittest_dir}/git-top/revtab
 		else
-			echo "git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} master" >> ${unittest_dir}/git-top/revtab
+			echo "git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} ${OVE_DEFAULT_BRANCH_NAME}" >> ${unittest_dir}/git-top/revtab
 		fi
 	done
 
@@ -7699,7 +7701,9 @@ function ove_unittest_preparations {
 	# commit and push
 	\git -C ${unittest_dir}/git-top add .
 	\git -C ${unittest_dir}/git-top commit -q -m "test"
-	\git -C ${unittest_dir}/git-top push -q origin master
+	\git -C ${unittest_dir}/git-top checkout -q -b ${OVE_DEFAULT_BRANCH_NAME} 2> /dev/null
+	\git -C ${unittest_dir}/git-top push -q origin ${OVE_DEFAULT_BRANCH_NAME}
+	\git -C ${unittest_dir}/git-top branch -q --set-upstream-to=origin/${OVE_DEFAULT_BRANCH_NAME}
 }
 
 # unittest:[TEST...]:run all/specific unit tests
@@ -7767,6 +7771,7 @@ function ove-unittest {
 		--diff \
 		-a \
 		-DOVE_TEST_STRING="source ove > /dev/null; ove_init > /dev/null; ove-loglevel 0 > /dev/null" \
+		-DOVE_DEFAULT_BRANCH_NAME=${OVE_DEFAULT_BRANCH_NAME} \
 		-Dnbr_of_systests=$(((nbr_of_systests * 2) + 1)) \
 		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
 		-Dnbr_of_files=$((nbr_of_files * nbr_of_repos + (4 * nbr_of_projs) + 4)) \
@@ -7865,12 +7870,13 @@ function ove_watch_logs {
 	fi
 }
 
-# add-repo:URL|URL NAME:add a new repo to this OVE workspace
+# add-repo:URL|URL NAME|URL NAME REV:add a new repo to this OVE workspace
 function ove-add-repo {
 	local name
+	local revision=${OVE_DEFAULT_BRANCH_NAME}
 	local url
 
-	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
+	if [ $# -eq 0 ] || [ $# -gt 3 ]; then
 		ove-help "^${FUNCNAME/ove-/} "
 		return 1
 	fi
@@ -7882,13 +7888,20 @@ function ove-add-repo {
 
 		read -r -p "name? (leave empty to name it '${name}'): "
 		[ "${REPLY}" != "" ] && name="${REPLY}"
-
-	else
+	elif [ $# -eq 2 ]; then
 		name="${2}"
+	elif [ $# -eq 3 ]; then
+		name="${2}"
+		revision="${3}"
+	fi
+
+	if [ $# -eq 1 ] || [ $# -eq 2 ]; then
+		read -r -p "revision? (leave empty to use '${revision}'): "
+		[ "${REPLY}" != "" ] && revision="${REPLY}"
 	fi
 
 	# update revtab
-	echo "${name} ${url} ${url} master" | \tee -a "${OVE_PROJECT_DIR}/revtab"
+	echo "${name} ${url} ${url} ${revision}" | \tee -a "${OVE_PROJECT_DIR}/revtab"
 
 	# parse revtab
 	if ! ove_revtab_parse; then
