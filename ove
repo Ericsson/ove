@@ -5658,11 +5658,7 @@ function ove-config {
 			\cut -b2- | \
 			\awk '{print $1}')"
 		for d in ${cfg_diff}; do
-			if [ ${#cfgs[@]} -gt 1 ]; then
-				grep_postfix+="|${OVE_PROJECT_DIR}/.oveconfig.*${d} "
-			else
-				grep_postfix+="|${d} "
-			fi
+			grep_postfix+="|\b${d}\b"
 		done
 	fi
 
