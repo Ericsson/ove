@@ -50,6 +50,8 @@ function ove_read_config {
 }
 
 function ove_unsource {
+	local f
+
 	# remove stage string from ${PATH}
 	if [ "${OVE_STAGE_DIR}" != "" ] && \
 		[[ ${PATH} == *"${OVE_STAGE_DIR}"* ]]; then
@@ -59,20 +61,9 @@ function ove_unsource {
 
 	unset LD_LIBRARY_PATH
 
-	# clean config variables
-	if [ -e ${HOME}/.oveconfig ]; then
-		ove_read_config ${HOME}/.oveconfig clean
-	fi
-
-	if [ "${OVE_PROJECT_DIR}" != "" ] && \
-		[ -e "${OVE_PROJECT_DIR}/.oveconfig" ]; then
-		ove_read_config ${OVE_PROJECT_DIR}/.oveconfig clean
-	fi
-
-	if [ "${OVE_PROJECT_STATE_DIR}" != "" ] && \
-		[ -e "${OVE_PROJECT_STATE_DIR}/.oveconfig" ]; then
-		ove_read_config ${OVE_PROJECT_STATE_DIR}/.oveconfig clean
-	fi
+	for f in ${OVE_ALL_CONFIG_FILES}; do
+		[ -e "${f}" ] && ove_read_config ${f} clean
+	done
 
 	# unset old ove[-_] functions
 	unset -f $(compgen -A function | \
@@ -2155,9 +2146,7 @@ function ove_verify_checksums {
 		return 1
 	fi
 
-	[ -e "${OVE_PROJECT_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_DIR}/.oveconfig")
-	[ -e "${OVE_PROJECT_STATE_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_STATE_DIR}/.oveconfig")
-	[ -e "${HOME}/.oveconfig" ] && cfgs+=("${HOME}/.oveconfig")
+	read -r -a cfgs < <(ove_list_oveconfig_files)
 	if [ "${#cfgs[@]}" -ne 0 ]; then
 		md5=$(ove_file_fingerprint "${cfgs[@]}")
 		# got updated?
@@ -2194,9 +2183,7 @@ function ove_verify_checksums {
 function ove_update_checksum_config {
 	local cfgs
 
-	[ -e "${OVE_PROJECT_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_DIR}/.oveconfig")
-	[ -e "${OVE_PROJECT_STATE_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_STATE_DIR}/.oveconfig")
-	[ -e "${HOME}/.oveconfig" ] && cfgs+=("${HOME}/.oveconfig")
+	read -r -a cfgs < <(ove_list_oveconfig_files)
 	if [ ${#cfgs[@]} -ne 0 ]; then
 		OVE_CONFIG_MD5=$(ove_file_fingerprint "${cfgs[@]}")
 		export OVE_CONFIG_MD5
@@ -5598,11 +5585,11 @@ function ove-add-config {
 }
 
 function ove_config_validate_filename {
-	if [ "$1" == "${OVE_PROJECT_DIR}/.oveconfig" ] ||
-		[ "$1" == "${OVE_PROJECT_STATE_DIR}/.oveconfig" ] ||
-		[ "$1" == "${HOME}/.oveconfig" ]; then
-		return 0
-	fi
+	local f
+
+	for f in ${OVE_ALL_CONFIG_FILES}; do
+		[ "$1" == "${f}" ] && return 0
+	done
 
 	return 1
 }
@@ -5619,11 +5606,21 @@ function ove_config_validate_file {
 
 function ove_config2file {
 	\grep -H "^${1} " \
-		${OVE_PROJECT_DIR}/.oveconfig \
-		${OVE_PROJECT_STATE_DIR}/.oveconfig \
-		${HOME}/.oveconfig 2> /dev/null | \
+		${OVE_ALL_CONFIG_FILES} 2> /dev/null | \
 		\tail -1 | \
 		\cut -d: -f1
+}
+
+function ove_list_oveconfig_files {
+	local f
+	local files
+
+	for f in ${OVE_ALL_CONFIG_FILES}; do
+		[ -e "${f}" ] && files+=("${f}")
+	done
+
+	[ ${#files[@]} -eq 0 ] && return
+	echo "${files[@]}"
 }
 
 # config:[FILE[CONFIG[[VALUE]]]]|[CONFIG[[VALUE]]]:show/modify .oveconfig files, configs are read in order so last config takes precedence
@@ -5639,10 +5636,7 @@ function ove-config {
 		cfgs=("${1}")
 		shift
 	else
-		cfgs=()
-		[ -e "${OVE_PROJECT_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_DIR}/.oveconfig")
-		[ -e "${OVE_PROJECT_STATE_DIR}/.oveconfig" ] && cfgs+=("${OVE_PROJECT_STATE_DIR}/.oveconfig")
-		[ -e "${HOME}/.oveconfig" ] && cfgs+=("${HOME}/.oveconfig")
+		read -r -a cfgs < <(ove_list_oveconfig_files)
 	fi
 
 	if [ ${#cfgs[@]} -eq 0 ]; then
@@ -5686,7 +5680,7 @@ function ove-config {
 
 	for cfg in "${cfgs[@]}"; do
 		ove_config_one ${cfg} "$@"
-	done | \column -t -s:
+	done | \sed -e 's|^\(/.*\):|\1#|' -e 's| \+|#|' | \column -t -s'#'
 
 	if [ $# -gt 1 ]; then
 		ove_update_checksum_config
@@ -6787,17 +6781,18 @@ function ove_dirs_init {
 }
 
 function ove_config_init {
-	if [ -e ${OVE_PROJECT_DIR}/.oveconfig ]; then
-		ove_read_config ${OVE_PROJECT_DIR}/.oveconfig
-	fi
+	local f
 
-	if [ -e ${OVE_PROJECT_STATE_DIR}/.oveconfig ]; then
-		ove_read_config ${OVE_PROJECT_STATE_DIR}/.oveconfig
-	fi
+	# keep the order
+	OVE_ALL_CONFIG_FILES="${OVE_PROJECT_DIR}/.oveconfig"
+	OVE_ALL_CONFIG_FILES+=" ${OVE_PROJECT_STATE_DIR}/.oveconfig"
+	OVE_ALL_CONFIG_FILES+=" ${OVE_GLOBAL_STATE_DIR}/.oveconfig"
+	OVE_ALL_CONFIG_FILES+=" ${HOME}/.oveconfig"
+	export OVE_ALL_CONFIG_FILES
 
-	if [ -e ${HOME}/.oveconfig ]; then
-		ove_read_config ${HOME}/.oveconfig
-	fi
+	for f in ${OVE_ALL_CONFIG_FILES}; do
+		[ -e "${f}" ] && ove_read_config ${f}
+	done
 }
 
 # re-initialize
@@ -7002,9 +6997,7 @@ function ove_post_checks {
 	fi
 
 	# check for config doublets
-	for f in ${HOME}/.oveconfig ${OVE_PROJECT_DIR}/.oveconfig ${OVE_PROJECT_STATE_DIR}/.oveconfig; do
-		[ -e ${f} ] || continue
-
+	for f in $(ove_list_oveconfig_files); do
 		mapfile -t doublets < <(\grep -E -v '#|^$' ${f} | \awk '{print $1}' | LC_ALL="C" \sort | \uniq -d)
 		if [ "${doublets[*]}" != "" ]; then
 			echo
