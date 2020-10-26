@@ -6480,11 +6480,13 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "config" ]; then
 		cmd="ove-config"
-		if [ ${size} -eq 3 ] && eval ove_config_validate_file ${COMP_WORDS[2]}; then
-			cmd+=" ${COMP_WORDS[2]}"
-		fi
-		if [ ${size} -ge 2 ]; then
-			wordlist=$(${cmd} | \sed  -e "s/\x1B\[[0-9;]*[mK]//g" | sed -e "s|^/.*/\.oveconfig\s\+ ||g" | \awk '{print $1}')
+		if [ "$(ove_list_oveconfig_files)" != "" ]; then
+			if [ ${size} -eq 3 ] && eval ove_config_validate_file ${COMP_WORDS[2]}; then
+				cmd+=" ${COMP_WORDS[2]}"
+			fi
+			if [ ${size} -ge 2 ]; then
+				wordlist=$(${cmd} | \sed  -e "s/\x1B\[[0-9;]*[mK]//g" -e "s|^/.*/\.oveconfig||g" -e "s|^:||" | \awk '{print $1}')
+			fi
 		fi
 	elif [ "${subcommand}" == "add" ] ||
 		[ "${subcommand}" == "diff" ] ||
