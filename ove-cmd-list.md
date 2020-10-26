@@ -95,6 +95,7 @@
 | reset-hard               | [GIT...]                                              | git reset --hard for all/specified repositories, use with care                                                        |
 | revtab-check             | [0\|1]                                                | disable/enable if OVE should keep repos in sync with 'revtab'                                                         |
 | revtab-diff              | <rev> <rev>                                           | print changes between two project revisions                                                                           |
+| rm-logs                  | [DAYS]                                                | remove OVE logs older than 30\|DAYS days. DAYS=0 => all logs                                                          |
 | run                      | \|TIMEOUT COMMAND                                     | run one OVE command in terminal\|tmux                                                                                 |
 | select-configuration     | [PATTERN\|default]                                    | select build configuration for each project                                                                           |
 | setup                    |                                                       | print how to set this project up                                                                                      |

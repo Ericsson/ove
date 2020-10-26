@@ -86,6 +86,7 @@ rm:
 \find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
 echo "$ rm -rf ${OVE_STAGE_DIR}/*"
 echo "$ rm -rf ${OVE_ARCHIVE_DIR}/*"
+\xargs rm -v
 echo -e "\t$ rm -rf ${corrupt_repos}"
 
 rmdir:

@@ -109,7 +109,7 @@ function ove_welcome_msg {
 	script_ver=$(\script --version | \awk '{print $NF}')
 	if [[ ${script_ver} =~ ^2.3[12] ]]; then
 		echo
-		echo "NOTE: due to a bug in $(command -v script) 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any OVE command. Upgrade package: '$(ove_command_to_package script)'."
+		ove_echo_note_noprefix "due to a bug in $(command -v script) 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any OVE command. Upgrade package: '$(ove_command_to_package script)'."
 	fi
 }
 
@@ -3097,6 +3097,10 @@ function ove_echo_warning {
 
 function ove_echo_cyan_noprefix {
 	echo -e "${ove_cyan}""$*""${ove_blank}"
+}
+
+function ove_echo_note_noprefix {
+	echo -e "${ove_cyan}NOTE:${ove_blank} $*"
 }
 
 function ove_echo_error {
@@ -6233,6 +6237,57 @@ function ove-lastlog {
 		\column -t -s@
 }
 
+# rm-logs:[DAYS]:remove OVE logs older than 30|DAYS days. DAYS=0 => all logs
+function ove-rm-logs {
+	local days=30
+	local find_opt="-mtime +${days}"
+
+	if  [ $# -gt 1 ]; then
+		ove-help ^${FUNCNAME/ove-/}
+		return 1
+	fi
+
+	if [ $# -eq 1 ]; then
+		if ! [[ "${1}" =~ ^[0-9]+$ ]]; then
+			echo "error: just numbers"
+			return 1
+		fi
+
+		if [ $1 -eq 0 ]; then
+			find_opt=""
+		else
+			days=$1
+			find_opt="-mtime +${days}"
+		fi
+	fi
+
+	find_opt="-maxdepth 2 -type f ${find_opt} -print"
+
+	if [ "$(\find ${OVE_LOG_DIR} ${find_opt} -quit)" == "" ]; then
+		ove_echo_error_noprefix "no OVE log files older than ${days} days found here: ${OVE_LOG_DIR}"
+		return 1
+	fi
+
+	\find ${OVE_LOG_DIR} ${find_opt} | \cat -n
+	echo
+	echo -n "Proceed to remove "
+	if [ $# -eq 1 ] && [ $1 -eq 0 ]; then
+		read -p "ALL files (list above) from '${OVE_LOG_DIR}' (y/N) " -r
+	else
+		read -p "files older than ${days} days (list above) from '${OVE_LOG_DIR}' (y/N) " -r
+	fi
+	[[ ${REPLY} =~ ^[Yy]$ ]] || return 1
+	read -p "Are you really sure? (y/N) " -r
+	[[ ${REPLY} =~ ^[Yy]$ ]] || return 1
+
+	\find ${OVE_LOG_DIR} ${find_opt} | \
+		\grep -v ${OVE_LAST_COMMAND} | \
+		\xargs rm -v
+	\find ${OVE_LOG_DIR} -maxdepth 1 -empty -type d -delete
+
+	return 0
+}
+
 # authors: :list author summary for all git repositories
 function ove-authors {
 	local repo
@@ -6898,6 +6953,11 @@ function ove_init {
 	if [ -z "${OVE_REVTAB_CHECK+x}" ]; then
 		export OVE_REVTAB_CHECK=1
 	fi
+
+	if [ -z "${OVE_LOG_DIR_DISK_USAGE_WARNING_MB+x}" ]; then
+		export OVE_LOG_DIR_DISK_USAGE_WARNING_MB=100
+	fi
+
 	export OVE_REPO_LIST
 	export OVE_ECHO
 	export OVE_BUILD_ORDER
@@ -6971,6 +7031,27 @@ function ove_corrupt_repos {
 	done
 }
 
+function ove_disk_usage_check {
+	local log_dir_disk_usage
+
+	# log dir disk usage
+	if [ ${OVE_LOG_DIR_DISK_USAGE_WARNING_MB} -ne 0 ]; then
+		log_dir_disk_usage=$(\du -B 1M -s ${OVE_LOG_DIR})
+		log_dir_disk_usage=${log_dir_disk_usage%%$'\t'*}
+		if [ $log_dir_disk_usage -ge ${OVE_LOG_DIR_DISK_USAGE_WARNING_MB} ]; then
+			echo
+			ove_echo_note_noprefix "the directory '${OVE_LOG_DIR}' is ${log_dir_disk_usage}MB, you might want to:"
+			echo
+			echo "- remove OVE logs older than X days:"
+			echo -e "\tove rm-logs X"
+			echo "- increase the threshold (=${OVE_LOG_DIR_DISK_USAGE_WARNING_MB}MB) for this NOTE 10x times:"
+			echo -e "\tove add-config ${OVE_GLOBAL_STATE_DIR}/.oveconfig OVE_LOG_DIR_DISK_USAGE_WARNING_MB $((OVE_LOG_DIR_DISK_USAGE_WARNING_MB * 10))"
+			echo "- suppress this NOTE:"
+			echo -e "\tove add-config ${OVE_GLOBAL_STATE_DIR}/.oveconfig OVE_LOG_DIR_DISK_USAGE_WARNING_MB 0"
+		fi
+	fi
+}
+
 function ove_post_checks {
 	local c
 	local corrupt_repos
@@ -7037,6 +7118,9 @@ function ove_post_checks {
 		echo -e "\t$ ove fetch ${corrupt_repos}"
 		echo
 	fi
+
+	# inform user if logs etc. take too much space
+	ove_disk_usage_check
 
 	# validate revtab revision
 	ove_revtab_check
@@ -7267,7 +7351,7 @@ function ove-init {
 	# inform user on repos with same fetch url
 	mapfile -t doublets < <(\awk '{print $2}' ${revtab_file} | \grep -v noremote | LC_ALL="C" \sort | \uniq -d)
 	if [ "${doublets[*]}" != "" ]; then
-		ove_echo_yellow_noprefix "NOTE: found a few repos with the same fetch url:"
+		ove_echo_note_noprefix "found a few repos with the same fetch url:"
 		for d in ${doublets[*]}; do
 			\grep -H -n "${d}" ${revtab_file}
 			echo "--"
