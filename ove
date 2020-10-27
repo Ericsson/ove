@@ -5577,7 +5577,7 @@ function ove-add-config {
 
 	if [ -w "${cfg%/*}" ]; then
 		if \grep -q "^${var} " ${cfg} &> /dev/null; then
-			\sed -i "s/^${var}.*/${var} ${val}/g" ${cfg}
+			\sed -i "s|^${var}.*|${var} ${val}|g" ${cfg}
 		else
 			echo "${var} ${val}" >> ${cfg}
 		fi
@@ -6474,6 +6474,13 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" == "add-config" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist=${OVE_ALL_CONFIG_FILES}
+		elif [ ${size} -eq 3 ]; then
+			wordlist="$(type ove_config_builtins_init | \
+				\grep -o 'OVE_[A-Z_]\+')"
+		fi
 	elif [ "${subcommand}" == "config" ]; then
 		cmd="ove-config"
 		if [ "$(ove_list_oveconfig_files)" != "" ]; then
@@ -6848,6 +6855,50 @@ function ove_config_init {
 	done
 }
 
+function ove_config_builtins_init {
+	if [ -z "${OVE_DRY_RUN+x}" ]; then
+		export OVE_DRY_RUN=0
+	fi
+
+	if [ -z "${OVE_FETCH_MAX_PARALLEL+x}" ]; then
+		export OVE_FETCH_MAX_PARALLEL=0
+	fi
+
+	if [ -z "${OVE_CLONE_MAX_PARALLEL+x}" ]; then
+		export OVE_CLONE_MAX_PARALLEL=0
+	fi
+
+	if [ -z "${OVE_LOCATE_SEARCH_DIR+x}" ]; then
+		OVE_LOCATE_SEARCH_DIR=$(\readlink -f $(\dirname ${HOME}))
+		export OVE_LOCATE_SEARCH_DIR
+	fi
+
+	if [ -z "${OVE_DEFAULT_BRANCH_NAME+x}" ]; then
+		export OVE_DEFAULT_BRANCH_NAME="main"
+	fi
+
+	if [ -z "${OVE_PROJECT_CI_BRANCH+x}" ]; then
+		export OVE_PROJECT_CI_BRANCH="origin/${OVE_DEFAULT_BRANCH_NAME}"
+	fi
+
+	if [ -z "${OVE_LOGLEVEL+x}" ]; then
+		export OVE_LOGLEVEL=1
+		export OVE_REDIRECT_OUTPUT=""
+	fi
+
+	if [ -z "${OVE_AUTOCORRECT+x}" ]; then
+		export OVE_AUTOCORRECT=0
+	fi
+
+	if [ -z "${OVE_REVTAB_CHECK+x}" ]; then
+		export OVE_REVTAB_CHECK=1
+	fi
+
+	if [ -z "${OVE_LOG_DIR_DISK_USAGE_WARNING_MB+x}" ]; then
+		export OVE_LOG_DIR_DISK_USAGE_WARNING_MB=100
+	fi
+}
+
 # re-initialize
 function ove_reinit {
 	if ! ove_init; then
@@ -6916,45 +6967,7 @@ function ove_init {
 
 	ove_update_tab_complete
 
-	if [ -z "${OVE_DRY_RUN+x}" ]; then
-		export OVE_DRY_RUN=0
-	fi
-
-	if [ -z "${OVE_FETCH_MAX_PARALLEL+x}" ]; then
-		export OVE_FETCH_MAX_PARALLEL=0
-	fi
-
-	if [ -z "${OVE_CLONE_MAX_PARALLEL+x}" ]; then
-		export OVE_CLONE_MAX_PARALLEL=0
-	fi
-
-	if [ -z "${OVE_LOCATE_SEARCH_DIR+x}" ]; then
-		OVE_LOCATE_SEARCH_DIR=$(\readlink -f $(\dirname ${HOME}))
-		export OVE_LOCATE_SEARCH_DIR
-	fi
-
-	if [ -z "${OVE_DEFAULT_BRANCH_NAME+x}" ]; then
-		export OVE_DEFAULT_BRANCH_NAME="main"
-	fi
-
-	if [ -z "${OVE_PROJECT_CI_BRANCH+x}" ]; then
-		export OVE_PROJECT_CI_BRANCH="origin/${OVE_DEFAULT_BRANCH_NAME}"
-	fi
-
-	if [ -z "${OVE_LOGLEVEL+x}" ]; then
-		export OVE_LOGLEVEL=1
-		export OVE_REDIRECT_OUTPUT=""
-	fi
-	if [ -z "${OVE_AUTOCORRECT+x}" ]; then
-		export OVE_AUTOCORRECT=0
-	fi
-	if [ -z "${OVE_REVTAB_CHECK+x}" ]; then
-		export OVE_REVTAB_CHECK=1
-	fi
-
-	if [ -z "${OVE_LOG_DIR_DISK_USAGE_WARNING_MB+x}" ]; then
-		export OVE_LOG_DIR_DISK_USAGE_WARNING_MB=100
-	fi
+	ove_config_builtins_init
 
 	export OVE_REPO_LIST
 	export OVE_ECHO
