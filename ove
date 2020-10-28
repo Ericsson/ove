@@ -4278,7 +4278,7 @@ function ove_get_paths_recursive {
 
 	[ $# -ne 1 ] && return 1
 
-	[[ -v ove_projects_name2index[${proj}] ]] || return
+	[[ -v ove_projects_name2index[${1}] ]] || return
 	i=${ove_projects_name2index[$1]}
 
 	if [ "${ove_projects_deps[${i}]}" == "" ]; then
