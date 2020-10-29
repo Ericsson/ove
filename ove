@@ -1404,9 +1404,8 @@ function ove-fzf {
 
 		if \tr ' ' '\n' <<<"${OVE_BUILT_INS_WITHOUT_ARGS}" | \grep -q ^${cmd}$; then
 			if [ "$1" == "loop" ]; then
-				echo "$ ove-loop ? ? ? ${cmd}"
-				# shellcheck disable=SC2035
-				ove-loop ? ? ? ${cmd}
+				echo "$ ove-loop x x x ${cmd}"
+				ove-loop x x x ${cmd}
 				echo -
 			else
 				ove-run 0 ${cmd}
@@ -1421,9 +1420,8 @@ function ove-fzf {
 		ove_bash_complete
 		if [ ${#COMPREPLY[@]} -eq 0 ]; then
 			if [ $1 == "loop" ]; then
-				echo "$ ove-loop ? ? ? ${cmd}"
-				# shellcheck disable=SC2035
-				ove-loop ? ? ? ${cmd}
+				echo "$ ove-loop x x x ${cmd}"
+				ove-loop x x x ${cmd}
 				echo -
 			else
 				ove-run 0 ${cmd}
@@ -1437,9 +1435,8 @@ function ove-fzf {
 					--preview-window=down:1)
 
 			if [ "$1" == "loop" ]; then
-				echo "$ ove-loop ? ? ? ${cmd} ${args}"
-				# shellcheck disable=SC2035
-				ove-loop ? ? ? ${cmd} ${args}
+				echo "$ ove-loop x x x ${cmd} ${args}"
+				ove-loop x x x ${cmd} ${args}
 				echo -
 			else
 				ove-run 0 ${cmd} ${args}
