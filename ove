@@ -749,7 +749,7 @@ function ove-strace-graph {
 		return 1
 	fi
 
-	ove_strace_create_graph $1 $(\basename $1)
+	ove_strace_create_graph $1 ${1##*/}
 }
 
 # strace-execve-timeline:DIR:run strace execve timeline analysis on DIR
@@ -2915,7 +2915,7 @@ function ove-forowel {
 			cd %s
 			ove_init
 			$*
-			" $(ove_echo_green_noprefix $(\basename ${projs[i]})) ${projs[i]})
+			" $(ove_echo_green_noprefix ${projs[i]##*/}) ${projs[i]})
 		(( i+=1 ))
 	done
 	eval "${cmd}"
@@ -3744,7 +3744,7 @@ function ove-refresh {
 					fi
 				done
 			fi
-			echo" $(ove_echo_green_noprefix $(\basename ${projs[i]})) ${projs[i]} ${projs[i]} $(ove_echo_green_noprefix $(\basename ${projs[i]})))
+			echo" $(ove_echo_green_noprefix ${projs[i]##*/}) ${projs[i]} ${projs[i]} $(ove_echo_green_noprefix ${projs[i]##*/}))
 	done
 	eval "${str}"
 }
@@ -5069,7 +5069,7 @@ function ove-apply {
 
 	\cp -a "$1" "${OVE_PROJECT_TMP_DIR}"
 	cd ${OVE_PROJECT_TMP_DIR} || return 1
-	p="${OVE_PROJECT_TMP_DIR}/$(\basename $1)"
+	p="${OVE_PROJECT_TMP_DIR}/${1##*/}"
 
 	# get a list of line numbers where to split the file
 	lineno=$(\grep -n "${ove_yellow_x}" "${p}"| \tail -n +2 | \cut -d: -f1 | \xargs)
@@ -6756,7 +6756,7 @@ function ove-select-configuration {
 				fi
 
 				for c in ${configs}; do
-					if \basename ${c} | \grep -w -q configure-$1; then
+					if \grep -w -q configure-$1 <<< "${c##*/}"; then
 						ove_echo_green_noprefix ${p}:
 						pushd ${OVE_PROJECT_DIR}/projects/${p} &>/dev/null
 						\ln -sfv configure-$1 configure
@@ -6784,7 +6784,7 @@ function ove-select-configuration {
 					\git -C ${OVE_PROJECT_DIR} checkout ${OVE_PROJECT_DIR}/projects/${p}/configure
 				else
 					cfg=$(echo ${configs} | \cut -d' ' -f${REPLY})
-					cfg_basename=$(\basename ${cfg})
+					cfg_basename=${cfg##*/}
 					pushd ${OVE_PROJECT_DIR}/projects/${p} &>/dev/null
 					\ln -sfv ${cfg_basename} configure
 					popd &>/dev/null
@@ -6907,12 +6907,12 @@ function ove_reinit {
 
 # init:initialize OVE workspace
 function ove_init {
-	local base_dir
+	local dir
 
-	if ! base_dir=$(ove_get_base_dir); then
+	if ! dir=$(ove_get_base_dir); then
 		return 1
 	fi
-	OVE_BASE_DIR="${base_dir}"
+	OVE_BASE_DIR="${dir}"
 
 	OVE_ECHO=$(\which echo)
 	OVE_PROJECT_DIR=$(\readlink -f ${OVE_BASE_DIR}/.owel)
@@ -6920,7 +6920,8 @@ function ove_init {
 	OVE_PROJECT_LIST=$(ove_list_projects)
 	OVE_PROJECT_COMMANDS=$(ove_project_commands_list)
 	OVE_DIR="$(cd "$(\dirname "$(\readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/})")"; pwd -P)"
-	OVE_BASENAME="$(\basename $(\readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/}))"
+	dir="$(\readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/})"
+	OVE_BASENAME="${dir##*/}"
 	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
 
 	ove_dirs_init
@@ -8097,6 +8098,7 @@ function ove_externals {
 
 	cmds+=('ag')
 	cmds+=('awk')
+	cmds+=('basename')
 	cmds+=('cat')
 	cmds+=('column')
 	cmds+=('comm')
