@@ -2,6 +2,14 @@ ag:
 
 awk:
 
+basename:
+\xargs -n1 basename)
+wordlist=$(\find ${OVE_DIR}/tests -maxdepth 1 -mindepth 1 -name "t*.test" -type f -exec basename {} .test \;)
+wordlist=$(\find $(\readlink -f ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type d -exec basename {} \;)
+wordlist=$(\find $(\readlink -f ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type f -exec basename {} \;)
+wordlist="default $(\find "${OVE_PROJECT_DIR}/projects" -name "configure-*" -type l -exec basename {} \; | \sed 's/configure-//g')"
+\find ${OVE_DIR}/tests -name 't*.test' -type f -exec basename {} .test \; | LC_ALL="C" \sort
+
 cat:
 \find ${OVE_PROJECT_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \xargs -0 cat >> ${o_dot}
 
@@ -61,7 +69,10 @@ locate:
 
 lsb_release:
 
+md5deep:
+
 md5sum:
+\find "${@}" -type f -print0 | \xargs -0 md5sum
 
 mkdir:
 

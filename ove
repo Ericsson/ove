@@ -2652,21 +2652,20 @@ function ove_list_projects {
 export -f ove_list_projects
 
 # $*: file(s)
-function ove_file_md5sum_parallel {
+function ove_file_md5sum {
 	[ $# -eq 0 ] && return 1
 
-	while [ $# -ne 0 ]; do
-		! [ -e ${1} ] && shift && continue
-		while read -r line; do
-			\md5sum ${line} &
-		done < <(\find ${1} -type f)
-		shift
-	done
-	wait
+	if command -v md5deep > /dev/null; then
+		\md5deep -s -o f -r "${@}"
+	else
+		\find "${@}" -type f -print0 | \xargs -0 md5sum
+	fi
 }
 
 # $*: file(s)
 function ove_file_fingerprint {
+	local md5
+
 	[ $# -eq 0 ] && return 1
 
 	if [ -n "${OVE_DRY_RUN+x}" ] && [ "${OVE_DRY_RUN}" -eq 1 ]; then
@@ -2674,10 +2673,11 @@ function ove_file_fingerprint {
 		return
 	fi
 
-	ove_file_md5sum_parallel "${@}" | \
-		LC_ALL="C" \sort -k 2 | \
-		\md5sum | \
-		\cut -d' ' -f1
+	md5=$(ove_file_md5sum "${@}" | \
+		\awk '{print $1}' | \
+		LC_ALL="C" \sort | \
+		\md5sum)
+	echo ${md5% *}
 }
 
 # make:[PROJECT[-nodeps]]:build project(s)
@@ -4302,23 +4302,34 @@ function ove_validate_revtab {
 }
 
 function ove_validate_self {
+	local funcs
+
 	if \grep ^function ${OVE_SELF} | \grep -q -v 'function ove'; then
 		ove_echo_error_noprefix "functions need to start with 'ove-' or 'ove_'"
 		\grep ^function ${OVE_SELF} | \grep -v 'function ove'
 		return 1
 	fi
 
-	if [ "$(\grep -B1 '^function ove-' ${OVE_SELF} | \
-		\grep '^$' -A1 | \
+	funcs=$(\grep -B1 '^function ove-' ${OVE_SELF})
+
+	if [ "$(\grep '^$' -A1 <<< "${funcs}" | \
 		\awk '{print $2}' | \
 		\xargs)" != "" ]; then
 		ove_echo_error_noprefix "add help for the following function(s):"
-		\grep -B1 '^function ove-.*' ${OVE_SELF} |
-			\grep '^$' -A1 | \
+		\grep '^$' -A1 <<< "${funcs}" | \
 			\awk '{print $2}' | \
 			\xargs
 		return 1
 	fi
+
+	OVE_BUILT_INS_WITHOUT_ARGS=$(\grep ': :' <<< "${funcs}" | \
+		\cut -b3- | \
+		\cut -d: -f1 | \
+		LC_ALL="C" \sort | \
+		\tr '\n' ' ' | \
+		\xargs "${OVE_ECHO}")
+
+	export OVE_BUILT_INS_WITHOUT_ARGS
 }
 
 function ove_validate_projs {
@@ -6593,16 +6604,6 @@ function ove_update_tab_complete {
 	local cmd
 	local oldIFS
 
-	OVE_BUILT_INS_WITHOUT_ARGS=$(\grep -B1 '^function ove-' ${OVE_SELF} | \
-		\grep ': :' | \
-		\cut -b3- | \
-		\cut -d: -f1 | \
-		LC_ALL="C" \sort | \
-		\tr '\n' ' ' | \
-		\xargs "${OVE_ECHO}")
-
-	export OVE_BUILT_INS_WITHOUT_ARGS
-
 	OVE_BUILT_INS=$(ove_get_built_ins)
 
 	# project commands
@@ -8119,6 +8120,7 @@ function ove_externals {
 	cmds+=('less')
 	cmds+=('locate')
 	cmds+=('lsb_release')
+	cmds+=('md5deep')
 	cmds+=('md5sum')
 	cmds+=('mkdir')
 	cmds+=('mktemp')
