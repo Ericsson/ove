@@ -2105,7 +2105,7 @@ function ove_verify_checksums {
 
 	if [ -e "${OVE_PROJECT_DIR}/revtab" ]; then
 		md5=$(\md5sum ${OVE_PROJECT_DIR}/revtab)
-		md5=${md5% *}
+		md5=${md5%% *}
 		# got updated?
 		if [ -n "${OVE_REVTAB_MD5+x}" ] && [ "${md5}" != "${OVE_REVTAB_MD5}" ]; then
 			return 1
@@ -2121,7 +2121,7 @@ function ove_verify_checksums {
 
 	if [ -e "${OVE_PROJECT_DIR}/projs" ]; then
 		md5=$(\md5sum ${OVE_PROJECT_DIR}/projs)
-		md5=${md5% *}
+		md5=${md5%% *}
 		# got updated?
 		if [ -n "${OVE_PROJS_MD5+x}" ] && [ "${md5}" != "${OVE_PROJS_MD5}" ]; then
 			return 1
@@ -2183,7 +2183,7 @@ function ove_repos_fingerprint {
 	local md5
 
 	md5=$(ove-forall-parallel stat --format '%Y' .git/HEAD | LC_ALL="C" \sort | \md5sum)
-	md5=${md5% *}
+	md5=${md5%% *}
 	echo "${md5}"
 }
 
@@ -2192,14 +2192,14 @@ function ove_update_checksum {
 
 	if [ -e "${OVE_PROJECT_DIR}/revtab" ]; then
 		md5=$(\md5sum ${OVE_PROJECT_DIR}/revtab)
-		md5=${md5% *}
+		md5=${md5%% *}
 		OVE_REVTAB_MD5=${md5}
 		export OVE_REVTAB_MD5
 	fi
 
 	if [ -e "${OVE_PROJECT_DIR}/projs" ]; then
 		md5=$(\md5sum ${OVE_PROJECT_DIR}/projs)
-		md5=${md5% *}
+		md5=${md5%% *}
 		OVE_PROJS_MD5=${md5}
 		export OVE_PROJS_MD5
 	fi
@@ -2677,7 +2677,7 @@ function ove_file_fingerprint {
 		\awk '{print $1}' | \
 		LC_ALL="C" \sort | \
 		\md5sum)
-	echo ${md5% *}
+	echo ${md5%% *}
 }
 
 # make:[PROJECT[-nodeps]]:build project(s)
@@ -7018,12 +7018,13 @@ function ove_init {
 	fi
 	export OVE_LESS_MORE_OPTIONS
 
-	OVE_SCRIPT_OPTIONS+="-q "
+	OVE_SCRIPT_OPTIONS="-q "
 	script_help=$(2>&1 \script --help)
 	if [[ "${script_help}" != *"invalid option"* ]]; then
 		[[ "${script_help}" == *"-e"* ]] && OVE_SCRIPT_OPTIONS+="-e "
 		[[ "${script_help}" == *"-f"* ]] && OVE_SCRIPT_OPTIONS+="-f "
 	fi
+	OVE_SCRIPT_OPTIONS="${OVE_SCRIPT_OPTIONS% *}"
 	export OVE_SCRIPT_OPTIONS
 
 	ove_update_checksum

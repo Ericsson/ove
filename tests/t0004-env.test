@@ -4,3 +4,6 @@ bash -c "OVE_TEST_STRING; ove env"
 bash -c "OVE_TEST_STRING; ove env |grep ^OVE_BASE_DIR"
 >>> /OVE_BASE_DIR.*OVE_TEST_BASE/
 >>>= 0
+
+: check for trailing whitespace; bash -c "OVE_TEST_STRING; ove env | grep -q ' $'"
+>>>= 1
