@@ -1174,8 +1174,6 @@ function ove {
 	local cmd
 	local re
 	local ret
-	local script_help
-	local script_opts
 	local strace_expression
 
 	cmd="$1"
@@ -1240,12 +1238,6 @@ function ove {
 		OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/$(\date '+%Y%m%d-%H%M%S%N')-ove-${cmd}-${HOSTNAME}-${OVE_PROJECT_NAME}.log"
 
 		if [ -t 1 ]; then
-			script_help=$(2>&1 \script --help)
-			if [[ "${script_help}" != *"invalid option"* ]]; then
-				[[ "${script_help}" == *"-e"* ]] && script_opts+="-e "
-				[[ "${script_help}" == *"-f"* ]] && script_opts+="-f "
-			fi
-
 			if [ ${OVE_LOGLEVEL} -gt 2 ] && [ ${OVE_LOGLEVEL} -lt 9 ]; then
 				[ -e ${OVE_PROJECT_TMP_DIR}/trace-${cmd} ] && \
 					\rm -rf ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
@@ -1319,7 +1311,7 @@ function ove {
 			# turn off monitor mode to get rid of "Done" messages
 			set +m
 			SHELL=$(command -v bash) \
-				\script ${script_opts} -q -c \
+				\script ${OVE_SCRIPT_OPTIONS} -c \
 				"source ${OVE_BASE_DIR}/ove; ove_init quick && ove-${cmd} ${args}" \
 				${OVE_LAST_COMMAND}
 			ret=$?
@@ -6908,6 +6900,7 @@ function ove_reinit {
 # init:initialize OVE workspace
 function ove_init {
 	local dir
+	local script_help
 
 	if ! dir=$(ove_get_base_dir); then
 		return 1
@@ -7023,6 +7016,14 @@ function ove_init {
 		OVE_LESS_MORE_OPTIONS=0
 	fi
 	export OVE_LESS_MORE_OPTIONS
+
+	OVE_SCRIPT_OPTIONS+="-q "
+	script_help=$(2>&1 \script --help)
+	if [[ "${script_help}" != *"invalid option"* ]]; then
+		[[ "${script_help}" == *"-e"* ]] && OVE_SCRIPT_OPTIONS+="-e "
+		[[ "${script_help}" == *"-f"* ]] && OVE_SCRIPT_OPTIONS+="-f "
+	fi
+	export OVE_SCRIPT_OPTIONS
 
 	ove_update_checksum
 
