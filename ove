@@ -74,17 +74,41 @@ function ove_read_config {
 	done <$1
 }
 
-function ove_unsource {
-	local f
-
-	# remove stage string from ${PATH}
+function ove_unsource_user_env {
+	# cleanup PATH
 	if [ "${OVE_STAGE_DIR}" != "" ] && \
 		[[ ${PATH} == *"${OVE_STAGE_DIR}"* ]]; then
 		PATH=${PATH/${OVE_STAGE_DIR}${OVE_PREFIX}\/bin:/}
 		PATH=${PATH/${OVE_STAGE_DIR}${OVE_PREFIX}\/sbin:/}
-		export PATH
 	fi
 
+	# cleanup LD_LIBRARY_PATH
+	if [ -n "${LD_LIBRARY_PATH}" ]; then
+		LD_LIBRARY_PATH=${LD_LIBRARY_PATH/${OVE_LD_LIBRARY_PATH}/}
+		if [ "${LD_LIBRARY_PATH}" == "" ]; then
+			unset LD_LIBRARY_PATH
+		elif [ ${LD_LIBRARY_PATH:0:1} == ":" ]; then
+			LD_LIBRARY_PATH=${LD_LIBRARY_PATH:1}
+		fi
+	fi
+
+	# cleanup PKG_CONFIG_PATH
+	if [ -n "${PKG_CONFIG_PATH}" ]; then
+		PKG_CONFIG_PATH=${PKG_CONFIG_PATH/${OVE_PKG_CONFIG_PATH}/}
+		if [ "${PKG_CONFIG_PATH}" == "" ]; then
+			unset PKG_CONFIG_PATH
+		elif [ ${PKG_CONFIG_PATH:0:1} == ":" ]; then
+			PKG_CONFIG_PATH=${PKG_CONFIG_PATH:1}
+		fi
+	fi
+}
+
+function ove_unsource {
+	local f
+
+	ove_unsource_user_env
+
+	# clean config variables
 	for f in ${OVE_ALL_CONFIG_FILES}; do
 		[ -e "${f}" ] && ove_read_config ${f} clean
 	done
@@ -1780,6 +1804,7 @@ function ove_list_projects_paths {
 # $2: command
 function ove_projects_cmd {
 	local cmd
+	local e
 	local i
 	local path
 	local re
@@ -1830,10 +1855,15 @@ function ove_projects_cmd {
 		shift 2
 
 		if [ ${OVE_DRY_RUN} -eq 0 ]; then
+			e="${target}_version=${ove_projects_version[${i}]}"
+			if [ ${OVE_TAINT_USER_ENV} -eq 0 ]; then
+				e+=" LD_LIBRARY_PATH=${OVE_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}"
+				e+=" PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH}"
+				e+=" PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/sbin:${OVE_STAGE_DIR}${OVE_PREFIX}/bin:${PATH}"
+			fi
+
 			# run it
-			eval "${target}_version=${ove_projects_version[${i}]} \
-				LD_LIBRARY_PATH=${OVE_LD_LIBRARY_PATH}${LD_LIBRARY_PATH} \
-				PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH} \
+			eval "${e} \
 				${OVE_PROJECT_DIR}/projects/${target}/${cmd} \
 				${OVE_REDIRECT_OUTPUT}"
 		else
@@ -5734,8 +5764,7 @@ function ove-add-config {
 		else
 			echo "${var} ${val}" >> ${cfg}
 		fi
-		ove_update_checksum_config
-		ove_config_init
+		ove_reinit
 	fi
 
 	return 0
@@ -5836,8 +5865,7 @@ function ove-config {
 	done | \sed -e 's|^\(/.*\):|\1#|' -e 's| \+|#|' | \column -t -s'#'
 
 	if [ $# -gt 1 ]; then
-		ove_update_checksum_config
-		ove_config_init
+		ove_reinit
 	fi
 }
 
@@ -7056,6 +7084,10 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_LOG_DIR_DISK_USAGE_WARNING_MB+x}" ]; then
 		export OVE_LOG_DIR_DISK_USAGE_WARNING_MB=100
 	fi
+
+	if [ -z "${OVE_TAINT_USER_ENV+x}" ]; then
+		export OVE_TAINT_USER_ENV=1
+	fi
 }
 
 # re-initialize
@@ -7152,6 +7184,7 @@ function ove_init {
 	export OVE_ARCHIVE_DIR
 	: "${OVE_PREFIX:=/usr}"
 	export OVE_PREFIX
+
 	read -r -a OVE_LD_SEARCH_PATH < <(\ld --verbose | \
 		\sed -n -e '/^SEARCH_DIR/s,SEARCH_DIR("=\?,,g' -e 's,");,,gp')
 	OVE_LDFLAGS=""
@@ -7174,11 +7207,6 @@ function ove_init {
 	OVE_PAGER="less -R"
 	export OVE_PAGER
 
-	# Update executable and run-time library paths
-	PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/sbin:${PATH}
-	PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/bin:${PATH}
-	export PATH
-
 	OVE_PKG_CONFIG_PATH="${OVE_STAGE_DIR}${OVE_PREFIX}/lib/pkgconfig:"
 	OVE_LD_LIBRARY_PATH=""
 	for dir in "${OVE_LD_SEARCH_PATH[@]}"; do
@@ -7198,6 +7226,29 @@ function ove_init {
 	fi
 	export OVE_LD_LIBRARY_PATH
 	export OVE_PKG_CONFIG_PATH
+
+	if [ ${OVE_TAINT_USER_ENV} -eq 1 ]; then
+		if [[ ${PATH} != *"${OVE_STAGE_DIR}"* ]]; then
+			PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/sbin:${OVE_STAGE_DIR}${OVE_PREFIX}/bin:${PATH}
+		fi
+		export PATH
+
+		if [ -n "${LD_LIBRARY_PATH}" ] && [[ ${LD_LIBRARY_PATH} != *"${OVE_LD_LIBRARY_PATH}"* ]]; then
+			LD_LIBRARY_PATH=${OVE_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}
+		else
+			LD_LIBRARY_PATH=${OVE_LD_LIBRARY_PATH}
+		fi
+		export LD_LIBRARY_PATH
+
+		if [ -n "${PKG_CONFIG_PATH}" ] && [[ ${PKG_CONFIG_PATH} != *"${OVE_PKG_CONFIG_PATH}"* ]]; then
+			PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH}:${PKG_CONFIG_PATH}
+		else
+			PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH}
+		fi
+		export PKG_CONFIG_PATH
+	else
+		ove_unsource_user_env
+	fi
 
 	if ! ( for i in {1..205} ; do echo -n 123456789, ; done ; echo ) | \column -t -s "," &> /dev/null; then
 		OVE_COLUMN_WRAP_BUG=1
