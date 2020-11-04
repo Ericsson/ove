@@ -4833,12 +4833,12 @@ function ove-env {
 	fi
 
 	for e in ${v}; do
-		str+="${e}:${!e}\n"
+		str+="${e}#${!e}\n"
 	done
 
 	printf "${str}" | \
 		LC_ALL="C" \sort | \
-		\column -t -s:
+		\column -t -s'#'
 }
 
 # status:[GIT...]:git status -zbs -uno for all/specified repositories
