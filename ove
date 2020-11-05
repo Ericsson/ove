@@ -1461,8 +1461,8 @@ function ove_parse_yaml {
 
 	while IFS=: read -r line; do
 		[[ ${line} == "---" ]] && continue
-		\sed -e 's/: /:/g' -e "s/\([a-z]\+\):/\" ove_${line%%:*}_\1=\"/g" -e "s/$/\"/g" -e "s/^\" //g" -e "s/ \"/\"/g" <<<${line#*: } &
-	done < <(\sed -e 's/^\([a-z]\+:$\)/\n\1/g' -e 's/#.*//g' $1 | \awk NF=NF RS= OFS=' ')
+		\sed -e 's/: /:/g' -e "s/\([a-zA-Z0-9_]\+\):/\" ove_${line%%:*}_\1=\"/g" -e "s/$/\"/g" -e "s/^\" //g" -e "s/ \"/\"/g" <<<${line#*: } &
+	done < <(\sed -e 's/^\([a-zA-Z0-9_]\+:$\)/\n\1/g' -e 's/#.*//g' $1 | \awk NF=NF RS= OFS=' ')
 	wait
 }
 
@@ -1665,6 +1665,21 @@ function ove_projects_parse {
 		ove_projects_needs[${i}]=${!tmp_var}
 		unset ${tmp_var}
 
+		# distro needs
+		for m in ${OVE_OS_ID} ${OVE_OS_ID_LIKE}; do
+			tmp_var="ove_${projects[${i}]}_needs_${m//-/_}"
+			if [ "${!tmp_var}" != "" ]; then
+				ove_projects_needs[${i}]+=" ${!tmp_var}"
+				unset ${tmp_var}
+			fi
+
+			tmp_var="ove_${projects[${i}]}_needs_${m//-/_}_${OVE_OS_VER//./_}"
+			if [ "${!tmp_var}" != "" ]; then
+				ove_projects_needs[${i}]+=" ${!tmp_var}"
+				unset ${tmp_var}
+			fi
+		done
+
 		# version
 		tmp_var="ove_${projects[${i}]}_version"
 		ove_projects_version[${i}]=${!tmp_var}
@@ -1672,6 +1687,12 @@ function ove_projects_parse {
 
 		(( i+=1 ))
 	done
+
+	# unset any distro needs laying around
+	unset $(set -o posix; set | \
+		\grep '^ove_.*_needs.*=' | \
+		\grep -v '^ove_projects_needs=' | \
+		\cut -d= -f1)
 
 	if ! ove_validate_projs; then
 		return 1
@@ -7525,12 +7546,14 @@ function ove_packages_not_installed {
 		LC_ALL="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\apk info | LC_ALL="C" \sort)
 	elif [[ ${OVE_OS} == *"CentOS"* ]] || \
 		[[ ${OVE_OS} == *"Fedora"* ]] || \
+		[[ ${OVE_OS} == *"SLES"* ]] || \
+		[[ ${OVE_OS} == *"openSUSE"* ]] || \
 		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]]; then
 		LC_ALL="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\rpm -qa --qf "%{NAME}\n"| LC_ALL="C" \sort)
 	elif [[ ${OVE_OS} == *"Debian"* ]] || \
 		[[ ${OVE_OS} == *"Raspbian"* ]] || \
 		[[ ${OVE_OS} == *"Ubuntu"* ]]; then
-		dpkg-query -W -f='${Package}:${Status}\n' ${p_sort} 2>&1 | \
+		\dpkg-query -W -f='${Package}:${Status}\n' ${p_sort} 2>&1 | \
 			\grep -v ":install ok installed" | \
 			\sed -e 's/dpkg-query: no packages found matching //g' -e 's/:.*//g' | \
 			\xargs
@@ -7544,18 +7567,22 @@ function ove_packages_not_installed {
 }
 
 function ove_determine_dist_version_and_pack_manager {
+	OVE_OS_ID_LIKE=
 	if [ -e /etc/os-release ]; then
 		OVE_OS=$(source /etc/os-release; echo ${NAME})
+		OVE_OS_ID=$(source /etc/os-release; echo ${ID})
+		OVE_OS_ID_LIKE=$(source /etc/os-release; echo ${ID_LIKE})
 		OVE_OS_VER=$(source /etc/os-release; echo ${VERSION_ID})
 	elif command -v lsb_release > /dev/null; then
 		OVE_OS=$(\lsb_release --id --short)
+		OVE_OS_ID=${OVE_OS}
 		OVE_OS_VER=$(\lsb_release --release --short)
 	else
 		ove_echo_warning_noprefix "unable to determine distro"
 		OVE_OS=$(\uname -s)
+		OVE_OS_ID=${OVE_OS}
 		OVE_OS_VER=$(\uname -r)
 	fi
-
 
 	if [[ ${OVE_OS} == *"Alpine"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="apk"
@@ -7591,6 +7618,8 @@ function ove_determine_dist_version_and_pack_manager {
 	fi
 
 	export OVE_OS
+	export OVE_OS_ID
+	export OVE_OS_ID_LIKE
 	export OVE_OS_VER
 	export OVE_OS_PACKAGE_MANAGER
 	export OVE_OS_PACKAGE_MANAGER_ARGS

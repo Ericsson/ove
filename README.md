@@ -64,26 +64,50 @@ How does OVE keep track of dependencies? Well, to start with there are (at least
     name:      name of project, characters allowed: a-z, A-Z, 0-9 and underscore
       deps:    list of projects that need to be built before myself
       needs:   list of packages that need to be installed before I can be built
-      path:    path to the source code of myself
+      path:    path to the source code of this project
       version: Optional. Passed on to all build stages for this project.
+
+'needs' can be extended with specific distro requirements, syntax:
+
+    needs[_ID][_VER]]
+
+ID is a string and is matched vs. one string within: "${OVE_OS_ID//-/_} ${OVE_OS_ID_LIKE//-/_}". Examples: "ubuntu", "debian", "centos", "rhel", "fedora", "opensuse_tumbleweed", "suse". VER is a string and is matched vs. "${OVE_OS_VER//./_}". Examples: "18_04", "3_12_0", "20200923".
 
 Example:
 
     $ cat projs
     ---
     projA:
-      deps:  projB
-      needs: autoconf automake g++
-      path:  repoX
+      deps:
+        projB
+      needs:
+        autoconf
+        automake
+        g++
+      path:
+        repoX
 
     projB:
-      deps:  projC
-      needs: build-essential
-      path:  repoY
+      deps:
+        projC
+      needs:
+        build-essential
+      path:
+        repoY
 
     projC:
-      needs: build-essential
-      path:  repoY
+      needs:
+        build-essential
+      needs_ubuntu:
+        pkgA
+      needs_ubuntu_20_04:
+        pkgB
+      needs_debian:
+        pkgC
+      needs_rhel:
+        pkgE
+      path:
+        repoY
 
 Thats how OVE resolves external and internal dependencies for builds. As you just read above, the 'version:' keyword creates an environment variable that is passed to all build steps. What are those steps exactly? We cover that in the next section:
 
