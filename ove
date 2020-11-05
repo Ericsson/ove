@@ -2324,7 +2324,7 @@ function ove_revtab_check {
 			${ove_revtab_push_url[${i}]} \
 			${ove_revtab_rev[${i}]} &
 		(( i+=1 ))
-	done | \grep -v '^\['
+	done | \grep -v '^\[' || true
 	wait
 }
 
@@ -6841,7 +6841,9 @@ function ove_config_init {
 	export OVE_ALL_CONFIG_FILES
 
 	for f in ${OVE_ALL_CONFIG_FILES}; do
-		[ -e "${f}" ] && ove_read_config ${f}
+		if [ -e "${f}" ]; then
+			ove_read_config ${f}
+		fi
 	done
 }
 

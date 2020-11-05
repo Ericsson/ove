@@ -1,0 +1,2 @@
+: OVE_INIT_STRING and 'set -e'; bash -c "OVE_TEST_STRING; set -e; \${OVE_INIT_STRING}"
+>>>= 0
