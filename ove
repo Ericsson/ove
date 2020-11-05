@@ -4041,99 +4041,139 @@ function ove_dirty_repos {
 	# shellcheck disable=SC2016
 	for repo in $(ove_revtab_forall_parallel 'ove_repo_is_dirty ${repo} && echo ${PWD}'); do
 		ove_repo2shortpath ${repo}
-	done
+	done | LC_ALL="C" \sort
 }
 
 function ove_stashed_repos {
-	local repo
-
 	# shellcheck disable=SC2016
-	for repo in $(ove_revtab_forall_parallel 'test -z "$(\git --no-pager -C ${repo} stash show 2> /dev/null)" || echo ${PWD}'); do
-		ove_repo2shortpath ${repo}
-	done
+	ove_revtab_forall '\git --no-pager -C ${repo} stash list | \grep -q "stashed by OVE" && echo ${repo}'
 }
 
 # $1: drop or pop
+# $2: [pattern]
 function ove_stash_forsome {
-	local cmd
+	local repo
+	local s
+	local t
 
-	if ! [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
-		ove_echo_error_noprefix "you are not allowed to 'stash $1'"
-		return 1
-	fi
+	for repo in $(ove_stashed_repos); do
+		s=$(\git -C ${repo} stash list | \
+			\grep "stashed by OVE")
 
-	! [ -f ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos ] && return
-	cmd="\git stash $1 -q"
-	ove_revtab_forsome "${cmd}" "$(\sed "s|${OVE_BASE_DIR}/||g" ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos | \xargs)"
-	\rm ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos
+		if [ $# -eq 2 ] && [[ ${s} != *"$2"* ]]; then
+			continue
+		fi
+
+		if [ $# -eq 1 ]; then
+			t=$(echo "$s" | \
+				\head -1 | \
+				\cut -d: -f1)
+			\git -C ${repo} stash $1 -q ${t}
+		else
+			while true; do
+				s=$(\git -C ${repo} stash list | \
+					\grep "stashed by OVE" | \
+					\grep ${2} | \
+					\head -1 | \
+					\cut -d: -f1)
+				[ "${s}" == "" ] && break
+
+				if ! \git -C ${repo} stash $1 -q ${s}; then
+					ove_echo_error_noprefix "git -C ${repo} stash $1 -q ${s} failed"
+					return 1
+				fi
+			done
+		fi
+	done
 }
 
 function ove_stash_pop {
-	ove_stash_forsome pop
+	ove_stash_forsome pop $1
 }
 
 function ove_stash_drop {
-	ove_stash_forsome drop
+	ove_stash_forsome drop $1
 }
 
+# $*: [message]
 function ove_stash_save {
 	local cmd
 	local dirty_repos
 	local now
 
-	if ! [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
-		ove_echo_error_noprefix "you are not allowed to 'stash'"
-		return 1
-	fi
-
-	[ -f ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos ] && return
-
-	dirty_repos=$(ove_dirty_repos)
+	dirty_repos=$(ove_dirty_repos | \xargs)
 	[ "${dirty_repos}" == "" ] && return
 
-	true > ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos
 	now=$(\date '+%Y%m%d-%H%M%S')
-	cmd="\git -C \${repo} stash save -q stashed by OVE@${now} && echo \${repo} >> ${OVE_PROJECT_STATE_DIR}/ove-stashed-repos"
+	cmd="\git -C \${repo} stash save -q stashed by OVE@${now}"
+	if [ $# -eq 0 ]; then
+		cmd+=" ${dirty_repos}"
+	else
+		cmd+=" ${*}"
+	fi
 
 	ove_revtab_forsome "${cmd}" "${dirty_repos}"
 }
 
+# $1: show or list
+# $2: [pattern]
 function ove_stash_inspect {
 	local cmd
-	local stashed_repos
+	local repo
+	local s
+	local t
+	local u
 
-	stashed_repos=$(ove_stashed_repos)
-	[ "${stashed_repos}" == "" ] && return
+	for repo in $(ove_stashed_repos); do
+		cmd="\git -C ${repo} stash"
+		if [ "$1" == "show" ]; then
+			s=$(\git -C ${repo} stash list | \
+				\grep "stashed by OVE")
 
-	cmd="\git --no-pager -C \${repo} stash"
-	if [ "$1" == "show" ]; then
-		cmd+=" show -p"
-	elif [ "$1" == "list" ]; then
-		cmd+=" list"
-	else
-		return
-	fi
+			if [ $# -eq 2 ] && [[ ${s} != *"$2"* ]]; then
+				continue
+			fi
 
-	ove_revtab_forsome "ove_echo_yellow_noprefix \${repo_basename}: && ${cmd}" "${stashed_repos}"
+			if [ $# -eq 1 ]; then
+				t=$(echo "$s" | \
+					\head -1 | \
+					\cut -d: -f1)
+			else
+				t=$(echo "$s" | \
+					\grep ${2} | \
+					\cut -d: -f1)
+			fi
+
+			cmd+=" show -p"
+			for u in ${t}; do
+				ove_echo_yellow_noprefix "${repo/${OVE_BASE_DIR}\/}:${u}"
+				eval ${cmd} ${u}
+			done
+		else
+			ove_echo_yellow_noprefix "${repo/${OVE_BASE_DIR}\/}"
+			cmd+=" list | \grep 'stashed by OVE'"
+			eval ${cmd}
+		fi
+	done
 }
 
 function ove_stash_show {
-	ove_stash_inspect show
+	ove_stash_inspect show $1
 }
 
 function ove_stash_list {
-	ove_stash_inspect list
+	ove_stash_inspect list $1
 }
 
-# stash:[drop|list|pop|show]:git stash [drop|list|pop|show] for all git repositories
+# stash:[list|show [pattern]|drop [pattern]|pop [pattern]|save [msg...]]:git stash [drop|pop|show|list|save] for all git repositories
 function ove-stash {
 	if [ "$1" == "pop" ] ||
 		[ "$1" == "list" ] ||
 		[ "$1" == "show" ] ||
 		[ "$1" == "drop" ]; then
-		ove_stash_$1
-	elif [ $# -eq 0 ]; then
-		ove_stash_save
+		ove_stash_$1 $2
+	elif [ "$1" == "save" ] || [ $# -eq 0 ]; then
+		ove_stash_save "${@:2}"
 	else
 		ove-help "^${FUNCNAME/ove-/} "
 		return 1
