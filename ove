@@ -2095,6 +2095,11 @@ function ove_verify_checksums {
 	local cfgs
 	local md5
 
+	# OVE_BASE_DIR got lost? keep this as early as possible
+	if [ -z "${OVE_BASE_DIR+x}" ]; then
+		return 1
+	fi
+
 	if [ ${OVE_REVTAB_CHECK} -eq 1 ]; then
 		md5=$(ove_repos_fingerprint)
 		# got updated?
@@ -2158,11 +2163,6 @@ function ove_verify_checksums {
 	fi
 
 	if [ "${OVE_REPOS_FETCHED}" != "" ] && [ $(ove_repos_fetched) -ne ${OVE_REPOS_FETCHED} ]; then
-		return 1
-	fi
-
-	# OVE_BASE_DIR got lost?
-	if [ -z "${OVE_BASE_DIR+x}" ]; then
 		return 1
 	fi
 
