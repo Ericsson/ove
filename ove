@@ -6485,7 +6485,19 @@ function ove_bash_complete {
 		wordlist="loop"
 	elif [ "${subcommand}" == "stash" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist="drop list pop show"
+			wordlist="drop list pop show save"
+		elif [ ${size} -eq 3 ]; then
+			if [ "${COMP_WORDS[2]}" == "drop" ] ||
+				[ "${COMP_WORDS[2]}" == "pop" ] ||
+				[ "${COMP_WORDS[2]}" == "show" ]; then
+			wordlist=$(ove-forall-parallel "git stash list" | \
+				\grep -o 'OVE@[0-9].*' | \
+				\tr '@' ' ' | \
+				\xargs -n1 | \
+				\sort -u)
+			else
+				return
+			fi
 		else
 			return
 		fi
