@@ -338,7 +338,7 @@ Here's a list (not complete) of a few utility commands:
 | forowel/forowel-parallel | run an arbitrary command in all OVE workspaces on the host |
 | locate                   | list OVE workspaces on this host                           |
 | news                     | view upstream news for each git repository                 |
-| switch                   | switch to another OVE workspace                            |
+| cd                       | switch to another OVE workspace                            |
 | unsource                 | clean up all OVE vars/funcs from this shell                |
 | vi                       | open all modified files in 'vi'                            |
 
