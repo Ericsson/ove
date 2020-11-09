@@ -1,0 +1,22 @@
+: config: set; bash -c "OVE_TEST_STRING; ove add-config .owel/.oveconfig _a 1"
+>>>= 0
+: config: set; bash -c "OVE_TEST_STRING; ove add-config .owel/.oveconfig a 1"
+>>>= 0
+: config: set; bash -c "OVE_TEST_STRING; ove add-config .owel/.oveconfig A 1"
+>>>= 0
+: config: set; bash -c "OVE_TEST_STRING; ove add-config .owel/.oveconfig b 1 2 3; ove config .owel/.oveconfig ^b"
+>>> /b  1 2 3/
+>>>= 0
+: config: allow empty configs; bash -c "OVE_TEST_STRING; ove add-config .owel/.oveconfig a ''; ove config .owel/.oveconfig"
+>>> /a/
+>>>= 0
+: config: bad config name; bash -c "OVE_TEST_STRING; ove add-config .owel/.oveconfig 1 1"
+>>>= 1
+: config: bad config name; bash -c "OVE_TEST_STRING; ove add-config .owel/.oveconfig ' 1"
+>>>= 1
+: config: bad config name; bash -c "OVE_TEST_STRING; ove add-config .owel/.oveconfig - 1"
+>>>= 1
+: config: bad config file; bash -c "OVE_TEST_STRING; ove add-config /dev/null 1 1"
+>>>= 1
+: config: no args; bash -c "OVE_TEST_STRING; ove add-config"
+>>>= 1

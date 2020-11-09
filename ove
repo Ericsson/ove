@@ -5637,7 +5637,9 @@ function ove_config_one {
 	elif [ $# -gt 1 ]; then
 		var=$1
 		if \grep -q -w ${var} ${cfg}; then
-			\sed -i -e "s|\(^${var}\s\+\).*|\1${*:2}|g" ${cfg}
+			\sed -i -e "s|\(^${var}\s\+\).*|\1${*:2}|g" \
+				-e "s|\(^${var}$\)|\1 ${*:2}|g" \
+				-e "s|\s\+$||g" ${cfg}
 			ove_config_one ${cfg} ${var}
 		fi
 	fi
