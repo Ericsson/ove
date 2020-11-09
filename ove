@@ -5057,7 +5057,7 @@ function ove-format-patch {
 		f="${PWD}/${OVE_PROJECT_NAME}-patches-$(\date '+%Y%m%d-%H%M%S').tar.bz2"
 	fi
 
-	\tar -C "${d}" -cjf "${f}" .
+	\tar -C "${d}" -cjf "${f}" --owner=0 --group=0 .
 	\ls -lh "${f}"
 }
 
@@ -5082,7 +5082,7 @@ function ove-am {
 	\find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
 
 	# unpack
-	\tar -C "${d}" -xf "$1" || return 3
+	\tar -C "${d}" -xf "$1" --no-same-owner || return 3
 
 	repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | LC_ALL="C" \sort -u)
 	[ "${repos}" == "" ] && return 4
