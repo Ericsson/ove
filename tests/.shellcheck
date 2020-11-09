@@ -1,5 +1,5 @@
-82
-     21  SC2059: Don't use variables in the printf format string. Use printf "..%s.." "$foo".
+81
+     20  SC2059: Don't use variables in the printf format string. Use printf "..%s.." "$foo".
       7  SC2031: all_files was modified in a subshell. That change might be lost.
       6  SC2175: Quote this invalid brace expansion since it should be passed literally to eval.
       6  SC2164: Use 'popd ... || exit' or 'popd ... || return' in case popd fails.

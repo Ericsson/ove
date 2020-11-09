@@ -298,12 +298,12 @@ function ove_ip2host {
 	local ip_lookup
 
 	if ! command -v dig > /dev/null; then
-		ove_echo_command_not_found "dig"
+		ove_command_not_found "dig"
 		return 1
 	fi
 
 	if ! command -v whois > /dev/null; then
-		ove_echo_command_not_found "whois"
+		ove_command_not_found "whois"
 		return 1
 	fi
 
@@ -332,7 +332,7 @@ function ove_ip2org {
 	local org
 
 	if ! command -v whois > /dev/null; then
-		ove_echo_command_not_found "whois"
+		ove_command_not_found "whois"
 		return 1
 	fi
 
@@ -767,10 +767,22 @@ function ove_strace_one_pid {
 	[ "${out_2}" != "" ] && echo "${out_2}"
 }
 
+function ove_command_usage {
+	local a
+	local description
+	local cmd=${FUNCNAME[1]/ove-/}
+	local opt
+
+	a=$(\grep -B1 "^function ove-${cmd}" ${OVE_SELF} | \head -1)
+	opt=$(\cut -d: -f2 <<<${a})
+	description=$(\cut -d: -f3- <<<${a})
+	\echo -e "usage: ove ${cmd} ${opt}\t# ${description}"
+}
+
 # strace-graph:dir:run strace graph analysis
 function ove-strace-graph {
 	if [ $# -ne 1 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -780,7 +792,7 @@ function ove-strace-graph {
 # strace-execve-timeline:dir:run strace execve timeline analysis
 function ove-strace-execve-timeline {
 	if [ $# -ne 1 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -791,7 +803,7 @@ function ove-strace-execve-timeline {
 # strace-execve-time:dir:run strace execve time analysis
 function ove-strace-execve-time {
 	if [ $# -ne 1 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -801,7 +813,7 @@ function ove-strace-execve-time {
 # strace-connect:dir:run strace connect time analysis
 function ove-strace-connect {
 	if [ $# -ne 1 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -1029,7 +1041,7 @@ function ove-run {
 	local _timeout
 
 	if [ $# -eq 1 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -1093,7 +1105,7 @@ function ove-loop {
 	local use_inotify
 
 	if [ $# -gt 0 ] && [ $# -lt 4 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -1134,21 +1146,24 @@ function ove-loop {
 
 	if ! [[ "${_timeout}" =~ ^[0-9]+$ ]]; then
 		echo "error: timeout: just numbers"
+		ove_command_usage
 		return 1
 	fi
 
 	if ! [[ "${use_inotify}" =~ ^[0-1]$ ]]; then
 		echo "error: inotify: 0 or 1"
+		ove_command_usage
 		return 1
 	fi
 
 	if [ "${use_inotify}" -eq 1 ] && ! command -v inotifywait > /dev/null; then
-		ove_echo_command_not_found "inotifywait"
+		ove_command_not_found "inotifywait"
 		return 1
 	fi
 
 	if ! [[ "${max_count}" =~ ^[0-9]+$ ]]; then
 		echo "error: max count: just numbers"
+		ove_command_usage
 		return 1
 	fi
 
@@ -1229,14 +1244,9 @@ function ove {
 			return 1
 		fi
 
-		candidates=$(ove-help $(\xargs -n1 <<<${OVE_ALL_COMMANDS} | \
-			\grep --color=never ^${cmd} | \
-			\sed -e 's/^/^/g' -e 's/$/\\s/g'))
-
-		if [ ${OVE_AUTOCORRECT} -eq 1 ] && [ $(printf "${candidates}\n" | \wc -l) -eq 1 ]; then
-			cmd=$(printf "${candidates}\n" | \
-				\sed -e "s/\x1B\[[0-9;]*[mK]//g" | \
-				\awk '{print $1}')
+		candidates=$(ove-list-commands ^${cmd})
+		if [ ${OVE_AUTOCORRECT} -eq 1 ] && [ $(echo "${candidates}" | \wc -l) -eq 1 ]; then
+			cmd=$(echo "${candidates}" | \awk '{print $1}')
 			ove ${cmd} ${*:2}
 			return $?
 		fi
@@ -1244,7 +1254,7 @@ function ove {
 		ove_echo_red_noprefix "error: '${cmd}' unknown command"
 		echo
 		echo "Did you mean?"
-		printf "${candidates}\n"
+		echo "${candidates}"
 
 		return 1
 	elif [ "${cmd}" == "!" ] || \
@@ -1404,7 +1414,7 @@ function ove-fzf {
 	fi
 
 	if [ $# -gt 1 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -2943,7 +2953,10 @@ function ove-forowel {
 	local i
 	local projs
 
-	[ $# -eq 0 ] && return
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
 
 	i=0
 	mapfile -t projs < <(ove-locate | \grep '^/')
@@ -2965,7 +2978,10 @@ function ove-forowel-parallel {
 	local i
 	local projs
 
-	[ $# -eq 0 ] && return
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
 
 	i=0
 	mapfile -t projs < <(ove-locate | \grep '^/')
@@ -2985,12 +3001,22 @@ function ove-forowel-parallel {
 
 # forall:command:run 'command' for all git repositories
 function ove-forall {
-	[ $# -ne 0 ] && ove_revtab_forall "$*"
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	ove_revtab_forall "$*"
 }
 
 # forall-parallel:command:run 'command' in parallel for all git repositories
 function ove-forall-parallel {
-	[ $# -ne 0 ] && ove_revtab_forall_parallel "$*"
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	ove_revtab_forall_parallel "$*"
 }
 
 # list-systests: :list available system tests
@@ -3158,7 +3184,7 @@ function ove_echo_stderr_noprefix {
 	echo "$@" 1>&2;
 }
 
-function ove_echo_command_not_found {
+function ove_command_not_found {
 	local msg="command '$1' not found"
 
 	[ $# -eq 2 ] && msg+=". $2"
@@ -3189,7 +3215,7 @@ function ove-systest {
 	[ -e ${OVE_PROJECT_DIR}/systests ] || return 1
 
 	if [ $# -eq 0 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -3378,27 +3404,27 @@ function ove_revtab_sanity_check {
 
 	if [ "$1" == "$2" ]; then
 		ove_echo_error_noprefix "please provide two different revisions for '${OVE_PROJECT_DIR}'"
-		return 2
+		return 1
 	fi
 
 	if ! \git -C "${OVE_PROJECT_DIR}" cat-file -e "$1" &> /dev/null; then
 		ove_echo_error_noprefix "'$1' is not a valid revision"
-		return 3
+		return 1
 	fi
 
 	if ! \git -C "${OVE_PROJECT_DIR}" cat-file -e "$2" &> /dev/null; then
 		ove_echo_error_noprefix "'$2' is not a valid revision"
-		return 4
+		return 1
 	fi
 
 	if ! \git -C "${OVE_PROJECT_DIR}" --no-pager show $1:revtab &> /dev/null; then
 		ove_echo_error_noprefix "revtab for '$1' is not available"
-		return 5
+		return 1
 	fi
 
 	if ! \git -C "${OVE_PROJECT_DIR}" --no-pager show $2:revtab &> /dev/null; then
 		ove_echo_error_noprefix "revtab for '$2' is not available"
-		return 6
+		return 1
 	fi
 }
 
@@ -3410,7 +3436,10 @@ function ove-revtab-diff {
 	local sha_1
 	local sha_2
 
-	ove_revtab_sanity_check "$@" || return $?
+	if ! ove_revtab_sanity_check "$@"; then
+		ove_command_usage
+		return 1
+	fi
 
 	# save revtab for rev A and rev B
 	a=$(\git -C "${OVE_PROJECT_DIR}" --no-pager show $1:revtab | \
@@ -4024,7 +4053,10 @@ function ove-remote-set-url {
 	local cmd
 	local url
 
-	[ $# -eq 0 ] && return 1
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
 	url=$1
 	shift
 
@@ -4200,7 +4232,7 @@ function ove-stash {
 	elif [ "$1" == "save" ] || [ $# -eq 0 ]; then
 		ove_stash_save "${@:2}"
 	else
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 }
@@ -4482,7 +4514,7 @@ function ove_install_packages {
 	fi
 
 	if ! command -v ${OVE_OS_PACKAGE_MANAGER} > /dev/null; then
-		ove_echo_command_not_found "${OVE_OS_PACKAGE_MANAGER}"
+		ove_command_not_found "${OVE_OS_PACKAGE_MANAGER}"
 		return 2
 	fi
 
@@ -5037,8 +5069,15 @@ function ove-am {
 	local r
 	local repos
 
-	[ $# -eq 1 ] || return 1
-	[ -e $1 ] || return 2
+	if [ $# -ne 1 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	if ! [ -e $1 ]; then
+		ove_command_usage
+		return 2
+	fi
 
 	d="${OVE_PROJECT_TMP_DIR}/am"
 	\mkdir -p ${d}
@@ -5137,12 +5176,12 @@ function ove-apply {
 	local repo_basename
 
 	if [ $# -ne 1 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
 	if ! command -v csplit > /dev/null; then
-		ove_echo_command_not_found "csplit"
+		ove_command_not_found "csplit"
 		return 1
 	fi
 
@@ -5401,10 +5440,11 @@ function ove-checkout {
 	fi
 }
 
-# list-commands: :list commands
+# list-commands:[pattern]:list commands
 function ove-list-commands {
 	local a
 	local b
+	local c
 
 	a=$(\grep -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
 		\grep '\#' | \
@@ -5415,25 +5455,32 @@ function ove-list-commands {
 		\grep -v '\$'| \
 		\cut -d'"' -f2)
 
-	printf "${a}\n${b}" | \
-		LC_ALL="C" \sort | \
-		\column -s: -t
+	c=$(printf "${a}\n${b}")
+
+	while true; do
+		if [ $# -eq 1 ]; then
+			printf "${c}\n" | \grep "$1"
+		else
+			printf "${c}\n"
+		fi
+		break
+	done | LC_ALL="C" \sort | \column -t -s:
 }
 
 # help:[pattern]:OVE help
 function ove-help {
-	local h
+	if [ $# -eq 0 ]; then
+		ove_help
+	else
+		ove_help | \grep -E --color=always "${1}"
+	fi
+}
+
+function ove_help {
 	local longest_argument
 	local longest_function
 	local longest_function_project
 	local nbr_of_hypens
-
-	if [ $# -ne 0 ]; then
-		for h in "$@"; do
-			ove-help | \grep -E --color=always "${h}"
-		done
-		return 0
-	fi
 
 	longest_function=$(\grep -B1 "^function ove-" ${OVE_SELF} | \
 		\grep '\#' | \
@@ -5546,25 +5593,38 @@ EOF
 # ag:pattern:search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]
 function ove-ag {
 	if ! command -v ag > /dev/null; then
-		ove_echo_command_not_found "ag"
+		ove_command_not_found "ag"
 		return 1
 	fi
 
-	[ $# -eq 0 ] && echo "No pattern, try again" && return 1
+	if [ $# -eq 0 ]; then
+		echo "error: no pattern"
+		ove_command_usage
+		return 1
+	fi
 
 	ove_revtab_forall_parallel '\ag --color "'"$*"'" | \sed -e 's@^@\${PWD}/@g''
 }
 
 # grep:pattern:grep OVE workspace
 function ove-grep {
-	[ $# -eq 0 ] && echo "No pattern, try again" && return 1
+	if [ $# -eq 0 ]; then
+		echo "error: no pattern"
+		ove_command_usage
+		return 1
+	fi
+
 	# shellcheck disable=SC2016
 	ove_revtab_forall_parallel '\git --no-pager -C ${repo} \grep --color=always "'"$*"'" | \sed -e 's@^@\${PWD}/@g''
 }
 
 # blame-history:pattern:git log -S for all git repositories
 function ove-blame-history {
-	[ $# -eq 0 ] && echo "No pattern, try again" && return 1
+	if [ $# -eq 0 ]; then
+		echo "error: no pattern"
+		ove_command_usage
+		return 1
+	fi
 	# shellcheck disable=SC2016
 	ove_revtab_forall '\git --no-pager -C ${repo} log --color=always -p -S "'"$*"'"'
 }
@@ -5652,7 +5712,7 @@ function ove-add-config {
 	local var
 
 	if [ $# -lt 3 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -5836,7 +5896,7 @@ function ove_edit {
 
 	# sanity check
 	if ! command -v ${editor} > /dev/null; then
-		ove_echo_command_not_found "${editor}"
+		ove_command_not_found "${editor}"
 		return 1
 	fi
 
@@ -6083,7 +6143,7 @@ function ove-head-tail {
 	local n
 
 	if [[ $# -eq 0 || $# -gt 2 || ( $# -eq 2 && ! "$2" =~ ^[0-9]+$ ) ]]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -6174,6 +6234,7 @@ function ove-revtab-check {
 	local reinit=0
 
 	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-1]$ ]]; then
+		ove_command_usage
 		return 1
 	elif [ $# -eq 1 ]; then
 		if [ ${OVE_REVTAB_CHECK} -eq 0 ] && [ ${1} -eq 1 ]; then
@@ -6195,7 +6256,7 @@ function ove-revtab-check {
 	fi
 }
 
-# loglevel:[level] :show or change loglevel [0-7]
+# loglevel:[level] :show or change loglevel [0-8]
 function ove-loglevel {
 	local bcc_tool
 	local cfg
@@ -6204,12 +6265,12 @@ function ove-loglevel {
 
 	set +x
 	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-8]$ ]]; then
-		echo "error: try 0-8"
+		ove_command_usage
 		return 1
 	elif [ $# -eq 1 ]; then
 		if [ $1 -gt 2 ] && [ $1 -lt 7 ]; then
 			if ! command -v strace > /dev/null; then
-				ove_echo_command_not_found "strace"
+				ove_command_not_found "strace"
 				return 1
 			fi
 
@@ -6239,7 +6300,7 @@ function ove-loglevel {
 			fi
 
 			if ! command -v python3 > /dev/null; then
-				ove_echo_command_not_found "python3" "Needed by '${bcc_tool}'."
+				ove_command_not_found "python3" "Needed by '${bcc_tool}'."
 				return 1
 			fi
 
@@ -6292,7 +6353,7 @@ function ove-loglevel {
 # dry-run:[0|1]:toggle or set OVE_DRY_RUN
 function ove-dry-run {
 	if [ $# -eq 1 ] && ! [[ "$1" =~ ^[0-1]$ ]]; then
-		ove-help ^${FUNCNAME/ove-/}
+		ove_command_usage
 		return 1
 	fi
 
@@ -6312,6 +6373,7 @@ function ove-lastlog {
 	if [ $# -eq 1 ]; then
 		if ! [[ "${1}" =~ ^[0-9]+$ ]]; then
 			echo "error: just numbers"
+			ove_command_usage
 			return 1
 		fi
 
@@ -6333,7 +6395,7 @@ function ove-rm-logs {
 	local find_opt="-mtime +${days}"
 
 	if  [ $# -gt 1 ]; then
-		ove-help ^${FUNCNAME/ove-/}
+		ove_command_usage
 		return 1
 	fi
 
@@ -7758,7 +7820,7 @@ function ove-replicate {
 	local s
 
 	if [ $# -ne 1 ]; then
-		ove-help ^${FUNCNAME/ove-/}
+		ove_command_usage
 		return 1
 	fi
 
@@ -7938,7 +8000,7 @@ function ove-unittest {
 	local tests
 
 	if ! command -v shelltest > /dev/null; then
-		ove_echo_command_not_found "shelltestrunner" "Version 1.9 or greater is needed."
+		ove_command_not_found "shelltestrunner" "Version 1.9 or greater is needed."
 		return 1
 	fi
 
@@ -8096,7 +8158,7 @@ function ove-add-repo {
 	local url
 
 	if [ $# -eq 0 ] || [ $# -gt 3 ]; then
-		ove-help "^${FUNCNAME/ove-/} "
+		ove_command_usage
 		return 1
 	fi
 
@@ -8176,7 +8238,7 @@ function ove-shell-check {
 	local exclude
 
 	if ! command -v shellcheck > /dev/null; then
-		ove_echo_command_not_found "shellcheck"
+		ove_command_not_found "shellcheck"
 		return 1
 	fi
 
