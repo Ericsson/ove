@@ -6206,11 +6206,11 @@ function ove-show {
 	done
 }
 
-# cd:[pattern|?] :'cd ${OVE_BASE_DIR}' OR switch to a OVE workspace specified by pattern
+# cd:[pattern|@] :'cd ${OVE_BASE_DIR}' OR switch to a OVE workspace specified by pattern
 function ove-cd {
 	if [ $# -eq 0 ]; then
 		cd "${OVE_BASE_DIR}"
-	elif [ $# -eq 1 ] && [ "$1" == "?" ]; then
+	elif [ $# -eq 1 ] && [ "$1" == "@" ]; then
 		ove_set_workspace
 	else
 		ove_set_workspace "$@"
