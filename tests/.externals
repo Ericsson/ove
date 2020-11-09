@@ -36,6 +36,7 @@ du:
 file:
 echo "error: file '${f}' is not found or file size is 0"
 ove_echo_error_noprefix "'$1' patch file not found"
+ove_echo_error_noprefix "file '${cfg}' is not a valid oveconfig file, select one of:"
 ove_echo_error_noprefix "'${f}' is not a text file, use xxd/hexdump"
 \xargs -0 -P"$(nproc)" file | \
 ove_echo_error_noprefix "you already have a file/directory named '${dir}/ove', rename/remove to proceed"

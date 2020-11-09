@@ -23,30 +23,55 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+function ove_read_config_validate_varname {
+	local re="[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,}"
+	local var="$1"
+
+	if ! [[ "${var}" =~ ${re} ]]; then
+		return 1
+	fi
+
+	return 0
+}
+
 function ove_read_config {
 	local p
 	local p_arr
 	local val
 	local var
 
-	if [ -e "$1" ]; then
-		while read -r p; do
-			# ignore comments
-			[[ ${p} == \#* ]] && continue
+	[ -s "$1" ] || return 1
+
+	while read -r p; do
+		# ignore comments
+		[[ ${p} == \#* ]] && continue
 			# ignore empty lines
-			[[ ${p} == '' ]] && continue
-			p_arr=( ${p} )
-			var=${p_arr[0]}
-			if [ "$2" == "clean" ]; then
-				unset ${var}
-			else
-				val=${p_arr[*]:1}
-				eval ${var}=\"${val}\"
-				# shellcheck disable=SC2163
-				export ${var}
-			fi
-		done <$1
-	fi
+		[[ ${p} == '' ]] && continue
+		p_arr=( ${p} )
+		var=${p_arr[0]}
+
+		if [ $# -eq 1 ] && ! ove_read_config_validate_varname ${var}; then
+			echo "error: config name '${var}' is not allowed:" 1>&2
+			\grep -w ^${var} -H -n ${1} 1>&2
+			continue
+		fi
+
+		if [ "$2" == "clean" ]; then
+			unset ${var} 2> /dev/null
+			continue
+		fi
+
+		val=${p_arr[*]:1}
+		# escape all "
+		val=${val//\"/\\\"}
+		if ! eval ${var}=\"${val}\" 2> /dev/null; then
+			echo "warning: config '${var}' could not be set:" 1>&2
+			\grep -w ^${var} -H -n ${1} 1>&2
+			continue
+		fi
+		# shellcheck disable=SC2163
+		export ${var}
+	done <$1
 }
 
 function ove_unsource {
@@ -5631,9 +5656,15 @@ function ove-add-config {
 
 	cfg=$(\readlink -f $1)
 	if ! ove_config_validate_filename ${cfg}; then
+		ove_echo_error_noprefix "file '${cfg}' is not a valid oveconfig file, select one of:"
+		printf "%s\n" ${OVE_ALL_CONFIG_FILES} 1>&2
 		return 1
 	fi
 	var=$2
+	if ! ove_read_config_validate_varname ${var}; then
+		ove_echo_error_noprefix "config name '${var}' is not allowed"
+		return 1
+	fi
 	val="${*:3}"
 
 	if [ -w "${cfg%/*}" ]; then
