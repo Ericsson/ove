@@ -3083,7 +3083,7 @@ function ove_list_scripts_directories {
 			[ -d "${repo}/.ove/scripts" ] || continue
 			d+="${repo}/.ove/scripts "
 		done
-		\find -L ${d} -perm -u=x -not -name '*.help' -type f
+		\find -L ${d} -maxdepth 1 -perm -u=x -not -name '*.help' -type f
 		break
 	done | \xargs dirname | LC_ALL="C" \sort -u
 }
