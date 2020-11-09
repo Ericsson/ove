@@ -1733,12 +1733,6 @@ function ove_projects_parse {
 		return 1
 	fi
 
-	if [ $(ove_repos_fetched) -eq $(\wc -w <<<${OVE_REPO_LIST}) ]; then
-		unset OVE_PROJECT_LIST_BUILDABLE
-	else
-		ove_buildable_projects
-	fi
-
 	OVE_BUILD_ORDER="$(ove-build-order)"
 }
 
@@ -7197,6 +7191,12 @@ function ove_init {
 	OVE_SCRIPT_OPTIONS="${OVE_SCRIPT_OPTIONS% *}"
 	export OVE_SCRIPT_OPTIONS
 
+	if [ $(ove_repos_fetched) -eq $(\wc -w <<<${OVE_REPO_LIST}) ]; then
+		unset OVE_PROJECT_LIST_BUILDABLE
+	else
+		ove_buildable_projects
+	fi
+
 	ove_update_checksum
 
 	return 0
@@ -7355,8 +7355,8 @@ function ove_buildable_projects {
 	done
 
 	OVE_PROJECT_LIST_BUILDABLE=$(LC_ALL="C" \comm -3 \
-		<(echo ${OVE_PROJECT_LIST} | \xargs -n1 | LC_ALL="C" \sort) \
-		<(\xargs -n1 <<<"${projs_and_deps_not_buildable}" | LC_ALL="C" \sort) |
+		<(printf "%s\n" ${OVE_PROJECT_LIST}) \
+		<(printf "%s\n" ${projs_and_deps_not_buildable} | LC_ALL="C" \sort) |
 		\xargs)
 	export OVE_PROJECT_LIST_BUILDABLE
 }
