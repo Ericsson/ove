@@ -1245,16 +1245,20 @@ function ove {
 		fi
 
 		candidates=$(ove-list-commands ^${cmd})
-		if [ ${OVE_AUTOCORRECT} -eq 1 ] && [ $(echo "${candidates}" | \wc -l) -eq 1 ]; then
+		if [ "${candidates}" != "" ] && \
+			[ ${OVE_AUTOCORRECT} -eq 1 ] && \
+			[ $(echo "${candidates}" | \wc -l) -eq 1 ]; then
 			cmd=$(echo "${candidates}" | \awk '{print $1}')
 			ove ${cmd} ${*:2}
 			return $?
 		fi
 
 		ove_echo_red_noprefix "error: '${cmd}' unknown command"
-		echo
-		echo "Did you mean?"
-		echo "${candidates}"
+		if [ "${candidates}" != "" ]; then
+			echo
+			echo "Did you mean?"
+			echo "${candidates}"
+		fi
 
 		return 1
 	elif [ "${cmd}" == "!" ] || \
