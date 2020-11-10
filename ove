@@ -2988,7 +2988,7 @@ function ove-forowel {
 	fi
 
 	i=0
-	mapfile -t projs < <(ove-locate | \grep '^/')
+	mapfile -t projs < <(ove_list_workspaces_full)
 	while ((i < ${#projs[@]})); do
 		cmd+=$(printf "
 			echo '# %s'
@@ -3013,7 +3013,7 @@ function ove-forowel-parallel {
 	fi
 
 	i=0
-	mapfile -t projs < <(ove-locate | \grep '^/')
+	mapfile -t projs < <(ove_list_workspaces_full)
 	while ((i < ${#projs[@]})); do
 		cmd=$(printf "
 			cd %s
@@ -3754,7 +3754,7 @@ function ove-refresh {
 	local projs
 	local str
 
-	mapfile -t projs < <(ove-locate | \grep '^/')
+	mapfile -t projs < <(ove_list_workspaces_full)
 	if [ $# -eq 0 ]; then
 		proj_list="$(seq 0 $((${#projs[@]} - 1)))"
 	else
@@ -3964,7 +3964,7 @@ function ove_set_workspace {
 	local p
 	local projs
 
-	mapfile -t projs < <(ove-locate | \grep '^/')
+	mapfile -t projs < <(ove_list_workspaces_full)
 	[ ${#projs[@]} -eq 0 ] && return 1
 	if [ $# -eq 0 ]; then
 		ove_set_workspaces_helper
