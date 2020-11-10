@@ -5097,6 +5097,7 @@ function ove-am {
 	local d
 	local r
 	local repos
+	local ret=0
 
 	if [ $# -ne 1 ]; then
 		ove_command_usage
@@ -5124,8 +5125,11 @@ function ove-am {
 		# apply patch(es)
 		if ! \git -C ${OVE_BASE_DIR}/${r} am ${d}/${r}/*; then
 			\git -C ${OVE_BASE_DIR}/${r} am --abort
+			((ret++))
 		fi
 	done
+
+	return ${ret}
 }
 
 # $1: behind|ahead
@@ -5203,6 +5207,8 @@ function ove-apply {
 	local patches
 	local q
 	local repo_basename
+	local repo_fullpath
+	local ret=0
 
 	if [ $# -ne 1 ]; then
 		ove_command_usage
@@ -5263,7 +5269,7 @@ function ove-apply {
 		repo_basename=${repo_basename/${OVE_BASE_DIR}\/}
 		repo_fullpath=$(ove_repo2fullpath ${repo_basename})
 		if [ "${repo_fullpath}" == "" ] || ! [ -d "${repo_fullpath}" ]; then
-			ove_echo_error_noprefix "'${repo_basename}': unknown repo, next..."
+			ove_echo_yellow_noprefix "'${repo_basename}': unknown repo, next..."
 			continue
 		fi
 
@@ -5274,7 +5280,8 @@ function ove-apply {
 			[ -d ${repo_fullpath}/.git ]; then
 			# Run 'git apply --check' and if ok, apply the patch
 			if ! \git -C "${repo_fullpath}" apply --check ${q} 2> /dev/null; then
-				ove_echo_yellow_noprefix "${repo_basename}: patch '${ove_yellow}${q}${ove_blank}' does not apply without errors"
+				ove_echo_yellow_noprefix "${repo_basename}: patch '${q}' does not apply"
+				((ret++))
 				continue
 			fi
 
@@ -5283,7 +5290,7 @@ function ove-apply {
 		fi
 	done
 
-	return 0
+	return ${ret}
 }
 
 function ove_patch_repositories {
@@ -6760,9 +6767,16 @@ function ove_bash_complete {
 			return
 		fi
 	elif [ "${subcommand}" == "replicate" ]; then
-		if [ "$(type -t _known_hosts_real)" == "function" ]; then
-			_known_hosts_real -a -- "$cur"
-			return
+		if [ ${size} -eq 2 ]; then
+			if [ "$(type -t _known_hosts_real)" == "function" ]; then
+				_known_hosts_real -a -- "$cur"
+				return
+			fi
+		elif [ ${size} -eq 3 ]; then
+			wordlist=$(\ssh ${COMP_WORDS[2]} "command -v locate > /dev/null && \locate .owel || \
+				\find \${PWD} -maxdepth 2 -name .owel" | \
+				\sed -e 's|/.owel$||g' | \
+				\xargs)
 		fi
 	elif [ "${subcommand}" == "tail-lastlog" ] ||
 		[ "${subcommand}" == "less-lastlog" ]; then
@@ -7898,22 +7912,28 @@ function ove-readme {
 	fi
 }
 
-# replicate:host:replicate OVE workspace on 'host'
+# replicate:host [path]:replicate OVE workspace on 'host'
 function ove-replicate {
 	local d
 	local host
+	local now
 	local p
+	local ps_local
+	local ps_remote
+	local q
 	local s
 
-	if [ $# -ne 1 ]; then
+	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
 		ove_command_usage
 		return 1
 	fi
 
-	s="$(ove-setup)"
-	if [ "${s}" == "" ]; then
-		ove_echo_error_noprefix "'${OVE_PROJECT_DIR}/SETUP' file not found"
-		return 2
+	if [ $# -eq 1 ]; then
+		s="$(ove-setup)"
+		if [ "${s}" == "" ]; then
+			ove_echo_error_noprefix "'${OVE_PROJECT_DIR}/SETUP' file not found"
+			return 2
+		fi
 	fi
 
 	host="$1"
@@ -7923,38 +7943,66 @@ function ove-replicate {
 	fi
 
 	# remote directory
-	d=$(\ssh ${host} mktemp -d)
-
-	# only diffs relative to the index is included (for now)
-	p=$(\mktemp -p ${OVE_PROJECT_TMP_DIR})
-	ove-diff > ${p}
-	if [ -s "${p}" ]; then
-		p_remote="${d}/${OVE_PROJECT_NAME}.patch"
-		if ! scp -q ${p} ${host}:${p_remote}; then
-			ove_echo_error_noprefix "not possible to transfer patch file to '${host}'"
-			\rm ${p}
+	if [ $# -eq 1 ]; then
+		d=$(\ssh ${host} mktemp -d)
+	else
+		d=$2
+		# sanity check
+		if ! \ssh -q ${host} "[ -L ${d}/ove ] && [ -L ${d}/.owel ]"; then
+			ove_echo_error_noprefix "'${d}' is not a valid OVE workspace on '${host}'"
 			return 4
 		fi
 	fi
 
+	now=$(\date '+%Y%m%d-%H%M%S')
+	ps_local="$"
+	ps_remote="[${host}]$"
+
+	q=$(\mktemp -p ${OVE_PROJECT_TMP_DIR})
+	echo "${ps_local} ove format-patch ${q}"
+	ove-format-patch ${q}
+	if [ -s "${q}" ]; then
+		q_remote="${d}/${now}.tar.bz2"
+		echo "${ps_local} scp -q ${q} ${host}:${q_remote}"
+		if ! \scp -q ${q} ${host}:${q_remote}; then
+			ove_echo_error_noprefix "not possible to transfer patch archive to '${host}'"
+			\rm ${q}
+			return 5
+		fi
+	fi
+
+	p=$(\mktemp -p ${OVE_PROJECT_TMP_DIR})
+	echo "${ps_local} ove diff > ${p}"
+	ove-diff > ${p}
+	if [ -s "${p}" ]; then
+		p_remote="${d}/${now}.patch"
+		echo "${ps_local} scp -q ${p} ${host}:${p_remote}"
+		if ! \scp -q ${p} ${host}:${p_remote}; then
+			ove_echo_error_noprefix "not possible to transfer patch file to '${host}'"
+			\rm ${p} ${q}
+			return 6
+		fi
+	fi
+
 	if ! \ssh ${host} "
-		echo $ ssh ${host};
-		echo $ cd ${d}; cd ${d};
-		echo $ '${s}'; eval ${s};
-		cd \$(\find \${PWD} -maxdepth 1 -mindepth 1 -type d);
-		echo $ pwd; echo \${PWD};
-		echo $ source ove; source ove;
+		echo '${ps_local} ssh ${host}';
+		echo '${ps_remote} cd ${d}'; cd ${d};
+		[ $# -eq 1 ] && echo '${ps_remote} ${s}' && eval ${s};
+		[ $# -eq 1 ] && cd \$(\find \${PWD} -maxdepth 1 -mindepth 1 -type d);
+		[ $# -eq 1 ] && echo '${ps_remote} pwd' && echo \${PWD};
+		echo '${ps_remote} source ove'; source ove;
 		ove_init;
-		echo $ ove fetch; ove-fetch;
-		[ -e \"${p_remote}\" ] && echo '$ ove apply ${p_remote}' && ove-apply ${p_remote};
-		echo $ ove status; ove-status"; then
+		[ $# -eq 1 ] && echo '${ps_remote} ove fetch' && ove-fetch;
+		[ -e \"${q_remote}\" ] && echo '${ps_remote} ove am ${q_remote}' && ove-am ${q_remote};
+		[ -e \"${p_remote}\" ] && echo '${ps_remote} ove apply ${p_remote}' && ove-apply ${p_remote};
+		echo '${ps_remote} ove status'; ove-status"; then
 		ove_echo_error_noprefix "trying to replicate OVE workspace on '${host}'"
 	else
 		echo
 		echo "OVE workspace has been replicated to '${host}:${d}'"
 	fi
 
-	\rm ${p}
+	\rm ${p} ${q}
 }
 
 function ove_unittest_preparations {
