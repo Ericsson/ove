@@ -4751,8 +4751,8 @@ function ove_get_build_list {
 	echo ${b}
 }
 
-# install-pkg:[project...]:install needed OS packages
-function ove-install-pkg {
+# list-needs:[project...]:list OS packages needs for all/specified project(s)
+function ove-list-needs {
 	local b
 	local build_list
 	local i
@@ -4760,12 +4760,6 @@ function ove-install-pkg {
 	local p
 	local pack_list
 	local re
-
-	if ! ove_build_pre "$@"; then
-		return 1
-	fi
-
-	trap ove_build_post EXIT
 
 	if [ $# -ge 1 ]; then
 		for p in "$@"; do
@@ -4792,12 +4786,26 @@ function ove-install-pkg {
 		done
 	done
 
-	# install packages
 	if [ "${pack_list}" != "" ]; then
-		if ! ove_install_packages ${pack_list}; then
-			ove_echo_error_noprefix "${FUNCNAME[0]}: missing package(s)"
-			return 1
-		fi
+		printf "%s\n" ${pack_list} | \
+			LC_ALL="C" \sort -u
+	fi
+
+	return 0
+}
+
+# install-pkg:[project...]:install needed OS packages
+function ove-install-pkg {
+	local pack_list
+
+	if ! pack_list=$(ove-list-needs "${@}"); then
+		return 1
+	elif [ "${pack_list}" == "" ]; then
+		return 0
+	fi
+
+	if ! ove_install_packages ${pack_list}; then
+		return 1
 	fi
 }
 
@@ -4807,6 +4815,11 @@ function ove-buildme {
 	local build_list
 	local p
 	local re
+
+	if ! ove_build_pre "$@"; then
+		return 1
+	fi
+	trap ove_build_post EXIT
 
 	# install packages
 	if ! ove-install-pkg "$@"; then
@@ -4866,6 +4879,11 @@ function ove-buildme-parallel {
 	local pids
 	local re
 	local wait_for_deps
+
+	if ! ove_build_pre "$@"; then
+		return 1
+	fi
+	trap ove_build_post EXIT
 
 	# install packages
 	if ! ove-install-pkg "$@"; then
@@ -6576,6 +6594,7 @@ function ove_bash_complete {
 		[ "${subcommand}" == "buildme-parallel" ] ||
 		[ "${subcommand}" == "export" ] ||
 		[ "${subcommand}" == "install-pkg" ] ||
+		[ "${subcommand}" == "list-needs" ] ||
 		[ "${subcommand}" == "list-missing-projects" ]; then
 		wordlist=${OVE_PROJECT_LIST}
 	elif [ "${subcommand}" == "run" ]; then

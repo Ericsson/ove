@@ -65,6 +65,7 @@
 | list-heads               | [git...]                                                               | git log for all/specified git repositories                                                                            |
 | list-missing-projects    | [project...]                                                           | list any missing project(s)                                                                                           |
 | list-modified-files      |                                                                        | list modified files                                                                                                   |
+| list-needs               | [project...]                                                           | list OS packages needs for all/specified project(s)                                                                   |
 | list-projects            | [verbose]                                                              | list projects                                                                                                         |
 | list-repositories        |                                                                        | list all git repositories                                                                                             |
 | list-scripts             |                                                                        | list available scripts                                                                                                |
