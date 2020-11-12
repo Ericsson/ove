@@ -34,6 +34,7 @@ function ove {
 	if [ "${s}" != "" ]; then
 		cd "${s}"
 		. ove hush
+		cd - > /dev/null
 		ove ${*}
 		r=${?}
 	fi
