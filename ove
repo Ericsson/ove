@@ -2773,24 +2773,22 @@ function ove-make {
 	local proj
 	local stage_dir_updated_by
 	local target
-	local withdeps
 
-	target="$*"
-	withdeps="true"
+	if [ $# -gt 1 ]; then
+		ove_command_usage
+		return 1
+	fi
 
-	[ $# -eq 0 ] && target="all"
-
-	if [[ ${target} == *-nodeps ]]; then
-		withdeps="false"
-		target=${target%-nodeps}
+	target="$1"
+	if [[ "$(caller 0)" != *"ove-make"* ]]; then
+		if ! ove_build_pre ${target%-nodeps}; then
+			return 1
+		fi
+		trap ove_build_post EXIT
 	fi
 
 	# build all?
-	if [ "${target}" == "all" ]; then
-		if ! ove_build_pre; then
-			return 1
-		fi
-
+	if [ $# -eq 0 ]; then
 		for proj in ${OVE_BUILD_ORDER}; do
 			i=${ove_projects_name2index[${proj}]}
 
@@ -2799,85 +2797,106 @@ function ove-make {
 				# check if some of the deps has modified the stage dir
 				for dep in ${ove_projects_deps[${i}]}; do
 					if [[ "${stage_dir_updated_by}" == *"${dep}"* ]]; then
-						ove_projects_cmd "${proj}" clean
+						if ! ove_projects_cmd "${proj}" clean; then
+							return 1
+						fi
 						break
 					fi
 				done
 			fi
 
-			fingerprint_a=$(ove_file_fingerprint ${OVE_STAGE_DIR})
-			ove_projects_cmd "${proj}" build
-			ove_projects_cmd "${proj}" install
-			fingerprint_b=$(ove_file_fingerprint ${OVE_STAGE_DIR})
-
-			# remember if project modified the stage dir
-			if [ "${fingerprint_a}" != "${fingerprint_b}" ]; then
-				stage_dir_updated_by+="${proj} "
-			fi
-		done
-	else
-		if ! ove_build_pre ${target}; then
-			return 1
-		fi
-
-		if [ "${withdeps}" == "false" ]; then
-			ove_projects_cmd "${target}" build
-		else
-			if [[ "$(caller 0)" != *"ove-make"* ]]; then
-				# keep track of projects built
-				_ove_projects_built=""
-			fi
-
-			if ! [[ -v ove_projects_name2index[${target}] ]]; then
-				ove_echo_error_noprefix "unknown target '${target}'"
-				return 1
-			fi
-
-			i=${ove_projects_name2index[${target}]}
-			# has deps?
-			if [ "${ove_projects_deps[${i}]}" != "" ]; then
-				fingerprint_a=$(ove_file_fingerprint ${OVE_STAGE_DIR})
-
-				for dep in ${ove_projects_deps[${i}]}; do
-					if ! [[ -v ove_projects_name2index[${dep}] ]]; then
-						ove_echo_yellow_noprefix "warning: project '${dep}' not found, skipping"
-						continue
-					fi
-
-					# already built? next!
-					if [[ "${_ove_projects_built}" == *"${dep}"* ]]; then
-						continue
-					fi
-
-					if ! ove-make "${dep}"; then
-						return 1
-					fi
-				done
-
-				fingerprint_b=$(ove_file_fingerprint ${OVE_STAGE_DIR})
-
-				# clean the project if OVE_STAGE_DIR was updated
-				if [ "${fingerprint_a}" != "${fingerprint_b}" ]; then
-					ove_projects_cmd "${target}" clean
+			if [ -e "${OVE_PROJECT_DIR}/projects/${proj}/build" ]; then
+				if ! ove_projects_cmd "${proj}" build; then
+					return 1
 				fi
 			fi
 
-			if ! ove_projects_cmd "${target}" build; then
-				return 1
+			if [ -e "${OVE_PROJECT_DIR}/projects/${proj}/install" ]; then
+				fingerprint_a=$(ove_file_fingerprint ${OVE_STAGE_DIR})
+				if ! ove_projects_cmd "${proj}" install; then
+					return 1
+				fi
+				fingerprint_b=$(ove_file_fingerprint ${OVE_STAGE_DIR})
+
+				# remember if project modified the stage dir
+				if [ "${fingerprint_a}" != "${fingerprint_b}" ]; then
+					stage_dir_updated_by+="${proj} "
+				fi
+			fi
+		done
+
+		return 0
+	elif [[ ${target} == *-nodeps ]]; then
+		target=${target%-nodeps}
+		if ! ove_projects_cmd "${target}" build; then
+			return 1
+		fi
+
+		if ! ove_projects_cmd "${target}" install; then
+			return 1
+		fi
+
+		return 0
+	fi
+
+	if [[ "$(caller 0)" != *"ove-make"* ]]; then
+		# keep track of projects built
+		_ove_projects_built=""
+	fi
+
+	if ! [[ -v ove_projects_name2index[${target}] ]]; then
+		ove_echo_error_noprefix "unknown target '${target}'"
+		return 1
+	fi
+
+	i=${ove_projects_name2index[${target}]}
+	# has deps?
+	if [ "${ove_projects_deps[${i}]}" != "" ]; then
+		if [ -e "${OVE_PROJECT_DIR}/projects/${target}/clean" ]; then
+			fingerprint_a=$(ove_file_fingerprint ${OVE_STAGE_DIR})
+		fi
+
+		for dep in ${ove_projects_deps[${i}]}; do
+			if ! [[ -v ove_projects_name2index[${dep}] ]]; then
+				ove_echo_yellow_noprefix "warning: project '${dep}' not found, skipping"
+				continue
 			fi
 
-			if ! ove_projects_cmd "${target}" install; then
-				return 1
+			# already built? next!
+			if [[ "${_ove_projects_built}" == *"${dep}"* ]]; then
+				continue
 			fi
 
-			# remember projects built
-			_ove_projects_built+="${target} "
+			if ! ove-make "${dep}"; then
+				return 1
+			fi
+		done
 
-			# cleanup
-			if [[ "$(caller 0)" != *"ove-make"* ]]; then
-				unset _ove_projects_built
+		if [ -e "${OVE_PROJECT_DIR}/projects/${target}/clean" ]; then
+			fingerprint_b=$(ove_file_fingerprint ${OVE_STAGE_DIR})
+			# clean the project if OVE_STAGE_DIR was updated
+			if [ "${fingerprint_a}" != "${fingerprint_b}" ]; then
+				if ! ove_projects_cmd "${target}" clean; then
+					return 1
+				fi
 			fi
 		fi
+	fi
+
+	if ! ove_projects_cmd "${target}" build; then
+		return 1
+	fi
+
+	if ! ove_projects_cmd "${target}" install; then
+		return 1
+	fi
+
+	# remember projects built
+	_ove_projects_built+="${target} "
+
+	# cleanup
+	if [[ "$(caller 0)" != *"ove-make"* ]]; then
+		unset _ove_projects_built
 	fi
 }
 
@@ -6586,7 +6605,8 @@ function ove_bash_complete {
 	wordlist=""
 	if [ "${subcommand}" == "make" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist=${OVE_PROJECT_LIST}
+			wordlist="${OVE_PROJECT_LIST}"
+			wordlist+=" ${OVE_PROJECT_LIST// /-nodeps }-nodeps"
 		elif [ ${size} -gt 2 ]; then
 			return
 		fi
