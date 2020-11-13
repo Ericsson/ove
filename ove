@@ -8170,6 +8170,15 @@ function ove_unittest_preparations {
 	\git -C ${unittest_dir}/git-top branch -q --set-upstream-to=origin/${OVE_DEFAULT_BRANCH_NAME}
 }
 
+function ove_unittest_exit {
+	if [ -e "${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak" ]; then
+		mv ${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak ${OVE_GLOBAL_STATE_DIR}/.oveconfig
+	fi
+	if [ -e "${HOME}/.oveconfig.bak" ]; then
+		mv ${HOME}/.oveconfig.bak ${HOME}/.oveconfig
+	fi
+}
+
 # unittest:[test...]:run all/specific unit tests
 function ove-unittest {
 	local a
@@ -8185,6 +8194,14 @@ function ove-unittest {
 	if ! command -v shelltest > /dev/null; then
 		ove_command_not_found "shelltestrunner" "Version 1.9 or greater is needed."
 		return 1
+	fi
+
+	trap ove_unittest_exit EXIT
+	if [ -e "${OVE_GLOBAL_STATE_DIR}/.oveconfig" ]; then
+		mv ${OVE_GLOBAL_STATE_DIR}/.oveconfig  ${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak
+	fi
+	if [ -e "${HOME}/.oveconfig" ]; then
+		mv ${HOME}/.oveconfig ${HOME}/.oveconfig.bak
 	fi
 
 	if [ $# -eq 0 ]; then
