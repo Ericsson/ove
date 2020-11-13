@@ -6684,6 +6684,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "diff-project" ] ||
 		[ "${subcommand}" == "log-project" ] ||
+		[ "${subcommand}" == "revtab-diff" ] ||
 		[ "${subcommand}" == "shortlog-project" ]; then
 		if [ ${size} -lt 4 ]; then
 			wordlist=$(ove_list_tags_and_branches)
