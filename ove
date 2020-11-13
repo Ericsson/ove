@@ -4849,22 +4849,23 @@ function ove-buildme {
 		build_list="$(ove_get_build_list "$@")"
 	fi
 
-	# bootstrap
-	for b in ${OVE_BUILD_ORDER}; do
-		if [ $# -ge 1 ]; then
-			re=\\b${b}\\b
-			if ! [[ "${build_list}" =~ ${re} ]]; then
-				continue
+	for p in ${OVE_BUILDME_PRE_STEPS}; do
+		for b in ${OVE_BUILD_ORDER}; do
+			if [ $# -ge 1 ]; then
+				re=\\b${b}\\b
+				if ! [[ "${build_list}" =~ ${re} ]]; then
+					continue
+				fi
 			fi
-		fi
 
-		! [ -e "${OVE_PROJECT_DIR}/projects/${b}/bootstrap" ] && continue
+			! [ -e "${OVE_PROJECT_DIR}/projects/${b}/${p}" ] && continue
 
-		if [ "$(type -t ove-bootstrap)" == "function" ] && \
-			! eval ove-bootstrap ${b} ${OVE_REDIRECT_OUTPUT}; then
-			ove_echo_error_noprefix "${FUNCNAME[0]}: ove-bootstrap ${b} failed"
-			return 1
-		fi
+			if [ "$(type -t ove-${p})" == "function" ] && \
+				! eval ove-${p} ${b} ${OVE_REDIRECT_OUTPUT}; then
+				ove_echo_error_noprefix "${FUNCNAME[0]}: ${p} ${b} failed"
+				return 1
+			fi
+		done
 	done
 
 	for b in ${OVE_BUILD_ORDER}; do
@@ -4875,7 +4876,7 @@ function ove-buildme {
 			fi
 		fi
 
-		for p in configure build install; do
+		for p in ${OVE_BUILDME_STEPS}; do
 			if [ "$(type -t ove-${p})" == "function" ] && \
 				! eval ove-${p} ${b} ${OVE_REDIRECT_OUTPUT}; then
 				ove_echo_error_noprefix "${FUNCNAME[0]}: ove-${p} ${b} failed"
@@ -4913,25 +4914,26 @@ function ove-buildme-parallel {
 		build_list="$(ove_get_build_list "$@")"
 	fi
 
-	# bootstrap
-	for b in ${OVE_BUILD_ORDER}; do
-		if [ $# -ge 1 ]; then
-			re=\\b${b}\\b
-			if ! [[ "${build_list}" =~ ${re} ]]; then
-				continue
+	for p in ${OVE_BUILDME_PRE_STEPS}; do
+		for b in ${OVE_BUILD_ORDER}; do
+			if [ $# -ge 1 ]; then
+				re=\\b${b}\\b
+				if ! [[ "${build_list}" =~ ${re} ]]; then
+					continue
+				fi
 			fi
-		fi
 
-		! [ -e "${OVE_PROJECT_DIR}/projects/${b}/bootstrap" ] && continue
+			! [ -e "${OVE_PROJECT_DIR}/projects/${b}/${p}" ] && continue
 
-		{
-			if [ "$(type -t ove-bootstrap)" == "function" ] && \
-				! eval ove-bootstrap ${b} ${OVE_REDIRECT_OUTPUT}; then
-				ove_echo_error_noprefix "${FUNCNAME[0]}: bootstrap ${b} failed"
-				kill -USR1 $$
-			fi
-		} &
-		pids+="$! "
+			{
+				if [ "$(type -t ove-${p})" == "function" ] && \
+					! eval ove-${p} ${b} ${OVE_REDIRECT_OUTPUT}; then
+					ove_echo_error_noprefix "${FUNCNAME[0]}: ${p} ${b} failed"
+					kill -USR1 $$
+				fi
+			} &
+			pids+="$! "
+		done
 	done
 
 	wait ${pids}
@@ -4965,7 +4967,7 @@ function ove-buildme-parallel {
 			done
 			[ "${wait_for_deps}" != "" ] && wait
 
-			for p in configure build install; do
+			for p in ${OVE_BUILDME_STEPS}; do
 				if [ "$(type -t ove-${p})" == "function" ] && \
 					! eval ove-${p} ${b} ${OVE_REDIRECT_OUTPUT}; then
 					ove_echo_error_noprefix "${FUNCNAME[0]}: ${p} ${b} failed"
@@ -7140,6 +7142,13 @@ function ove_config_builtins_init {
 
 	if [ -z "${OVE_TAINT_USER_ENV+x}" ]; then
 		export OVE_TAINT_USER_ENV=1
+	fi
+
+	if [ -z "${OVE_BUILDME_PRE_STEPS+x}" ]; then
+		export OVE_BUILDME_PRE_STEPS="bootstrap"
+	fi
+	if [ -z "${OVE_BUILDME_STEPS+x}" ]; then
+		export OVE_BUILDME_STEPS="configure build install"
 	fi
 }
 
