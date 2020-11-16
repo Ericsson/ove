@@ -452,6 +452,10 @@ function ove_strace_connect_one_pid {
 function ove_read_connect_cache {
 	local line
 
+	unset ove_ip2host_db
+	unset ove_ip2org_db
+	unset ove_port2service_db
+
 	declare -A -g ove_ip2host_db
 	declare -A -g ove_ip2org_db
 	declare -A -g ove_port2service_db
@@ -1894,6 +1898,7 @@ function ove_revtab_init {
 	unset ove_revtab_push_url
 	unset ove_revtab_rev
 	unset ove_revtab_git_name
+	unset ove_revtab_name2index
 
 	declare -a -g ove_revtab_fetch_url
 	declare -a -g ove_revtab_push_url
@@ -6919,6 +6924,10 @@ function ove_scripts_init {
 	local repo
 	local script
 	local script_list
+
+	unset ove_scripts_name2path
+	unset ove_scripts_paths
+
 	declare -A -g ove_scripts_name2path
 	declare -A -g ove_scripts_paths
 
