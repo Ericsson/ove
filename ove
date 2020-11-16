@@ -6315,7 +6315,7 @@ function ove-version {
 	echo "OVE [SHA-1: ${OVE_SHA} @ ${OVE_OS} ${OVE_OS_VER}]"
 }
 
-# revtab-check:[0|1]:disable/enable if OVE should keep repos in sync with 'revtab'
+# revtab-check:[0|1]:disable/enable if OVE should keep repos in-sync with 'revtab'
 function ove-revtab-check {
 	local cfg
 	local reinit=0
@@ -7117,57 +7117,91 @@ function ove_config_init {
 }
 
 function ove_config_builtins_init {
+	# OVE_DRY_RUN:int:0|1:all-build-commands systest:dry-run
 	if [ -z "${OVE_DRY_RUN+x}" ]; then
 		export OVE_DRY_RUN=0
 	fi
 
+	# OVE_FETCH_MAX_PARALLEL:int:[0-9]+:fetch:max number of 'git fetch' to run in parallel
 	if [ -z "${OVE_FETCH_MAX_PARALLEL+x}" ]; then
 		export OVE_FETCH_MAX_PARALLEL=0
 	fi
 
+	# OVE_CLONE_MAX_PARALLEL:int:[0-9]+:fetch:max number of 'git clone' to run in parallel
 	if [ -z "${OVE_CLONE_MAX_PARALLEL+x}" ]; then
 		export OVE_CLONE_MAX_PARALLEL=0
 	fi
 
+	# OVE_LOCATE_SEARCH_DIR:string::locate:where to search for OVE workspaces (only if 'locate' is unavailable)
 	if [ -z "${OVE_LOCATE_SEARCH_DIR+x}" ]; then
 		OVE_LOCATE_SEARCH_DIR=$(\readlink -f $(\dirname ${HOME}))
 		export OVE_LOCATE_SEARCH_DIR
 	fi
 
+	# OVE_DEFAULT_BRANCH_NAME:string::add-repo unittest:default branch name
 	if [ -z "${OVE_DEFAULT_BRANCH_NAME+x}" ]; then
 		export OVE_DEFAULT_BRANCH_NAME="main"
 	fi
 
+	# OVE_PROJECT_CI_BRANCH:string::log:branch to use for 'ove log'
 	if [ -z "${OVE_PROJECT_CI_BRANCH+x}" ]; then
 		export OVE_PROJECT_CI_BRANCH="origin/${OVE_DEFAULT_BRANCH_NAME}"
 	fi
 
+	# OVE_LOGLEVEL:int:0-8:all:set a specific log level
 	if [ -z "${OVE_LOGLEVEL+x}" ]; then
 		export OVE_LOGLEVEL=1
 		export OVE_REDIRECT_OUTPUT=""
 	fi
 
+	# OVE_AUTOCORRECT:int:0|1:all:auto correct commands
 	if [ -z "${OVE_AUTOCORRECT+x}" ]; then
 		export OVE_AUTOCORRECT=0
 	fi
 
+	# OVE_REVTAB_CHECK:int:0|1:all:keep repos in-sync with 'revtab'
 	if [ -z "${OVE_REVTAB_CHECK+x}" ]; then
 		export OVE_REVTAB_CHECK=1
 	fi
 
+	# OVE_LOG_DIR_DISK_USAGE_WARNING_MB:int:[0-9]+:all:threshold when logs take too much space
 	if [ -z "${OVE_LOG_DIR_DISK_USAGE_WARNING_MB+x}" ]; then
 		export OVE_LOG_DIR_DISK_USAGE_WARNING_MB=100
 	fi
 
+	# OVE_TAINT_USER_ENV:int:0|1:user's env:taint user's PATH/LD_LIBRARY_PATH/PKG_CONFIG
 	if [ -z "${OVE_TAINT_USER_ENV+x}" ]; then
 		export OVE_TAINT_USER_ENV=1
 	fi
 
+	# OVE_BUILDME_PRE_STEPS:string::buildme buildme-parallel:project step(s) to run without build order considerations
 	if [ -z "${OVE_BUILDME_PRE_STEPS+x}" ]; then
 		export OVE_BUILDME_PRE_STEPS="bootstrap"
 	fi
+
+	# OVE_BUILDME_STEPS:string::buildme buildme-parallel:project step(s) to run
 	if [ -z "${OVE_BUILDME_STEPS+x}" ]; then
 		export OVE_BUILDME_STEPS="configure build install"
+	fi
+
+	# OVE_SYSTEST_REPEAT:int:>0:systest:repeat tests
+	if [ -z "${OVE_SYSTEST_REPEAT+x}" ]; then
+		export OVE_SYSTEST_REPEAT=1
+	fi
+
+	# OVE_SYSTEST_SKIP:int:>0:systest:skip every nth test
+	if [ -z "${OVE_SYSTEST_SKIP+x}" ]; then
+		export OVE_SYSTEST_SKIP=1
+	fi
+
+	# OVE_FORCE_SERIALIZE_COMMANDS:string::all-parallel-build-commands:force OVE to serialize one or more project steps
+	if [ -z "${OVE_FORCE_SERIALIZE_COMMANDS+x}" ]; then
+		export OVE_FORCE_SERIALIZE_COMMANDS=""
+	fi
+
+	# OVE_LOOP_INOTIFY_EXTRA:string::loop:colon separated list of additional files/directories to watch using inotify
+	if [ -z "${OVE_LOOP_INOTIFY_EXTRA+x}" ]; then
+		export OVE_LOOP_INOTIFY_EXTRA=""
 	fi
 }
 
@@ -8420,8 +8454,10 @@ function ove-add-repo {
 function ove-generate-doc {
 	local a
 	local b
+	local c
 	local header
 	local sorted
+	local str
 
 	a=$(\grep -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
 		\grep '\#' | \
@@ -8441,10 +8477,33 @@ function ove-generate-doc {
 		-e 's/$/: |/g' | \
 		LC_ALL="C" \sort)
 
+
 	printf "${header}\n|-|-|-|\n${sorted}\n" | \
 		\sed -e 's/\#/\\|/g' | \
 		\column -s: -t \
 		> ${OVE_DIR}/ove-cmd-list.md
+
+
+	for c in $(type ove_config_builtins_init | \grep -o 'OVE_[A-Z_]\+'| LC_ALL="C" \sort -u); do
+		str+="$(\grep -o "# ${c}:.*:.*" ${OVE_SELF} | \cut -b3-):$(type ove_config_builtins_init | \
+			\grep "export ${c}=" | \
+			\cut -d= -f2- | \
+			\tr -d ';' | \
+			\tr -d '"')\n"
+	done
+	sorted=$(printf "${str}" | \
+		\sed \
+		-e 's/|/#/g' \
+		-e 's/:/ :| /g' \
+		-e 's/^/| /g' \
+		-e 's/$/: |/g' | \
+		LC_ALL="C" \sort)
+
+	header="| Config:| Type: | Allowed:| Affect: | Description: | Default value:"
+	printf "${header}\n|-|-|-|-|-|-|\n${sorted}\n" | \
+		\sed -e 's/\#/\\|/g' | \
+		\column -s: -t \
+		> ${OVE_DIR}/ove-config-list.md
 
 	\sed -i "s/^ove_built_ins=.*/ove_built_ins=\"$(ove_get_built_ins)\"/g" ${OVE_DIR}/ove.bash
 

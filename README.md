@@ -346,6 +346,10 @@ Here's a list (not complete) of a few utility commands:
 
 Please find the full command reference [here](ove-cmd-list.md)
 
+### Configuration
+
+Configurable OVE commands can be found [here](ove-config-list.md)
+
 ## Supported Linux distributions
 
 OVE has been tested for the following distributions:
