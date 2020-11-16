@@ -5011,7 +5011,7 @@ function ove-list-repositories {
 	ove_revtab_list
 }
 
-# env:[pattern]:show OVE env
+# env:[pattern]:show OVE environment variables
 function ove-env {
 	local e
 	local str
@@ -5088,7 +5088,7 @@ function ove-show-ahead {
 	ove-show ${sha_list}
 }
 
-# reset-ahead: :git reset --hard HEAD~N where N is #commits ahead for ALL repositories
+# reset-ahead: :git reset --hard HEAD~N where N is number of commits ahead for ALL repositories, USE WITH CARE
 function ove-reset-ahead {
 	ove-ahead | \
 		\sed -r \
@@ -5383,7 +5383,7 @@ function ove-gitmodules2revtab {
 	LC_ALL="C" \sort -u -o ${OVE_PROJECT_DIR}/revtab <(\column -t ${OVE_PROJECT_DIR}/revtab)
 }
 
-# do:dir command:run a command within DIR relative to ${OVE_BASE_DIR}
+# do:dir command:run a command within 'dir' relative to ${OVE_BASE_DIR}
 function ove-do {
 	local cmd
 	local dir
@@ -6247,7 +6247,7 @@ function ove-head-tail {
 	fi
 }
 
-# what-is:directory...:classify files using 'file' within a directory
+# what-is:dir...:classify files inside 'dir' using 'file'
 function ove-what-is {
 	local dir
 
@@ -8426,14 +8426,14 @@ function ove-generate-doc {
 	header="| Command:| Arguments:| Description: |"
 	sorted=$(printf "${a}\n${b}" | \
 		\sed \
-		-e 's/|/@/g' \
+		-e 's/|/#/g' \
 		-e 's/:/ :| /g' \
 		-e 's/^/| /g' \
 		-e 's/$/: |/g' | \
 		LC_ALL="C" \sort)
 
 	printf "${header}\n|-|-|-|\n${sorted}\n" | \
-		\sed -e 's/\@/\\|/g' | \
+		\sed -e 's/\#/\\|/g' | \
 		\column -s: -t \
 		> ${OVE_DIR}/ove-cmd-list.md
 
