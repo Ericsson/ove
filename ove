@@ -3632,7 +3632,10 @@ function ove-diff-project {
 	local sha_1
 	local sha_2
 
-	ove_revtab_sanity_check "$@" || return $?
+	if ! ove_revtab_sanity_check "$@"; then
+		ove_command_usage
+		return 1
+	fi
 
 	cmd="\git -C ${OVE_PROJECT_DIR} diff --color=always $1 $2"
 	diff=$(eval ${cmd})
@@ -3669,7 +3672,10 @@ function ove-log-project {
 	local sha_1
 	local sha_2
 
-	ove_revtab_sanity_check "$@" || return $?
+	if ! ove_revtab_sanity_check "$@"; then
+		ove_command_usage
+		return 1
+	fi
 
 	diff=$(\git --no-pager -C "${OVE_PROJECT_DIR}" log --oneline --pretty="  %C(auto)%h %s" "$1".."$2")
 	if [ "${diff}" != "" ]; then
@@ -3707,7 +3713,10 @@ function ove-shortlog-project {
 	local sha_1
 	local sha_2
 
-	ove_revtab_sanity_check "$@" || return $?
+	if ! ove_revtab_sanity_check "$@"; then
+		ove_command_usage
+		return 1
+	fi
 
 	diff=$(\git --no-pager -C "${OVE_PROJECT_DIR}" shortlog --email --oneline "$1".."$2")
 	if [ "${diff}" != "" ]; then
