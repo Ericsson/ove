@@ -975,7 +975,7 @@ function ove_loop_command {
 			ove_revtab_forall_parallel "${cmd}" > ${all_files}
 
 			# extra files/directories to monitor?
-			if [ -n "${OVE_LOOP_INOTIFY_EXTRA+x}" ]; then
+			if [ "x${OVE_LOOP_INOTIFY_EXTRA}" != "x" ]; then
 				\find ${OVE_LOOP_INOTIFY_EXTRA//:/ } -type f >> ${all_files}
 			fi
 
@@ -1838,11 +1838,11 @@ function ove_projects_cmd {
 		pushd "${path}" &>/dev/null
 	fi
 
-	if [[ ${FUNCNAME[*]} == *-parallel ]] && [ -n "${OVE_FORCE_SERIALIZE_COMMANDS}" ]; then
+	if [[ ${FUNCNAME[*]} == *-parallel ]] && [ "x${OVE_FORCE_SERIALIZE_COMMANDS}" != "x" ]; then
 		re=\\b${cmd}\\b
 		if [[ "${OVE_FORCE_SERIALIZE_COMMANDS}" =~ ${re} ]]; then
 			exec {fd}>${OVE_PROJECT_TMP_DIR}/${cmd}.lock
-			flock ${fd}
+			\flock ${fd}
 		fi
 	fi
 
@@ -8568,6 +8568,7 @@ function ove_externals {
 	cmds+=('du')
 	cmds+=('file')
 	cmds+=('find')
+	cmds+=('flock')
 	cmds+=('fold')
 	cmds+=('git')
 	cmds+=('grep')

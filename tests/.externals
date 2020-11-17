@@ -46,6 +46,8 @@ ove_echo_error_noprefix "not possible to transfer patch file to '${host}'"
 find:
 ove_echo_error_noprefix "${FUNCNAME[0]}:can not find '${test_name}'"
 
+flock:
+
 fold:
 
 git:
