@@ -2387,7 +2387,7 @@ function ove_revtab_check_one {
 		if ove_repo_is_dirty ${OVE_BASE_DIR}/${name}; then
 			ove_echo_error_noprefix "${name}: cannot checkout '${revision}' as repo is dirty"
 		else
-			m=$(\xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
+			m=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
 			ove_revtab_checkout ${name} |& \sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#name}))}))|g" \
 				-e "2,10s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
 			ove_patch_repositories
@@ -2672,7 +2672,7 @@ function ove_revtab_fetch {
 
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout "$@"
-		m=$(\xargs -n1 <<<"$@" | \wc -L)
+		m=$(printf "%s\n" "$@" | \wc -L)
 		ove_revtab_forsome_parallel "\git -C \${repo} fetch --all --tag |& \sed -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#i}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL} "$@"
 		return $?
 	fi
@@ -2687,7 +2687,7 @@ function ove_revtab_fetch {
 
 	[ "${co_list}" != "" ] && ove_revtab_clone_and_checkout ${co_list}
 
-	m=$(\xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
+	m=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
 	ove_revtab_forall_parallel "\git -C \${repo} fetch --all --tags |& \sed -e \"s|^|\${repo_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#repo_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
 	return $?
 }
@@ -2935,7 +2935,7 @@ function ove-list-projects {
 		done | \head -n -1
 	else
 		[ "${OVE_PROJECT_LIST}" != "" ] &&
-			\xargs -n1 <<<${OVE_PROJECT_LIST}
+			printf "%s\n" ${OVE_PROJECT_LIST}
 	fi
 
 	return 0
@@ -3922,7 +3922,7 @@ function ove_locate_owels {
 
 	owels=${owels//\/.owel/}
 
-	\xargs -n1 <<<${owels} | \
+	printf "%s\n" ${owels} | \
 		\tee "${OVE_GLOBAL_STATE_DIR}/owel.cache"
 }
 
@@ -4420,7 +4420,7 @@ function ove-list-missing-projects {
 	done
 
 	if [ ${#m[@]} -ne 0 ]; then
-		\xargs -n1 <<<"${!m[@]}" | LC_ALL="C" \sort
+		printf "%s\n" "${!m[@]}" | LC_ALL="C" \sort
 	fi
 }
 
@@ -4560,13 +4560,13 @@ function ove_install_packages {
 	[ "${missing_packages}" == "" ] && return
 
 	# sort the list
-	missing_packages_sorted="$(\xargs -n1 "${OVE_ECHO}" <<<${missing_packages} | \
+	missing_packages_sorted="$(printf "%s\n" ${missing_packages} | \
 		LC_ALL="C" \sort -u | \
 		\xargs "${OVE_ECHO}")"
 
 	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
 		ove_echo_yellow "would prompt to install this/these package(s):"
-		\xargs -n1 <<<${missing_packages_sorted}
+		printf "%s\n" ${missing_packages_sorted}
 		return
 	fi
 
@@ -4620,7 +4620,7 @@ function ove-export {
 			deps=$(ove_get_deps_recursive $1)
 		fi
 
-		for b in $(\xargs -n1 <<<${OVE_BUILD_ORDER} | LC_ALL="C" \sort); do
+		for b in $(printf "%s\n" ${OVE_BUILD_ORDER} | LC_ALL="C" \sort); do
 			if [ $# -ge 1 ]; then
 				re=\\b${b}\\b
 				if ! [[ "${deps}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
@@ -4717,8 +4717,8 @@ function ove_build_pre {
 		if [ -n "${OVE_PROJECT_LIST_BUILDABLE+x}" ] && \
 			[ "${OVE_PROJECT_LIST_BUILDABLE}" != "${OVE_PROJECT_LIST}" ]; then
 			ove_echo_error_noprefix "'$(LC_ALL="C" \comm -3 \
-				<(\xargs -n1 <<<${OVE_PROJECT_LIST} | LC_ALL="C" \sort) \
-				<(\xargs -n1 <<<${OVE_PROJECT_LIST_BUILDABLE} | LC_ALL="C" \sort) |
+				<(printf "%s\n" ${OVE_PROJECT_LIST}) \
+				<(printf "%s\n" ${OVE_PROJECT_LIST_BUILDABLE}) |
 				\xargs)' is not buildable project(s). Try: 'ove fetch'"
 			return 1
 		fi
@@ -4741,7 +4741,7 @@ function ove_build_pre {
 						done
 					done
 					if [ "${repos}" != "" ]; then
-						repos=$(\xargs -n1 <<<${repos} | LC_ALL="C" \sort -u | \xargs)
+						repos=$(printf "%s\n" ${repos} | LC_ALL="C" \sort -u | \xargs)
 						ove_echo_error_noprefix "'$1' is not a buildable project. Try: 'ove fetch ${repos}'"
 					fi
 					return 1
@@ -4779,7 +4779,7 @@ function ove_get_build_list {
 	local b
 
 	b="$(ove_get_deps_recursive "$@") $*"
-	b="$(\xargs -n1 <<<${b} | LC_ALL="C" \sort -u | \xargs)"
+	b="$(printf "%s\n" ${b} | LC_ALL="C" \sort -u | \xargs)"
 
 	echo ${b}
 }
@@ -5493,7 +5493,7 @@ function ove-checkout {
 
 		\git -C "${OVE_PROJECT_DIR}" fetch --all
 
-		m=$(\xargs -n1 <<<${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
+		m=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
 		\git -C "${OVE_PROJECT_DIR}" -c advice.detachedHead=false checkout "${revision}" |& \
 			\sed -e "1s|^|$(ove_echo_yellow_noprefix ${OVE_PROJECT_NAME})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#OVE_PROJECT_NAME}))}))|g" \
 			-e "2s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
@@ -7886,18 +7886,18 @@ function ove_packages_not_installed {
 
 	[ $# -eq 0 ] && return
 
-	p_sort=$(\xargs -n1 <<<"$@" | LC_ALL="C" \sort -u)
+	p_sort=$(printf "%s\n" "$@" | LC_ALL="C" \sort -u)
 
 	if [[ ${OVE_OS} == *"Arch Linux"* ]]; then
-		LC_ALL="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\pacman -Q | \awk '{print $1}')
+		LC_ALL="C" \comm -2 -3 <(printf "%s\n" ${p_sort}) <(\pacman -Q | \awk '{print $1}')
 	elif [[ ${OVE_OS} == *"Alpine"* ]]; then
-		LC_ALL="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\apk info | LC_ALL="C" \sort)
+		LC_ALL="C" \comm -2 -3 <(printf "%s\n" ${p_sort}) <(\apk info | LC_ALL="C" \sort)
 	elif [[ ${OVE_OS} == *"CentOS"* ]] || \
 		[[ ${OVE_OS} == *"Fedora"* ]] || \
 		[[ ${OVE_OS} == *"SLES"* ]] || \
 		[[ ${OVE_OS} == *"openSUSE"* ]] || \
 		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]]; then
-		LC_ALL="C" \comm -2 -3 <(\xargs -n1 <<<${p_sort}) <(\rpm -qa --qf "%{NAME}\n"| LC_ALL="C" \sort)
+		LC_ALL="C" \comm -2 -3 <(printf "%s\n" ${p_sort}) <(\rpm -qa --qf "%{NAME}\n"| LC_ALL="C" \sort)
 	elif [[ ${OVE_OS} == *"Debian"* ]] || \
 		[[ ${OVE_OS} == *"Raspbian"* ]] || \
 		[[ ${OVE_OS} == *"Ubuntu"* ]]; then
@@ -7907,7 +7907,7 @@ function ove_packages_not_installed {
 			\xargs
 	elif [[ ${OVE_OS} == *"void"* ]]; then
 		LC_ALL="C" \comm -2 -3 \
-			<(\xargs -n1 <<<${p_sort}) \
+			<(printf "%s\n" ${p_sort}) \
 			<(\xbps-query --list-pkgs | \awk '{print $2}' | \rev | \cut -d- -f2- | \rev | LC_ALL="C" \sort | \xargs -n1)
 	else
 		ove_echo_error_noprefix "function '${FUNCNAME[0]}' is not implemented for ${OVE_OS}"
@@ -8466,7 +8466,7 @@ function ove-generate-doc {
 		\grep helptext | \
 		\grep -v '\$'| \
 		\cut -d'"' -f2 | \
-		\grep -v -f<(\xargs -n1 <<<${OVE_SCRIPTS_LIST} | \sed -e 's|^|^|g' -e 's|$|:|g'))
+		\grep -v -f<(printf "%s\n" ${OVE_SCRIPTS_LIST} | \sed -e 's|^|^|g' -e 's|$|:|g'))
 
 	header="| Command:| Arguments:| Description: |"
 	sorted=$(printf "${a}\n${b}" | \
