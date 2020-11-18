@@ -8654,6 +8654,7 @@ function ove-pre-push {
 	ove_echo "shell-check"
 	ove-shell-check
 	ove_echo "unittest"
+	[ -d ${OVE_PROJECT_TMP_DIR}/unittest ] && \rm -rf ${OVE_PROJECT_TMP_DIR}/unittest
 	ove-unittest
 	ove_echo "generate-doc"
 	ove-generate-doc
