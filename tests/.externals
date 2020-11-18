@@ -86,9 +86,6 @@ d=$(\ssh ${host} mktemp -d)
 
 pgrep:
 
-pkill:
-sudo pkill -SIGINT -f ${bcc_tool}
-
 readlink:
 
 rev:

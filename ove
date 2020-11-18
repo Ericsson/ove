@@ -1234,14 +1234,132 @@ function ove_sanitise_vars {
 	return 0
 }
 
+function ove_setup_trace {
+	local bcc_tool
+	local strace_expression
+
+	if [ ${OVE_LOGLEVEL} -lt 3 ]; then
+		unset OVE_TRACE_CMD
+		return 0
+	fi
+
+	[ -e ${OVE_PROJECT_TMP_DIR}/trace-${cmd} ] && \
+		\rm -rf ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
+	\mkdir -p ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
+
+	if [ ${OVE_LOGLEVEL} -eq 5 ]; then
+		strace_expression="connect,bind,execve"
+	elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
+		strace_expression="execve,clone,fork,vfork,connect,bind"
+	else
+		strace_expression="execve"
+	fi
+
+	if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
+		if [ ${OVE_LOGLEVEL} -eq 7 ]; then
+			bcc_tool="execsnoop"
+		else
+			bcc_tool="tcpconnect"
+		fi
+
+		if [ ${EUID} != 0 ]; then
+			if ! sudo -n true; then
+				if ! sudo true; then
+					ove_echo_error_noprefix "'${bcc_tool}' need non-interactive 'sudo'"
+					return 1
+				fi
+			fi
+			OVE_TRACE_CMD="sudo "
+		fi
+		OVE_TRACE_CMD+="python3 /usr/share/bcc/tools/${bcc_tool} "
+		OVE_TRACE_CMD+="-t "
+		OVE_TRACE_CMD+="-u ${EUID} "
+		OVE_TRACE_CMD+="> ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd} "
+		OVE_TRACE_CMD+="2> /dev/null"
+		OVE_TRACE_CMD+="& echo \$! > ${OVE_PROJECT_TMP_DIR}/trace.pid 2> /dev/null"
+	else
+		OVE_TRACE_CMD="strace "
+		OVE_TRACE_CMD+="-s 1024 "
+		OVE_TRACE_CMD+="-q "
+		OVE_TRACE_CMD+="-o ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd} "
+		OVE_TRACE_CMD+="-ff "
+		OVE_TRACE_CMD+="-T "
+		OVE_TRACE_CMD+="-e ${strace_expression} "
+		OVE_TRACE_CMD+="-ttt "
+	fi
+	export OVE_TRACE_CMD
+	[ -e ${OVE_PROJECT_TMP_DIR}/bash.pid ] && \
+		\rm ${OVE_PROJECT_TMP_DIR}/bash.pid
+	[ -e ${OVE_PROJECT_TMP_DIR}/trace.pid ] && \
+		\rm ${OVE_PROJECT_TMP_DIR}/trace.pid
+	[ -e ${OVE_PROJECT_TMP_DIR}/trace.cont ] && \
+		\rm ${OVE_PROJECT_TMP_DIR}/trace.cont
+
+	{
+		while true; do [ -e ${OVE_PROJECT_TMP_DIR}/bash.pid ] && break; done
+
+		# launch trace in background and let it start up
+		if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
+			(eval ${OVE_TRACE_CMD})
+			sleep 2
+		else
+			(${OVE_TRACE_CMD} -p $(\cat ${OVE_PROJECT_TMP_DIR}/bash.pid) & echo $! > ${OVE_PROJECT_TMP_DIR}/trace.pid)
+			sleep 1
+		fi
+		true > ${OVE_PROJECT_TMP_DIR}/trace.cont
+	} &
+}
+
+function ove_setup_trace_post {
+	local pid
+	local prefix
+	local sig
+
+	if [ -n "${OVE_TRACE_CMD+x}" ]; then
+		if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
+			if [ ${EUID} != 0 ]; then
+				prefix="sudo"
+			fi
+		fi
+		pid=$(\cat ${OVE_PROJECT_TMP_DIR}/trace.pid)
+		if ${prefix} kill -0 ${pid} > /dev/null 2>&1; then
+			for sig in SIGTERM SIGINT SIGKILL; do
+				${prefix} kill -${sig} ${pid} 2> /dev/null
+				sleep 1
+				${prefix} kill -0 ${pid} 2> /dev/null || break
+			done
+		fi
+
+		[ -e ${OVE_PROJECT_TMP_DIR}/bash.pid ] && \
+			\rm ${OVE_PROJECT_TMP_DIR}/bash.pid
+		[ -e ${OVE_PROJECT_TMP_DIR}/trace.cont ] && \
+			\rm ${OVE_PROJECT_TMP_DIR}/trace.cont
+		[ -e ${OVE_PROJECT_TMP_DIR}/trace.pid ] && \
+			\rm ${OVE_PROJECT_TMP_DIR}/trace.pid
+
+		while true; do
+			if [ ${OVE_LOGLEVEL} -eq 3 ] || [ ${OVE_LOGLEVEL} -eq 4 ]; then
+				ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
+			elif [ ${OVE_LOGLEVEL} -eq 5 ]; then
+				ove_analyze_strace_connect ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
+			elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
+				ove_strace_create_graph ${OVE_PROJECT_TMP_DIR}/trace-${cmd} ${cmd}
+			elif [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
+				\head -n -1 ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd}
+			fi
+			break
+		done | \tee -a ${OVE_LAST_COMMAND}
+
+		unset OVE_TRACE_CMD
+	fi
+}
+
 function ove {
 	local args
-	local bcc_tool
 	local candidates
 	local cmd
 	local re
 	local ret
-	local strace_expression
 
 	cmd="$1"
 
@@ -1264,6 +1382,7 @@ function ove {
 
 	if [ $# -eq 0 ]; then
 		ove-fzf || ove-help
+		ret=$?
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
 		re=\\b${cmd}
 		if ! [[ "${OVE_ALL_COMMANDS}" =~ ${re} ]]; then
@@ -1297,6 +1416,7 @@ function ove {
 		[ "${cmd}" == "checkout" ] || \
 		[ "${cmd}" == "unsource" ]; then
 		ove-${cmd} "${@:2}"
+		ret=$?
 	else
 		args="${*:2}"
 		\mkdir -p ${OVE_LOG_DIR}/${OVE_SHA}
@@ -1304,76 +1424,9 @@ function ove {
 		OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/$(\date '+%Y%m%d-%H%M%S%N')-ove-${cmd}-${HOSTNAME}-${OVE_PROJECT_NAME}.log"
 
 		if [ -t 1 ]; then
-			if [ ${OVE_LOGLEVEL} -gt 2 ] && [ ${OVE_LOGLEVEL} -lt 9 ]; then
-				[ -e ${OVE_PROJECT_TMP_DIR}/trace-${cmd} ] && \
-					\rm -rf ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
-				\mkdir -p ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
-
-				if [ ${OVE_LOGLEVEL} -eq 5 ]; then
-					strace_expression="connect,bind,execve"
-				elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
-					strace_expression="execve,clone,fork,vfork,connect,bind"
-				else
-					strace_expression="execve"
-				fi
-
-				if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
-					if [ ${OVE_LOGLEVEL} -eq 7 ]; then
-						bcc_tool="execsnoop"
-					else
-						bcc_tool="tcpconnect"
-					fi
-
-					if [ ${EUID} != 0 ]; then
-						if ! sudo -n true; then
-							if ! sudo true; then
-								ove_echo_error_noprefix "'${bcc_tool}' need non-interactive 'sudo'"
-								return 1
-							fi
-						fi
-						OVE_TRACE_CMD="sudo "
-					fi
-					OVE_TRACE_CMD+="python3 /usr/share/bcc/tools/${bcc_tool} "
-					OVE_TRACE_CMD+="-t "
-					OVE_TRACE_CMD+="-u ${EUID} "
-					OVE_TRACE_CMD+="> ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd} "
-					OVE_TRACE_CMD+="2> /dev/null"
-				else
-					OVE_TRACE_CMD="strace "
-					OVE_TRACE_CMD+="-s 1024 "
-					OVE_TRACE_CMD+="-q "
-					OVE_TRACE_CMD+="-o ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd} "
-					OVE_TRACE_CMD+="-ff "
-					OVE_TRACE_CMD+="-T "
-					OVE_TRACE_CMD+="-e ${strace_expression} "
-					OVE_TRACE_CMD+="-ttt "
-				fi
-				export OVE_TRACE_CMD
-			else
-				unset OVE_TRACE_CMD
+			if ! ove_setup_trace; then
+				return 1
 			fi
-
-			if [ -n "${OVE_TRACE_CMD+x}" ]; then
-				[ -e ${OVE_PROJECT_TMP_DIR}/trace.pid ] && \
-					\rm ${OVE_PROJECT_TMP_DIR}/trace.pid
-				[ -e ${OVE_PROJECT_TMP_DIR}/trace.cont ] && \
-					\rm ${OVE_PROJECT_TMP_DIR}/trace.cont
-
-				{
-					while true; do [ -e ${OVE_PROJECT_TMP_DIR}/trace.pid ] && break; done
-
-					# launch trace in background and let it start up
-					if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
-						(eval ${OVE_TRACE_CMD} &)
-						sleep 2
-					else
-						(${OVE_TRACE_CMD} -p $(\cat ${OVE_PROJECT_TMP_DIR}/trace.pid) &)
-						sleep 1
-					fi
-					true > ${OVE_PROJECT_TMP_DIR}/trace.cont
-				} &
-			fi
-
 			# turn off monitor mode to get rid of "Done" messages
 			set +m
 			SHELL=$(command -v bash) \
@@ -1381,53 +1434,20 @@ function ove {
 				"source ${OVE_BASE_DIR}/ove; ove_init quick && ove-${cmd} ${args}" \
 				${OVE_LAST_COMMAND}
 			ret=$?
-
-			if [ -n "${OVE_TRACE_CMD+x}" ]; then
-				if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
-					if [ ${EUID} != 0 ]; then
-						sudo pkill -SIGINT -f ${bcc_tool}
-					else
-						\pkill -SIGINT -f ${bcc_tool}
-					fi
-				else
-					\pkill -SIGINT -f strace
-				fi
-
-				[ -e ${OVE_PROJECT_TMP_DIR}/trace.pid ] && \
-					\rm ${OVE_PROJECT_TMP_DIR}/trace.pid
-				[ -e ${OVE_PROJECT_TMP_DIR}/trace.cont ] && \
-					\rm ${OVE_PROJECT_TMP_DIR}/trace.cont
-
-				while true; do
-					if [ ${OVE_LOGLEVEL} -eq 3 ] || [ ${OVE_LOGLEVEL} -eq 4 ]; then
-						ove_analyze_strace_execve_timing ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
-					elif [ ${OVE_LOGLEVEL} -eq 5 ]; then
-						ove_analyze_strace_connect ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
-					elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
-						ove_strace_create_graph ${OVE_PROJECT_TMP_DIR}/trace-${cmd} ${cmd}
-					elif [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
-						\head -n -1 ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd}
-					fi
-					break
-				done | \tee -a ${OVE_LAST_COMMAND}
-
-				unset OVE_TRACE_CMD
-			fi
-
+			ove_setup_trace_post
 			\sed -i -e 's/\r$//' -e 's/\x0//' ${OVE_LAST_COMMAND}
-			\ln -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
-
-			return ${ret}
 		else
 			{
 				ove-"${cmd}" ${args}
 			} 2>&1 | \tee -i ${OVE_LAST_COMMAND}
 			ret=${PIPESTATUS[0]}
 			\sed -i 's/\x0//g' ${OVE_LAST_COMMAND}
-			\ln -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
-			return ${ret}
 		fi
+
+		\ln -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
 	fi
+
+	return ${ret}
 }
 
 # fzf:[loop]:OVE fzf [duckduckgo.com/?q=fzf]
@@ -7253,7 +7273,7 @@ function ove_init {
 	fi
 
 	if [ -n "${OVE_TRACE_CMD+x}" ]; then
-		echo ${BASHPID} > ${OVE_PROJECT_TMP_DIR}/trace.pid
+		echo ${BASHPID} > ${OVE_PROJECT_TMP_DIR}/bash.pid
 		while true; do
 			[ -e ${OVE_PROJECT_TMP_DIR}/trace.cont ] && break
 		done
@@ -8583,7 +8603,6 @@ function ove_externals {
 	cmds+=('mkdir')
 	cmds+=('mktemp')
 	cmds+=('pgrep')
-	cmds+=('pkill')
 	cmds+=('readlink')
 	cmds+=('rev')
 	cmds+=('rm')
