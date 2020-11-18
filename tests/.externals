@@ -1,4 +1,5 @@
 ag:
+$ ove ag au
 
 awk:
 
@@ -53,12 +54,14 @@ fold:
 git:
 ove_echo_error_noprefix "not possible to 'git pull --rebase' '${repo}' as git user.email/user.name is not set"
 read -p "Proceed to run '${cmd}' for all git repositories? (y/N) " -r
+High level git commands
+$ ove forall-parallel git maintenance
 read -r -p "Directory to scan for git repositories? Leave blank to search in '$PWD': "
 ove_echo_error_noprefix "no git repositories found here: '${dir}'"
 echo "* created a empty git repository here: '${dir}/${owel_name}'"
 
 grep:
-$ ove grep DEADBEEF
+$ ove grep deadbeef
 mapfile -t res < <(\git -C "${repo}" --no-pager grep --no-color -I -n "${s}" | \cut -d: -f1,2)
 
 head:

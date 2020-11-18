@@ -5626,74 +5626,102 @@ function ove_help {
 	\cat <<EOF
 
 Examples
-=====
+========
 
-Build
------
-# Do the initial build
-#
-# Steps performed for each project: bootstrap, configure, build, install
+High level git commands
+-----------------------
+# status of all git repositories
+$ ove status
 
-	$ ove buildme
+# synchronize with the outside world
+$ ove fetch
 
-# Build all projects in order. 'clean' will be performed if needed.
-#
-# Steps performed for each project: [clean], build, install
+# view local changes in all repos
+$ ove diff
 
-	$ ove make
+# interactively ask what hunk to checkout
+$ ove checkout
 
-# Build a specific project and all project dependencies. 'clean' will be performed if needed.
-#
-# Steps performed for each project: [clean], make, make install
+# checkout a specific revision
+$ ove checkout 1.0.2
 
-	$ ove make projA
+# search for the string 'deadbeef'
+$ ove grep deadbeef
 
-# Clean all projects.
-#
-# Steps performed for each project: clean
+# create a archive of all 'ahead'-commits
+$ ove format-patch featY.tar.bz2
 
-	$ ove clean
+# apply an archive that someone sent me
+$ ove am featY.tar.bz2
 
-# Properly remove all files for all git repositories.
-#
-# Steps performed for each repository: git clean -dffx
+Build related commands
+----------------------
+# list build order
+$ ove build-order
 
-	$ ove mrproper
+# initial build for all projects, runs 'bootstrap, configure, build, install'
+$ ove buildme
+$ ove buildme-parallel
 
-Source control
---------------
-# Status of all git repositories
-#
-# Steps performed for each repository: git status -zbs -uno
+# first build for a specific project 'projX', runs 'bootstrap, configure, build, install' for projX and all deps
+$ ove buildme projX
+$ ove buildme-parallel projX
 
-	$ ove status
+# build projects in order, runs '[clean], build, install' for all projects
+$ ove make
 
-# Synchronize with the outside world
-#
-# Steps performed for each repository: git fetch --all
+# build a specific project and all project dependencies, runs '[clean], build, install' for projX and deps
+$ ove make projX
 
-	$ ove fetch
+# build a specific project without dependencies, runs 'build, install' for projX
+$ ove make projX-nodeps
 
-# Curious mind? List patches your friends have upstreamed since your last pull.
+# clean projects
+$ ove clean
 
-	$ ove news
+# remove all untracked files for all git repositories USE WITH CARE
+$ ove mrproper
 
-# Checkout revision
+Utility commands
+----------------
+# list patches your friends have upstreamed since your last pull
+$ ove news
 
-	$ ove checkout 1.0.2
+# show new patches
+$ ove show-news
 
-# Search all git repositories
-#
-# Steps performed for each repository: git grep
+# run 'ls -l' for all repos
+$ ove forall ls -l
 
-	$ ove grep DEADBEEF
+# run 'git maintenance' for all repos (in parallel)
+$ ove forall-parallel git maintenance
+
+# open your modified files in vi/emacs
+$ ove vi
+$ ove emacs
+
+# open all modified files in vi, but only files with 'test' in the name
+$ ove vi test
+
+# search all repositories for 'au' using The Silver Searcher
+$ ove ag au
+
+# trigger a build of projX when a file is modified
+$ ove clean projX && ove loop 0 1 0 build projX
+# now modify a file within projX in another tmux pane/terminal
+
+Plugins
+-------
+# open a few tmux panes that runs the following OVE commands: news, ahead, fetch and 'do . task'
+$ ove ide
+
 EOF
 
 	# Project specific help text
 	if [ -e "${OVE_PROJECT_DIR}"/help ]; then
 		echo
 		echo "Project '${OVE_PROJECT_NAME}' help"
-		printf "%0.s-" $(eval echo {1..$(($(echo ${OVE_PROJECT_NAME} | \wc -L) + 15))})
+		printf "%0.s-" $(eval echo {1..$((${#OVE_PROJECT_NAME} + 15))})
 		echo
 		\cat "${OVE_PROJECT_DIR}/help"
 	fi

@@ -46,7 +46,9 @@ done
 # fetch
 ove-loop 3600 0 0 "fetch"
 
-# task: duckduckgo.com/?q=taskwarrior
-if command -v task > /dev/null; then
-	ove-loop 0 1 0 "do . task"
+# task
+if ! command -v task > /dev/null; then
+	echo "duckduckgo.com/?q=taskwarrior"
+	exit 0
 fi
+ove-loop 0 1 0 "do . task"
