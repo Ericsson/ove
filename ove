@@ -1362,10 +1362,11 @@ function ove {
 	local ret
 
 	cmd="$1"
+	args="${*:2}"
 
 	# keep this as early as possible
 	if [ "${cmd}" == "cd" ] || [ "${cmd}" == "init" ]; then
-		ove-${cmd} "${@:2}"
+		ove-${cmd} "${args}"
 		return $?
 	fi
 
@@ -1382,7 +1383,7 @@ function ove {
 
 	if [ $# -eq 0 ]; then
 		ove-fzf || ove-help
-		ret=$?
+		return $?
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
 		re=\\b${cmd}
 		if ! [[ "${OVE_ALL_COMMANDS}" =~ ${re} ]]; then
@@ -1395,7 +1396,7 @@ function ove {
 			[ ${OVE_AUTOCORRECT} -eq 1 ] && \
 			[ $(echo "${candidates}" | \wc -l) -eq 1 ]; then
 			cmd=$(echo "${candidates}" | \awk '{print $1}')
-			ove ${cmd} ${*:2}
+			ove ${cmd} ${args}
 			return $?
 		fi
 
@@ -1407,46 +1408,59 @@ function ove {
 		fi
 
 		return 1
-	elif [ "${cmd}" == "!" ] || \
-		[ "${cmd}" == "add-config" ] || \
+	fi
+
+	# commands that affect the user shell
+	if [ "${cmd}" == "add-config" ] || \
 		[ "${cmd}" == "dry-run" ] || \
 		[ "${cmd}" == "config" ] || \
+		[ "${cmd}" == "l" ] || \
 		[ "${cmd}" == "loglevel" ] || \
 		[ "${cmd}" == "revtab-check" ] || \
 		[ "${cmd}" == "checkout" ] || \
 		[ "${cmd}" == "unsource" ]; then
-		ove-${cmd} "${@:2}"
-		ret=$?
-	else
-		args="${*:2}"
-		\mkdir -p ${OVE_LOG_DIR}/${OVE_SHA}
-		(cd ${OVE_LOG_DIR} && \ln -sfn ${OVE_SHA} current)
-		OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/$(\date '+%Y%m%d-%H%M%S%N')-ove-${cmd}-${HOSTNAME}-${OVE_PROJECT_NAME}.log"
-
-		if [ -t 1 ]; then
-			if ! ove_setup_trace; then
-				return 1
-			fi
-			# turn off monitor mode to get rid of "Done" messages
-			set +m
-			SHELL=$(command -v bash) \
-				\script ${OVE_SCRIPT_OPTIONS} -c \
-				"source ${OVE_BASE_DIR}/ove; ove_init quick && ove-${cmd} ${args}" \
-				${OVE_LAST_COMMAND}
-			ret=$?
-			ove_setup_trace_post
-			\sed -i -e 's/\r$//' -e 's/\x0//' ${OVE_LAST_COMMAND}
-		else
-			{
-				ove-"${cmd}" ${args}
-			} 2>&1 | \tee -i ${OVE_LAST_COMMAND}
-			ret=${PIPESTATUS[0]}
-			\sed -i 's/\x0//g' ${OVE_LAST_COMMAND}
-		fi
-
-		\ln -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
+		ove-${cmd} ${args}
+		return $?
 	fi
 
+	# setup log file
+	\mkdir -p ${OVE_LOG_DIR}/${OVE_SHA}
+	(cd ${OVE_LOG_DIR} && \ln -sfn ${OVE_SHA} current)
+	OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/$(\date '+%Y%m%d-%H%M%S%N')-ove-${cmd}-${HOSTNAME}-${OVE_PROJECT_NAME}.log"
+
+	if [ -t 1 ]; then
+		# terminals => run all commands through the 'script' command
+
+		# trace hook
+		if ! ove_setup_trace; then
+			return 1
+		fi
+
+		# turn off monitor mode to get rid of "Done" messages
+		set +m
+
+		# run the command
+		SHELL=$(command -v bash) \
+			\script ${OVE_SCRIPT_OPTIONS} -c \
+			"source ${OVE_BASE_DIR}/ove; ove_init quick && ove-${cmd} ${args}" \
+			${OVE_LAST_COMMAND}
+		ret=$?
+
+		# trace post hook
+		ove_setup_trace_post
+
+		# remove some weird chars
+		\sed -i -e 's/\r$//' -e 's/\x0//' ${OVE_LAST_COMMAND}
+	else
+		# none-terminal => use tee
+		{
+			ove-${cmd} ${args}
+		} 2>&1 | \tee -i ${OVE_LAST_COMMAND}
+		ret=${PIPESTATUS[0]}
+		\sed -i 's/\x0//g' ${OVE_LAST_COMMAND}
+	fi
+
+	\ln -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
 	return ${ret}
 }
 
@@ -6154,8 +6168,8 @@ function ove-mrproper {
 	fi
 }
 
-# !:[pattern]:view last command output in pager (=${OVE_PAGER}) or print lines matching pattern
-function ove-! {
+# l:[pattern]:view last command output in pager (=${OVE_PAGER}) or print lines matching pattern
+function ove-l {
 	[ -f "${OVE_LAST_COMMAND}" ] || return
 
 	if [ $# -eq 0 ]; then

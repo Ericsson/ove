@@ -1,6 +1,5 @@
 | Command                  | Arguments                                                              | Description                                                                                                           |
 |-|-|-|
-| !                        | [pattern]                                                              | view last command output in pager (=${OVE_PAGER}) or print lines matching pattern                                     |
 | add                      | [git...]                                                               | git add -p for all/specified repositories                                                                             |
 | add-config               | file config value                                                      | add config/value pair to one oveconfig file                                                                           |
 | add-repo                 | url\|url name\|url name rev                                            | add a new repo to this OVE workspace                                                                                  |
@@ -58,6 +57,7 @@
 | install                  | [project...]                                                           | run the 'install' step for all or individual projects                                                                 |
 | install-parallel         | [project...]                                                           | run the 'install' step for all or individual projects (in parallel)                                                   |
 | install-pkg              | [project...]                                                           | install needed OS packages                                                                                            |
+| l                        | [pattern]                                                              | view last command output in pager (=${OVE_PAGER}) or print lines matching pattern                                     |
 | lastlog                  | [cmin]                                                                 | list OVE logs created within last 60 min or cmin min                                                                  |
 | less-lastlog             | [user]                                                                 | peek into user(s) last OVE log using less                                                                             |
 | list-commands            | [pattern]                                                              | list commands                                                                                                         |
