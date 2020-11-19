@@ -5318,7 +5318,6 @@ function ove-apply {
 	fi
 
 	\cp -a "$1" "${OVE_PROJECT_TMP_DIR}"
-	cd ${OVE_PROJECT_TMP_DIR} || return 1
 	p="${OVE_PROJECT_TMP_DIR}/${1##*/}"
 
 	# get a list of line numbers where to split the file
@@ -5337,18 +5336,18 @@ function ove-apply {
 	fi
 
 	# remove any old patch file(s)
-	\find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
+	\find ${OVE_PROJECT_TMP_DIR} -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
 
 	if [ "${lineno}" == "" ]; then
 		patches=${p}
 	else
 		# one patch per git
-		if ! \csplit -s -z --prefix ove-apply-patch ${p} ${lineno}; then
+		if ! \csplit -s -z --prefix ${OVE_PROJECT_TMP_DIR}/ove-apply-patch ${p} ${lineno}; then
 			ove_echo_error_noprefix "ops, csplit failed"
 			return 1
 		fi
 
-		patches=$(\find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' | LC_ALL="C" \sort)
+		patches=$(\find ${OVE_PROJECT_TMP_DIR} -maxdepth 1 -name 'ove-apply-patch*' | LC_ALL="C" \sort)
 	fi
 
 	for p in ${patches}; do

@@ -99,7 +99,7 @@ rm:
 \find ${OVE_PROJECT_TMP_DIR}/ -name "inotifywait-*-${1}*" -exec rm {} \;
 \find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
 \find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
-\find ${PWD} -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
+\find ${OVE_PROJECT_TMP_DIR} -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
 echo "$ rm -rf ${OVE_STAGE_DIR}/*"
 echo "$ rm -rf ${OVE_ARCHIVE_DIR}/*"
 \xargs rm -v
