@@ -6,11 +6,11 @@ bash -c "OVE_TEST_STRING; ove buildme p1"
 >>>= 0
 bash -c "OVE_TEST_STRING; ove buildme p400 p390"
 >>>= 0
-bash -c "OVE_TEST_STRING; ove loglevel 1 > /dev/null; ove buildme p391 p400 | wc -l"
+bash -c "OVE_TEST_STRING; ove loglevel 1 > /dev/null; ove buildme p391 p400 |& wc -l"
 >>>
 120
 >>>= 0
-bash -c "OVE_TEST_STRING; ove loglevel 1 > /dev/null; ove buildme-parallel p391 p400 | wc -l"
+bash -c "OVE_TEST_STRING; ove loglevel 1 > /dev/null; ove buildme-parallel p391 p400 |& wc -l"
 >>>
 120
 >>>= 0
