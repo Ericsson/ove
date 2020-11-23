@@ -1366,7 +1366,7 @@ function ove {
 
 	# keep this as early as possible
 	if [ "${cmd}" == "cd" ] || [ "${cmd}" == "init" ]; then
-		ove-${cmd} "${args}"
+		ove-${cmd} ${args}
 		return $?
 	fi
 
@@ -8401,7 +8401,7 @@ function ove-unittest {
 		--color \
 		--diff \
 		-a \
-		-DOVE_TEST_STRING="source ove > /dev/null; ove_init > /dev/null; ove-loglevel 0 > /dev/null" \
+		-DOVE_TEST_STRING="source ove > /dev/null; ove_init > /dev/null; export TIMEFORMAT=\"%3lR\"; ove-loglevel 0 > /dev/null" \
 		-DOVE_DEFAULT_BRANCH_NAME=${OVE_DEFAULT_BRANCH_NAME} \
 		-Dnbr_of_systests=$(((nbr_of_systests * 2) + 1)) \
 		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \

@@ -1,0 +1,4 @@
+: config: set; bash -c "OVE_TEST_STRING; time ove cd"
+>>>2
+0m0.000s
+>>>= 0
