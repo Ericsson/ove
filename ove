@@ -1418,6 +1418,7 @@ function ove {
 		[ "${cmd}" == "loglevel" ] || \
 		[ "${cmd}" == "revtab-check" ] || \
 		[ "${cmd}" == "checkout" ] || \
+		[ "${cmd}" == "update-revtab" ] || \
 		[ "${cmd}" == "unsource" ]; then
 		ove-${cmd} ${args}
 		return $?
@@ -3633,7 +3634,7 @@ function ove_validate_rev {
 	local revision="$2"
 
 	if ! \git -C "${OVE_BASE_DIR}/${repo}" cat-file -e "${revision}" &> /dev/null; then
-		ove_echo_error_noprefix "${repo}: '${revision}' is not a valid revision, try 'ove fetch ${repo}'"
+		ove_echo_error_noprefix "${repo}: '${revision}' is not a valid revision"
 		return 1
 	fi
 }
@@ -4064,6 +4065,40 @@ function ove_set_workspace {
 	fi
 }
 
+# update-revtab:git rev:update 'revtab' with a another (existing) 'rev' for the repository named 'git'
+function ove-update-revtab {
+	local i
+	local repo
+	local revision
+
+	if [ ${#} -ne 2 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	# validate repo
+	repo=$(ove_validate_repo_list ${1})
+	if [ "${repo}" == "" ]; then
+		ove_echo_error_noprefix "repo '${1}' is not valid repo name"
+		ove_command_usage
+		return 1
+	fi
+
+	# validate revision
+	revision="$2"
+	if ! ove_validate_rev ${repo} ${revision}; then
+		ove_command_usage
+		return 1
+	fi
+
+	# update revtab
+	i=${ove_revtab_name2index[${repo}]}
+	\sed -i "s|^\(${repo} .*\)${ove_revtab_rev[${i}]}|\1${revision}|g" "${OVE_PROJECT_DIR}/revtab"
+
+	# reinit
+	ove_reinit
+}
+
 # branch:[git...]|[git... name]:list branch(es) or create-and-checkout 'name' branch for 'git...' and update 'revtab' accordingly
 function ove-branch {
 	local a
@@ -4122,9 +4157,7 @@ function ove-branch {
 		[ -e "${OVE_PROJECT_DIR}/revtab" ] || continue
 		[ "${OVE_PROJECT_NAME}" == "${r}" ] && continue
 
-		# update revtab
-		i=${ove_revtab_name2index[${r}]}
-		\sed -i "s|^\(${r} .*\)${ove_revtab_rev[${i}]}|\1${branch_name}|g" "${OVE_PROJECT_DIR}/revtab"
+		ove-update-revtab ${r} ${branch_name}
 	done
 }
 
@@ -6711,6 +6744,12 @@ function ove_bash_complete {
 			wordlist="${OVE_ALL_COMMANDS}"
 		else
 			return
+		fi
+	elif [ "${subcommand}" == "update-revtab" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist=$(ove_revtab_list_basename)
+		elif  [ ${size} -eq 3 ]; then
+			wordlist=$(ove_list_tags_and_branches ${OVE_BASE_DIR}/${COMP_WORDS[2]})
 		fi
 	elif [ "${subcommand}" == "checkout" ]; then
 		if [ ${size} -eq 2 ]; then

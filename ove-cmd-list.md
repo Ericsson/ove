@@ -120,6 +120,7 @@
 | test-parallel            | [project...]                                                           | run the 'test' step for all or individual projects (in parallel)                                                      |
 | unittest                 | [test...]                                                              | run all/specific unit tests                                                                                           |
 | unsource                 |                                                                        | clean up all OVE vars/funcs from this shell                                                                           |
+| update-revtab            | git rev                                                                | update 'revtab' with a another (existing) 'rev' for the repository named 'git'                                        |
 | version                  |                                                                        | print OVE version                                                                                                     |
 | vi                       | [pattern\|file...]                                                     | open modified files in vi                                                                                             |
 | wdiff                    | [git...]                                                               | git diff (word diff) for all/specified git repositories                                                               |
