@@ -7480,6 +7480,7 @@ function ove_init {
 	OVE_SCRIPT_OPTIONS="-q "
 	script_help=$(2>&1 \script --help)
 	if [[ "${script_help}" != *"invalid option"* ]]; then
+		[[ "${script_help}" == *"-a"* ]] && OVE_SCRIPT_OPTIONS+="-a "
 		[[ "${script_help}" == *"-e"* ]] && OVE_SCRIPT_OPTIONS+="-e "
 		[[ "${script_help}" == *"-f"* ]] && OVE_SCRIPT_OPTIONS+="-f "
 	fi
