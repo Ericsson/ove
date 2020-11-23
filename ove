@@ -8391,9 +8391,7 @@ function ove-unittest {
 	# launch shelltestrunner
 	cd ${OVE_PROJECT_TMP_DIR}/unittest || return 2
 	shelltest=$(command -v shelltest)
-	if [ ${OVE_LOGLEVEL} -eq 2 ]; then
-		shelltest_opts=" --debug "
-	fi
+	shelltest_opts=" --debug "
 
 	\env -i - HOME=${HOME} USER=${USER} \
 		${shelltest} ${tests} \
