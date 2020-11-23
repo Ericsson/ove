@@ -2584,11 +2584,10 @@ function ove_revtab_clone_and_checkout {
 		[ "${repos}" == "" ] && return 1
 		for repo in ${repos}; do
 			if [ ! -d "${OVE_BASE_DIR}/${repo}" ]; then
-				i=${ove_revtab_name2index[${1}]}
+				i=${ove_revtab_name2index[${repo}]}
 				ove_revtab_clone_and_checkout_one ${i} &
 				ove_cap_jobs ${OVE_CLONE_MAX_PARALLEL}
 			fi
-			shift
 		done
 	else
 		i=0
@@ -2630,9 +2629,8 @@ function ove_revtab_checkout {
 		repos=$(ove_validate_repo_list "$@")
 		[ "${repos}" == "" ] && return 1
 		for repo in ${repos}; do
-			i=${ove_revtab_name2index[${1}]}
+			i=${ove_revtab_name2index[${repo}]}
 			ove_revtab_checkout_one ${i} &
-			shift
 		done
 	else
 		i=0
