@@ -3922,12 +3922,11 @@ function ove_locate_owels {
 	if [ -e "${OVE_GLOBAL_STATE_DIR}/owel.cache" ]; then
 		a=$(\stat --format '%Y' "${OVE_GLOBAL_STATE_DIR}/owel.cache")
 		b=$(\date +%s)
-		if [ $((b-a)) -lt 600 ]; then
+		if [ $((b-a)) -lt ${OVE_LOCATE_LIFESPAN_TIME_IN_SEC} ]; then
 			for o in $(\cat "${OVE_GLOBAL_STATE_DIR}/owel.cache"); do
 				if ! [ -d ${o} ]; then
 					invalidate_cache=true
 				fi
-
 			done
 
 			if ! [ "${invalidate_cache}" = true ]; then
@@ -7278,6 +7277,11 @@ function ove_config_builtins_init {
 	# OVE_LOOP_INOTIFY_EXTRA:string::loop:colon separated list of additional files/directories to watch using inotify
 	if [ -z "${OVE_LOOP_INOTIFY_EXTRA+x}" ]; then
 		export OVE_LOOP_INOTIFY_EXTRA=""
+	fi
+
+	# OVE_LOCATE_LIFESPAN_TIME_IN_SEC:int::cd forowel locate locate-all refresh:local OVE workspace cache lifespan
+	if [ -z "${OVE_LOCATE_LIFESPAN_TIME_IN_SEC+x}" ]; then
+		export OVE_LOCATE_LIFESPAN_TIME_IN_SEC=86400
 	fi
 }
 
