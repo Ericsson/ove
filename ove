@@ -1490,7 +1490,7 @@ function ove-fzf {
 			\grep -v '!' | \
 			\fzf \
 			--cycle \
-			--preview '${OVE_INIT_STRING}; ove-help ^{1}\\s' \
+			--preview '${OVE_INIT_STRING}; ove-list-commands ^{1}:' \
 			--preview-window=down:1 \
 		)
 		[ "${cmd}" == "" ] && break
