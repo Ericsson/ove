@@ -80,6 +80,14 @@ if [ "$#" -eq 3 ]; then
 	git -C .owel -c advice.detachedHead=false checkout "$3" || :
 fi
 
+owel_cache=/tmp/${USER}/ove/owel.cache
+if [ -d /var/tmp ]; then
+	owel_cache=/var${owel_cache}
+fi
+if [ -e "${owel_cache}" ]; then
+	rm "${owel_cache}"
+fi
+
 echo
 echo "Please run: "
 echo "$ cd ${path}"
