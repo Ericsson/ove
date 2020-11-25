@@ -5630,41 +5630,12 @@ function ove-help {
 }
 
 function ove_help {
-	local longest_argument
-	local longest_function
-	local longest_function_project
-	local nbr_of_hypens
+	local f
+	local g
+	local h
 
-	longest_function=$(\grep -B1 "^function ove-" ${OVE_SELF} | \
-		\grep '\#' | \
-		\cut -b3- | \
-		\cut -d: -f1 | \
-		\wc -L)
-	longest_function_project=$(set | \
-		\grep helptext | \
-		\grep -v '\$' | \
-		\cut -d'"' -f2 | \
-		\cut -d: -f1 | \
-		\wc -L)
-	longest_argument=$(\grep -B1 "^function ove-" ${OVE_SELF} | \
-		\grep '\#' | \
-		\cut -b3- | \
-		\cut -d: -f2 | \
-		\wc -L)
-	longest_argument_project=$(set | \
-		\grep helptext | \
-		\grep -v '\$' | \
-		\cut -d'"' -f2 | \
-		\cut -d: -f2 | \
-		\wc -L)
-	longest=${longest_function}
-	longest_a=${longest_argument}
-	[ ${longest_function_project} -gt ${longest_function} ] && longest=${longest_function_project}
-	[ ${longest_argument_project} -gt ${longest_argument} ] && longest_a=${longest_argument_project}
-	nbr_of_hypens=$((longest + longest_a + 15))
-	printf "%-"$((longest + 2))"s%-"$((longest_a + 2))"s%7s%s\n" "Command" "Arguments" "Description"
-	printf "%0.s-" $(eval echo {1..${nbr_of_hypens}})
-	echo
+	echo "Commands"
+	echo "--------"
 	ove-list-commands
 	echo
 	\cat <<EOF
@@ -5758,17 +5729,21 @@ Plugins
 -------
 # open a few tmux panes that runs the following OVE commands: news, ahead, fetch and 'do . task'
 $ ove ide
-
 EOF
 
-	# Project specific help text
-	if [ -e "${OVE_PROJECT_DIR}"/help ]; then
+	f=$(ove_revtab_list_fullpath)
+	f="${f// /\/.ove/help }/.ove/help"
+
+	# project and repo specific help
+	for h in "${OVE_PROJECT_DIR}/help" ${f}; do
+		[ -s "${h}" ] || continue
 		echo
-		echo "Project '${OVE_PROJECT_NAME}' help"
-		printf "%0.s-" $(eval echo {1..$((${#OVE_PROJECT_NAME} + 15))})
+		g=${h//${OVE_BASE_DIR}\/}
+		echo "${g}"
+		printf "%0.s-" $(eval echo {1..$((${#g}))})
 		echo
-		\cat "${OVE_PROJECT_DIR}/help"
-	fi
+		\cat "${h}"
+	done
 }
 
 # ag:pattern:search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]
