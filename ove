@@ -1060,7 +1060,26 @@ function ove_loop_command {
 	done
 }
 
-# run:|timeout command:run one OVE command in terminal|tmux
+# run-parallel:t0 c0 t1 c1 t2 c2...:run OVE commands in parallel (tmux only)
+function ove-run-parallel {
+	local n=$#
+	local t
+
+	if [ $# -eq 0 ] || [ $((n%2)) -ne 0 ] || [ -z "${TMUX}" ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	while true; do
+		t=$1
+		shift
+		ove-run ${t} "${@:1:1}"
+		shift
+		[ $# -eq 0 ] && break
+	done
+}
+
+# run:|t c:run one OVE command 'c' in terminal/tmux with timeout 't' secs (0=no timeout)
 function ove-run {
 	local _cmd
 	local cmd
@@ -6709,6 +6728,12 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" == "run-parallel" ]; then
+		if [ $((size%2)) -eq 0 ]; then
+			wordlist="TIMEOUT"
+		elif [ $((size%2)) -eq 1 ]; then
+			wordlist="${OVE_ALL_COMMANDS}"
+		fi
 	elif [ "${subcommand}" == "loop" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist="TIMEOUT"
@@ -8709,18 +8734,20 @@ function ove-nop {
 
 # pre-push: :shell-check+unittest+generate-doc combo
 function ove-pre-push {
-	ove_echo "shell-check"
-	ove-shell-check
-	ove_echo "unittest"
 	[ -d ${OVE_PROJECT_TMP_DIR}/unittest ] && \rm -rf ${OVE_PROJECT_TMP_DIR}/unittest
-	ove-unittest
-	ove_echo "generate-doc"
-	ove-generate-doc
-	ove_echo "blame"
-	ove-blame "${USER}"
-	ove_echo "externals"
+
+	if [ -n "${TMUX}" ]; then
+		ove-run-parallel 0 shell-check 0 unittest 0 generate-doc 0 "blame ${USER}"
+		sleep 1
+		\tail -f /dev/null --pid=$(\pgrep -f ove-unittest | \head -1)
+	else
+		ove-shell-check
+		ove-unittest
+		ove-generate-doc
+		ove-blame "${USER}"
+	fi
+
 	ove_externals
-	ove_echo "status"
 	ove-status .ove
 }
 
