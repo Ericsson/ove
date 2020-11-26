@@ -1355,18 +1355,16 @@ function ove_setup_trace_post {
 }
 
 function ove {
-	local args
 	local candidates
 	local cmd
 	local re
 	local ret
 
 	cmd="$1"
-	args="${*:2}"
 
 	# keep this as early as possible
 	if [ "${cmd}" == "cd" ] || [ "${cmd}" == "init" ]; then
-		ove-${cmd} ${args}
+		ove-${cmd} "${@:2}"
 		return $?
 	fi
 
@@ -1396,7 +1394,7 @@ function ove {
 			[ ${OVE_AUTOCORRECT} -eq 1 ] && \
 			[ $(echo "${candidates}" | \wc -l) -eq 1 ]; then
 			cmd=$(echo "${candidates}" | \awk '{print $1}')
-			ove ${cmd} ${args}
+			ove ${cmd} "${@:2}"
 			return $?
 		fi
 
@@ -1420,7 +1418,7 @@ function ove {
 		[ "${cmd}" == "checkout" ] || \
 		[ "${cmd}" == "update-revtab" ] || \
 		[ "${cmd}" == "unsource" ]; then
-		ove-${cmd} ${args}
+		ove-${cmd} "${@:2}"
 		return $?
 	fi
 
@@ -1442,8 +1440,7 @@ function ove {
 
 		# run the command
 		SHELL=$(command -v bash) \
-			\script ${OVE_SCRIPT_OPTIONS} -c \
-			"source ${OVE_BASE_DIR}/ove; ove_init quick && ove-${cmd} ${args}" \
+			\script ${OVE_SCRIPT_OPTIONS} -c "source ${OVE_BASE_DIR}/ove; ove_init quick && ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
 			${OVE_LAST_COMMAND}
 		ret=$?
 
@@ -1455,7 +1452,7 @@ function ove {
 	else
 		# none-terminal => use tee
 		{
-			ove-${cmd} ${args}
+			ove-${cmd} "${@:2}"
 		} 2>&1 | \tee -i ${OVE_LAST_COMMAND}
 		ret=${PIPESTATUS[0]}
 		\sed -i 's/\x0//g' ${OVE_LAST_COMMAND}
@@ -2053,7 +2050,9 @@ function ove_validate_repo_list {
 
 	while true; do
 		[ $# -eq 0 ] && break
-		if [ "$1" == "${OVE_PROJECT_NAME}" ] || [ -v ove_revtab_name2index[${1}] ]; then
+		if [[ "$1" == *[[:space:]]* ]]; then
+			:
+		elif [ "$1" == "${OVE_PROJECT_NAME}" ] || [ -v ove_revtab_name2index[${1}] ]; then
 			repos+="$(ove_repo2shortpath $1)\n"
 		fi
 		shift
