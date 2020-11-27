@@ -8625,6 +8625,7 @@ function ove-generate-doc {
 # shell-check: :run shellcheck on OVE
 function ove-shell-check {
 	local exclude
+	local sc
 
 	if ! command -v shellcheck > /dev/null; then
 		ove_command_not_found "shellcheck"
@@ -8659,6 +8660,9 @@ function ove-shell-check {
 		return 0
 	else
 		echo "\${OVE_TMP}/shell-check"
+		for sc in $(\git -C "${OVE_DIR}" diff -U0 ${OVE_DIR}/tests/.shellcheck | \grep '^+\s' | \grep -o 'SC[0-9]\+'); do
+			\grep --color=always -B5 ${sc} ${OVE_TMP}/shell-check
+		done
 		return 1
 	fi
 }
