@@ -103,6 +103,7 @@ rm:
 echo "$ rm -rf ${OVE_STAGE_DIR}/*"
 echo "$ rm -rf ${OVE_ARCHIVE_DIR}/*"
 \xargs rm -v
+\xargs -0 rm -v
 echo -e "\t$ rm -rf ${corrupt_repos}"
 
 rmdir:

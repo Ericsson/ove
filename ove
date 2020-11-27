@@ -3494,7 +3494,10 @@ function ove-systest {
 		echo ${FUNCNAME[0]}:Summary:
 		echo -e ${summary}
 	fi
-	echo "OVE log: ${OVE_LAST_COMMAND}"
+
+	if [ "x${OVE_LAST_COMMAND}" != "x" ]; then
+		echo "OVE log: ${OVE_LAST_COMMAND}"
+	fi
 
 	return ${systest_exit_code}
 }
@@ -6606,9 +6609,15 @@ function ove-rm-logs {
 	read -p "Are you really sure? (y/N) " -r
 	[[ ${REPLY} =~ ^[Yy]$ ]] || return 1
 
-	\find ${OVE_LOG_DIR} ${find_opt} | \
-		\grep -v ${OVE_LAST_COMMAND} | \
-		\xargs rm -v
+	if [ "x${OVE_LAST_COMMAND}" != "x" ]; then
+		\find ${OVE_LOG_DIR} ${find_opt} | \
+			\grep -v ${OVE_LAST_COMMAND} | \
+			\xargs rm -v
+	else
+		find_opt+="0"
+		\find ${OVE_LOG_DIR} ${find_opt} | \
+			\xargs -0 rm -v
+	fi
 	\find ${OVE_LOG_DIR} -maxdepth 1 -empty -type d -delete
 
 	return 0
