@@ -2059,7 +2059,7 @@ function ove_status_one_repo {
 		revision="${ove_revtab_rev[${i}]}"
 	fi
 
-	s=$(\git -c color.status=always -C "${repo_fullpath}" status -bs -uno)
+	s=$(\git --no-optional-locks -c color.status=always -C "${repo_fullpath}" status -bs -uno)
 	s=${s//$'\n'/ }
 	printf "${repo_shortpath}:${revision}:$s\n"
 }
@@ -2139,7 +2139,7 @@ function ove_revtab_status_parse_one {
 		return
 	fi
 
-	git_status=$(\git -C "${repo_fullpath}" status -zbs -uno | \tr '\0' ' ')
+	git_status=$(\git --no-optional-locks -C "${repo_fullpath}" status -zbs -uno | \tr '\0' ' ')
 	nbr_commits=0
 
 	# keep 'ahead X, behind Y'
@@ -4232,7 +4232,7 @@ function ove-remote-check {
 }
 
 function ove_repo_is_dirty {
-	if test -z "$(\git --no-pager -C ${1} status --porcelain -uno)"; then
+	if test -z "$(\git --no-optional-locks --no-pager -C ${1} status --porcelain -uno)"; then
 		return 1
 	else
 		return 0
