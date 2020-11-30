@@ -8355,6 +8355,7 @@ function ove-unittest {
 	local nbr_of_projs
 	local nbr_of_repos
 	local nbr_of_systests
+	local shelltest_opts
 	local tests
 
 	if ! command -v shelltest > /dev/null; then
@@ -8421,7 +8422,7 @@ function ove-unittest {
 		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
 		-Dnbr_of_files=$((nbr_of_files * nbr_of_repos + (4 * nbr_of_projs) + 4)) \
 		-DOVE_DIR=${OVE_DIR} \
-		-DOVE_TEST_BASE="$(\sed -e 's|/|\\/|g' <<<${OVE_PROJECT_TMP_DIR}/unittest)"
+		-DOVE_TEST_BASE="$(\sed -e 's|/|\\/|g' <<<${OVE_PROJECT_TMP_DIR}/unittest)" | \sed -e 's|\\n|\n|g'
 }
 
 # less-lastlog:[user]:peek into user(s) last OVE log using less
