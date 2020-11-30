@@ -4,61 +4,38 @@ $ ove ag au
 awk:
 
 basename:
-\xargs -n1 basename)
-wordlist=$(\find ${OVE_DIR}/tests -maxdepth 1 -mindepth 1 -name "t*.test" -type f -exec basename {} .test \;)
-wordlist=$(\find $(\readlink -f ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type d -exec basename {} \;)
-wordlist=$(\find $(\readlink -f ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type f -exec basename {} \;)
-wordlist="default $(\find "${OVE_PROJECT_DIR}/projects" -name "configure-*" -type l -exec basename {} \; | \sed 's/configure-//g')"
-\find ${OVE_DIR}/tests -name 't*.test' -type f -exec basename {} .test \; | LC_ALL="C" \sort
 
 cat:
-\find ${OVE_PROJECT_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \xargs -0 cat >> ${o_dot}
 
 column:
 
 comm:
 
 cp:
-echo " cp ${OVE_DIR}/ove.bash ${HOME}/.ove.bash && echo '[ -f ~/.ove.bash ] && source ~/.ove.bash' >> ${HOME}/.bashrc"
 
 csplit:
-ove_echo_error_noprefix "ops, csplit failed"
 
 cut:
 
 date:
 
 dirname:
-done | \xargs dirname | LC_ALL="C" \sort -u
-repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | LC_ALL="C" \sort -u)
 
 du:
 
 file:
-echo "error: file '${f}' is not found or file size is 0"
-ove_echo_error_noprefix "'$1' patch file not found"
-ove_echo_error_noprefix "file '${cfg}' is not a valid oveconfig file, select one of:"
-ove_echo_error_noprefix "'${f}' is not a text file, use xxd/hexdump"
-\xargs -0 -P"$(nproc)" file | \
-ove_echo_error_noprefix "you already have a file/directory named '${dir}/ove', rename/remove to proceed"
-ove_echo_error_noprefix "'${OVE_PROJECT_DIR}/SETUP' file not found"
-ove_echo_error_noprefix "not possible to transfer patch file to '${host}'"
 
 find:
-ove_echo_error_noprefix "${FUNCNAME[0]}:can not find '${test_name}'"
 
 flock:
 
 fold:
 
 git:
-ove_echo_error_noprefix "not possible to 'git pull --rebase' '${repo}' as git user.email/user.name is not set"
 read -p "Proceed to run '${cmd}' for all git repositories? (y/N) " -r
 High level git commands
 $ ove forall-parallel git maintenance
 read -r -p "Directory to scan for git repositories? Leave blank to search in '$PWD': "
-ove_echo_error_noprefix "no git repositories found here: '${dir}'"
-echo "* created a empty git repository here: '${dir}/${owel_name}'"
 
 grep:
 $ ove grep deadbeef
@@ -67,7 +44,6 @@ mapfile -t res < <(\git -C "${repo}" --no-pager grep --no-color -I -n "${s}" | \
 head:
 
 inotifywait:
-ove_echo_cyan_error "0 files touched, not using inotifywait"
 
 ld:
 
@@ -80,7 +56,6 @@ lsb_release:
 md5deep:
 
 md5sum:
-\find "${@}" -type f -print0 | \xargs -0 md5sum
 
 mkdir:
 
@@ -94,45 +69,28 @@ readlink:
 rev:
 
 rm:
-\find ${OVE_PROJECT_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \xargs -0 rm &> /dev/null
-\find ${OVE_PROJECT_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \xargs -0 rm
-\find ${OVE_PROJECT_TMP_DIR}/ -name "inotifywait-*-${1}*" -exec rm {} \;
-\find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
-\find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
-\find ${OVE_PROJECT_TMP_DIR} -maxdepth 1 -name 'ove-apply-patch*' -exec rm {} \;
-echo "$ rm -rf ${OVE_STAGE_DIR}/*"
-echo "$ rm -rf ${OVE_ARCHIVE_DIR}/*"
-\xargs rm -v
-\xargs -0 rm -v
-echo -e "\t$ rm -rf ${corrupt_repos}"
 
 rmdir:
 
 sed:
-echo " ${prefix} bash -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope; sed -i -e \"s/kernel.yama.ptrace_scope.*/kernel.yama.ptrace_scope = 0/g\" ${sysctl_f}'"
 
 sort:
 
 ssh:
-ove_echo_error_noprefix "'${host}' is not reachable via ssh"
-echo '${ps_local} ssh ${host}';
 
 stat:
 md5=$(ove-forall-parallel stat --format '%Y' .git/HEAD | LC_ALL="C" \sort | \md5sum)
-\xargs -0 stat --format '%Y:%n:%s' | \
 
 tac:
 
 tail:
-\timeout 30 tail -f ${f_stderr} | \grep -E -q "Watches established.|Failed to watch" | { \cat; echo >> ${f_stderr}; }
+\timeout 30 tail -f ${f_stderr} | \grep -E -q "Watches established.|Failed to watch" | { \cat;
 
 tar:
 
 tee:
 
 timeout:
-echo "error: timeout: just numbers"
-echo "error: timeout: just numbers"
 
 tr:
 
