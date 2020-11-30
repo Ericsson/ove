@@ -5749,6 +5749,19 @@ Plugins
 -------
 # open a few tmux panes that runs the following OVE commands: news, ahead, fetch and 'do . task'
 $ ove ide
+
+Configuration
+-------------
+# OVE tries to keep all repos in-sync with whatever is stated in the '\${OVE_PROJECT_DIR}/revtab' file.
+# If you don't want this behaviour set the 'OVE_REVTAB_CHECK' config to '0'. Choose one of:
+$ ove add-config \${OVE_PROJECT_DIR}/.oveconfig OVE_REVTAB_CHECK 0
+$ ove add-config \${OVE_PROJECT_STATE_DIR}/.oveconfig OVE_REVTAB_CHECK 0
+$ ove add-config \${OVE_GLOBAL_STATE_DIR}/.oveconfig OVE_REVTAB_CHECK 0
+$ ove add-config \${HOME}/.oveconfig OVE_REVTAB_CHECK 0
+
+# NOTE: oveconfig files are read in this order:
+\${OVE_PROJECT_DIR}/.oveconfig -> \${OVE_PROJECT_STATE_DIR}/.oveconfig -> \${OVE_GLOBAL_STATE_DIR}/.oveconfig -> \${HOME}/.oveconfig
+# I.e. oveconfig files in \${HOME} has the highest precedence.
 EOF
 
 	f=$(ove_revtab_list_fullpath)
