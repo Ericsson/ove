@@ -4250,7 +4250,7 @@ function ove_dirty_repos {
 
 function ove_stashed_repos {
 	# shellcheck disable=SC2016
-	ove_revtab_forall '\git --no-pager -C ${repo} stash list | \grep -q "stashed by OVE" && echo ${repo}'
+	ove_revtab_forall_parallel '\git --no-pager -C ${repo} stash list | \grep -q "stashed by OVE" && echo ${repo}'
 }
 
 # $1: drop or pop
@@ -6088,7 +6088,7 @@ function ove-list-committed-files {
 	# shellcheck disable=SC2016
 	cmd='\git --no-pager -C ${repo} log --all --no-merges --author="$(\git config --get user.name)" --name-only --pretty=format:"" --since="'${days}' days" | while read line; do [ -f ${PWD}/${line} ] && echo -e ${PWD}/${line}; done'
 
-	ove_revtab_forall "${cmd}" | LC_ALL="C" \sort -u
+	ove_revtab_forall_parallel "${cmd}" | LC_ALL="C" \sort -u
 }
 
 function ove_edit {
