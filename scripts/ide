@@ -45,6 +45,10 @@ done
 
 # fetch
 ove-loop 3600 0 0 "fetch"
+while true; do
+	sleep 1
+	pgrep -f "git.*fetch" &> /dev/null || break
+done
 
 # task
 if ! command -v task > /dev/null; then
