@@ -5831,7 +5831,7 @@ function ove-grep {
 	ove_revtab_forall_parallel '\git --no-pager -C ${repo} \grep --color=always "'"$*"'" | \sed -e 's@^@\${PWD}/@g''
 }
 
-# blame-history:pattern:git log -S for all git repositories
+# blame-history:pattern:git log -G -p pattern for all git repositories
 function ove-blame-history {
 	if [ $# -eq 0 ]; then
 		echo "error: no pattern"
@@ -5839,7 +5839,7 @@ function ove-blame-history {
 		return 1
 	fi
 	# shellcheck disable=SC2016
-	ove_revtab_forall '\git --no-pager -C ${repo} log --color=always -p -S "'"$*"'"'
+	ove_revtab_forall 'ove_echo_yellow_noprefix ${repo_basename}; \git --no-pager -C ${repo} log --color=always -p -G "'"$*"'"'
 }
 
 # blame:pattern:git grep-blame-log combo

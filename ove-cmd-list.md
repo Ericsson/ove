@@ -9,7 +9,7 @@
 | apply                    | patch                                                                  | apply one OVE patch                                                                                                   |
 | authors                  |                                                                        | list author summary for all git repositories                                                                          |
 | blame                    | pattern                                                                | git grep-blame-log combo                                                                                              |
-| blame-history            | pattern                                                                | git log -S for all git repositories                                                                                   |
+| blame-history            | pattern                                                                | git log -G -p pattern for all git repositories                                                                        |
 | bootstrap                | [project...]                                                           | run the 'bootstrap' step for all or individual projects                                                               |
 | bootstrap-parallel       | [project...]                                                           | run the 'bootstrap' step for all or individual projects (in parallel)                                                 |
 | branch                   | [git...]\|[git... name]                                                | list branch(es) or create-and-checkout 'name' branch for 'git...' and update 'revtab' accordingly                     |
