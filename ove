@@ -937,13 +937,17 @@ function ove_loop_command {
 	local all_files
 	local cmd
 	local f
+	local f_early
+	local f_early_all
 	local f_stderr
 	local files_modified_by_command
 	local i
+	local j
 	local max_count
 	local prefix
 	local read_args
 	local inotifywait_pid
+	local s
 	local _timeout
 	local use_inotify
 
@@ -991,6 +995,39 @@ function ove_loop_command {
 				return 1
 			fi
 
+			# retrieve the lock
+			exec {fd}>${OVE_PROJECT_TMP_DIR}/inotify.lock
+			\flock ${fd}
+
+			# try to check that no other process is accessing our file watch list
+			j=0
+			f_early=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}-early-check
+			f_early_all=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}-early-check-all
+			while true; do
+				if [ ${j} -eq 10 ]; then
+					ove_echo_error_noprefix "some other process is accessing the file watch list, if possible stop that and try again"
+					echo "File(s):"
+					echo "$ ove head-tail ${f_early_all}"
+					\sort -u -o ${f_early_all} ${f_early_all}
+					ove-head-tail ${f_early_all}
+					[ -n "${TMUX}" ] && read -r -p "" -t 3
+					# release the lock and try again
+					\flock -u ${fd}
+					i=0
+					continue 2
+				fi
+				\inotifywait -t 1 -q --format '%w%f' --fromfile ${all_files} > ${f_early}
+				if ! [ -s ${f_early} ]; then
+					break
+				fi
+
+				# ignore first 5 iterations
+				if [ ${j} -ge 5 ]; then
+					\cat ${f_early} >> ${f_early_all}
+				fi
+				((j++))
+			done
+
 			\inotifywait \
 				-m \
 				--format '%w%f' \
@@ -1004,6 +1041,7 @@ function ove_loop_command {
 				[ -s "${f_stderr}" ] && \cat ${f_stderr}
 				ove_echo_error_noprefix "inotifywait did not established watches within 30 sec"
 				[ -n "${TMUX}" ] && read -r -p ""
+				\flock -u ${fd}
 				return 1
 			fi
 
@@ -1011,11 +1049,13 @@ function ove_loop_command {
 				[ -s "${f_stderr}" ] && \cat ${f_stderr}
 				ove_echo_error_noprefix "inotifywait did not established watches"
 				[ -n "${TMUX}" ] && read -r -p ""
+				\flock -u ${fd}
 				return 1
 			fi
 
 			# still running?
 			if ! kill -0 ${inotifywait_pid} > /dev/null 2>&1; then
+				\flock -u ${fd}
 				return 1
 			fi
 		fi
@@ -1023,33 +1063,77 @@ function ove_loop_command {
 		# run the command
 		OVE_PAGER='\tee /dev/null' ove-${1} ${*:2}
 
-		# inotify: first iteration?
-		if [ ${use_inotify} -eq 1 ] && [ ${i} -eq 1 ]; then
-			sleep 1
-			kill -9 ${inotifywait_pid} &> /dev/null
-			wait &> /dev/null
-			\rm ${all_files}
+		if [ ${use_inotify} -eq 1 ]; then
+			# first iteration?
+			if [ ${i} -eq 1 ]; then
+				sleep 1
+				kill -9 ${inotifywait_pid} &> /dev/null
+				wait &> /dev/null
+				\rm ${all_files}
 
-			# remove doublets and only regular files
-			for f in $(LC_ALL="C" \sort -u ${files_modified_by_command}); do
-				[ -f ${f} ] && echo ${f};
-			done > ${files_modified_by_command}.uniq
-			\rm ${files_modified_by_command}
-			if [ $(\wc -l < ${files_modified_by_command}.uniq) -eq 0 ]; then
-				use_inotify=0
-				ove_echo_cyan_error "0 files touched, not using inotifywait"
-			else
-				echo
-				echo "$(\wc -l < ${files_modified_by_command}.uniq) file(s) was touched by '${1} ${*:2}'"
-				echo "$ ove head-tail ${files_modified_by_command}.uniq"
-				ove-head-tail ${files_modified_by_command}.uniq
+				# remove doublets and only regular files
+				for f in $(LC_ALL="C" \sort -u ${files_modified_by_command}); do
+					[ -f ${f} ] && echo ${f};
+				done > ${files_modified_by_command}.uniq
+				\rm ${files_modified_by_command}
+				if [ $(\wc -l < ${files_modified_by_command}.uniq) -eq 0 ]; then
+					use_inotify=0
+					ove_echo_cyan_error "0 files accessed, not using inotifywait"
+				fi
+
+				# sleep before relasing lock
+				\sleep 1
+
+				# release lock
+				\flock -u ${fd}
 			fi
+
+			# allow user to change the file watch list
+			echo
+			if [ ${i} -lt 3 ]; then
+				echo "press 'm' to modify the file watch list (=$(\wc -l < ${files_modified_by_command}.uniq) files)"
+			fi
+			read -n 1 -s -r -t 0.1
+			if [[ ${REPLY} =~ ^[Mm]$ ]]; then
+				echo "file watch list: ${files_modified_by_command}.uniq"
+				while true; do
+					read -n 1 -s -r -p "press 'p' to proceeed (time-out in 1 min)" -t 60
+					[ ${?} -gt 128 ] && break
+					if [[ ${REPLY} =~ ^[Pp]$ ]]; then
+						\sync ${files_modified_by_command}.uniq
+						while read -r line; do
+							[ -e ${line} ] && continue
+							echo
+							echo "'${line}' does not exist, try again"
+							continue 2
+						done <${files_modified_by_command}.uniq
+						break
+					fi
+				done
+				if [ $(\wc -l <${files_modified_by_command}.uniq) -eq 0 ]; then
+					echo
+					ove_echo_error_noprefix "no files to watch, disable inotify"
+					use_inotify=0
+					[ -n "${TMUX}" ] && read -r -p ""
+					continue
+				fi
+			fi
+
+			echo
 		fi
 
 		echo -
 		if [ ${use_inotify} -eq 1 ]; then
+			s=${SECONDS}
 			if ! ove_inotifywait ${_timeout} ${files_modified_by_command}.uniq; then
-				break
+				ove_echo_error_noprefix "inotifywait failed"
+				[ -n "${TMUX}" ] && read -r -p ""
+				return 1
+			fi
+
+			# first iteration and if inotify returned within 3 seconds? sleep at least 3 secs
+			if [ ${i} -eq 1 ] && [ $((SECONDS - s)) -lt 3 ]; then
+				sleep $((RANDOM%3 + 3))
 			fi
 		else
 			[ "${_timeout}" -gt 0 ] && read_args="-t ${_timeout}"
@@ -1128,7 +1212,7 @@ function ove-run {
 			echo -; \
 			read -n 1 -s -r -p '' ${read_args}"
 
-		tmux select-layout main-vertical
+		tmux select-layout ${OVE_TMUX_LAYOUT}
 		tmux select-pane -t 0
 	else
 		ove_echo_cyan_error "ove-${cmd}"
@@ -1227,7 +1311,7 @@ function ove-loop {
 			ove_init; \
 			ove_loop_command ${_timeout} ${use_inotify} ${max_count} ${cmd}"
 
-		tmux select-layout main-vertical
+		tmux select-layout ${OVE_TMUX_LAYOUT}
 		tmux select-pane -t 0
 	else
 		ove_loop_command ${_timeout} ${use_inotify} ${max_count} ${cmd}
@@ -7351,6 +7435,11 @@ function ove_config_builtins_init {
 		export OVE_LOOP_INOTIFY_EXTRA=""
 	fi
 
+	# OVE_TMUX_LAYOUT:string::less-lastlog loop run tail-lastlog:tmux layout to use when launching new panes
+	if [ -z "${OVE_TMUX_LAYOUT+x}" ]; then
+		export OVE_TMUX_LAYOUT="tiled"
+	fi
+
 	# OVE_LOCATE_LIFESPAN_TIME_IN_SEC:int::cd forowel locate locate-all refresh:local OVE workspace cache lifespan
 	if [ -z "${OVE_LOCATE_LIFESPAN_TIME_IN_SEC+x}" ]; then
 		export OVE_LOCATE_LIFESPAN_TIME_IN_SEC=86400
@@ -8525,7 +8614,7 @@ function ove_watch_logs {
 
 			tmux split-window -h "${_cmd} ${log}"
 			[ $# -eq 1 ] && return
-			tmux select-layout tiled
+			tmux select-layout ${OVE_TMUX_LAYOUT}
 		done
 	else
 		if [ $# -eq 1 ]; then
@@ -8748,6 +8837,7 @@ function ove_externals {
 	cmds+=('sort')
 	cmds+=('ssh')
 	cmds+=('stat')
+	cmds+=('sync')
 	cmds+=('tac')
 	cmds+=('tail')
 	cmds+=('tar')

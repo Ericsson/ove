@@ -32,27 +32,23 @@ $OVE_INIT_STRING
 
 # news
 ove-loop 3600 0 0 "news"
-sleep 1
 
 # ahead
-ove-loop 0 1 0 "ahead"
-while true; do
-	for file in "${OVE_PROJECT_TMP_DIR}"/inotifywait-ahead-*.uniq; do
-		[ -s "${file}" ] && break 2
-	done
-	sleep 0.1
-done
+ove-loop 60 1 0 "ahead"
 
 # fetch
 ove-loop 3600 0 0 "fetch"
-while true; do
-	sleep 1
-	pgrep -f "git.*fetch" &> /dev/null || break
-done
 
-# task
+# taskwarrior
 if ! command -v task > /dev/null; then
 	echo "duckduckgo.com/?q=taskwarrior"
-	exit 0
+else
+	for p in ${OVE_IDE_TASK_PROJECTS}; do
+		ove-loop 0 1 0 "do . task project.word:$p"
+	done
 fi
-ove-loop 0 1 0 "do . task"
+
+# any extra commands
+for c in ${OVE_IDE_EXTRA_COMMANDS}; do
+	ove-loop 3600 0 0 "${c}"
+done
