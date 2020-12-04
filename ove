@@ -1370,7 +1370,7 @@ function ove_sanitise_vars {
 		corrupt=0
 		if ! [ "${OVE_LOGLEVEL}" -eq "${OVE_LOGLEVEL}" ] 2> /dev/null; then
 			corrupt=1
-		elif ! [[ "${OVE_LOGLEVEL}" =~ ^[0-8]$ ]]; then
+		elif ! [[ "${OVE_LOGLEVEL}" =~ ^[0-9]$ ]]; then
 			corrupt=1
 		fi
 
@@ -1401,11 +1401,13 @@ function ove_setup_trace {
 		strace_expression="execve"
 	fi
 
-	if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
+	if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
 		if [ ${OVE_LOGLEVEL} -eq 7 ]; then
 			bcc_tool="execsnoop"
-		else
+		elif [ ${OVE_LOGLEVEL} -eq 8 ]; then
 			bcc_tool="tcpconnect"
+		elif [ ${OVE_LOGLEVEL} -eq 9 ]; then
+			bcc_tool="opensnoop"
 		fi
 
 		if [ ${EUID} != 0 ]; then
@@ -1418,7 +1420,11 @@ function ove_setup_trace {
 			OVE_TRACE_CMD="sudo "
 		fi
 		OVE_TRACE_CMD+="python3 /usr/share/bcc/tools/${bcc_tool} "
-		OVE_TRACE_CMD+="-t "
+		if [ ${OVE_LOGLEVEL} -eq 9 ]; then
+			OVE_TRACE_CMD+="-T "
+		else
+			OVE_TRACE_CMD+="-t "
+		fi
 		OVE_TRACE_CMD+="-u ${EUID} "
 		OVE_TRACE_CMD+="> ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd} "
 		OVE_TRACE_CMD+="2> /dev/null"
@@ -1445,7 +1451,7 @@ function ove_setup_trace {
 		while true; do [ -e ${OVE_PROJECT_TMP_DIR}/bash.pid ] && break; done
 
 		# launch trace in background and let it start up
-		if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
+		if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
 			(eval ${OVE_TRACE_CMD})
 			sleep 2
 		else
@@ -1461,7 +1467,7 @@ function ove_setup_trace_post {
 
 	if [ -n "${OVE_TRACE_CMD+x}" ]; then
 		pid=$(\cat ${OVE_PROJECT_TMP_DIR}/trace.pid)
-		if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
+		if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
 			ove_kill_procs 0 1 ${pid}
 		else
 			ove_kill_procs 1 1 ${pid}
@@ -1481,7 +1487,7 @@ function ove_setup_trace_post {
 				ove_analyze_strace_connect ${OVE_PROJECT_TMP_DIR}/trace-${cmd}
 			elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
 				ove_strace_create_graph ${OVE_PROJECT_TMP_DIR}/trace-${cmd} ${cmd}
-			elif [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
+			elif [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
 				\head -n -1 ${OVE_PROJECT_TMP_DIR}/trace-${cmd}/trace-${cmd}
 			fi
 			break
@@ -6588,7 +6594,7 @@ function ove-revtab-check {
 	fi
 }
 
-# loglevel:[level] :show or change loglevel [0-8]
+# loglevel:[level] :show or change loglevel [0-9]
 function ove-loglevel {
 	local bcc_tool
 	local cfg
@@ -6596,7 +6602,7 @@ function ove-loglevel {
 	local sysctl_f
 
 	set +x
-	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-8]$ ]]; then
+	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-9]$ ]]; then
 		ove_command_usage
 		return 1
 	elif [ $# -eq 1 ]; then
@@ -6624,11 +6630,13 @@ function ove-loglevel {
 			fi
 		fi
 
-		if [ $1 -ge 7 ] && [ $1 -le 9 ]; then
+		if [ $1 -ge 7 ] && [ $1 -le 10 ]; then
 			if [ ${1} -eq 7 ]; then
 				bcc_tool="execsnoop"
-			else
+			elif [ ${1} -eq 8 ]; then
 				bcc_tool="tcpconnect"
+			elif [ ${1} -eq 9 ]; then
+				bcc_tool="opensnoop"
 			fi
 
 			if ! command -v python3 > /dev/null; then
@@ -6667,6 +6675,7 @@ function ove-loglevel {
 		echo "6: graph analysis       [strace]"
 		echo "7: execsnoop            [bcc]"
 		echo "8: tcpconnect           [bcc]"
+		echo "9: opensnoop            [bcc]"
 		break
 	done | \grep -E --color "$|${OVE_LOGLEVEL}"
 
@@ -7413,7 +7422,7 @@ function ove_config_builtins_init {
 		export OVE_PROJECT_CI_BRANCH="origin/${OVE_DEFAULT_BRANCH_NAME}"
 	fi
 
-	# OVE_LOGLEVEL:int:0-8:all:set a specific log level
+	# OVE_LOGLEVEL:int:0-9:all:set a specific log level
 	if [ -z "${OVE_LOGLEVEL+x}" ]; then
 		export OVE_LOGLEVEL=1
 		export OVE_REDIRECT_OUTPUT=""
