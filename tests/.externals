@@ -81,6 +81,8 @@ ssh:
 stat:
 md5=$(ove-forall-parallel stat --format '%Y' .git/HEAD | LC_ALL="C" \sort | \md5sum)
 
+sync:
+
 tac:
 
 tail:

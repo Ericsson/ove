@@ -1226,6 +1226,49 @@ function ove-run {
 	set -m
 }
 
+# kill processes
+#
+# $1   : 0 = prefix 'kill' with 'sudo'
+#      : 1 = kill as user
+# $2   : duration between signal
+# $3...: pids...
+function ove_kill_procs {
+	local n
+	local pid
+	local prefix
+	local sig
+
+	[ $# -lt 3 ] && return 1
+
+	if [ $1 -eq 0 ] && [ ${EUID} -ne 0 ]; then
+		prefix="sudo"
+	fi
+
+	n="$2"
+	shift 2
+	pids="$*"
+
+	for pid in "$@"; do
+		if ${prefix} kill -0 ${pid} > /dev/null 2>&1; then
+			for sig in SIGTERM SIGINT SIGKILL; do
+				${prefix} kill -${sig} ${pid} 2> /dev/null
+				sleep ${n}
+				${prefix} kill -0 ${pid} 2> /dev/null || break
+			done
+		fi
+	done
+}
+
+# loop-close::close all 'loop'-panes (tmux only)
+function ove-loop-close {
+	if [ $# -gt 0 ] || [ -z "${TMUX}" ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	ove_kill_procs 1 0.2 $(\pgrep -f ove_loop_command)
+}
+
 # loop:|[timeout|x] [inotify|x] [max-count|x] command]:loop one OVE command
 function ove-loop {
 	local _cmd
@@ -1415,22 +1458,13 @@ function ove_setup_trace {
 
 function ove_setup_trace_post {
 	local pid
-	local prefix
-	local sig
 
 	if [ -n "${OVE_TRACE_CMD+x}" ]; then
-		if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
-			if [ ${EUID} != 0 ]; then
-				prefix="sudo"
-			fi
-		fi
 		pid=$(\cat ${OVE_PROJECT_TMP_DIR}/trace.pid)
-		if ${prefix} kill -0 ${pid} > /dev/null 2>&1; then
-			for sig in SIGTERM SIGINT SIGKILL; do
-				${prefix} kill -${sig} ${pid} 2> /dev/null
-				sleep 1
-				${prefix} kill -0 ${pid} 2> /dev/null || break
-			done
+		if [ ${OVE_LOGLEVEL} -eq 7 ] || [ ${OVE_LOGLEVEL} -eq 8 ]; then
+			ove_kill_procs 0 1 ${pid}
+		else
+			ove_kill_procs 1 1 ${pid}
 		fi
 
 		[ -e ${OVE_PROJECT_TMP_DIR}/bash.pid ] && \

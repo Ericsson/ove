@@ -77,6 +77,7 @@
 | log-project              | <rev> <rev>                                                            | git log the project '${OVE_PROJECT_NAME}'                                                                             |
 | loglevel                 | [level]                                                                | show or change loglevel [0-8]                                                                                         |
 | loop                     | \|[timeout\|x] [inotify\|x] [max-count\|x] command]                    | loop one OVE command                                                                                                  |
+| loop-close-all           |                                                                        | close all 'loop'-panes (tmux only)                                                                                    |
 | ls-files                 | [pattern]                                                              | git ls-files for all git repositories                                                                                 |
 | ls-remote                |                                                                        | git ls-remote <remote.origin.url> HEAD for all git repositories                                                       |
 | make                     | [project[-nodeps]]                                                     | build project(s)                                                                                                      |
