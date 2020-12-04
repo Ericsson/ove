@@ -980,7 +980,7 @@ function ove_loop_command {
 
 			# extra files/directories to monitor?
 			if [ "x${OVE_LOOP_INOTIFY_EXTRA}" != "x" ]; then
-				\find ${OVE_LOOP_INOTIFY_EXTRA//:/ } -type f >> ${all_files}
+				\find ${OVE_LOOP_INOTIFY_EXTRA//;/ } -type f >> ${all_files}
 			fi
 
 			files_modified_by_command=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}
@@ -1141,6 +1141,41 @@ function ove_loop_command {
 			read -n 1 -s -r -p '' ${read_args}
 			[[ ${REPLY} =~ ^[Qq]$ ]] && break
 		fi
+	done
+}
+
+# ide:[close]:launch one or more 'loop'-commands specified by OVE_IDE_LOOP_ARGS (tmux only)
+function ove-ide {
+	local i
+	local line
+	local loop_args
+
+	if [ $# -gt 1 ] || [ -z "${TMUX}" ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	if [ $# -eq 1 ]; then
+		if [ "$1" == "close" ]; then
+			ove-loop-close
+			return 0
+		fi
+		ove_command_usage
+		return 1
+	fi
+
+	if [ "x${OVE_IDE_LOOP_ARGS}" == "x" ]; then
+		ove_echo_error_noprefix "'OVE_IDE_LOOP_ARGS' is empty or not set"
+		ove_command_usage
+		return 1
+	fi
+
+	mapfile -t loop_args <<<$(echo -e "${OVE_IDE_LOOP_ARGS//;/\\n}")
+	i=0
+	while ((i < ${#loop_args[@]})); do
+		ove-loop ${loop_args[i]}
+		(( i+=1 ))
+		sleep ${OVE_IDE_SLEEP_BETWEEN_COMMANDS:=0.5}
 	done
 }
 
@@ -6919,6 +6954,10 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" == "ide" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist="close"
+		fi
 	elif [ "${subcommand}" == "update-revtab" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
@@ -7473,7 +7512,7 @@ function ove_config_builtins_init {
 		export OVE_FORCE_SERIALIZE_COMMANDS=""
 	fi
 
-	# OVE_LOOP_INOTIFY_EXTRA:string::loop:colon separated list of additional files/directories to watch using inotify
+	# OVE_LOOP_INOTIFY_EXTRA:string::loop:semi-colon separated list of additional files/directories to watch using inotify
 	if [ -z "${OVE_LOOP_INOTIFY_EXTRA+x}" ]; then
 		export OVE_LOOP_INOTIFY_EXTRA=""
 	fi
@@ -7486,6 +7525,16 @@ function ove_config_builtins_init {
 	# OVE_LOCATE_LIFESPAN_TIME_IN_SEC:int::cd forowel locate locate-all refresh:local OVE workspace cache lifespan
 	if [ -z "${OVE_LOCATE_LIFESPAN_TIME_IN_SEC+x}" ]; then
 		export OVE_LOCATE_LIFESPAN_TIME_IN_SEC=86400
+	fi
+
+	# OVE_IDE_LOOP_ARGS:string::ide:semi-colon separated list of arguments to 'ove-loop' to launch
+	if [ -z "${OVE_IDE_LOOP_ARGS+x}" ]; then
+		export OVE_IDE_LOOP_ARGS="3600 0 0 fetch;60 1 0 ahead;3600 0 0 news"
+	fi
+
+	# OVE_IDE_SLEEP_BETWEEN_COMMANDS:float::ide:sleep between each command
+	if [ -z "${OVE_IDE_SLEEP_BETWEEN_COMMANDS+x}" ]; then
+		export OVE_IDE_SLEEP_BETWEEN_COMMANDS=0.5
 	fi
 }
 
