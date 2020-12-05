@@ -800,7 +800,7 @@ function ove_command_usage {
 	local cmd=${FUNCNAME[1]/ove-/}
 	local opt
 
-	a=$(\grep -B1 "^function ove-${cmd}" ${OVE_SELF} | \head -1)
+	a=$(\grep -B1 "^function ove-${cmd} " ${OVE_SELF} | \head -1)
 	opt=$(\cut -d: -f2 <<<${a})
 	description=$(\cut -d: -f3- <<<${a})
 	\echo -e "usage: ove ${cmd} ${opt}\t# ${description}"
@@ -1136,7 +1136,7 @@ function ove_loop_command {
 				sleep $((RANDOM%3 + 3))
 			fi
 		else
-			[ "${_timeout}" -gt 0 ] && read_args="-t ${_timeout}"
+			[ "${_timeout}" == "0" ] || read_args="-t ${_timeout}"
 			# shellcheck disable=SC2229
 			read -n 1 -s -r -p '' ${read_args}
 			[[ ${REPLY} =~ ^[Qq]$ ]] && break
@@ -1198,7 +1198,19 @@ function ove-run-parallel {
 	done
 }
 
-# run:|t c:run one OVE command 'c' in terminal/tmux with timeout 't' secs (0=no timeout)
+function ove_validate_int_float {
+	if ! [[ "${1}" =~ ^[0-9.,]+$ ]]; then
+		return 1
+	elif [[ "${1}" =~ [.,][0-9]+$ ]]; then
+		# shellcheck disable=SC2001
+		read -r -t $(\sed -e 's|[0-9]\+\([,.]\)[0-9]\+|\101|g' -e 's|\([,.]\)[0-9]\+|\101|g' <<<"${1}") 2> /dev/null
+		[ $? -lt 128 ] && return 1
+	fi
+
+	return 0
+}
+
+# run:|t c:run one OVE command 'c' in terminal/tmux with timeout 't' (0=no timeout)
 function ove-run {
 	local _cmd
 	local cmd
@@ -1221,8 +1233,9 @@ function ove-run {
 		cmd=$*
 	fi
 
-	if ! [[ "${_timeout}" =~ ^[0-9]+$ ]]; then
-		echo "error: timeout: just numbers"
+	if ! ove_validate_int_float "${_timeout}"; then
+		ove_command_usage
+		echo "error: format issues '${_timeout}'"
 		return 1
 	fi
 
@@ -1236,7 +1249,7 @@ function ove-run {
 
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
-	[ "${_timeout}" -gt 0 ] && read_args="-t ${_timeout}"
+	[ "${_timeout}" == "0" ] || read_args="-t ${_timeout}"
 
 	if [ -n "${TMUX}" ]; then
 		tmux split-window -h "\
@@ -1352,9 +1365,9 @@ function ove-loop {
 		cmd=$*
 	fi
 
-	if ! [[ "${_timeout}" =~ ^[0-9]+$ ]]; then
-		echo "error: timeout: just numbers"
+	if ! ove_validate_int_float "${_timeout}"; then
 		ove_command_usage
+		echo "error: format issues '${_timeout}'"
 		return 1
 	fi
 
