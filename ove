@@ -962,7 +962,7 @@ function ove_loop_command {
 		(( i+=1 ))
 		[ ${max_count} -ne 0 ] && [ ${i} -gt ${max_count} ] && break
 		clear
-		ove_echo_cyan_error "ove-${*} [c:${i} t:${_timeout} i:${use_inotify} m:${max_count}]"
+		ove_echo_cyan_error "${OVE_PROJECT_NAME}:ove-${*} [c:${i} t:${_timeout} i:${use_inotify} m:${max_count}]"
 
 		# inotify: first iteration?
 		if [ ${use_inotify} -eq 1 ] && [ ${i} -eq 1 ]; then
