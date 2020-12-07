@@ -975,7 +975,7 @@ function ove_loop_command {
 			# start inotifywait in monitor mode in the background
 			# monitor all files (for now)
 			# shellcheck disable=SC2016
-			cmd='for f in $(\git -C ${repo} ls-files); do [ -f ${f} ] && echo ${PWD}/${f}; done; echo ${PWD}/.git'
+			cmd='for f in $(ove_repo_cmd ${repo} git -C ${repo} ls-files); do [ -f ${f} ] && echo ${PWD}/${f}; done; echo ${PWD}/.git'
 			ove_revtab_forall_parallel "${cmd}" > ${all_files}
 
 			# extra files/directories to monitor?
@@ -996,7 +996,7 @@ function ove_loop_command {
 			fi
 
 			# retrieve the lock
-			exec {fd}>${OVE_PROJECT_TMP_DIR}/inotify.lock
+			exec {fd}>${OVE_PROJECT_TMP_DIR}/.inotify.lock
 			\flock ${fd}
 
 			# try to check that no other process is accessing our file watch list
@@ -1798,8 +1798,8 @@ function ove_list_tags_and_branches {
 	! [ -d ${d} ] && return
 
 	(
-	\git -C "${d}" tag
-	\git -C "${d}" branch --no-color --all --list | \
+	ove_repo_cmd "${d}" git -C "${d}" tag
+	ove_repo_cmd "${d}" git -C "${d}" branch --no-color --all --list | \
 		\grep -v HEAD | \
 		\tr -d '*' | \
 		\xargs | \
@@ -1815,7 +1815,7 @@ function ove_list_branches {
 	! [ -d ${d} ] && return
 
 	(
-	\git -C "${d}" branch --no-color --all --list | \
+	ove_repo_cmd "${d}" git -C "${d}" branch --no-color --all --list | \
 		\grep -v HEAD | \
 		\tr -d '*' | \
 		\xargs | \
@@ -2064,7 +2064,7 @@ function ove_projects_cmd {
 	if [[ ${FUNCNAME[*]} == *-parallel ]] && [ "x${OVE_FORCE_SERIALIZE_COMMANDS}" != "x" ]; then
 		re=\\b${cmd}\\b
 		if [[ "${OVE_FORCE_SERIALIZE_COMMANDS}" =~ ${re} ]]; then
-			exec {fd}>${OVE_PROJECT_TMP_DIR}/${cmd}.lock
+			exec {fd}>${OVE_PROJECT_TMP_DIR}/.${cmd}.lock
 			\flock ${fd}
 		fi
 	fi
@@ -2159,9 +2159,16 @@ function ove_revtab_parse {
 		ove_revtab_push_url[${ove_revtab_num_repositories}]=${array[2]}
 		ove_revtab_rev[${ove_revtab_num_repositories}]=${array[3]}
 		ove_revtab_name2index[${array[0]}]=${ove_revtab_num_repositories}
+		if ! [ -e "${OVE_PROJECT_TMP_DIR}/.${ove_revtab_num_repositories}.lock" ]; then
+			true > "${OVE_PROJECT_TMP_DIR}/.${ove_revtab_num_repositories}.lock"
+		fi
 
 		(( ove_revtab_num_repositories+=1 ))
 	done < "${OVE_PROJECT_DIR}/revtab"
+
+	if ! [ -e "${OVE_PROJECT_TMP_DIR}/.owel.lock" ]; then
+		true > "${OVE_PROJECT_TMP_DIR}/.owel.lock"
+	fi
 
 	if ! ove_validate_revtab; then
 		return 1
@@ -2206,6 +2213,22 @@ function ove_repo2shortpath {
 	echo ${repo_shortpath}
 }
 
+# $1: repo name (either 'name' or '${OVE_BASE_DIR}/'name')
+function ove_repo2index {
+	local i
+	local name
+
+	[ $# -ne 1 ] && return 1
+
+	name=${1/${OVE_BASE_DIR}\/}
+	if [ "${name}" == "${OVE_PROJECT_NAME}" ]; then
+		echo "owel"
+	elif [ -v ove_revtab_name2index[${name}] ]; then
+		i=${ove_revtab_name2index[${name}]}
+		echo ${i}
+	fi
+}
+
 # $1: repo
 function ove_status_one_repo {
 	local i
@@ -2222,16 +2245,16 @@ function ove_status_one_repo {
 	fi
 
 	repo_shortpath="$(ove_repo2shortpath $1)"
-	i=${ove_revtab_name2index[${repo_shortpath}]}
 
 	if [ "${repo_shortpath}" == "${OVE_PROJECT_NAME}" ]; then
-		revision="$(\git -C "${OVE_PROJECT_DIR}" describe --tags --always 2> /dev/null)"
+		revision="$(ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" describe --tags --always 2> /dev/null)"
 		[ -n "${revision}" ] || revision=" "
 	else
+		i=${ove_revtab_name2index[${repo_shortpath}]}
 		revision="${ove_revtab_rev[${i}]}"
 	fi
 
-	s=$(\git --no-optional-locks -c color.status=always -C "${repo_fullpath}" status -bs -uno)
+	s=$(ove_repo_cmd "${repo_fullpath}" git --no-optional-locks -c color.status=always -C "${repo_fullpath}" status -bs -uno)
 	s=${s//$'\n'/ }
 	printf "${repo_shortpath}:${revision}:$s\n"
 }
@@ -2311,7 +2334,7 @@ function ove_revtab_status_parse_one {
 		return
 	fi
 
-	git_status=$(\git --no-optional-locks -C "${repo_fullpath}" status -zbs -uno | \tr '\0' ' ')
+	git_status=$(ove_repo_cmd "${repo_fullpath}" git --no-optional-locks -C "${repo_fullpath}" status -zbs -uno | \tr '\0' ' ')
 	nbr_commits=0
 
 	# keep 'ahead X, behind Y'
@@ -2330,7 +2353,7 @@ function ove_revtab_status_parse_one {
 		fi
 
 		ove_echo_yellow_noprefix "$(ove_repo2shortpath $1): ${nbr_commits} new commit(s):"
-		\git --no-pager -C "${repo_fullpath}" log ${git_args} -n ${nbr_commits} --format="${git_fmt}" | \
+		ove_repo_cmd "${repo_fullpath}" git --no-pager -C "${repo_fullpath}" log ${git_args} -n ${nbr_commits} --format=\"${git_fmt}\" | \
 			\column -t -s?
 		echo
 	fi
@@ -2383,11 +2406,11 @@ function ove_revtab_list {
 		(( i+=1 ))
 	done
 
-	url=$(\git -C "${OVE_PROJECT_DIR}" config --get remote.origin.url)
+	url=$(ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" config --get remote.origin.url)
 	if [ "${url}" != "" ]; then
-		str+="${OVE_PROJECT_NAME} ${url} ${url} $(\git -C "${OVE_PROJECT_DIR}" rev-parse --abbrev-ref HEAD 2> /dev/null)\n"
+		str+="${OVE_PROJECT_NAME} ${url} ${url} $(ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" rev-parse --abbrev-ref HEAD 2> /dev/null)\n"
 	else
-		str+="${OVE_PROJECT_NAME} noremote noremote $(\git -C "${OVE_PROJECT_DIR}" rev-parse --abbrev-ref HEAD 2> /dev/null)\n"
+		str+="${OVE_PROJECT_NAME} noremote noremote $(ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" rev-parse --abbrev-ref HEAD 2> /dev/null)\n"
 	fi
 
 	printf "${str}" | \
@@ -2545,21 +2568,21 @@ function ove_revtab_check_fetch_push {
 	[ -d "${OVE_BASE_DIR}/${name}/.git" ] || return
 
 	# fetch URL
-	if ! remote_url=$(\git -C "${OVE_BASE_DIR}/${name}" remote get-url origin 2> /dev/null); then
+	if ! remote_url=$(ove_repo_cmd "${OVE_BASE_DIR}/${name}" git -C "${OVE_BASE_DIR}/${name}" remote get-url origin 2> /dev/null); then
 		return
 	fi
 	revtab_url="$2"
 	if [ "${remote_url}" != "${revtab_url}" ]; then
-		\git -C "${OVE_BASE_DIR}/${name}" remote set-url origin "${revtab_url}"
+		ove_repo_cmd "${OVE_BASE_DIR}/${name}" git -C "${OVE_BASE_DIR}/${name}" remote set-url origin "${revtab_url}"
 	fi
 
 	# push URL
-	if ! remote_url=$(\git -C "${OVE_BASE_DIR}/${name}" remote get-url --push origin 2> /dev/null); then
+	if ! remote_url=$(ove_repo_cmd "${OVE_BASE_DIR}/${name}" git -C "${OVE_BASE_DIR}/${name}" remote get-url --push origin 2> /dev/null); then
 		return
 	fi
 	revtab_url="$3"
 	if [ "${remote_url}" != "${revtab_url}" ]; then
-		\git -C "${OVE_BASE_DIR}/${name}" remote set-url --push origin "${revtab_url}"
+		ove_repo_cmd "${OVE_BASE_DIR}/${name}" git -C "${OVE_BASE_DIR}/${name}" remote set-url --push origin "${revtab_url}"
 	fi
 }
 
@@ -2582,15 +2605,15 @@ function ove_revtab_check_one {
 	[ -d "${OVE_BASE_DIR}/${name}/.git" ] || return
 
 	revision=$4
-	sha_a=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
-	sha_b=$(\git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null)
+	sha_a=$(ove_repo_cmd ${OVE_BASE_DIR}/${name} git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
+	sha_b=$(ove_repo_cmd ${OVE_BASE_DIR}/${name} git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null)
 	[ $? -ne 0 ] && sha_b=""
 
 	if [ "${sha_a}" != "${sha_b}" ]; then
 		# diff => checkout
 		co=1
 	else
-		\git -C "${OVE_BASE_DIR}/${name}" symbolic-ref -q HEAD > /dev/null || detached=1
+		ove_repo_cmd "${OVE_BASE_DIR}/${name}" git -C "${OVE_BASE_DIR}/${name}" symbolic-ref -q HEAD > /dev/null || detached=1
 		[[ "$(ove_list_branches ${OVE_BASE_DIR}/${name} | \xargs)" =~ (^| )${revision}($| ) ]] && rev_is_branch=1
 
 		# detached and rev is a branch => checkout
@@ -2601,7 +2624,7 @@ function ove_revtab_check_one {
 			co=1
 		# switched branch?
 		elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 1 ]; then
-			branch_name=$(\git -C ${OVE_BASE_DIR}/${name} rev-parse --abbrev-ref HEAD)
+			branch_name=$(ove_repo_cmd ${OVE_BASE_DIR}/${name} git -C ${OVE_BASE_DIR}/${name} rev-parse --abbrev-ref HEAD)
 			if [ "${branch_name}" != "${revision}" ]; then
 				co=1
 			fi
@@ -2802,7 +2825,7 @@ function ove_revtab_checkout_one {
 	name=${ove_revtab_git_name[${1}]}
 	revision=${ove_revtab_rev[${1}]}
 	while true; do
-		if ! \git -C "${OVE_BASE_DIR}/${name}" -c advice.detachedHead=false checkout "${revision}"; then
+		if ! ove_repo_cmd "${OVE_BASE_DIR}/${name}" git -C "${OVE_BASE_DIR}/${name}" -c advice.detachedHead=false checkout "${revision}"; then
 			return 1
 		fi
 		break
@@ -2853,13 +2876,13 @@ function ove_revtab_pull_one {
 	fi
 
 	# check if detached
-	if ! \git -C "${repo_fullpath}" rev-parse -q "${upstream}" &> /dev/null; then
+	if ! ove_repo_cmd "${repo_fullpath}" git -C "${repo_fullpath}" rev-parse -q "${upstream}" &> /dev/null; then
 		return
 	fi
 
-	loc=$(\git -C "${repo_fullpath}" rev-parse @)
-	remote=$(\git -C "${repo_fullpath}" rev-parse "${upstream}")
-	base=$(\git -C "${repo_fullpath}" merge-base @ "${upstream}")
+	loc=$(ove_repo_cmd "${repo_fullpath}" git -C "${repo_fullpath}" rev-parse @)
+	remote=$(ove_repo_cmd "${repo_fullpath}" git -C "${repo_fullpath}" rev-parse "${upstream}")
+	base=$(ove_repo_cmd "${repo_fullpath}" git -C "${repo_fullpath}" merge-base @ "${upstream}")
 
 	if [ "${loc}" = "${remote}" ]; then
 		# up-to-date
@@ -2876,11 +2899,22 @@ function ove_revtab_pull_one {
 		fi
 
 		ove_echo_yellow_noprefix "${repo}"
-		cmd="\git -C ${repo_fullpath} pull --rebase"
+		cmd="ove_repo_cmd ${repo_fullpath} git -C ${repo_fullpath} pull --rebase"
 		if ! eval ${cmd}; then
 			ove_echo_error_noprefix "${cmd}"
 		fi
 	fi
+}
+
+# $1   : repo
+# $2...: command
+function ove_repo_cmd {
+	local i
+
+	i=$(ove_repo2index ${1})
+	shift
+	\flock --no-fork -x "${OVE_PROJECT_TMP_DIR}/.${i}.lock" -c "$*"
+	return $?
 }
 
 # $*: optional list of repositories
@@ -2896,7 +2930,7 @@ function ove_revtab_fetch {
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout "$@"
 		m=$(printf "%s\n" "$@" | \wc -L)
-		ove_revtab_forsome_parallel "\git -C \${repo} fetch --all --tag |& \sed -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#i}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL} "$@"
+		ove_revtab_forsome_parallel "ove_repo_cmd \${repo} git -C \${repo} fetch --all --tag |& \sed -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#i}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL} "$@"
 		return $?
 	fi
 
@@ -2911,7 +2945,7 @@ function ove_revtab_fetch {
 	[ "${co_list}" != "" ] && ove_revtab_clone_and_checkout ${co_list}
 
 	m=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
-	ove_revtab_forall_parallel "\git -C \${repo} fetch --all --tags |& \sed -e \"s|^|\${repo_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#repo_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
+	ove_revtab_forall_parallel "ove_repo_cmd \${repo} git -C \${repo} fetch --all --tags |& \sed -e \"s|^|\${repo_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#repo_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
 	return $?
 }
 
@@ -3686,22 +3720,22 @@ function ove_revtab_sanity_check {
 		return 1
 	fi
 
-	if ! \git -C "${OVE_PROJECT_DIR}" cat-file -e "$1" &> /dev/null; then
+	if ! ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" cat-file -e "$1" &> /dev/null; then
 		ove_echo_error_noprefix "'$1' is not a valid revision"
 		return 1
 	fi
 
-	if ! \git -C "${OVE_PROJECT_DIR}" cat-file -e "$2" &> /dev/null; then
+	if ! ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" cat-file -e "$2" &> /dev/null; then
 		ove_echo_error_noprefix "'$2' is not a valid revision"
 		return 1
 	fi
 
-	if ! \git -C "${OVE_PROJECT_DIR}" --no-pager show $1:revtab &> /dev/null; then
+	if ! ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" --no-pager show $1:revtab &> /dev/null; then
 		ove_echo_error_noprefix "revtab for '$1' is not available"
 		return 1
 	fi
 
-	if ! \git -C "${OVE_PROJECT_DIR}" --no-pager show $2:revtab &> /dev/null; then
+	if ! ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" --no-pager show $2:revtab &> /dev/null; then
 		ove_echo_error_noprefix "revtab for '$2' is not available"
 		return 1
 	fi
@@ -3721,10 +3755,10 @@ function ove-revtab-diff {
 	fi
 
 	# save revtab for rev A and rev B
-	a=$(\git -C "${OVE_PROJECT_DIR}" --no-pager show $1:revtab | \
+	a=$(ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" --no-pager show $1:revtab | \
 		\grep -v \# | \
 		\xargs -n4)
-	b=$(\git -C "${OVE_PROJECT_DIR}" --no-pager show $2:revtab | \
+	b=$(ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" --no-pager show $2:revtab | \
 		\grep -v \# | \
 		\xargs -n4)
 
@@ -3784,7 +3818,7 @@ function ove_extract_only_a {
 	repo=$(\awk '{print $2}' <<<${line})
 	sha_1=$(\awk '{print $3}' <<<${line})
 	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -d ${OVE_BASE_DIR}/${repo}/.git ]; then
-		only_a+="  ${repo}|$(\git -C ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
+		only_a+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} git -C ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty=\"  %C\(auto\)%h\|%s\" ${sha_1})\n"
 	else
 		only_a+="${line:1}\n"
 	fi
@@ -3799,7 +3833,7 @@ function ove_extract_only_b {
 	repo=$(\awk '{print $2}' <<<${line})
 	sha_1=$(\awk '{print $3}' <<<${line})
 	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -d ${OVE_BASE_DIR}/${repo}/.git ]; then
-		only_b+="  ${repo}|$(\git -C ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
+		only_b+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} git -C ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty=\"  %C\(auto\)%h\|%s\" ${sha_1})\n"
 	else
 		only_b+="${line:1}\n"
 	fi
@@ -3826,7 +3860,7 @@ function ove_validate_rev {
 	local repo="$1"
 	local revision="$2"
 
-	if ! \git -C "${OVE_BASE_DIR}/${repo}" cat-file -e "${revision}" &> /dev/null; then
+	if ! ove_repo_cmd "${OVE_BASE_DIR}/${repo}" git -C "${OVE_BASE_DIR}/${repo}" cat-file -e "${revision}" &> /dev/null; then
 		ove_echo_error_noprefix "${repo}: '${revision}' is not a valid revision"
 		return 1
 	fi
@@ -3863,7 +3897,7 @@ function ove-diff-project {
 		return 1
 	fi
 
-	cmd="\git -C ${OVE_PROJECT_DIR} diff --color=always $1 $2"
+	cmd="ove_repo_cmd ${OVE_PROJECT_DIR} git -C ${OVE_PROJECT_DIR} diff --color=always $1 $2"
 	diff=$(eval ${cmd})
 	if [ "${diff}" != "" ]; then
 		echo -e "${diff}" | ${OVE_PAGER} -Ps"${OVE_PROJECT_NAME}\:${cmd/./\\.}"
@@ -3877,7 +3911,7 @@ function ove-diff-project {
 			ove_extract_only_b ${line}
 		elif [ ${line:0:1} == "c" ]; then
 			ove_extract_repo_and_sha ${line} || continue
-			cmd="\git -C ${OVE_BASE_DIR}/${repo} diff --color=always ${sha_1} ${sha_2}"
+			cmd="ove_repo_cmd ${OVE_BASE_DIR}/${repo} git -C ${OVE_BASE_DIR}/${repo} diff --color=always ${sha_1} ${sha_2}"
 			diff=$(eval ${cmd})
 			if [ "${diff}" != "" ]; then
 				echo -e "${diff}" | ${OVE_PAGER} -Ps"${repo}\:${cmd/./\\.}"
@@ -3903,7 +3937,7 @@ function ove-log-project {
 		return 1
 	fi
 
-	diff=$(\git --no-pager -C "${OVE_PROJECT_DIR}" log --oneline --pretty="  %C(auto)%h %s" "$1".."$2")
+	diff=$(ove_repo_cmd "${OVE_PROJECT_DIR}" git --no-pager -C "${OVE_PROJECT_DIR}" log --oneline --pretty=\"  %C\(auto\)%h %s\" \"$1\"..\"$2\")
 	if [ "${diff}" != "" ]; then
 		ove_echo_yellow_noprefix "${OVE_PROJECT_NAME}:"
 		echo -e "${diff}"
@@ -3917,7 +3951,7 @@ function ove-log-project {
 			ove_extract_only_b ${line}
 		elif [ ${line:0:1} == "c" ]; then
 			ove_extract_repo_and_sha ${line} || continue
-			diff=$(\git --no-pager -C ${OVE_BASE_DIR}/${repo} log --oneline --pretty="  %C(auto)%h %s" ${sha_1}..${sha_2})
+			diff=$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} git --no-pager -C ${OVE_BASE_DIR}/${repo} log --oneline --pretty=\"  %C\(auto\)%h %s\" ${sha_1}..${sha_2})
 			if [ "${diff}" != "" ]; then
 				echo
 				ove_echo_yellow_noprefix "${repo}:"
@@ -3944,7 +3978,7 @@ function ove-shortlog-project {
 		return 1
 	fi
 
-	diff=$(\git --no-pager -C "${OVE_PROJECT_DIR}" shortlog --email --oneline "$1".."$2")
+	diff=$(ove_repo_cmd "${OVE_PROJECT_DIR}" git --no-pager -C "${OVE_PROJECT_DIR}" shortlog --email --oneline "$1".."$2")
 	if [ "${diff}" != "" ]; then
 		ove_echo_yellow_noprefix ${OVE_PROJECT_NAME}:
 		echo -e "${diff}"
@@ -3959,7 +3993,7 @@ function ove-shortlog-project {
 			ove_extract_only_b ${line}
 		elif [ ${line:0:1} == "c" ]; then
 			ove_extract_repo_and_sha ${line} || continue
-			diff=$(\git --no-pager -C ${OVE_BASE_DIR}/${repo} shortlog --email --oneline ${sha_1}..${sha_2} | \sed -e 's/^/  /g')
+			diff=$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} git --no-pager -C ${OVE_BASE_DIR}/${repo} shortlog --email --oneline ${sha_1}..${sha_2} | \sed -e 's/^/  /g')
 			if [ "${diff}" != "" ]; then
 				ove_echo_yellow_noprefix "${repo}:"
 				echo -e "${diff}"
@@ -4304,7 +4338,7 @@ function ove-branch {
 
 	if [ $# -lt 2 ]; then
 		# shellcheck disable=SC2016
-		cmd='ove_echo_yellow_noprefix ${repo_basename} && \git --no-pager -C ${repo} branch -vv; echo'
+		cmd='ove_echo_yellow_noprefix ${repo_basename} && ove_repo_cmd ${repo} git --no-pager -C ${repo} branch -vv; echo'
 		if [ $# -eq 0 ]; then
 		        ove_revtab_forall "${cmd}"
 		else
@@ -4333,7 +4367,7 @@ function ove-branch {
 		while true; do
 			read -r -p "${r}: starting point for branch '${branch_name}'? (leave empty to create branch from current HEAD): "
 			[ "${REPLY}" == "" ] && break
-			if ! \git -C "${OVE_BASE_DIR}/${r}" cat-file -e "${REPLY}" &> /dev/null; then
+			if ! ove_repo_cmd "${OVE_BASE_DIR}/${r}" git -C "${OVE_BASE_DIR}/${r}" cat-file -e "${REPLY}" &> /dev/null; then
 				ove_echo_error_noprefix "'${REPLY}' is not a valid revision for ${r}, try again"
 				continue
 			fi
@@ -4342,7 +4376,7 @@ function ove-branch {
 		done
 
 		# checkout branch
-		if ! \git -C "${OVE_BASE_DIR}/${r}" checkout -b ${branch_name} ${branch_start_point} |& \sed "s|^|${r}: |g"; then
+		if ! ove_repo_cmd "${OVE_BASE_DIR}/${r}" git -C "${OVE_BASE_DIR}/${r}" checkout -b ${branch_name} ${branch_start_point} |& \sed "s|^|${r}: |g"; then
 			continue
 		fi
 
@@ -4358,7 +4392,7 @@ function ove-remote {
 	local cmd
 
 	# shellcheck disable=SC2016
-	cmd='ove_echo_yellow_noprefix ${repo_basename} && \git --no-pager -C ${repo} remote -v'
+	cmd='ove_echo_yellow_noprefix ${repo_basename} && ove_repo_cmd ${repo} git --no-pager -C ${repo} remote -v'
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forall "${cmd}"
@@ -4380,7 +4414,7 @@ function ove-remote-set-url {
 	shift
 
 	# shellcheck disable=SC2016
-	cmd='ove_echo_yellow_noprefix ${repo_basename} && \git --no-pager -C ${repo} remote set-url origin ${url}/${repo_basename} && \git --no-pager -C ${repo} remote -v'
+	cmd='ove_echo_yellow_noprefix ${repo_basename} && ove_repo_cmd ${repo} git --no-pager -C ${repo} remote set-url origin ${url}/${repo_basename} && ove_repo_cmd ${repo} git --no-pager -C ${repo} remote -v'
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forall "${cmd}"
@@ -4395,7 +4429,7 @@ function ove-remote-check {
 
 	i=0
 	while ((i < ove_revtab_num_repositories)); do
-		if ! \git -C "${PWD}" ls-remote ${ove_revtab_fetch_url[${i}]} HEAD > /dev/null; then
+		if ! ove_repo_cmd "${PWD}" git -C "${PWD}" ls-remote ${ove_revtab_fetch_url[${i}]} HEAD > /dev/null; then
 			return 1
 		fi
 
@@ -4404,7 +4438,7 @@ function ove-remote-check {
 }
 
 function ove_repo_is_dirty {
-	if test -z "$(\git --no-optional-locks --no-pager -C ${1} status --porcelain -uno)"; then
+	if test -z "$(ove_repo_cmd ${1} git --no-optional-locks --no-pager -C ${1} status --porcelain -uno)"; then
 		return 1
 	else
 		return 0
@@ -4422,7 +4456,7 @@ function ove_dirty_repos {
 
 function ove_stashed_repos {
 	# shellcheck disable=SC2016
-	ove_revtab_forall_parallel '\git --no-pager -C ${repo} stash list | \grep -q "stashed by OVE" && echo ${repo}'
+	ove_revtab_forall_parallel 'ove_repo_cmd ${repo} git --no-pager -C ${repo} stash list | \grep -q "stashed by OVE" && echo ${repo}'
 }
 
 # $1: drop or pop
@@ -4433,7 +4467,7 @@ function ove_stash_forsome {
 	local t
 
 	for repo in $(ove_stashed_repos); do
-		s=$(\git -C ${repo} stash list | \
+		s=$(ove_repo_cmd ${repo} git -C ${repo} stash list | \
 			\grep "stashed by OVE")
 
 		if [ $# -eq 2 ] && [[ ${s} != *"$2"* ]]; then
@@ -4444,17 +4478,17 @@ function ove_stash_forsome {
 			t=$(echo "$s" | \
 				\head -1 | \
 				\cut -d: -f1)
-			\git -C ${repo} stash $1 -q ${t}
+			ove_repo_cmd ${repo} git -C ${repo} stash $1 -q ${t}
 		else
 			while true; do
-				s=$(\git -C ${repo} stash list | \
+				s=$(ove_repo_cmd ${repo} git -C ${repo} stash list | \
 					\grep "stashed by OVE" | \
 					\grep ${2} | \
 					\head -1 | \
 					\cut -d: -f1)
 				[ "${s}" == "" ] && break
 
-				if ! \git -C ${repo} stash $1 -q ${s}; then
+				if ! ove_repo_cmd ${repo} git -C ${repo} stash $1 -q ${s}; then
 					ove_echo_error_noprefix "git -C ${repo} stash $1 -q ${s} failed"
 					return 1
 				fi
@@ -4481,7 +4515,7 @@ function ove_stash_save {
 	[ "${dirty_repos}" == "" ] && return
 
 	now=$(\date '+%Y%m%d-%H%M%S')
-	cmd="\git -C \${repo} stash save -q stashed by OVE@${now}"
+	cmd="ove_repo_cmd \${repo} git -C \${repo} stash save -q stashed by OVE@${now}"
 	if [ $# -eq 0 ]; then
 		cmd+=" ${dirty_repos}"
 	else
@@ -4501,9 +4535,9 @@ function ove_stash_inspect {
 	local u
 
 	for repo in $(ove_stashed_repos); do
-		cmd="\git -C ${repo} stash"
+		cmd="ove_repo_cmd ${repo} git -C ${repo} stash"
 		if [ "$1" == "show" ]; then
-			s=$(\git -C ${repo} stash list | \
+			s=$(ove_repo_cmd ${repo} git -C ${repo} stash list | \
 				\grep "stashed by OVE")
 
 			if [ $# -eq 2 ] && [[ ${s} != *"$2"* ]]; then
@@ -4561,9 +4595,9 @@ function ove-diff {
 	local cmd
 	local repos
 
-	cmd="\git --no-pager -C \${repo} diff-files --quiet || \
+	cmd="ove_repo_cmd \${repo} git --no-pager -C \${repo} diff-files --quiet || \
 		(ove_echo_yellow_noprefix \${repo_basename} && \
-		\git --no-pager -C \${repo} diff --color=always ${OVE_DIFF_OPTIONS})"
+		ove_repo_cmd \${repo} git --no-pager -C \${repo} diff --color=always ${OVE_DIFF_OPTIONS})"
 
 	[ $# -eq 0 ] && repos="$(ove_dirty_repos)" || repos="$*"
 
@@ -4591,9 +4625,9 @@ function ove-diff-cached {
 	local cmd
 	local repos
 
-	cmd="\git --no-pager -C \${repo} diff-index --quiet --cached HEAD -- || \
+	cmd="ove_repo_cmd \${repo} git --no-pager -C \${repo} diff-index --quiet --cached HEAD -- || \
 		(ove_echo_yellow_noprefix \${repo_basename} && \
-		\git --no-pager -C \${repo} diff --color=always --cached ${OVE_DIFF_OPTIONS})"
+		ove_repo_cmd \${repo} git --no-pager -C \${repo} diff --color=always --cached ${OVE_DIFF_OPTIONS})"
 
 	[ $# -eq 0 ] && repos="$(ove_dirty_repos)" || repos="$*"
 
@@ -4605,9 +4639,9 @@ function ove-reset {
 	local cmd
 
 	# shellcheck disable=SC2016
-	cmd='\git --no-pager -C ${repo} diff-index --quiet --cached HEAD -- ||'
+	cmd='ove_repo_cmd ${repo} git --no-pager -C ${repo} diff-index --quiet --cached HEAD -- ||'
 	# shellcheck disable=SC2016
-	cmd+=' (ove_echo_yellow_noprefix ${repo_basename} && \git -C ${repo} reset -p)'
+	cmd+=' (ove_echo_yellow_noprefix ${repo_basename} && ove_repo_cmd ${repo} git -C ${repo} reset -p)'
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forall "${cmd}"
@@ -4621,7 +4655,7 @@ function ove-reset-hard {
 	local cmd
 
 	# shellcheck disable=SC2016
-	cmd='\git -C ${repo} reset -q --hard'
+	cmd='ove_repo_cmd ${repo} git -C ${repo} reset -q --hard'
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forall "${cmd}"
@@ -4636,9 +4670,9 @@ function ove-add {
 	local repos
 
 	# shellcheck disable=SC2016
-	cmd='\git --no-pager -C ${repo} diff-files --quiet ||'
+	cmd='ove_repo_cmd ${repo} git --no-pager -C ${repo} diff-files --quiet ||'
 	# shellcheck disable=SC2016
-	cmd+=' (ove_echo_yellow_noprefix ${repo_basename} && \git --no-pager -C ${repo} add -p)'
+	cmd+=' (ove_echo_yellow_noprefix ${repo_basename} && ove_repo_cmd ${repo} git --no-pager -C ${repo} add -p)'
 
 	[ $# -eq 0 ] && repos="$(ove_dirty_repos)" || repos="$*"
 
@@ -4649,9 +4683,15 @@ function ove-add {
 function ove-commit {
 	local cmd
 
-	cmd="\git --no-pager -C \${repo} diff --cached --quiet || \
-		(ove_echo_yellow_noprefix \${repo_basename} && \
-		\git -C \${repo} commit -t <(echo; echo \# git: \${repo}; echo \#; \git -C \${repo} diff --cached -U0 | \sed 's/^/# /g'))"
+	cmd="ove_repo_cmd \${repo} git --no-pager -C \${repo} diff --cached --quiet ||
+		(ove_echo_yellow_noprefix \${repo_basename};
+		true > ${OVE_PROJECT_TMP_DIR}/commit-template;
+		echo >> ${OVE_PROJECT_TMP_DIR}/commit-template;
+		echo \# git: \${repo} >> ${OVE_PROJECT_TMP_DIR}/commit-template;
+		echo \# >> ${OVE_PROJECT_TMP_DIR}/commit-template;
+		ove_repo_cmd \${repo} git -C \${repo} diff --cached -U0 | \sed 's/^/# /g' >> ${OVE_PROJECT_TMP_DIR}/commit-template;
+		ove_repo_cmd \${repo} git -C \${repo} commit -t ${OVE_PROJECT_TMP_DIR}/commit-template;
+		\rm ${OVE_PROJECT_TMP_DIR}/commit-template)"
 
 	if [ $# -eq 0 ]; then
 		ove_revtab_forsome "${cmd}" "$(ove_dirty_repos)"
@@ -5268,7 +5308,7 @@ function ove-buildme-parallel {
 function ove-diff-check {
 	local cmd
 
-	cmd="echo \${PWD}; \git --no-pager -C \${repo} diff --check $* -- \$(\git -C \${repo} diff --name-only)"
+	cmd="echo \${PWD}; ove_repo_cmd \${repo} git --no-pager -C \${repo} diff --check $* -- \$(ove_repo_cmd \${repo} git -C \${repo} diff --name-only)"
 	ove_revtab_forall "${cmd}"
 }
 
@@ -5364,7 +5404,7 @@ function ove-reset-ahead {
 		\grep --color=never ': [0-9]\+ new commit' | \
 		while IFS=' ' read -r repo n foo bar; do
 			repo=${repo/:/}
-			\git -C ${OVE_BASE_DIR}/${repo} reset --hard HEAD~${n} |& \sed -e "s/^/${repo}: /g"
+			ove_repo_cmd ${OVE_BASE_DIR}/${repo} git -C ${OVE_BASE_DIR}/${repo} reset --hard HEAD~${n} |& \sed -e "s/^/${repo}: /g"
 		done
 }
 
@@ -5384,7 +5424,7 @@ function ove-rebase-autosquash {
 		while IFS=' ' read -r repo n foo bar; do
 			repo=${repo/:/}
 			ove_echo_yellow_noprefix ${repo}
-			GIT_SEQUENCE_EDITOR=: \git -C ${OVE_BASE_DIR}/${repo} rebase -i HEAD~${n} --autosquash |& \sed -e "s/^/${repo}: /g"
+			GIT_SEQUENCE_EDITOR=: ove_repo_cmd ${OVE_BASE_DIR}/${repo} git -C ${OVE_BASE_DIR}/${repo} rebase -i HEAD~${n} --autosquash |& \sed -e "s/^/${repo}: /g"
 			if [ ${PIPESTATUS[0]} -ne 0 ]; then
 				ove_echo_error_noprefix "rebase failed for '${repo}'"
 				return 1
@@ -5410,7 +5450,7 @@ function ove-format-patch {
 		while IFS=' ' read -r repo n foo bar; do
 			repo=${repo/:/}
 			\mkdir -p ${d}/${repo}
-			\git -C ${OVE_BASE_DIR}/${repo} format-patch -q -${n} -o ${d}/${repo}
+			ove_repo_cmd ${OVE_BASE_DIR}/${repo} git -C ${OVE_BASE_DIR}/${repo} format-patch -q -${n} -o ${d}/${repo}
 		done
 
 	[ $(\find ${d} -type f | \wc -l) -eq 0 ] && return || \tree -a "${d}"
@@ -5457,8 +5497,8 @@ function ove-am {
 
 		ove_echo_yellow_noprefix ${r}
 		# apply patch(es)
-		if ! \git -C ${OVE_BASE_DIR}/${r} am ${d}/${r}/*; then
-			\git -C ${OVE_BASE_DIR}/${r} am --abort
+		if ! ove_repo_cmd ${OVE_BASE_DIR}/${r} git -C ${OVE_BASE_DIR}/${r} am ${d}/${r}/*; then
+			ove_repo_cmd ${OVE_BASE_DIR}/${r} git -C ${OVE_BASE_DIR}/${r} am --abort
 			((ret++))
 		fi
 	done
@@ -5612,14 +5652,14 @@ function ove-apply {
 		if [ -d "${repo_fullpath}" ] && \
 			[ -d ${repo_fullpath}/.git ]; then
 			# Run 'git apply --check' and if ok, apply the patch
-			if ! \git -C "${repo_fullpath}" apply --check ${q} 2> /dev/null; then
+			if ! ove_repo_cmd "${repo_fullpath}" git -C "${repo_fullpath}" apply --check ${q} 2> /dev/null; then
 				ove_echo_yellow_noprefix "${repo_basename}: patch '${q}' does not apply"
 				((ret++))
 				continue
 			fi
 
 			# apply the patch
-			\git -C "${repo_fullpath}" apply ${q}
+			ove_repo_cmd "${repo_fullpath}" git -C "${repo_fullpath}" apply ${q}
 		fi
 	done
 
@@ -5632,9 +5672,9 @@ function ove_patch_repositories {
 	# shellcheck disable=SC2016
 	ove_revtab_forall '[ -d ${OVE_PROJECT_DIR}/patches/${repo_basename} ] &&
 		for p in $(\find ${OVE_PROJECT_DIR}/patches/${repo_basename} -name "*.patch"); do
-			if \git -C ${repo} apply --check $p 2> /dev/null; then
+			if ove_repo_cmd ${repo} git -C ${repo} apply --check $p 2> /dev/null; then
 				echo "${repo_basename}: apply patch: $p"
-				\git -C ${repo} apply $p 2> /dev/null
+				ove_repo_cmd ${repo} git -C ${repo} apply $p 2> /dev/null
 			fi
 		done'
 }
@@ -5653,13 +5693,13 @@ function ove-gitmodules2revtab {
 	[ "${repos_with_submodules}" == "" ] && return
 
 	for repo in ${repos_with_submodules}; do
-		for submodule in $(\git -C ${repo} submodule--helper list | \awk '{print $4}'); do
-			url=$(\git -C ${repo} config --file .gitmodules --list | \
+		for submodule in $(ove_repo_cmd ${repo} git -C ${repo} submodule--helper list | \awk '{print $4}'); do
+			url=$(ove_repo_cmd ${repo} git -C ${repo} config --file .gitmodules --list | \
 				\grep "^submodule.${submodule}.url=" | \
 				\cut -d= -f2)
 			[ "${url}" == "" ] && continue
 
-			sha=$(\git -C ${repo} submodule--helper list | \
+			sha=$(ove_repo_cmd ${repo} git -C ${repo} submodule--helper list | \
 				\awk '{print $4,$2}' | \
 				\grep "^${submodule} " | \awk '{print $2}')
 			[ "${sha}" == "" ] && continue
@@ -5708,18 +5748,18 @@ function ove-fetch {
 
 # tag: :list all project tags
 function ove-tag {
-	\git -C "${OVE_PROJECT_DIR}" log --tags --simplify-by-decoration --pretty="format:%ai %D"
+	ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" log --tags --simplify-by-decoration --pretty=\"format:%ai %D\"
 }
 
 # log: :project commit log for branch '${OVE_PROJECT_CI_BRANCH}'
 function ove-log {
 	local b
 
-	if \git -C "${OVE_PROJECT_DIR}" branch -r | \grep -q ${OVE_PROJECT_CI_BRANCH}; then
+	if ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" branch -r | \grep -q ${OVE_PROJECT_CI_BRANCH}; then
 		b="${OVE_PROJECT_CI_BRANCH}"
 	fi
 
-	\git -C "${OVE_PROJECT_DIR}" log --decorate ${b}
+	ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" log --decorate ${b}
 }
 
 # checkout:[rev[ [purge|autostash]]]:git checkout -p for all git repositories or checkout a new project revision, USE 'purge' WITH CARE
@@ -5737,16 +5777,16 @@ function ove-checkout {
 		dirty_repos=$(ove_dirty_repos)
 
 		# shellcheck disable=SC2016
-		cmd='\git -C ${repo} diff --quiet || (ove_echo_yellow_noprefix ${repo_basename}; \git -C ${repo} checkout -p)'
+		cmd='ove_repo_cmd ${repo} git -C ${repo} diff --quiet || (ove_echo_yellow_noprefix ${repo_basename}; ove_repo_cmd ${repo} git -C ${repo} checkout -p)'
 		ove_revtab_forsome "${cmd}" "${dirty_repos}"
 
 		[[ "${dirty_repos}" =~ ${OVE_PROJECT_NAME} ]] && ove_reinit
 	elif [ $# -eq 1 ] || [ $# -eq 2 ]; then
 		if [ "$2" == "purge" ]; then
 			# shellcheck disable=SC2016
-			cmd='\git -C ${repo} reset; \git -C ${repo} checkout .'
+			cmd='ove_repo_cmd ${repo} git -C ${repo} reset; ove_repo_cmd ${repo} git -C ${repo} checkout .'
 
-			read -p "Proceed to run '${cmd}' for all git repositories? (y/N) " -r
+			read -p "Proceed to run 'git reset && git checkout .' for all git repositories? (y/N) " -r
 			echo
 			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 				read -p "Are you really sure? (y/N) " -r
@@ -5759,7 +5799,7 @@ function ove-checkout {
 			dirty_repos=$(ove_dirty_repos)
 
 			for repo in ${dirty_repos}; do
-				\git -C "${repo}" stash save -q "stashed by ove-checkout"
+				ove_repo_cmd "${repo}" git -C "${repo}" stash save -q "stashed by ove-checkout"
 			done
 		else
 			dirty_repos=$(ove_dirty_repos)
@@ -5771,17 +5811,17 @@ function ove-checkout {
 			fi
 		fi
 
-		\git -C "${OVE_PROJECT_DIR}" fetch --all
+		ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" fetch --all
 
 		m=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
-		\git -C "${OVE_PROJECT_DIR}" -c advice.detachedHead=false checkout "${revision}" |& \
+		ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" -c advice.detachedHead=false checkout "${revision}" |& \
 			\sed -e "1s|^|$(ove_echo_yellow_noprefix ${OVE_PROJECT_NAME})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#OVE_PROJECT_NAME}))}))|g" \
 			-e "2s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
 		if [ ${PIPESTATUS[0]} -ne 0 ]; then
 			# cleanup
 			if [ "$2" == "autostash" ]; then
 				for repo in ${dirty_repos}; do
-					\git -C "${repo}" stash pop -q
+					ove_repo_cmd "${repo}" git -C "${repo}" stash pop -q
 				done
 			fi
 
@@ -5801,7 +5841,7 @@ function ove-checkout {
 
 		if [ "$2" == "autostash" ]; then
 			for repo in ${dirty_repos}; do
-				\git -C "${repo}" stash pop -q
+				ove_repo_cmd "${repo}" git -C "${repo}" stash pop -q
 			done
 		fi
 
@@ -6000,7 +6040,7 @@ function ove-grep {
 	fi
 
 	# shellcheck disable=SC2016
-	ove_revtab_forall_parallel '\git --no-pager -C ${repo} \grep --color=always "'"$*"'" | \sed -e 's@^@\${PWD}/@g''
+	ove_revtab_forall_parallel 'ove_repo_cmd ${repo} git --no-pager -C ${repo} \grep --color=always "'"$*"'" | \sed -e 's@^@\${PWD}/@g''
 }
 
 # blame-history:pattern:git log -G -p pattern for all git repositories
@@ -6011,7 +6051,7 @@ function ove-blame-history {
 		return 1
 	fi
 	# shellcheck disable=SC2016
-	ove_revtab_forall 'ove_echo_yellow_noprefix ${repo_basename}; \git --no-pager -C ${repo} log --color=always -p -G "'"$*"'"'
+	ove_revtab_forall 'ove_echo_yellow_noprefix ${repo_basename}; ove_repo_cmd ${repo} git --no-pager -C ${repo} log --color=always -p -G "'"$*"'"'
 }
 
 # blame:pattern:git grep-blame-log combo
@@ -6036,18 +6076,18 @@ function ove-blame {
 
 	for repo in ${OVE_REPO_LIST}; do
 		! [ -d "${repo}" ] && continue
-		mapfile -t res < <(\git -C "${repo}" --no-pager grep --no-color -I -n "${s}" | \cut -d: -f1,2)
+		mapfile -t res < <(ove_repo_cmd "${repo}" git -C "${repo}" --no-pager grep --no-color -I -n "${s}" | \cut -d: -f1,2)
 
 		for i in "${res[@]}"; do
 			f=$(\cut -d: -f1 <<<"${i}")
 			line=$(\cut -d: -f2 <<<"${i}")
-			sha=$(\git -C "${repo}" --no-pager blame -L"${line}","${line}" "${f}" | \cut -d' ' -f1)
+			sha=$(ove_repo_cmd "${repo}" git -C "${repo}" --no-pager blame -L"${line}","${line}" "${f}" | \cut -d' ' -f1)
 			str="${repo}/${f}:${line}"
 			if [ "${sha}" == "00000000" ]; then
 				str+=" [ Not Committed Yet ]"
 			fi
 			if [ "${sha}" != "00000000" ]; then
-				\git -C "${repo}" --no-pager log --color=always -1 "${sha}"
+				ove_repo_cmd "${repo}" git -C "${repo}" --no-pager log --color=always -1 "${sha}"
 			fi
 			echo
 			\head -"${line}" "${repo}"/"${f}" | \
@@ -6190,8 +6230,8 @@ function ove-config {
 
 	# try to mark any local changes in ${OVE_PROJECT_DIR}/.oveconfig
 	grep_postfix='$'
-	if \git -C ${OVE_PROJECT_DIR} ls-files --error-unmatch ${OVE_PROJECT_DIR}/.oveconfig &> /dev/null; then
-		cfg_diff="$(\git -C ${OVE_PROJECT_DIR} diff --no-color -U1 --raw ${OVE_PROJECT_DIR}/.oveconfig | \
+	if ove_repo_cmd ${OVE_PROJECT_DIR} git -C ${OVE_PROJECT_DIR} ls-files --error-unmatch ${OVE_PROJECT_DIR}/.oveconfig &> /dev/null; then
+		cfg_diff="$(ove_repo_cmd ${OVE_PROJECT_DIR} git -C ${OVE_PROJECT_DIR} diff --no-color -U1 --raw ${OVE_PROJECT_DIR}/.oveconfig | \
 			\grep '^+[A-Z]\+'| \
 			\cut -b2- | \
 			\awk '{print $1}')"
@@ -6231,10 +6271,10 @@ function ove-ls-files {
 
 	if [ $# -eq 0 ]; then
 		# shellcheck disable=SC2016
-		cmd='\git -C ${repo} ls-files | while read line; do echo -e ${PWD}/${line}; done'
+		cmd='ove_repo_cmd ${repo} git -C ${repo} ls-files | while read line; do echo -e ${PWD}/${line}; done'
 	else
 		# shellcheck disable=SC2016
-		cmd="re=$*; \git -C \${repo} ls-files | while read line; do [[ \${PWD}/\${line} =~ \${re} ]] && echo -e \${PWD}/\${line}; done"
+		cmd="re=$*; ove_repo_cmd \${repo} git -C \${repo} ls-files | while read line; do [[ \${PWD}/\${line} =~ \${re} ]] && echo -e \${PWD}/\${line}; done"
 	fi
 
 	ove_revtab_forall_parallel "${cmd}" | LC_ALL="C" \sort
@@ -6245,7 +6285,7 @@ function ove-list-modified-files {
 	local cmd
 
 	# shellcheck disable=SC2016
-	cmd='\git --no-pager -C ${repo} diff-index --quiet HEAD || \git -C ${repo} diff --name-only HEAD | \sed -e "s|^|${repo}/|g"'
+	cmd='ove_repo_cmd ${repo} git --no-pager -C ${repo} diff-index --quiet HEAD || ove_repo_cmd ${repo} git -C ${repo} diff --name-only HEAD | \sed -e "s|^|${repo}/|g"'
 
 	ove_revtab_forsome_parallel "${cmd}" 0 "$(ove_dirty_repos)" | LC_ALL="C" \sort -u
 }
@@ -6258,7 +6298,7 @@ function ove-list-committed-files {
 	[ $# -eq 1 ] && days="$1" || days=7
 
 	# shellcheck disable=SC2016
-	cmd='\git --no-pager -C ${repo} log --all --no-merges --author="$(\git config --get user.name)" --name-only --pretty=format:"" --since="'${days}' days" | while read line; do [ -f ${PWD}/${line} ] && echo -e ${PWD}/${line}; done'
+	cmd='ove_repo_cmd ${repo} git --no-pager -C ${repo} log --all --no-merges --author=\"$(\git config --get user.name)\" --name-only --pretty=format:\"\" --since=\"'${days}' days\" | while read line; do [ -f ${PWD}/${line} ] && echo -e ${PWD}/${line}; done'
 
 	ove_revtab_forall_parallel "${cmd}" | LC_ALL="C" \sort -u
 }
@@ -6338,7 +6378,7 @@ function ove-mrproper {
 
 	if [ "$1" == "y" ]; then
 		# shellcheck disable=SC2016
-		ove_revtab_forall '\git --no-pager -C ${repo} clean -dffx > /dev/null'
+		ove_revtab_forall 'ove_repo_cmd ${repo} git --no-pager -C ${repo} clean -dffx > /dev/null'
 		! [ "${OVE_STAGE_DIR}" == "" ] && \rm -rf ${OVE_STAGE_DIR:?}/*
 		! [ "${OVE_ARCHIVE_DIR}" == "" ] && \rm -rf ${OVE_ARCHIVE_DIR:?}/*
 
@@ -6346,11 +6386,11 @@ function ove-mrproper {
 	fi
 
 	# shellcheck disable=SC2016
-	nbr_untracked_files=$(ove_revtab_forall_parallel '\git -C ${repo} clean -dffxn'| \wc -l)
+	nbr_untracked_files=$(ove_revtab_forall_parallel 'ove_repo_cmd ${repo} git -C ${repo} clean -dffxn'| \wc -l)
 	if [ "${nbr_untracked_files}" -ne 0 ]; then
 		# dry-run first
 		# shellcheck disable=SC2016
-		ove_revtab_forall 'a=$(\git --no-pager -C ${repo} clean -dffxn); [ "${a}" != "" ] && printf "${a}\n" | \sed -e "s|Would remove \(.*\)$|${PWD}/\1|g"'
+		ove_revtab_forall 'a=$(ove_repo_cmd ${repo} git --no-pager -C ${repo} clean -dffxn); [ "${a}" != "" ] && printf "${a}\n" | \sed -e "s|Would remove \(.*\)$|${PWD}/\1|g"'
 		echo
 		read -p "Proceed to remove ${nbr_untracked_files} untracked files/directories (list above) using 'git clean -dffx'? (y/N) " -r
 		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
@@ -6359,7 +6399,7 @@ function ove-mrproper {
 			echo
 			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 				# shellcheck disable=SC2016
-				ove_revtab_forall '\git --no-pager -C ${repo} clean -dffx'
+				ove_revtab_forall 'ove_repo_cmd ${repo} git --no-pager -C ${repo} clean -dffx'
 			fi
 		fi
 	fi
@@ -6443,7 +6483,7 @@ function ove-list-heads {
 	# shellcheck disable=SC2016
 	cmd='echo $(echo -n "$(echo ${repo} | \sed -e "s|${OVE_BASE_DIR}/||g")?" && '
 	# shellcheck disable=SC2016
-	cmd+='\git --no-pager -C ${repo} log -1 --no-merges --format=%h?%ar?%ae?%s 2> /dev/null)'
+	cmd+='ove_repo_cmd ${repo} git --no-pager -C ${repo} log -1 --no-merges --format=%h?%ar?%ae?%s 2> /dev/null)'
 
 	while true; do
 		if [ $# -eq 0 ]; then
@@ -6482,11 +6522,11 @@ function ove-ls-remote {
 		(( i+=1 ))
 	done
 
-	url=$(\git -C "${OVE_PROJECT_DIR}" config --get remote.origin.url)
+	url=$(ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" config --get remote.origin.url)
 	if [ "${url}" == "" ] || [ "${url}" == "noremote" ]; then
 		:
 	else
-		sha=$(\git -C "${OVE_PROJECT_DIR}" ls-remote ${url} HEAD | \awk '{print $1}')
+		sha=$(ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" ls-remote ${url} HEAD | \awk '{print $1}')
 		if [ "${sha}" == "" ]; then
 			ove_echo_error_noprefix "ls-remote failed for '${url}'"
 			(( ret+=1 ))
@@ -6515,11 +6555,11 @@ function ove-heads2revtab {
 	fi
 
 	for repo in ${repos}; do
-		sha_1=$(\git -C "${OVE_BASE_DIR}"/${repo} rev-parse HEAD)
+		sha_1=$(ove_repo_cmd "${OVE_BASE_DIR}"/${repo} git -C "${OVE_BASE_DIR}"/${repo} rev-parse HEAD)
 		\sed -i -e 's|^'${repo}'\(\s\+.*\s\+.*\s\+\)\(.*\)$|'${repo}'\1'${sha_1}'|g' "${OVE_PROJECT_DIR}"/revtab
 	done
 
-	\git --no-pager -C "${OVE_PROJECT_DIR}" diff revtab
+	ove_repo_cmd "${OVE_PROJECT_DIR}" git --no-pager -C "${OVE_PROJECT_DIR}" diff revtab
 }
 
 # head-tail:file [num]:display first/last 3(=num) lines of a text file
@@ -6585,14 +6625,14 @@ function ove-show {
 		# remove dirty tags
 		revision=${revision%-dirty}
 		ove_revtab_forall "
-		if \git --no-pager -C \${repo} show ${revision} -- &> /dev/null; then \
+		if ove_repo_cmd \${repo} git --no-pager -C \${repo} show ${revision} -- &> /dev/null; then \
 			clear; \
 			if [ ${OVE_LESS_MORE_OPTIONS} -eq 1 ]; then
 				less_opt=\"-X -R -Ps\${repo_basename} ${revision//./\\.}\";
 			else
 				less_opt=\"less -R\";
 			fi;
-			LESS=\${less_opt} \git -p -C \${repo} show --color=always ${revision} --;
+			LESS=\${less_opt} ove_repo_cmd \${repo} git -p -C \${repo} show --color=always ${revision} --;
 			unset less_opt
 		fi"
 	done
@@ -6852,7 +6892,7 @@ function ove-authors {
 		fi
 
 		# Try to avoid that a git is counted more than one time
-		url=$(\git --no-pager -C "${repo}" remote -v | \
+		url=$(ove_repo_cmd "${repo}" git --no-pager -C "${repo}" remote -v | \
 			\grep fetch | \
 			\cut -f2 | \
 			\cut -d' ' -f1 | \
@@ -6865,7 +6905,7 @@ function ove-authors {
 			urls["${url}"]=1
 		fi
 
-		\git --no-pager -C "${repo}" log --pretty="%ae"
+		ove_repo_cmd "${repo}" git --no-pager -C "${repo}" log --pretty=\"%ae\"
 	done | \
 		LC_ALL="C" \sort | \
 		\uniq -c | \
@@ -7339,7 +7379,7 @@ function ove-select-configuration {
 			if [ $# -eq 1 ]; then
 				# use the default configuration
 				if [ $1 == "default" ]; then
-					\git -C ${OVE_PROJECT_DIR} checkout ${OVE_PROJECT_DIR}/projects/${p}/configure
+					ove_repo_cmd ${OVE_PROJECT_DIR} git -C ${OVE_PROJECT_DIR} checkout ${OVE_PROJECT_DIR}/projects/${p}/configure
 					continue
 				fi
 
@@ -7369,7 +7409,7 @@ function ove-select-configuration {
 			echo
 			if [[ ${REPLY} =~ ^[0-9]+$ ]] && [[ ${REPLY} -le ${nbr_of_configs} ]]; then
 				if [[ ${REPLY} == 0 ]]; then
-					\git -C ${OVE_PROJECT_DIR} checkout ${OVE_PROJECT_DIR}/projects/${p}/configure
+					ove_repo_cmd ${OVE_PROJECT_DIR} git -C ${OVE_PROJECT_DIR} checkout ${OVE_PROJECT_DIR}/projects/${p}/configure
 				else
 					cfg=$(echo ${configs} | \cut -d' ' -f${REPLY})
 					cfg_basename=${cfg##*/}
@@ -7658,7 +7698,7 @@ function ove_init {
 	export OVE_LDFLAGS
 	OVE_CPPFLAGS=" -I${OVE_STAGE_DIR}${OVE_PREFIX}/include"
 	export OVE_CPPFLAGS
-	OVE_SHA=$(\git -C ${OVE_DIR} rev-parse --short HEAD)
+	OVE_SHA=$(ove_repo_cmd ${OVE_DIR} git -C ${OVE_DIR} rev-parse --short HEAD)
 	export OVE_SHA
 	OVE_LAST_COMMAND=
 	export OVE_LAST_COMMAND
@@ -7937,7 +7977,7 @@ function ove-init {
 				break
 			fi
 
-			if ! [ -d ${REPLY} ]; then
+			if ! [ -d "${REPLY}" ]; then
 				ove_echo_error_noprefix "'${REPLY}' is not a directory, try again"
 				continue
 			fi
@@ -8002,7 +8042,7 @@ function ove-init {
 
 	# updating an existing git repo?
 	if [ -d ${dir}/${owel_name}/.git ]; then
-		owel_remote=$(\git -C "${dir}/${owel_name}" remote -v | \
+		owel_remote=$(git -C "${dir}/${owel_name}" remote -v | \
 			\grep fetch | \
 			\awk '{print $2}')
 	else
@@ -8010,30 +8050,30 @@ function ove-init {
 	fi
 
 	while read -r repo; do
-		if ! \git -C ${repo} log -1 --oneline &> /dev/null; then
+		if ! git -C ${repo} log -1 --oneline &> /dev/null; then
 			continue
 		fi
 
 		name=$(\dirname "${repo}")
 		name=${name/${dir}\//}
 
-		fetch_url=$(\git -C "${repo}" remote -v | \
+		fetch_url=$(git -C "${repo}" remote -v | \
 			\grep fetch | \
 			\awk '{print $2}')
 		[ "${fetch_url}" == "" ] && fetch_url="noremote"
 		# ignore OWEL remote
 		[ "${fetch_url}" == "${owel_remote}" ] && continue
 
-		push_url=$(\git -C "${repo}" remote -v | \
+		push_url=$(git -C "${repo}" remote -v | \
 			\grep push | \
 			\awk '{print $2}')
 		[ "${push_url}" == "" ] && push_url="noremote"
 
 		# detached?
-		if ! \git -C "${repo}" symbolic-ref -q HEAD > /dev/null; then
-			revision=$(\git -C "${repo}" rev-parse --short HEAD)
+		if ! git -C "${repo}" symbolic-ref -q HEAD > /dev/null; then
+			revision=$(git -C "${repo}" rev-parse --short HEAD)
 		else
-			revision=$(\git -C "${repo}" branch | \
+			revision=$(git -C "${repo}" branch | \
 				\cut -d' ' -f2 | \
 				\tr -d '\n')
 		fi
@@ -8052,7 +8092,7 @@ function ove-init {
 	\mkdir -p ${dir}/${owel_name}
 
 	if [ ${do_init_git} -eq 1 ]; then
-		\git -C ${dir}/${owel_name} init || return 2
+		git -C ${dir}/${owel_name} init || return 2
 	fi
 
 	# owel symlink
@@ -8325,7 +8365,7 @@ function ove-fsck {
 	local cmd
 
 	cmd="ove_echo_yellow_noprefix \$(pwd -P) && \
-		\git -C \${repo} fsck --full || \
+		ove_repo_cmd \${repo} git -C \${repo} fsck --full || \
 		ove_echo_error_noprefix \'\git -C \$(pwd -P) fsck --full\' returned != 0, corrupt repo?; echo"
 
 	if [ $# -eq 0 ]; then
@@ -8921,7 +8961,6 @@ function ove_externals {
 	cmds+=('find')
 	cmds+=('flock')
 	cmds+=('fold')
-	cmds+=('git')
 	cmds+=('grep')
 	cmds+=('head')
 	cmds+=('inotifywait')

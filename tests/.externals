@@ -31,15 +31,9 @@ flock:
 
 fold:
 
-git:
-read -p "Proceed to run '${cmd}' for all git repositories? (y/N) " -r
-High level git commands
-$ ove forall-parallel git maintenance
-read -r -p "Directory to scan for git repositories? Leave blank to search in '$PWD': "
-
 grep:
 $ ove grep deadbeef
-mapfile -t res < <(\git -C "${repo}" --no-pager grep --no-color -I -n "${s}" | \cut -d: -f1,2)
+mapfile -t res < <(ove_repo_cmd "${repo}" git -C "${repo}" --no-pager grep --no-color -I -n "${s}" | \cut -d: -f1,2)
 
 head:
 
