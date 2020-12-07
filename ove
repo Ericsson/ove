@@ -5799,7 +5799,7 @@ function ove-checkout {
 			dirty_repos=$(ove_dirty_repos)
 
 			for repo in ${dirty_repos}; do
-				ove_repo_cmd "${repo}" git -C "${repo}" stash save -q "stashed by ove-checkout"
+				ove_repo_cmd "${repo}" git -C "${OVE_BASE_DIR}/${repo}" stash save -q "stashed by ove-checkout"
 			done
 		else
 			dirty_repos=$(ove_dirty_repos)
@@ -5821,7 +5821,7 @@ function ove-checkout {
 			# cleanup
 			if [ "$2" == "autostash" ]; then
 				for repo in ${dirty_repos}; do
-					ove_repo_cmd "${repo}" git -C "${repo}" stash pop -q
+					ove_repo_cmd "${repo}" git -C "${OVE_BASE_DIR}/${repo}" stash pop -q
 				done
 			fi
 
@@ -5841,7 +5841,7 @@ function ove-checkout {
 
 		if [ "$2" == "autostash" ]; then
 			for repo in ${dirty_repos}; do
-				ove_repo_cmd "${repo}" git -C "${repo}" stash pop -q
+				ove_repo_cmd "${repo}" git -C "${OVE_BASE_DIR}/${repo}" stash pop -q
 			done
 		fi
 
