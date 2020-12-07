@@ -2346,6 +2346,9 @@ function ove_revtab_status_parse_one {
 			git_status=${git_status%%,*}
 			nbr_commits=${git_status##${tense} }
 		elif [ "${tense}" == "behind" ]; then
+			if ! ove_repo_cmd "${repo_fullpath}" git -C "${repo_fullpath}" cat-file -e "FETCH_HEAD" 2> /dev/null; then
+				return 1
+			fi
 			nbr_commits=${git_status##*${tense} }
 			git_args="FETCH_HEAD"
 		else
