@@ -5814,6 +5814,12 @@ function ove-checkout {
 			fi
 		fi
 
+		if [ ${OVE_REVTAB_CHECK} -eq 0 ]; then
+			ove_echo_yellow_noprefix "WARNING: revtab check (=OVE_REVTAB_CHECK) is DISABLED for this workspace"
+			ove_echo_yellow_noprefix "WARNING: all repos (except '${OVE_PROJECT_NAME}') will stay on their current revisions"
+			echo
+		fi
+
 		ove_repo_cmd "${OVE_PROJECT_DIR}" git -C "${OVE_PROJECT_DIR}" fetch --all
 
 		m=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
