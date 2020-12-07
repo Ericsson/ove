@@ -997,7 +997,7 @@ function ove_loop_command {
 
 			# retrieve the lock
 			exec {fd}>${OVE_PROJECT_TMP_DIR}/.inotify.lock
-			\flock ${fd}
+			\flock ${OVE_FLOCK_OPTIONS} ${fd}
 
 			# try to check that no other process is accessing our file watch list
 			j=0
@@ -2065,7 +2065,7 @@ function ove_projects_cmd {
 		re=\\b${cmd}\\b
 		if [[ "${OVE_FORCE_SERIALIZE_COMMANDS}" =~ ${re} ]]; then
 			exec {fd}>${OVE_PROJECT_TMP_DIR}/.${cmd}.lock
-			\flock ${fd}
+			\flock ${OVE_FLOCK_OPTIONS} ${fd}
 		fi
 	fi
 
@@ -2916,7 +2916,7 @@ function ove_repo_cmd {
 
 	i=$(ove_repo2index ${1})
 	shift
-	\flock --no-fork -x "${OVE_PROJECT_TMP_DIR}/.${i}.lock" -c "$*"
+	\flock ${OVE_FLOCK_OPTIONS} -x "${OVE_PROJECT_TMP_DIR}/.${i}.lock" -c "$*"
 	return $?
 }
 
@@ -7778,6 +7778,11 @@ function ove_init {
 	OVE_SCRIPT_OPTIONS="${OVE_SCRIPT_OPTIONS% *}"
 	export OVE_SCRIPT_OPTIONS
 
+	if \flock --help | \grep -q '\-\-no\-fork'; then
+		OVE_FLOCK_OPTIONS="--no-fork"
+		export OVE_FLOCK_OPTIONS
+	fi
+
 	if [ $(ove_repos_fetched) -eq $(\wc -w <<<${OVE_REPO_LIST}) ]; then
 		unset OVE_PROJECT_LIST_BUILDABLE
 	else
@@ -8161,6 +8166,13 @@ function ove_command_to_package {
 		else
 			package="util-linux"
 		fi
+	# flock
+	elif [ "$1" == "flock" ]; then
+		if [[ ${OVE_OS} == *"Gentoo"* ]]; then
+			package="sys-apps/util-linux"
+		else
+			package="util-linux"
+		fi
 	# git
 	elif [ "$1" == "git" ]; then
 		if [[ ${OVE_OS} == *"Alpine"* ]]; then
@@ -8230,6 +8242,7 @@ function ove_deps {
 	deps+=('bzip2')
 	deps+=('column')
 	deps+=('file')
+	deps+=('flock')
 	deps+=('git')
 	deps+=('gzip')
 	deps+=('ld')
