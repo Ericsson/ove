@@ -7813,7 +7813,7 @@ function ove_init {
 	OVE_SCRIPT_OPTIONS="${OVE_SCRIPT_OPTIONS% *}"
 	export OVE_SCRIPT_OPTIONS
 
-	if \flock --help | \grep -q '\-\-no\-fork'; then
+	if \flock --help |& \grep -q '\-\-no\-fork'; then
 		OVE_FLOCK_OPTIONS="--no-fork"
 		export OVE_FLOCK_OPTIONS
 	fi
