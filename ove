@@ -182,25 +182,54 @@ function ove_version_check {
 	local ret=0
 	local git_arr
 	local git_ver
+	local git_opts
+	local major
+	local minor
+	local patch
 
 	git_ver=$(\git --version)
 	git_ver=${git_ver/git version /}
 	IFS='.' read -r -a git_arr <<< "${git_ver}"
+
+	major=${git_arr[0]}
+	minor=${git_arr[1]}
+	patch=${git_arr[2]}
+
 	if command -v dpkg > /dev/null; then
-		\dpkg --compare-versions ${git_arr[0]}.${git_arr[1]}.${git_arr[2]} ge 1.8.5 || ret=1
-	else
-		if [ ${git_arr[0]} -lt 2 ]; then
-			if [ ${git_arr[0]} -eq 1 ] && [ ${git_arr[1]} -lt 8 ]; then
-				ret=1
-			elif [ ${git_arr[0]} -eq 1 ] && [ ${git_arr[1]} -eq 8 ] && [ ${git_arr[2]} -lt 5 ]; then
-				ret=1
-			elif [ ${git_arr[0]} -eq 0 ]; then
-				ret=1
-			fi
+		\dpkg --compare-versions ${major}.${minor}.${patch} ge 1.8.5 || ret=1
+	elif [ ${major} -lt 2 ]; then
+		if [ ${major} -eq 1 ] && [ ${minor} -lt 8 ]; then
+			ret=1
+		elif [ ${major} -eq 1 ] && [ ${minor} -eq 8 ] && [ ${patch} -lt 5 ]; then
+			ret=1
+		elif [ ${major} -eq 0 ]; then
+			ret=1
 		fi
 	fi
 
-	[ ${ret} -eq 0 ] || ove_echo_error_noprefix "git ${git_ver} is too old. I need >=1.8.5"
+	if [ ${ret} -ne 0 ]; then
+		ove_echo_error_noprefix "git ${git_ver} is too old. I need >=1.8.5"
+		return ${ret}
+	fi
+
+	# --no-optional-locks was introduced in 2.15.0
+	if command -v dpkg > /dev/null; then
+		if \dpkg --compare-versions ${major}.${minor}.${patch} ge 2.15.0; then
+			git_opts="--no-optional-locks"
+		fi
+	elif [ ${major} -ge 3 ]; then
+		git_opts="--no-optional-locks"
+	elif [ ${major} -eq 2 ] && [ ${minor} -lt 15 ]; then
+		:
+	elif [ ${major} -lt 2 ]; then
+		:
+	else
+		git_opts="--no-optional-locks"
+	fi
+
+	OVE_GIT_OPTIONS="${git_opts}"
+	export OVE_GIT_OPTIONS
+
 	return ${ret}
 }
 
@@ -2254,7 +2283,7 @@ function ove_status_one_repo {
 		revision="${ove_revtab_rev[${i}]}"
 	fi
 
-	s=$(ove_repo_cmd "${repo_fullpath}" git --no-optional-locks -c color.status=always -C "${repo_fullpath}" status -bs -uno)
+	s=$(ove_repo_cmd "${repo_fullpath}" git ${OVE_GIT_OPTIONS} -c color.status=always -C "${repo_fullpath}" status -bs -uno)
 	s=${s//$'\n'/ }
 	printf "${repo_shortpath}:${revision}:$s\n"
 }
@@ -2334,7 +2363,7 @@ function ove_revtab_status_parse_one {
 		return
 	fi
 
-	git_status=$(ove_repo_cmd "${repo_fullpath}" git --no-optional-locks -C "${repo_fullpath}" status -zbs -uno | \tr '\0' ' ')
+	git_status=$(ove_repo_cmd "${repo_fullpath}" git ${OVE_GIT_OPTIONS} -C "${repo_fullpath}" status -zbs -uno | \tr '\0' ' ')
 	nbr_commits=0
 
 	# keep 'ahead X, behind Y'
@@ -4441,7 +4470,7 @@ function ove-remote-check {
 }
 
 function ove_repo_is_dirty {
-	if test -z "$(ove_repo_cmd ${1} git --no-optional-locks --no-pager -C ${1} status --porcelain -uno)"; then
+	if test -z "$(ove_repo_cmd ${1} git ${OVE_GIT_OPTIONS} --no-pager -C ${1} status --porcelain -uno)"; then
 		return 1
 	else
 		return 0
