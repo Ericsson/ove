@@ -3022,10 +3022,12 @@ function ove_get_base_dir {
 export -f ove_get_base_dir
 
 function ove_list_projects {
+	local p
+
 	if [ -f "${OVE_PROJECT_DIR}"/projs ]; then
-		\grep -o '^[a-zA-Z0-9_]\+' ${OVE_PROJECT_DIR}/projs | \
-			LC_ALL="C" \sort | \
-			\xargs "${OVE_ECHO}"
+		p=$(printf '%s ' $(\grep -o '^[a-zA-Z0-9_]\+' ${OVE_PROJECT_DIR}/projs | \
+			LC_ALL="C" \sort))
+		echo ${p::-1}
 	fi
 }
 export -f ove_list_projects
@@ -4834,9 +4836,8 @@ function ove_validate_self {
 	OVE_BUILT_INS_WITHOUT_ARGS=$(\grep ': :' <<< "${funcs}" | \
 		\cut -b3- | \
 		\cut -d: -f1 | \
-		LC_ALL="C" \sort | \
-		\tr '\n' ' ' | \
-		\xargs "${OVE_ECHO}")
+		LC_ALL="C" \sort)
+	OVE_BUILT_INS_WITHOUT_ARGS=${OVE_BUILT_INS_WITHOUT_ARGS//$'\n'/ }
 
 	export OVE_BUILT_INS_WITHOUT_ARGS
 }
@@ -4890,8 +4891,8 @@ function ove_install_packages {
 
 	# sort the list
 	missing_packages_sorted="$(printf "%s\n" ${missing_packages} | \
-		LC_ALL="C" \sort -u | \
-		\xargs "${OVE_ECHO}")"
+		LC_ALL="C" \sort -u)"
+	missing_packages_sorted=${missing_packages_sorted//$'\n'/ }
 
 	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
 		ove_echo_yellow "would prompt to install this/these package(s):"
@@ -7261,11 +7262,13 @@ function ove_bash_complete {
 }
 
 function ove_get_built_ins {
-	\grep -o '^function ove-.* ' ${OVE_SELF} | \
+	local a
+
+	a=$(\grep -o '^function ove-.* ' ${OVE_SELF} | \
 		\sed -e ':a;N;$!ba;s/function ove-//g' | \
-		LC_ALL="C"  \sort | \
-		\tr '\n' ' ' | \
-		\xargs "${OVE_ECHO}"
+		LC_ALL="C"  \sort)
+	a=${a//$'\n'/ }
+	echo ${a}
 }
 
 function ove_update_tab_complete {
@@ -7293,7 +7296,8 @@ function ove_update_tab_complete {
 
 	array=(${OVE_ALL_COMMANDS})
 	oldIFS=${IFS}
-	IFS=$'\n' OVE_ALL_COMMANDS=$(\xargs "${OVE_ECHO}" <<<$(LC_ALL="C" \sort <<<"${array[*]}"))
+	IFS=$'\n' OVE_ALL_COMMANDS=$(printf '%s ' $(LC_ALL="C" \sort <<<"${array[*]}"))
+	OVE_ALL_COMMANDS=${OVE_ALL_COMMANDS::-1}
 	IFS=${oldIFS}
 
 	export OVE_ALL_COMMANDS
@@ -7383,8 +7387,10 @@ function ove_scripts_init {
 
 	array=(${OVE_SCRIPTS_LIST})
 	oldIFS=${IFS}
-	IFS=$'\n' OVE_SCRIPTS_LIST=$(\xargs "${OVE_ECHO}" <<<$(LC_ALL="C" \sort <<<"${array[*]}"))
+	IFS=$'\n' OVE_SCRIPTS_LIST=$(printf '%s ' $(LC_ALL="C" \sort <<<"${array[*]}"))
+	OVE_SCRIPTS_LIST=${OVE_SCRIPTS_LIST::-1}
 	IFS=${oldIFS}
+
 }
 
 # show-configuration: :show current build configuration for each project
@@ -7648,7 +7654,6 @@ function ove_init {
 	fi
 	OVE_BASE_DIR="${dir}"
 
-	OVE_ECHO=$(\which echo)
 	OVE_PROJECT_DIR=$(\readlink -f ${OVE_BASE_DIR}/.owel)
 	OVE_PROJECT_NAME=${OVE_PROJECT_DIR##*/}
 	OVE_PROJECT_LIST=$(ove_list_projects)
@@ -7702,7 +7707,6 @@ function ove_init {
 	ove_config_builtins_init
 
 	export OVE_REPO_LIST
-	export OVE_ECHO
 	export OVE_BUILD_ORDER
 	export OVE_BASE_DIR
 	export OVE_PROJECT_DIR
