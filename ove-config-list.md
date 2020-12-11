@@ -1,6 +1,7 @@
 | Config                              | Type      | Allowed  | Affect                                  | Description                                                                        | Default value
 |-|-|-|-|-|-|
 |                                     |           |
+| OVE_ACCELERATE_BUILDS               | int      | 0\|1      | all-build-commands                     | prefix build acceleration tools (ccache/icecream) to PATH                          | 0                                         |
 | OVE_AUTOCORRECT                     | int      | 0\|1      | all                                    | auto correct commands                                                              | 0                                         |
 | OVE_BUILDME_PRE_STEPS               | string   |           | buildme buildme-parallel               | project step(s) to run without build order considerations                          | bootstrap                                 |
 | OVE_BUILDME_STEPS                   | string   |           | buildme buildme-parallel               | project step(s) to run                                                             | configure build install                   |

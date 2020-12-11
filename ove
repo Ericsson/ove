@@ -7691,6 +7691,11 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_IDE_SLEEP_BETWEEN_COMMANDS+x}" ]; then
 		export OVE_IDE_SLEEP_BETWEEN_COMMANDS=0.5
 	fi
+
+	# OVE_ACCELERATE_BUILDS:int:0|1:all-build-commands:prefix build acceleration tools (ccache/icecream) to PATH
+	if [ -z "${OVE_ACCELERATE_BUILDS+x}" ]; then
+		export OVE_ACCELERATE_BUILDS=0
+	fi
 }
 
 # re-initialize
@@ -7831,6 +7836,31 @@ function ove_init {
 	if [ ${OVE_TAINT_USER_ENV} -eq 1 ]; then
 		if [[ ${PATH} != *"${OVE_STAGE_DIR}"* ]]; then
 			PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/sbin:${OVE_STAGE_DIR}${OVE_PREFIX}/bin:${PATH}
+		fi
+
+		if [ ${OVE_ACCELERATE_BUILDS} -eq 1 ]; then
+			# icecream
+			dir="/usr/lib/icecc/bin"
+			if command -v icecc > /dev/null && \
+				[ -d "${dir}" ] && \
+				[[ ${PATH} != *${dir}* ]]; then
+				PATH=${dir}:${PATH}
+			fi
+
+			# ccache
+			if command -v ccache > /dev/null && \
+				[[ ${PATH} != *ccache* ]]; then
+				if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
+					[[ ${OVE_OS} == *"Debian"* ]]; then
+					dir="/usr/lib/ccache"
+				else
+					dir="/usr/lib64/ccache"
+				fi
+
+				if [ -d ${dir} ]; then
+					PATH=${dir}:${PATH}
+				fi
+			fi
 		fi
 		export PATH
 
