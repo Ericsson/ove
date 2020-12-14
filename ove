@@ -7294,7 +7294,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "tail-lastlog" ] ||
 		[ "${subcommand}" == "less-lastlog" ]; then
-		if [ ${size} -eq 2 ]; then
+		if [ ${size} -ge 2 ]; then
 			# shellcheck disable=SC2015
 			wordlist=$([ -d /var/tmp ] && cd /var/tmp || cd /tmp; \
 				\find ./*/ove/logs -maxdepth 0 -type d | \
@@ -8811,12 +8811,12 @@ function ove-unittest {
 		-DOVE_TEST_BASE="$(\sed -e 's|/|\\/|g' <<<${OVE_PROJECT_TMP_DIR}/unittest)" | \sed -e 's|\\n|\n|g'
 }
 
-# less-lastlog:[user]:peek into user(s) last OVE log using less
+# less-lastlog:[user...]:peek into user(s) last OVE log using less
 function ove-less-lastlog {
 	ove_watch_logs "less" "$@"
 }
 
-# tail-lastlog:[user]:peek into user(s) last OVE log using tail -f
+# tail-lastlog:[user...]:peek into user(s) last OVE log using tail -f
 function ove-tail-lastlog {
 	ove_watch_logs "tail" "$@"
 }
@@ -8827,6 +8827,7 @@ function ove_watch_logs {
 	local cmd
 	local _cmd
 	local d
+	local e
 	local i
 	local ignore
 	local log
@@ -8849,20 +8850,38 @@ function ove_watch_logs {
 		d="/tmp"
 	fi
 
-	# shellcheck disable=SC2164
-	mapfile -t users < <(cd ${d}; \find ./*/ove/logs -maxdepth 0 -type d | \cut -d/ -f2)
+	if [ $# -eq 0 ]; then
+		e+="./*/ove/logs"
+	else
+		for u in "$@"; do
+			[ -d ${d}/${u}/ove/logs ] || continue
+			e+="./${u}/ove/logs "
+		done
+	fi
 
-	[ "${users[*]}" == "" ] && return 2
+	if [ "${e}" == "" ]; then
+		ove_echo_error_noprefix "no logs found for user(s): $*"
+		return 1
+	fi
+
+	# shellcheck disable=SC2164
+	mapfile -t users < <(cd ${d}; \find ${e} -maxdepth 0 -type d | \cut -d/ -f2)
+	if [ "${users[*]}" == "" ]; then
+		ove_echo_error_noprefix "no logs found for user(s): $*"
+		return 1
+	fi
 
 	ignore="tail-lastlog|less-lastlog"
 	if [ -n "${TMUX}" ]; then
 		for u in ${users[*]}; do
-			[ $# -eq 1 ] && [ "${u}" != "${1}" ] && continue
-
-			log=$(\find ${d}/${u}/ove/logs/current/ -type f | \
+			log=$(\find ${d}/${u}/ove/logs/current/ -type f -name "*-ove-*.log" 2> /dev/null | \
 				\grep -v -E "${ignore}" | \
 				LC_ALL="C" \sort | \
 				\tail -1)
+			if [ "${log}" == "" ]; then
+				ove_echo_error_noprefix "no logs found for user: ${u}"
+				continue
+			fi
 
 			if [ "${cmd}" == "\less" ] && [ "${OVE_LESS_MORE_OPTIONS}" -eq 1 ]; then
 				_cmd="\less -Ps\"${log}\""
@@ -8874,32 +8893,41 @@ function ove_watch_logs {
 			[ $# -eq 1 ] && return
 			tmux select-layout ${OVE_TMUX_LAYOUT}
 		done
-	else
-		if [ $# -eq 1 ]; then
-			u=$1
-		elif [ ${#users[*]} -eq 1 ]; then
-			u=${users[0]}
-		else
-			i=1
-			for u in ${users[*]}; do
-				echo "$i:$u"
-				((i++))
-			done
-			read -r -p "user: "
-			if ! [[ "${REPLY}" =~ ^[0-9]+$ ]] || [ "${REPLY}" -gt ${#users[*]} ]; then
-				return 1
-			fi
-			echo
-			u=${users[$((REPLY - 1))]}
-		fi
 
-		[ -d "${d}/${u}" ] || return 3
-		log=$(\find ${d}/${u}/ove/logs/current/ -type f | \
-			\grep -v -E "${ignore}" | \
-			LC_ALL="C" \sort | \
-			\tail -1)
-		eval ${cmd} ${log}
+		return
 	fi
+
+	# not TMUX
+	if [ ${#users[*]} -eq 1 ]; then
+		u=${users[0]}
+	else
+		i=1
+		for u in ${users[*]}; do
+			echo "$i:$u"
+			((i++))
+		done
+		read -r -p "user: "
+		if ! [[ "${REPLY}" =~ ^[0-9]+$ ]] || [ "${REPLY}" -gt ${#users[*]} ]; then
+			return 1
+		fi
+		echo
+		u=${users[$((REPLY - 1))]}
+	fi
+
+	if ! [ -d "${d}/${u}" ]; then
+		ove_echo_error_noprefix "no logs found for user: ${u}"
+		return 1
+	fi
+
+	log=$(\find ${d}/${u}/ove/logs/current/ -type f -name "*-ove-*.log" 2> /dev/null | \
+		\grep -v -E "${ignore}" | \
+		LC_ALL="C" \sort | \
+		\tail -1)
+	if [ "${log}" == "" ]; then
+		ove_echo_error_noprefix "no logs found for user: ${u}"
+		return 1
+	fi
+	eval ${cmd} ${log}
 }
 
 # add-repo:url|url name|url name rev:add a new repo to this OVE workspace
