@@ -3371,6 +3371,7 @@ function ove-list-systests {
 		\awk '{print $1}'
 	\grep : "${OVE_PROJECT_DIR}"/systests | \
 		\grep -v '#' | \
+		\awk '{print $1}' | \
 		\cut -d: -f1
 
 	if [ -e ${OVE_PROJECT_DIR}/systests-groups ]; then
@@ -3385,6 +3386,7 @@ function ove-list-systests-aliases {
 
 	\grep : "${OVE_PROJECT_DIR}"/systests | \
 		\grep -v '#' | \
+		\awk '{print $1}' | \
 		\cut -d: -f1 | \
 		LC_ALL="C" \sort
 }
