@@ -6673,7 +6673,7 @@ function ove-show {
 			else
 				less_opt=\"less -R\";
 			fi;
-			LESS=\${less_opt} ove_repo_cmd \${repo} git -p -C \${repo} show --color=always ${revision} --;
+			LESS=\${less_opt} ove_repo_cmd \${repo} git -p -C \${repo} show --first-parent --color=always ${revision} --;
 			unset less_opt
 		fi"
 	done
