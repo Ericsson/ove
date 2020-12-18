@@ -6069,7 +6069,7 @@ function ove-ag {
 		return 1
 	fi
 
-	ove_revtab_forall_parallel '\ag --color "'"$*"'" | \sed -e 's@^@\${PWD}/@g''
+	ove_revtab_forall_parallel '\ag --hidden --color "'"$*"'" | \sed -e 's@^@\${PWD}/@g''
 }
 
 # grep:pattern:grep OVE workspace
