@@ -991,7 +991,13 @@ function ove_loop_command {
 		(( i+=1 ))
 		[ ${max_count} -ne 0 ] && [ ${i} -gt ${max_count} ] && break
 		clear
-		ove_echo_cyan_error "${OVE_PROJECT_NAME}:ove-${*} [c:${i} t:${_timeout} i:${use_inotify} m:${max_count}]"
+		if [ "${OVE_TMUX_PANE_HEADER}" == "wide" ]; then
+			ove_echo_cyan_error "${OVE_PROJECT_NAME}:ove-${*} [c:${i} t:${_timeout} i:${use_inotify} m:${max_count}]"
+		elif [ "${OVE_TMUX_PANE_HEADER}" == "short" ]; then
+			ove_echo_cyan_error_noprefix "$(\date '+%Y-%m-%d %H:%M:%S'):ove-${*}"
+		elif [ "${OVE_TMUX_PANE_HEADER}" == "off" ]; then
+			:
+		fi
 
 		# inotify: first iteration?
 		if [ ${use_inotify} -eq 1 ] && [ ${i} -eq 1 ]; then
@@ -1243,6 +1249,7 @@ function ove_validate_int_float {
 function ove-run {
 	local _cmd
 	local cmd
+	local header
 	local read_args
 	local _timeout
 
@@ -1281,11 +1288,19 @@ function ove-run {
 	[ "${_timeout}" == "0" ] || read_args="-t ${_timeout}"
 
 	if [ -n "${TMUX}" ]; then
+		if [ "${OVE_TMUX_PANE_HEADER}" == "wide" ]; then
+			header="ove_echo_cyan_error ${OVE_PROJECT_NAME}:ove-${cmd} [t:${_timeout}]"
+		elif [ "${OVE_TMUX_PANE_HEADER}" == "short" ]; then
+			header="ove_echo_cyan_error_noprefix $(\date '+%Y-%m-%d %H:%M:%S'):ove-${cmd}"
+		elif [ "${OVE_TMUX_PANE_HEADER}" == "off" ]; then
+			header="true"
+		fi
+
 		tmux split-window -h "\
 			source ${OVE_BASE_DIR}/ove; \
 			ove_init; \
-			ove_echo_cyan_error \"ove-${cmd}\"; \
-			OVE_PAGER='\tee /dev/null' ove-${cmd}; \
+			${header}; \
+			OVE_PAGER='tee /dev/null' ove-${cmd}; \
 			echo -; \
 			read -n 1 -s -r -p '' ${read_args}"
 
@@ -3476,6 +3491,10 @@ function ove_echo_cyan {
 
 function ove_echo_cyan_error {
 	ove_echo "${ove_cyan}""$*""${ove_blank}" 1>&2;
+}
+
+function ove_echo_cyan_error_noprefix {
+	echo -e "${ove_cyan}""$*""${ove_blank}" 1>&2;
 }
 
 function ove_echo_yellow {
@@ -7619,6 +7638,11 @@ function ove_config_builtins_init {
 	# OVE_TMUX_LAYOUT:string::less-lastlog loop run tail-lastlog:tmux layout to use when launching new panes
 	if [ -z "${OVE_TMUX_LAYOUT+x}" ]; then
 		export OVE_TMUX_LAYOUT="tiled"
+	fi
+
+	# OVE_TMUX_PANE_HEADER:string:wide|short|off:fzf loop run :header style for tmux panes
+	if [ -z "${OVE_TMUX_PANE_HEADER+x}" ]; then
+		export OVE_TMUX_PANE_HEADER="short"
 	fi
 
 	# OVE_LOCATE_LIFESPAN_TIME_IN_SEC:int::cd forowel locate locate-all refresh:local OVE workspace cache lifespan

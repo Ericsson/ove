@@ -22,3 +22,4 @@
 | OVE_SYSTEST_SKIP                    | int      | >0        | systest                                | skip every nth test                                                                | 1                                         |
 | OVE_TAINT_USER_ENV                  | int      | 0\|1      | user's env                             | taint user's PATH/LD_LIBRARY_PATH/PKG_CONFIG                                       | 1                                         |
 | OVE_TMUX_LAYOUT                     | string   |           | less-lastlog loop run tail-lastlog     | tmux layout to use when launching new panes                                        | tiled                                     |
+| OVE_TMUX_PANE_HEADER                | string   | wide\|short\|off   | fzf loop run                           | header style for tmux panes                                                        | short
