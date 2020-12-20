@@ -33,7 +33,7 @@ fold:
 
 grep:
 $ ove grep deadbeef
-mapfile -t res < <(ove_repo_cmd "${repo}" git -C "${repo}" --no-pager grep --no-color -I -n "${s}" | \cut -d: -f1,2)
+mapfile -t res < <(ove_repo_cmd "${repo}" "--no-pager grep" --no-color -I -n "${s}" | \cut -d: -f1,2)
 
 head:
 
