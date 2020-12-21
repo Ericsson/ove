@@ -13,7 +13,7 @@ for i in {1..10}; do
 	for r in .owel git-1; do
 		\tr -dc "\t\n [:alnum:]" < /dev/urandom | head -c1000 > $r/README
 		\git -C $r add README
-		\git -C $r commit -q -m "README"
+		\git -C $r commit -q -m "README $i"
 	done
 done
 

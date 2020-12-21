@@ -9077,6 +9077,13 @@ function ove-shell-check {
 		return 1
 	fi
 
+	# first, run shellcheck on some random scripts
+	while read -r f; do
+		(cd "${OVE_DIR}" && \shellcheck "${f}")
+	done < <(\git -C ${OVE_DIR} ls-files -- ":(exclude)${OVE_BASENAME}" | \xargs file | \grep 'shell script' | \cut -d: -f1)
+
+	# then, run shellcheck on self
+
 	# this {/} is literal...
 	exclude+="SC1083,"
 
