@@ -1,0 +1,2 @@
+bash -c "OVE_TEST_STRING; source OVE_DIR/tests/t0014*.sh"
+>>>= 0

@@ -8666,7 +8666,7 @@ function ove_unittest_preparations {
 
 		for i in $(\seq 1 ${nbr_of_files}); do
 			filename=$(\head /dev/urandom | \tr -dc A-Za-z0-9 | \head -c 13 ; echo '')
-			touch ${filename}
+			\tr -dc "\t\n [:alnum:]" < /dev/urandom | \head -c1000 > ${filename}
 			\git add ${filename}
 			\git commit -q -m "${filename}"
 			[ $i -eq 1 ] && \git checkout -q -b ${OVE_DEFAULT_BRANCH_NAME} 2> /dev/null
