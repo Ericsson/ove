@@ -4330,7 +4330,7 @@ function ove-locate-all {
 	done | \head -n -1
 }
 
-# helper for ove_set_workspace
+# helper function for ove_set_workspace
 function ove_set_workspaces_helper {
 	local i=0
 
@@ -6461,11 +6461,47 @@ function ove-vi {
 	ove_edit vi "$@"
 }
 
+# helper function for mrproper
+function ove_rmdir {
+	local _dir
+	local _files
+	local _files_total
+
+	if [ $# -ne 1 ]; then
+		return 1
+	fi
+
+	if [ ! -d "$1" ]; then
+		return 1
+	fi
+
+	_dir="$1"
+	_files=$(\find ${_dir} -mindepth 1)
+	if [ "x${_files}" = "x" ]; then
+		return 1
+	fi
+	_files_total=$(printf "%s\n" ${_files} | \wc -l)
+	if [ ${_files_total} -eq 0 ]; then
+		return 1
+	fi
+
+	printf "%s\n" ${_files}
+	read -p "Proceed to remove ${_files_total} files/directories (list above) from '${_dir}' using 'rm -rf'? (y/N) " -r
+	if ! [[ ${REPLY} =~ ^[Yy]$ ]]; then
+		return 1
+	fi
+
+	read -p "Are you really sure? (y/N) " -r
+	if ! [[ ${REPLY} =~ ^[Yy]$ ]]; then
+		return 1
+	fi
+
+	\find "${_dir}" -mindepth 1 -print0 | \xargs -0 rm -rfv
+}
+
 # mrproper:[y]:remove untracked files, '${OVE_STAGE_DIR}/*' and '${OVE_ARCHIVE_DIR}/*', USE WITH CARE
 function ove-mrproper {
-	local archive_dir_size
 	local nbr_untracked_files
-	local stage_dir_size
 
 	if [ "$1" == "y" ]; then
 		# shellcheck disable=SC2016
@@ -6482,12 +6518,9 @@ function ove-mrproper {
 		# dry-run first
 		# shellcheck disable=SC2016
 		ove_revtab_forall 'a=$(ove_repo_cmd ${repo} "--no-pager clean" -dffxn); [ "${a}" != "" ] && printf "${a}\n" | \sed -e "s|Would remove \(.*\)$|${PWD}/\1|g"'
-		echo
 		read -p "Proceed to remove ${nbr_untracked_files} untracked files/directories (list above) using 'git clean -dffx'? (y/N) " -r
 		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-			echo
 			read -p "Are you really sure? (y/N) " -r
-			echo
 			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 				# shellcheck disable=SC2016
 				ove_revtab_forall 'ove_repo_cmd ${repo} "--no-pager clean" -dffx'
@@ -6495,45 +6528,8 @@ function ove-mrproper {
 		fi
 	fi
 
-	stage_dir_size="$(\tree ${OVE_STAGE_DIR} | \tail -1)"
-	if [ "${stage_dir_size}" != "0 directories, 0 files" ]; then
-		# all but the last line
-		\tree -C ${OVE_STAGE_DIR} | \head -n -1
-
-		read -p "Proceed to remove ${stage_dir_size} (list above) from '${OVE_STAGE_DIR}' using 'rm -rf'? (y/N) " -r
-		echo
-		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-			echo "$ rm -rf ${OVE_STAGE_DIR}/*"
-			echo
-			read -p "Are you really sure you want to run the above command? (y/N) " -r
-			echo
-			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-				if ! [ "${OVE_STAGE_DIR}" == "" ]; then
-					\rm -rf ${OVE_STAGE_DIR:?}/*
-				fi
-			fi
-		fi
-	fi
-
-	archive_dir_size="$(\tree ${OVE_ARCHIVE_DIR} | \tail -1)"
-	if [ "${archive_dir_size}" != "0 directories, 0 files" ]; then
-		# all but the last line
-		\tree -C ${OVE_ARCHIVE_DIR} | \head -n -1
-
-		read -p "Proceed to remove ${archive_dir_size} (list above) from '${OVE_ARCHIVE_DIR}' using 'rm -rf'? (y/N) " -r
-		echo
-		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-			echo "$ rm -rf ${OVE_ARCHIVE_DIR}/*"
-			echo
-			read -p "Are you really sure you want to run the above command? (y/N) " -r
-			echo
-			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-				if ! [ "${OVE_ARCHIVE_DIR}" == "" ]; then
-					\rm -rf ${OVE_ARCHIVE_DIR:?}/*
-				fi
-			fi
-		fi
-	fi
+	ove_rmdir "${OVE_STAGE_DIR}"
+	ove_rmdir "${OVE_ARCHIVE_DIR}"
 }
 
 # l:[pattern]:view last command output in pager (=${OVE_PAGER}) or print lines matching pattern
