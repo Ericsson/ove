@@ -5068,9 +5068,7 @@ function ove-export {
 	done
 	LC_ALL="C" \sort -u -o ${OVE_PROJECT_TMP_DIR}/export/revtab ${OVE_PROJECT_TMP_DIR}/export/revtab
 
-	\tree ${OVE_PROJECT_TMP_DIR}/export
 	\tar -C "${OVE_PROJECT_TMP_DIR}/export" -cjf "${OVE_PROJECT_TMP_DIR}/export.tar.bz2" .
-	echo
 	echo "${OVE_PROJECT_TMP_DIR}/export.tar.bz2"
 
 	return 0
