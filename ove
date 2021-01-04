@@ -7450,8 +7450,13 @@ function ove_scripts_init {
 
 # show-configuration: :show current build configuration for each project
 function ove-show-configuration {
-	[ -d "${OVE_PROJECT_DIR}/projects" ] && \
-		\tree -l -P 'configure' -I 'configure-*' ${OVE_PROJECT_DIR}/projects
+	if [ -d "${OVE_PROJECT_DIR}/projects" ]; then
+		\find ${OVE_PROJECT_DIR}/projects -type f -name 'configure' -print -or -type l -name 'configure' -exec file {} \; | \
+			LC_ALL="C" \sort | \
+			\sed -e "s,^${OVE_PROJECT_DIR}/projects/,,g" | \
+			\column -t -s/ | \
+			\sed -e "s,: symbolic link to, ->,g"
+	fi
 }
 
 # select-configuration:[pattern|default]:select build configuration for each project
