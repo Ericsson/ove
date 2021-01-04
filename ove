@@ -5546,9 +5546,10 @@ function ove-format-patch {
 			ove_repo_cmd ${OVE_BASE_DIR}/${repo} format-patch -q -${n} -o ${d}/${repo}
 		done
 
-	[ $(\find ${d} -type f | \wc -l) -eq 0 ] && return || \tree -a "${d}"
+	if [ $(\find ${d} -type f | \wc -l) -eq 0 ]; then
+		return 1
+	fi
 
-	echo
 	if [ $# -eq 1 ]; then
 		f="$1"
 	else
@@ -5556,7 +5557,7 @@ function ove-format-patch {
 	fi
 
 	\tar -C "${d}" -cjf "${f}" --owner=0 --group=0 .
-	\ls -lh "${f}"
+	\find "${f}" -type f
 }
 
 # am:file:apply a bz2 archive file created with 'format-patch'

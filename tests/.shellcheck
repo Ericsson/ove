@@ -1,4 +1,4 @@
-79
+78
      22  SC2059: Don't use variables in the printf format string. Use printf "..%s.." "$foo".
       7  SC2031: all_files was modified in a subshell. That change might be lost.
       6  SC2164: Use 'popd ... || exit' or 'popd ... || return' in case popd fails.
@@ -17,4 +17,3 @@
       1  SC2034: foo appears unused. Verify use (or export if used externally).
       1  SC2034: bar appears unused. Verify use (or export if used externally).
       1  SC2029: Note that, unescaped, this expands on the client side.
-      1  SC2015: Note that A && B || C is not if-then-else. C may run when A is true.
