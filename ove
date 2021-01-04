@@ -8335,11 +8335,6 @@ function ove_command_to_package {
 		else
 			package="util-linux"
 		fi
-	# tree
-	elif [ "$1" == "tree" ]; then
-		if [[ ${OVE_OS} == *"Gentoo"* ]]; then
-			package="app-text/tree"
-		fi
 	# tsort
 	elif [ "$1" == "tsort" ]; then
 		package="coreutils"
@@ -8377,7 +8372,6 @@ function ove_deps {
 	deps+=('less')
 	deps+=('pgrep')
 	deps+=('script')
-	deps+=('tree')
 	deps+=('tsort')
 	deps+=('which')
 
@@ -9167,7 +9161,6 @@ function ove_externals {
 	cmds+=('tee')
 	cmds+=('timeout')
 	cmds+=('tr')
-	cmds+=('tree')
 	cmds+=('tsort')
 	cmds+=('uname')
 	cmds+=('uniq')

@@ -220,7 +220,6 @@ Doing this, OVE will check that you have the required programs installed on your
 * git (>=1.8.5)
 * pgrep
 * script
-* tree
 * tsort
 
 OVE is also dependent on 'sed/grep/tail/awk/...' but they are not checked for since it is quite uncommon to lack these.
