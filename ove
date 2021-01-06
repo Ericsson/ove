@@ -6537,6 +6537,8 @@ function ove-mrproper {
 
 	ove_rmdir "${OVE_STAGE_DIR}"
 	ove_rmdir "${OVE_ARCHIVE_DIR}"
+
+	return 0
 }
 
 # l:[pattern]:view last command output in pager (=${OVE_PAGER}) or print lines matching pattern
