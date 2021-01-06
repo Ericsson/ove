@@ -4520,10 +4520,17 @@ function ove-remote-set-url {
 # remote-check: :sanity check that all remotes are online
 function ove-remote-check {
 	local i
+	local url
 
 	i=0
 	while ((i < ove_revtab_num_repositories)); do
-		if ! ove_repo_cmd "${PWD}" ls-remote ${ove_revtab_fetch_url[${i}]} HEAD > /dev/null; then
+		url="${ove_revtab_fetch_url[${i}]}"
+		if [ "${url}" == "noremote" ]; then
+			(( i+=1 ))
+			continue
+		fi
+
+		if ! ove_repo_cmd "${PWD}" ls-remote ${url} HEAD > /dev/null; then
 			return 1
 		fi
 
@@ -6597,7 +6604,10 @@ function ove-ls-remote {
 	while ((i < ove_revtab_num_repositories)); do
 		repo="${ove_revtab_git_name[${i}]}"
 		url="${ove_revtab_fetch_url[${i}]}"
-		[ "${url}" == "noremote" ] && (( i+=1 )) && continue
+		if [ "${url}" == "noremote" ]; then
+			(( i+=1 ))
+			continue
+		fi
 
 		sha=$(\git ls-remote ${url} HEAD | \awk '{print $1}')
 		if [ "${sha}" == "" ]; then
