@@ -6609,7 +6609,7 @@ function ove-ls-remote {
 			continue
 		fi
 
-		sha=$(\git ls-remote ${url} HEAD | \awk '{print $1}')
+		sha=$(ove_repo_cmd "${OVE_BASE_DIR}/${repo}" ls-remote ${url} HEAD | \awk '{print $1}')
 		if [ "${sha}" == "" ]; then
 			ove_echo_error_noprefix "ls-remote failed for '${url}'"
 			(( ret+=1 ))
