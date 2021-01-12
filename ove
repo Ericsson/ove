@@ -45,7 +45,7 @@ function ove_read_config {
 	while read -r p; do
 		# ignore comments
 		[[ ${p} == \#* ]] && continue
-			# ignore empty lines
+		# ignore empty lines
 		[[ ${p} == '' ]] && continue
 		p_arr=( ${p} )
 		var=${p_arr[0]}
@@ -3644,7 +3644,10 @@ function ove-systest {
 		fi
 	fi
 
-	[ "${test_list}" == "" ] && echo "error: no tests found" && return 1
+	if [ "x${test_list}" = "x" ]; then
+		echo "error: no tests found"
+		return 1
+	fi
 
 	# repeat?
 	if [ -n "${OVE_SYSTEST_REPEAT+x}" ] && \
@@ -3660,18 +3663,30 @@ function ove-systest {
 	fi
 
 	# skip tests
-	if [ -n "${OVE_SYSTEST_SKIP+x}" ] && \
-		[ "${OVE_SYSTEST_SKIP}" -gt 1 ]; then
+	if [ -n "${OVE_SYSTEST_SKIP+x}" ]; then
+		# skip every X:th test?
+		if [[ "${OVE_SYSTEST_SKIP}" =~ ^[0-9]+$ ]]; then
+			if [ "${OVE_SYSTEST_SKIP}" -gt 1 ]; then
+				i=0
+				for test_name in ${test_list}; do
+					if (( i % OVE_SYSTEST_SKIP == 0 )); then
+						new_test_list+=" ${test_name}"
+					fi
+					(( i=i+1 ))
+				done
 
-		i=0
-		for test_name in ${test_list}; do
-			if (( i % OVE_SYSTEST_SKIP == 0 )); then
-				new_test_list+=" ${test_name}"
+				test_list=${new_test_list}
 			fi
-			(( i=i+1 ))
-		done
-
-		test_list=${new_test_list}
+		else
+			# skip specific tests
+			test_list=$(printf "%s\n" ${test_list} | \
+				LC_ALL="C" \sort | \
+				\grep -v -f <(printf "%s\n" $OVE_SYSTEST_SKIP))
+			if [ "x${test_list}" = "x" ]; then
+				echo "error: everything skipped, check config 'OVE_SYSTEST_SKIP'"
+				return 1
+			fi
+		fi
 	fi
 
 	nbr_tests=$(\wc -w <<<${test_list})
@@ -7665,7 +7680,7 @@ function ove_config_builtins_init {
 		export OVE_SYSTEST_REPEAT=1
 	fi
 
-	# OVE_SYSTEST_SKIP:int:>0:systest:skip every nth test
+	# OVE_SYSTEST_SKIP:int|string::systest:skip every nth test or specific tests
 	if [ -z "${OVE_SYSTEST_SKIP+x}" ]; then
 		export OVE_SYSTEST_SKIP=1
 	fi
