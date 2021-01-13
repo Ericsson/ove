@@ -3681,7 +3681,6 @@ function ove-systest {
 		else
 			# skip specific tests
 			test_list=$(printf "%s\n" ${test_list} | \
-				LC_ALL="C" \sort | \
 				\grep -v -f <(printf "%s\n" $OVE_SYSTEST_SKIP))
 			if [ "x${test_list}" = "x" ]; then
 				echo "error: everything skipped, check config 'OVE_SYSTEST_SKIP'"
