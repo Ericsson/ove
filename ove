@@ -1162,8 +1162,9 @@ function ove_loop_command {
 			s=${SECONDS}
 			if ! ove_inotifywait ${_timeout} ${files_modified_by_command}.uniq; then
 				ove_echo_error_noprefix "inotifywait failed"
-				[ -n "${TMUX}" ] && read -r -p ""
-				return 1
+				echo
+				read -r -p "press ENTER to proceed (time-out in 30 sec) " -t 30
+				continue
 			fi
 
 			# first iteration and if inotify returned within 3 seconds? sleep at least 3 secs
