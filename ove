@@ -2872,7 +2872,8 @@ function ove_revtab_clone_and_checkout {
 		repos=$(ove_validate_repo_list "$@")
 		[ "${repos}" == "" ] && return 1
 		for repo in ${repos}; do
-			if [ ! -d "${OVE_BASE_DIR}/${repo}" ]; then
+			if [ ! -d "${OVE_BASE_DIR}/${repo}" ] || \
+				[ "x$(\find "${OVE_BASE_DIR}/${repo}" -mindepth 1 -maxdepth 1)" = "x" ]; then
 				i=${ove_revtab_name2index[${repo}]}
 				ove_revtab_clone_and_checkout_one ${i} &
 				ove_cap_jobs ${OVE_CLONE_MAX_PARALLEL}
@@ -2881,7 +2882,9 @@ function ove_revtab_clone_and_checkout {
 	else
 		i=0
 		while ((i < ove_revtab_num_repositories)); do
-			if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" ]; then
+			if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" ] || \
+				[ "x$(\find "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" -mindepth 1 -maxdepth 1)" = "x" ]; then
+
 				ove_revtab_clone_and_checkout_one ${i} &
 				ove_cap_jobs ${OVE_CLONE_MAX_PARALLEL}
 			fi
