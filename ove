@@ -2568,7 +2568,7 @@ function ove_update_checksum_config {
 function ove_repos_fingerprint {
 	local md5
 
-	md5=$(ove-forall-parallel stat --format '%Y' .git/HEAD | LC_ALL="C" \sort | \md5sum)
+	md5=$(ove-forall-parallel stat --format '%Y' .git/HEAD 2> /dev/null | LC_ALL="C" \sort | \md5sum)
 	md5=${md5%% *}
 	echo "${md5}"
 }
@@ -8044,7 +8044,7 @@ function ove_post_checks {
 		echo
 		ove_echo_error_noprefix "corrupt repo(s): ${corrupt_repos}"
 		echo
-		ove_echo_red_noprefix "fix this by running the following two commands:"
+		echo "fix this by running the following two commands:"
 		echo
 		echo -e "\t$ rm -rf ${corrupt_repos}"
 		echo -e "\t$ ove fetch ${corrupt_repos}"
