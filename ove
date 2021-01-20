@@ -3970,6 +3970,12 @@ function ove_validate_rev {
 	local repo="$1"
 	local revision="$2"
 
+	if [ ! -d "${OVE_BASE_DIR}/${repo}" ]; then
+		echo
+		ove_echo_yellow_noprefix "${repo}: not yet fetched" 1>&2
+		return 1
+	fi
+
 	if ! ove_repo_cmd "${OVE_BASE_DIR}/${repo}" cat-file -e "${revision}" &> /dev/null; then
 		ove_echo_error_noprefix "${repo}: '${revision}' is not a valid revision"
 		return 1
