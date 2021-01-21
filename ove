@@ -235,9 +235,15 @@ function ove_version_check {
 
 function ove_main {
 	/proc/self/exe --version | \grep -q 'GNU bash'
-	test $? -ne 0 && echo 'error: run this in bash' && return 1
+	if test $? -ne 0; then
+		echo 'error: run this in bash'
+		return 1
+	fi
 
-	ove_version_check_early || return 1
+	if ! ove_version_check_early; then
+		ove-unsource
+		return 1
+	fi
 
 	ove_green="\033[1;32;7m"
 	ove_cyan="\033[1;36;7m"
