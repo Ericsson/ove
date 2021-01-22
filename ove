@@ -8951,7 +8951,7 @@ function ove_watch_logs {
 			fi
 
 			if [ "${cmd}" == "\less" ] && [ "${OVE_LESS_MORE_OPTIONS}" -eq 1 ]; then
-				_cmd="\less -Ps\"${log}\""
+				_cmd="\less -Ps\"${log//./\\.}\""
 			else
 				_cmd=${cmd}
 			fi
