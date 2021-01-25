@@ -23,7 +23,7 @@
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 function ove {
-	local r s
+	local m r s
 
 	s=$(\pwd -P)
 	while [ "${s}" != "" ]; do
@@ -32,12 +32,19 @@ function ove {
 	done
 
 	if [ "${s}" != "" ]; then
+		# save monitor setting
+		m="$(set +o | \grep '\smonitor$')"
+
 		cd "${s}"
 		. ove hush
 		cd - > /dev/null
 		ove ${*}
 		r=${?}
+
+		# restore monitor setting
+		eval "${m}"
 	fi
+
 	return ${r}
 }
 

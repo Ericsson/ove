@@ -1691,6 +1691,9 @@ function ove {
 
 		# remove some weird chars
 		\sed -i -e 's/\r$//' -e 's/\x0//' ${OVE_LAST_COMMAND}
+
+		# turn on monitor mode
+		set -m
 	else
 		# none-terminal => use tee
 		{
@@ -2706,6 +2709,7 @@ function ove_revtab_check {
 	[ -n "${!n}" ] && [ "${!n}" -eq 0 ] && return
 	[ "${ove_revtab_num_repositories}" == 0 ] && return 1
 
+	# turn off monitor mode to get rid of "Done" messages
 	set +m
 
 	i=0
@@ -2718,6 +2722,9 @@ function ove_revtab_check {
 		(( i+=1 ))
 	done | \grep -v '^\[' || true
 	wait
+
+	# turn on monitor mode
+	set -m
 }
 
 function ove_revtab_list_fullpath {
