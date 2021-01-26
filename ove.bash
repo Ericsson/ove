@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 #
 # MIT License
@@ -35,9 +36,10 @@ function ove {
 		# save monitor setting
 		m="$(set +o | \grep '\smonitor$')"
 
-		cd "${s}"
+		cd "${s}" || return 1
+		# shellcheck disable=SC1091
 		. ove hush
-		cd - > /dev/null
+		cd - > /dev/null || return 1
 		ove "${@}"
 		r=${?}
 
