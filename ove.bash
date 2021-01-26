@@ -38,7 +38,7 @@ function ove {
 		cd "${s}"
 		. ove hush
 		cd - > /dev/null
-		ove ${*}
+		ove "${@}"
 		r=${?}
 
 		# restore monitor setting
