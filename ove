@@ -8612,7 +8612,7 @@ function ove-replicate {
 	fi
 
 	host="$1"
-	if ! \ssh -q ${host} exit; then
+	if ! \ssh -q ${host} exit 0; then
 		ove_echo_error_noprefix "'${host}' is not reachable via ssh"
 		return 3
 	fi
