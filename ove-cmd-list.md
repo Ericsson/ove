@@ -82,7 +82,7 @@
 | ls-files                 | [options]                                                              | git ls-files [options] for all git repositories                                                                       |
 | ls-remote                |                                                                        | git ls-remote <remote.origin.url> HEAD for all git repositories                                                       |
 | make                     | [project[-nodeps]]                                                     | build project(s)                                                                                                      |
-| mrproper                 | [y]                                                                    | remove untracked files, '${OVE_STAGE_DIR}/*' and '${OVE_ARCHIVE_DIR}/*', USE WITH CARE                                |
+| mrproper                 | [y]                                                                    | remove untracked repository files, '${OVE_STAGE_DIR}/*' and '${OVE_ARCHIVE_DIR}/*', USE WITH CARE                     |
 | news                     | [git...]                                                               | list upstream changes for all/specified repositories                                                                  |
 | nop                      |                                                                        | do nothing                                                                                                            |
 | pre-push                 |                                                                        | shell-check+unittest+generate-doc combo                                                                               |
@@ -130,3 +130,4 @@
 | wdiff                    | [git...]                                                               | git diff (word diff) for all/specified git repositories                                                               |
 | wdiff-cached             | [git...]                                                               | git diff --cached (word diff) for all/specified git repositories                                                      |
 | what-is                  | dir...                                                                 | classify files inside 'dir' using 'file'                                                                              |
+| wipe-base-dir            | [y]                                                                    | remove untracked files from ${OVE_BASE_DIR}, USE WITH CARE                                                            |

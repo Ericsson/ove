@@ -6543,7 +6543,7 @@ function ove_rmdir {
 	\find "${_dir}" -mindepth 1 -print0 | \xargs -0 rm -rfv
 }
 
-# mrproper:[y]:remove untracked files, '${OVE_STAGE_DIR}/*' and '${OVE_ARCHIVE_DIR}/*', USE WITH CARE
+# mrproper:[y]:remove untracked repository files, '${OVE_STAGE_DIR}/*' and '${OVE_ARCHIVE_DIR}/*', USE WITH CARE
 function ove-mrproper {
 	local nbr_untracked_files
 
@@ -6574,6 +6574,44 @@ function ove-mrproper {
 
 	ove_rmdir "${OVE_STAGE_DIR}"
 	ove_rmdir "${OVE_ARCHIVE_DIR}"
+
+	return 0
+}
+
+# wipe-base-dir:[y]:remove untracked files from ${OVE_BASE_DIR}, USE WITH CARE
+function ove-wipe-base-dir {
+	local candidates
+	local remove
+	local reserved
+	local rm_options="-i"
+
+	if [ "${OVE_BASE_DIR}" = "${HOME}" ]; then
+		ove_echo_error_noprefix "sorry, but you have to clean your home yourself (reason: \$OVE_BASE_DIR=\$HOME)"
+		return 1
+	fi
+
+	# search for files/dirs
+	mapfile -t candidates <<<$(\find $OVE_BASE_DIR -mindepth 1 -maxdepth 1)
+
+	# repos and some reserved files and directories
+	read -a reserved -r <<<$(echo $(ove_revtab_list_fullpath) ${OVE_PROJECT_DIR} ${OVE_STAGE_DIR} ${OVE_ARCHIVE_DIR} ${OVE_BASE_DIR}/{.owel,ove,.ove*,README*})
+
+	# compare candidates vs. reserved
+	mapfile -t remove <<<$(LC_ALL="C" \comm -2 -3 <(printf "%s\n" "${candidates[@]}" | LC_ALL="C" \sort) <(printf "%s\n" "${reserved[@]}" | LC_ALL="C" \sort))
+
+	# return early?
+	if [ "x${remove[0]}" = "x" ]; then
+		return
+	fi
+
+	if [ "$1" == "y" ]; then
+		rm_options=""
+	else
+		\file "${remove[@]}" | \cat -n
+		echo
+	fi
+
+	\rm -rf ${rm_options} "${remove[@]}"
 
 	return 0
 }
