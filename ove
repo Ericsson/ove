@@ -6729,6 +6729,7 @@ function ove-heads2revtab {
 	fi
 
 	for repo in ${repos}; do
+		[ -d "${OVE_BASE_DIR}"/${repo} ] || continue
 		sha_1=$(ove_repo_cmd "${OVE_BASE_DIR}"/${repo} rev-parse HEAD)
 		\sed -i -e 's|^'${repo}'\(\s\+.*\s\+.*\s\+\)\(.*\)$|'${repo}'\1'${sha_1}'|g' "${OVE_PROJECT_DIR}"/revtab
 	done
