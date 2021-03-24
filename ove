@@ -8010,17 +8010,6 @@ function ove_init {
 	return 0
 }
 
-function ove_corrupt_repos {
-	local repo
-
-	for repo in ${OVE_REPO_LIST}; do
-		# ignore repos not yet fetched
-		[ -d ${repo} ] || continue
-		# repos without a .git directory
-		[ -d ${repo}/.git ] || echo -n "${repo/${OVE_BASE_DIR}\/} "
-	done
-}
-
 function ove_disk_usage_check {
 	local log_dir_disk_usage
 
@@ -8044,7 +8033,6 @@ function ove_disk_usage_check {
 
 function ove_post_checks {
 	local c
-	local corrupt_repos
 	local doublets
 	local f
 	local res
@@ -8094,19 +8082,6 @@ function ove_post_checks {
 		for script in ${doublets[*]}; do
 			ove-list-scripts | \grep "/${script}$"
 		done
-	fi
-
-	# check for corrupt repos
-	corrupt_repos="$(ove_corrupt_repos)"
-	if [ "${corrupt_repos}" != "" ]; then
-		echo
-		ove_echo_error_noprefix "corrupt repo(s): ${corrupt_repos}"
-		echo
-		echo "fix this by running the following two commands:"
-		echo
-		echo -e "\t$ rm -rf ${corrupt_repos}"
-		echo -e "\t$ ove fetch ${corrupt_repos}"
-		echo
 	fi
 
 	# inform user if logs etc. take too much space
