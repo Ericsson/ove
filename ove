@@ -5496,15 +5496,40 @@ function ove-news {
 
 # show-news:[git...]:run 'ove show' on upstream changes for all/specified repositories
 function ove-show-news {
-	local sha_list
+	local less_opt
+	local line
+	local re_a
+	local re_b
+	local repo
+	local sha
 
 	# refresh news
 	ove-news "$@" > /dev/null
+	[ -s ${OVE_PROJECT_STATE_DIR}/revtab-news ] || return
 
-	sha_list="$(\grep -o '^[a-f0-9]\+' ${OVE_PROJECT_STATE_DIR}/revtab-news | \tac)"
-	[ "${sha_list}" == "" ] && return
+	# remove color codes
+	\sed -i \
+		-r \
+		-e "s/\x1b\[1;3[0-9];7m//g" \
+		-e "s/\x1b\[[0-9]+m//g" \
+		-e "s/\x1b\[m//g" ${OVE_PROJECT_STATE_DIR}/revtab-news
 
-	ove-show ${sha_list}
+	re_a=": [0-9]+ new commit"
+	re_b="^[a-f0-9]+"
+	while read -r line; do
+		if [[ "${line}" =~ ${re_a} ]]; then
+			repo="${line%%:*}"
+		elif [[ "${line}" =~ ${re_b} ]]; then
+			clear
+			sha=${line%% *}
+			if [ ${OVE_LESS_MORE_OPTIONS} -eq 1 ]; then
+				less_opt="-X -R -Ps${repo} ${sha}"
+			else
+				less_opt="-R"
+			fi
+			LESS="${less_opt}" ove_repo_cmd ${OVE_BASE_DIR}/${repo} '-p show' --first-parent $sha --
+		fi
+	done<${OVE_PROJECT_STATE_DIR}/revtab-news
 }
 
 # ahead:[git...]:list local commits not yet published for all/specified repositories
@@ -6805,7 +6830,7 @@ function ove-show {
 			if [ ${OVE_LESS_MORE_OPTIONS} -eq 1 ]; then
 				less_opt=\"-X -R -Ps\${repo_basename} ${revision//./\\.}\";
 			else
-				less_opt=\"less -R\";
+				less_opt=\"-R\";
 			fi;
 			LESS=\${less_opt} ove_repo_cmd \${repo} '-p show' --first-parent --color=always ${revision} --;
 			unset less_opt
