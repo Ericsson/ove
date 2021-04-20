@@ -3465,23 +3465,27 @@ function ove-list-scripts {
 	local p
 	local repo
 
-	# project scripts
-	if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
-		\find ${OVE_PROJECT_DIR}/scripts -perm -u=x -not -name '*.help' -type f
-	fi
+	while true; do
+		# project scripts
+		if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
+			\find ${OVE_PROJECT_DIR}/scripts -perm -u=x -not -name '*.help' -type f
+		fi
 
-	# OVE scripts
-	if [ -d "${OVE_DIR}/scripts" ]; then
-		\find ${OVE_DIR}/scripts -perm -u=x -not -name '*.help' -type f
-	fi
+		# OVE scripts
+		if [ -d "${OVE_DIR}/scripts" ]; then
+			\find ${OVE_DIR}/scripts -perm -u=x -not -name '*.help' -type f
+		fi
 
-	# repo scripts
-	for repo in $(ove_revtab_list_fullpath); do
-		! [ -d "${repo}/.ove/scripts" ] && continue
-		p+="${repo}/.ove/scripts "
-	done
-	[ "${p}" != "" ] && \
-		\find -L ${p} -perm -u=x -not -name '*.help' -type f
+		# repo scripts
+		for repo in $(ove_revtab_list_fullpath); do
+			! [ -d "${repo}/.ove/scripts" ] && continue
+			p+="${repo}/.ove/scripts "
+		done
+		[ "${p}" != "" ] && \
+			\find -L ${p} -perm -u=x -not -name '*.help' -type f
+
+		break
+	done | LC_ALL="C" \sort
 
 	return 0
 }
