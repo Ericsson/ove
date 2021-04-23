@@ -3011,9 +3011,9 @@ function ove_repo_cmd {
 	cmd="git -C ${repo} $1"
 	shift
 	if [ $# -eq 0 ]; then
-		\flock ${OVE_FLOCK_OPTIONS} -x "${OVE_PROJECT_TMP_DIR}/.${i}.lock" -c "${cmd}"
+		GIT_CEILING_DIRECTORIES="${OVE_BASE_DIR}" \flock ${OVE_FLOCK_OPTIONS} -x "${OVE_PROJECT_TMP_DIR}/.${i}.lock" -c "${cmd}"
 	else
-		\flock ${OVE_FLOCK_OPTIONS} -x "${OVE_PROJECT_TMP_DIR}/.${i}.lock" -c "${cmd} $(printf -- ' "%s"' "${@}")"
+		GIT_CEILING_DIRECTORIES="${OVE_BASE_DIR}" \flock ${OVE_FLOCK_OPTIONS} -x "${OVE_PROJECT_TMP_DIR}/.${i}.lock" -c "${cmd} $(printf -- ' "%s"' "${@}")"
 	fi
 	return $?
 }
