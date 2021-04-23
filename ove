@@ -2294,7 +2294,7 @@ function ove_status_one_repo {
 	[ $# -ne 1 ] && return 1
 
 	repo_fullpath=$(ove_repo2fullpath $1)
-	if [ "${repo_fullpath}" == "" ] || ! [ -d "${repo_fullpath}" ]; then
+	if [ "${repo_fullpath}" == "" ] || ! [ -d "${repo_fullpath}" ] || ! [ -e "${repo_fullpath}"/.git ]; then
 		return
 	fi
 
@@ -3006,7 +3006,8 @@ function ove_repo_cmd {
 	local repo
 
 	repo=$1
-	i=$(ove_repo2index ${1})
+	[ -e ${repo}/.git ] || return 1
+	i=$(ove_repo2index ${repo})
 	shift
 	cmd="git -C ${repo} $1"
 	shift
@@ -4571,7 +4572,7 @@ function ove-remote-check {
 			continue
 		fi
 
-		if ! ove_repo_cmd "${PWD}" ls-remote ${url} HEAD > /dev/null; then
+		if ! \git ls-remote ${url} HEAD > /dev/null; then
 			return 1
 		fi
 
