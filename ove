@@ -83,7 +83,7 @@ function ove_unsource_user_env {
 	fi
 
 	# cleanup LD_LIBRARY_PATH
-	if [ -n "${LD_LIBRARY_PATH}" ]; then
+	if [ -n "${LD_LIBRARY_PATH}" ] && [ -n "${OVE_LD_LIBRARY_PATH}" ]; then
 		LD_LIBRARY_PATH=${LD_LIBRARY_PATH/${OVE_LD_LIBRARY_PATH}/}
 		if [ "${LD_LIBRARY_PATH}" == "" ]; then
 			unset LD_LIBRARY_PATH
@@ -93,7 +93,7 @@ function ove_unsource_user_env {
 	fi
 
 	# cleanup PKG_CONFIG_PATH
-	if [ -n "${PKG_CONFIG_PATH}" ]; then
+	if [ -n "${PKG_CONFIG_PATH}" ] && [ -n "${OVE_PKG_CONFIG_PATH}" ]; then
 		PKG_CONFIG_PATH=${PKG_CONFIG_PATH/${OVE_PKG_CONFIG_PATH}/}
 		if [ "${PKG_CONFIG_PATH}" == "" ]; then
 			unset PKG_CONFIG_PATH
