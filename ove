@@ -1704,6 +1704,11 @@ function ove {
 	fi
 
 	\ln -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
+
+	# auto remove old logs?
+	if [ -n "${OVE_AUTO_RM_LOGS+x}" ] && [ ${OVE_AUTO_RM_LOGS} -gt 0 ] && [ "${cmd}" != "rm-logs" ]; then
+		ove-rm-logs ${OVE_AUTO_RM_LOGS} y
+	fi
 	return ${ret}
 }
 
@@ -7754,6 +7759,11 @@ function ove_config_builtins_init {
 		export OVE_AUTOCORRECT=0
 	fi
 
+	# OVE_AUTO_RM_LOGS:int:0|days:all:automatically remove OVE logs
+	if [ -z "${OVE_AUTO_RM_LOGS+x}" ]; then
+		export OVE_AUTO_RM_LOGS=0
+	fi
+
 	# OVE_REVTAB_CHECK:int:0|1:all:keep repos in-sync with 'revtab'
 	if [ -z "${OVE_REVTAB_CHECK+x}" ]; then
 		export OVE_REVTAB_CHECK=1
@@ -8066,6 +8076,8 @@ function ove_disk_usage_check {
 			echo
 			echo "- remove OVE logs older than X days:"
 			echo -e "\tove rm-logs X"
+			echo "- automatically remove OVE logs older than X days:"
+			echo -e "\tove add-config ${OVE_GLOBAL_STATE_DIR}/.oveconfig OVE_AUTO_RM_LOGS X"
 			echo "- increase the threshold (=${OVE_LOG_DIR_DISK_USAGE_WARNING_MB}MB) for this NOTE 10x times:"
 			echo -e "\tove add-config ${OVE_GLOBAL_STATE_DIR}/.oveconfig OVE_LOG_DIR_DISK_USAGE_WARNING_MB $((OVE_LOG_DIR_DISK_USAGE_WARNING_MB * 10))"
 			echo "- suppress this NOTE:"
