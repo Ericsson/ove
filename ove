@@ -7023,17 +7023,25 @@ function ove-lastlog {
 		\column -t -s@
 }
 
-# rm-logs:[days]:remove OVE logs older than 30|days days. days=0 => all logs
+# rm-logs:[days [y]]:remove OVE logs older than 30|days days. days=0 => all logs
 function ove-rm-logs {
 	local days=30
 	local find_opt="-mtime +${days}"
+	local interactive=1
 
-	if  [ $# -gt 1 ]; then
+	if  [ $# -gt 2 ]; then
+		ove_command_usage
+		return 1
+	elif [ $# -eq 2 ] && [ "$2" != "y" ]; then
 		ove_command_usage
 		return 1
 	fi
 
-	if [ $# -eq 1 ]; then
+	if [ $# -eq 2 ]; then
+		interactive=0
+	fi
+
+	if [ $# -gt 0 ]; then
 		if ! [[ "${1}" =~ ^[0-9]+$ ]]; then
 			echo "error: just numbers"
 			ove_command_usage
@@ -7051,21 +7059,26 @@ function ove-rm-logs {
 	find_opt="-maxdepth 2 -type f ${find_opt} -print"
 
 	if [ "$(\find ${OVE_LOG_DIR} ${find_opt} -quit)" == "" ]; then
-		ove_echo_error_noprefix "no OVE log files older than ${days} days found here: ${OVE_LOG_DIR}"
+		if [ ${interactive} -eq 1 ]; then
+			ove_echo_error_noprefix "no OVE log files older than ${days} days found here: ${OVE_LOG_DIR}"
+		fi
 		return 1
 	fi
 
-	\find ${OVE_LOG_DIR} ${find_opt} | \cat -n
-	echo
-	echo -n "Proceed to remove "
-	if [ $# -eq 1 ] && [ $1 -eq 0 ]; then
-		read -p "ALL files (list above) from '${OVE_LOG_DIR}' (y/N) " -r
-	else
-		read -p "files older than ${days} days (list above) from '${OVE_LOG_DIR}' (y/N) " -r
+	if [ ${interactive} -eq 1 ]; then
+		\find ${OVE_LOG_DIR} ${find_opt} | \cat -n
+
+		echo
+		echo -n "Proceed to remove "
+		if [ $# -eq 1 ] && [ $1 -eq 0 ]; then
+			read -p "ALL files (list above) from '${OVE_LOG_DIR}' (y/N) " -r
+		else
+			read -p "files older than ${days} days (list above) from '${OVE_LOG_DIR}' (y/N) " -r
+		fi
+		[[ ${REPLY} =~ ^[Yy]$ ]] || return 1
+		read -p "Are you really sure? (y/N) " -r
+		[[ ${REPLY} =~ ^[Yy]$ ]] || return 1
 	fi
-	[[ ${REPLY} =~ ^[Yy]$ ]] || return 1
-	read -p "Are you really sure? (y/N) " -r
-	[[ ${REPLY} =~ ^[Yy]$ ]] || return 1
 
 	if [ "x${OVE_LAST_COMMAND}" != "x" ]; then
 		\find ${OVE_LOG_DIR} ${find_opt} | \
