@@ -9158,7 +9158,7 @@ function ove-generate-doc {
 		str+="$(\grep -o "# ${c}:.*:.*" ${OVE_SELF} | \cut -b3-):$(type ove_config_builtins_init | \
 			\grep "export ${c}=" | \
 			\cut -d= -f2- | \
-			\tr -d ';' | \
+			\sed -e 's,;$,,g' | \
 			\tr -d '"')\n"
 	done
 	sorted=$(printf "${str}" | \
