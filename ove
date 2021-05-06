@@ -6454,6 +6454,16 @@ function ove-list-modified-files {
 	ove_revtab_forsome_parallel "${cmd}" 0 "$(ove_dirty_repos)" | LC_ALL="C" \sort -u
 }
 
+# list-modified-files-basename: :list modified files (basename)
+function ove-list-modified-files-basename {
+	local cmd
+
+	# shellcheck disable=SC2016
+	cmd='ove_repo_cmd ${repo} "--no-pager diff-index" --quiet HEAD || ove_repo_cmd ${repo} diff --name-only HEAD | \sed -e "s|^|${repo}/|g" -e "s|.*/||g"'
+
+	ove_revtab_forsome_parallel "${cmd}" 0 "$(ove_dirty_repos)" | LC_ALL="C" \sort -u
+}
+
 # list-committed-files:[days]:list committed files within 7 or days day(s)
 function ove-list-committed-files {
 	local cmd
@@ -7308,9 +7318,8 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "vi" ] ||
 		[ "${subcommand}" == "emacs" ]; then
-		if [ ${size} -ge 2 ] && [ "$(ove-list-modified-files)" != "" ]; then
-			wordlist=$(ove-list-modified-files | \
-				\xargs -n1 basename)
+		if [ ${size} -ge 2 ]; then
+			wordlist=$(ove-list-modified-files-basename)
 		else
 			return
 		fi
