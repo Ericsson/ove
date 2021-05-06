@@ -6477,10 +6477,25 @@ function ove-list-committed-files {
 	ove_revtab_forall_parallel "${cmd}" | LC_ALL="C" \sort -u
 }
 
+function ove_uniq {
+	if [ $# -eq 1 ]; then
+		echo "${1}"
+		return
+	fi
+
+	declare -A a_hash
+	while [ $# -ne 0 ]; do
+		if test "${a_hash["${1}"]+isset}"; then
+			shift
+			continue
+		fi
+		a_hash["${1}"]=1
+		echo "${1}"
+	done
+}
+
 function ove_edit {
-	declare -A f_hash
 	local editor
-	local f
 	local files
 	local files_by_epoch
 
@@ -6497,37 +6512,35 @@ function ove_edit {
 		return 1
 	fi
 
-	# stat every file
-	files_by_epoch=$(
-		for f in ${files}; do
-			[ -e ${f} ] && echo $(\stat --format '%Y' ${f}):${f}
-		done | \
-		LC_ALL="C" \sort -r | \
-		\cut -d: -f2)
-
 	if [ $# -eq 0 ]; then
-		files="${files_by_epoch}"
+		# stat every file
+		files_by_epoch=$(
+			for f in ${files}; do
+				[ -e ${f} ] || continue
+				echo $(\stat --format '%Y' ${f}):${f}
+			done | \
+			LC_ALL="C" \sort -r | \
+			\cut -d: -f2)
 	else
-		f=
-		while [ $# -ne 0 ]; do
-			test "${f_hash["${1}"]+isset}" && shift && continue
-			f_hash["${1}"]=1
-			f+=$(printf "${files_by_epoch}" | \
-				\sed -e "s|${OVE_BASE_DIR}/||g" | \
-				\grep -i $1 | \
-				\sed -e "s|^|${OVE_BASE_DIR}/|g")
-			f+=" "
-			shift
-		done
-
-		files="${f}"
+		# stat based on args
+		files_by_epoch=$(
+			for g in $(ove_uniq "$@"); do
+				for f in ${files}; do
+					f_low=${f,,}
+					if [[ ${f_low/${OVE_BASE_DIR}\/} == *${g,,}* ]] && [ -e ${f} ]; then
+						echo $(\stat --format '%Y' ${f}):${f}
+					fi
+				done
+			done | \
+			LC_ALL="C" \sort -r | \
+			\cut -d: -f2)
 	fi
 
-	if [ "${files}" != "" ]; then
+	if [ "${files_by_epoch}" != "" ]; then
 		if [ "${editor}" == "vi" ]; then
-			\vi -o ${files} -c "wincmd H"
+			\vi -o ${files_by_epoch} -c "wincmd H"
 		elif [ "${editor}" == "emacs" ]; then
-			\emacs ${files}
+			\emacs ${files_by_epoch}
 		else
 			ove_echo_stderr_noprefix "unknown editor"
 		fi
