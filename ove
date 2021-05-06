@@ -4907,23 +4907,31 @@ function ove_get_paths_recursive {
 }
 
 function ove_validate_revtab {
+	local a
+	local foo
 	local d
 	local doublets
 
 	[ ! -e "${OVE_PROJECT_DIR}/revtab" ] && return
 
-	doublets="$(\grep -E -v '^$|^#' ${OVE_PROJECT_DIR}/revtab | \
-		\awk 'a[$1]++{print $1}')"
-
-	# check for doublets
-	if [ "${doublets}" != "" ]; then
-		ove_echo_error_noprefix "found repo doublet(s) in '${OVE_PROJECT_DIR}/revtab':"
-
-		for d in ${doublets}; do
-			\grep -n "^${d} " ${OVE_PROJECT_DIR}/revtab
-		done
-		return 1
-	fi
+	declare -A r=()
+	while read -r a foo; do
+		# ignore comments and emtpy lines
+		if [[ ${a} == \#* ]] || [[ ${a} == '' ]]; then
+			continue
+		fi
+		if test "${r["${a}"]+isset}"; then
+			ove_echo_error_noprefix "found repo doublet(s) in '${OVE_PROJECT_DIR}/revtab':"
+			doublets="$(\grep -E -v '^$|^#' ${OVE_PROJECT_DIR}/revtab | \
+				\awk 'a[$1]++{print $1}' | \
+				LC_ALL="C" \sort -u)"
+			for d in ${doublets}; do
+				\grep -n "^${d} " ${OVE_PROJECT_DIR}/revtab
+			done
+			return 1
+		fi
+		r["${a}"]=1
+	done <"${OVE_PROJECT_DIR}/revtab"
 }
 
 function ove_validate_self {
