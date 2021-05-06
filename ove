@@ -1785,24 +1785,6 @@ function ove-fzf {
 	done
 }
 
-function ove_projects_init {
-	unset ove_projects_name
-	unset ove_projects_deps
-	unset ove_projects_path
-	unset ove_projects_needs
-	unset ove_projects_version
-	unset ove_projects_name2index
-
-	declare -a -g ove_projects_name
-	declare -a -g ove_projects_deps
-	declare -a -g ove_projects_path
-	declare -a -g ove_projects_needs
-	declare -a -g ove_projects_version
-	declare -A -g ove_projects_name2index
-
-	ove_number_of_projects=0
-}
-
 # not really a complete YAML parser
 function ove_parse_yaml {
 	local line
@@ -1883,12 +1865,18 @@ function ove_list_branches {
 }
 
 # iterate through projects
-function ove_projects_parse {
+function ove_projects_init {
 	local i
 	local m
 	local projects
 	local tmp_var
 
+	unset ove_projects_name
+	unset ove_projects_deps
+	unset ove_projects_path
+	unset ove_projects_needs
+	unset ove_projects_version
+	unset ove_projects_name2index
 	ove_number_of_projects=0
 
 	[ ! -e "${OVE_PROJECT_DIR}/projs" ] && return
@@ -1900,6 +1888,13 @@ function ove_projects_parse {
 		fi
 		return 1
 	fi
+
+	declare -a -g ove_projects_name
+	declare -a -g ove_projects_deps
+	declare -a -g ove_projects_path
+	declare -a -g ove_projects_needs
+	declare -a -g ove_projects_version
+	declare -A -g ove_projects_name2index
 
 	# create ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
@@ -2176,29 +2171,28 @@ function ove_projects_cmd {
 }
 
 function ove_revtab_init {
+	local array
+	local line
+	local lineno=0
+
 	unset ove_revtab_fetch_url
 	unset ove_revtab_push_url
 	unset ove_revtab_rev
 	unset ove_revtab_git_name
 	unset ove_revtab_name2index
+	ove_revtab_num_repositories=0
+
+	[ ! -e "${OVE_PROJECT_DIR}/revtab" ] && return
+
+	if ! ove_validate_revtab; then
+		return 1
+	fi
 
 	declare -a -g ove_revtab_fetch_url
 	declare -a -g ove_revtab_push_url
 	declare -a -g ove_revtab_rev
 	declare -a -g ove_revtab_git_name
 	declare -A -g ove_revtab_name2index
-
-	ove_revtab_num_repositories=0
-}
-
-function ove_revtab_parse {
-	local array
-	local line
-	local lineno=0
-
-	[ ! -e "${OVE_PROJECT_DIR}/revtab" ] && return
-
-	ove_revtab_num_repositories=0
 
 	while read -r line; do
 		(( lineno+=1 ))
@@ -2227,10 +2221,6 @@ function ove_revtab_parse {
 
 	if ! [ -e "${OVE_PROJECT_TMP_DIR}/.owel.lock" ]; then
 		true > "${OVE_PROJECT_TMP_DIR}/.owel.lock"
-	fi
-
-	if ! ove_validate_revtab; then
-		return 1
 	fi
 
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
@@ -3029,10 +3019,6 @@ function ove_revtab_fetch {
 	local co_list
 	local i
 	local m
-
-	if ! ove_revtab_parse; then
-		return 1
-	fi
 
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout "$@"
@@ -7878,12 +7864,10 @@ function ove_init {
 
 	ove_dirs_init
 	ove_config_init
-	ove_revtab_init
-	if ! ove_revtab_parse; then
+	if ! ove_revtab_init; then
 		return 1
 	fi
-	ove_projects_init
-	if ! ove_projects_parse; then
+	if ! ove_projects_init; then
 		return 1
 	fi
 	ove_scripts_init
@@ -9115,7 +9099,7 @@ function ove-add-repo {
 	echo "${name} ${url} ${url} ${revision}" | \tee -a "${OVE_PROJECT_DIR}/revtab"
 
 	# parse revtab
-	if ! ove_revtab_parse; then
+	if ! ove_revtab_init; then
 		# remove last line
 		\sed -i '$ d' "${OVE_PROJECT_DIR}/revtab"
 		return 1
