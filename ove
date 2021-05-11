@@ -6428,7 +6428,7 @@ function ove-config {
 
 	for cfg in "${cfgs[@]}"; do
 		ove_config_one ${cfg} "$@"
-	done | \sed -e 's|^\(/.*\):|\1#|' -e 's| \+|#|' | \column -t -s'#'
+	done | \sed -e 's|^\(/.[^:]*\):|\1#|' -e 's| \+|#|' | \column -t -s'#'
 
 	if [ $# -gt 1 ]; then
 		ove_reinit
