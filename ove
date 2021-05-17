@@ -1024,8 +1024,9 @@ function ove_loop_command {
 				\find ${OVE_LOOP_INOTIFY_EXTRA//;/ } -type f >> ${all_files}
 			fi
 
-			files_modified_by_command=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}
-			f_stderr=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}-stderr
+			cmd="${1%% *}"
+			files_modified_by_command="${OVE_PROJECT_TMP_DIR}/inotifywait-${cmd}-${all_files: -10}"
+			f_stderr="${files_modified_by_command}-stderr"
 			true > ${f_stderr}
 			if [ $(\cat /proc/sys/fs/inotify/max_user_watches) -lt $(\wc -l < ${all_files}) ]; then
 				ove_echo_error_noprefix "you need to increase the number of inotify user watches. Try:"
@@ -1042,8 +1043,8 @@ function ove_loop_command {
 
 			# try to check that no other process is accessing our file watch list
 			j=0
-			f_early=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}-early-check
-			f_early_all=${OVE_PROJECT_TMP_DIR}/inotifywait-${1}-${all_files: -10}-early-check-all
+			f_early="${files_modified_by_command}-early-check"
+			f_early_all="${files_modified_by_command}-early-check-all"
 			while true; do
 				if [ ${j} -eq 10 ]; then
 					ove_echo_error_noprefix "some other process is accessing the file watch list, if possible stop that and try again"
@@ -1451,12 +1452,12 @@ function ove-loop {
 		tmux split-window -h "\
 			source ${OVE_BASE_DIR}/ove; \
 			ove_init; \
-			ove_loop_command ${_timeout} ${use_inotify} ${max_count} ${cmd}"
+			ove_loop_command ${_timeout} ${use_inotify} ${max_count} '${cmd}'"
 
 		tmux select-layout ${OVE_TMUX_LAYOUT}
 		tmux select-pane -t 0
 	else
-		ove_loop_command ${_timeout} ${use_inotify} ${max_count} ${cmd}
+		ove_loop_command ${_timeout} ${use_inotify} ${max_count} "${cmd}"
 	fi
 }
 
