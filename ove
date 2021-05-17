@@ -1187,7 +1187,7 @@ function ove_loop_command {
 	done
 }
 
-# ide:[close]:launch one or more 'loop'-commands specified by OVE_IDE_LOOP_ARGS (tmux only)
+# ide:[close|reopen]:launch one or more 'loop'-commands specified by OVE_IDE_LOOP_ARGS (tmux only)
 function ove-ide {
 	local i
 	local line
@@ -1201,6 +1201,10 @@ function ove-ide {
 	if [ $# -eq 1 ]; then
 		if [ "$1" == "close" ]; then
 			ove-loop-close
+			return 0
+		elif [ "$1" == "reopen" ]; then
+			ove-loop-close
+			ove-ide
 			return 0
 		fi
 		ove_command_usage
@@ -7251,7 +7255,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "ide" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist="close"
+			wordlist="close reopen"
 		fi
 	elif [ "${subcommand}" == "update-revtab" ]; then
 		if [ ${size} -eq 2 ]; then
