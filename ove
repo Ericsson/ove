@@ -1120,7 +1120,7 @@ function ove_loop_command {
 				\rm ${files_modified_by_command}
 				if [ $(\wc -l < ${files_modified_by_command}.uniq) -eq 0 ]; then
 					use_inotify=0
-					ove_echo_cyan_error "0 files accessed, not using inotifywait"
+					echo "no files accessed, not using inotify"
 				fi
 
 				# sleep before relasing lock
@@ -1130,38 +1130,41 @@ function ove_loop_command {
 				\flock -u ${fd}
 			fi
 
-			# allow user to change the file watch list
-			echo
-			if [ ${i} -lt 3 ]; then
-				echo "press 'm' to modify the file watch list (=$(\wc -l < ${files_modified_by_command}.uniq) files)"
-			fi
-			read -n 1 -s -r -t 0.1
-			if [[ ${REPLY} =~ ^[Mm]$ ]]; then
-				echo "file watch list: ${files_modified_by_command}.uniq"
-				while true; do
-					read -n 1 -s -r -p "press 'p' to proceeed (time-out in 1 min)" -t 60
-					[ ${?} -gt 128 ] && break
-					if [[ ${REPLY} =~ ^[Pp]$ ]]; then
-						\sync ${files_modified_by_command}.uniq
-						while read -r line; do
-							[ -e ${line} ] && continue
-							echo
-							echo "'${line}' does not exist, try again"
-							continue 2
-						done <${files_modified_by_command}.uniq
-						break
-					fi
-				done
-				if [ $(\wc -l <${files_modified_by_command}.uniq) -eq 0 ]; then
-					echo
-					ove_echo_error_noprefix "no files to watch, disable inotify"
-					use_inotify=0
-					[ -n "${TMUX}" ] && read -r -p ""
-					continue
+			# inotify was disabled above?
+			if [ ${use_inotify} -eq 1 ]; then
+				# allow user to change the file watch list
+				echo
+				if [ ${i} -lt 3 ]; then
+					echo "press 'm' to modify the file watch list (=$(\wc -l < ${files_modified_by_command}.uniq) files)"
 				fi
-			fi
+				read -n 1 -s -r -t 0.1
+				if [[ ${REPLY} =~ ^[Mm]$ ]]; then
+					echo "file watch list: ${files_modified_by_command}.uniq"
+					while true; do
+						read -n 1 -s -r -p "press 'p' to proceeed (time-out in 1 min)" -t 60
+						[ ${?} -gt 128 ] && break
+						if [[ ${REPLY} =~ ^[Pp]$ ]]; then
+							\sync ${files_modified_by_command}.uniq
+							while read -r line; do
+								[ -e ${line} ] && continue
+								echo
+								echo "'${line}' does not exist, try again"
+								continue 2
+							done <${files_modified_by_command}.uniq
+							break
+						fi
+					done
+					if [ $(\wc -l <${files_modified_by_command}.uniq) -eq 0 ]; then
+						echo
+						ove_echo_error_noprefix "no files to watch, disable inotify"
+						use_inotify=0
+						[ -n "${TMUX}" ] && read -r -p ""
+						continue
+					fi
+				fi
 
-			echo
+				echo
+			fi
 		fi
 
 		echo -
