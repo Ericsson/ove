@@ -34,19 +34,76 @@ function ove_read_config_validate_varname {
 	return 0
 }
 
+# remember and set duplicate configs
+function ove_read_config_pre {
+	local f
+	local p
+	local p_arr
+	local val
+	local var
+	declare -A a_hash
+
+	if [ "x${OVE_CONFIG_DUPLICATES}" != "x" ]; then
+		unset OVE_CONFIG_DUPLICATES
+	fi
+
+	for f in "$@"; do
+		[ -e "${f}" ] || continue
+
+		while read -r p; do
+			# ignore comments and empty lines
+			if [[ ${p} == \#* ]] || [[ ${p} == '' ]]; then
+				continue
+			fi
+			p_arr=( ${p} )
+			var=${p_arr[0]}
+			if test "${a_hash["${var}"]+isset}"; then
+				val=${p_arr[*]:1}
+				# escape all "
+				val=${val//\"/\\\"}
+				if ! eval ${var}=\"${val}\" 2> /dev/null; then
+					echo "warning: config '${var}' could not be set:" 1>&2
+					\grep -w ^${var} -H -n ${1} 1>&2
+					continue
+				fi
+				# shellcheck disable=SC2163
+				export ${var}
+
+				# remember duplicates
+				if [ "x${OVE_CONFIG_DUPLICATES}" = "x" ]; then
+					OVE_CONFIG_DUPLICATES="$var"
+				else
+					OVE_CONFIG_DUPLICATES+=" $var"
+				fi
+				export OVE_CONFIG_DUPLICATES
+
+				# remember configs
+				if [ "x${OVE_CONFIG_ALL}" = "x" ]; then
+					OVE_CONFIG_ALL="$var"
+				else
+					OVE_CONFIG_ALL+=" $var"
+				fi
+				export OVE_CONFIG_ALL
+			fi
+			a_hash["${var}"]=1
+		done<${f}
+	done
+}
+
 function ove_read_config {
 	local p
 	local p_arr
+	local re
 	local val
 	local var
 
 	[ -s "$1" ] || return 1
 
 	while read -r p; do
-		# ignore comments
-		[[ ${p} == \#* ]] && continue
-		# ignore empty lines
-		[[ ${p} == '' ]] && continue
+		# ignore comments and empty lines
+		if [[ ${p} == \#* ]] || [[ ${p} == '' ]]; then
+			continue
+		fi
 		p_arr=( ${p} )
 		var=${p_arr[0]}
 
@@ -61,6 +118,11 @@ function ove_read_config {
 			continue
 		fi
 
+		re=\\b${var}\\b
+		if [[ "${OVE_CONFIG_DUPLICATES}" =~ ${re} ]]; then
+			continue
+		fi
+
 		val=${p_arr[*]:1}
 		# escape all "
 		val=${val//\"/\\\"}
@@ -71,6 +133,14 @@ function ove_read_config {
 		fi
 		# shellcheck disable=SC2163
 		export ${var}
+
+		# remember configs
+		if [ "x${OVE_CONFIG_ALL}" == "x" ]; then
+			OVE_CONFIG_ALL="$var"
+		else
+			OVE_CONFIG_ALL+=" $var"
+		fi
+		export OVE_CONFIG_ALL
 	done <$1
 }
 
@@ -109,7 +179,7 @@ function ove_unsource {
 	ove_unsource_user_env
 
 	# clean config variables
-	for f in ${OVE_ALL_CONFIG_FILES}; do
+	for f in ${OVE_CONFIG_FILES}; do
 		[ -e "${f}" ] && ove_read_config ${f} clean
 	done
 
@@ -6322,7 +6392,7 @@ function ove-add-config {
 	cfg=$(\readlink -f $1)
 	if ! ove_config_validate_filename ${cfg}; then
 		ove_echo_error_noprefix "file '${cfg}' is not a valid oveconfig file, select one of:"
-		printf "%s\n" ${OVE_ALL_CONFIG_FILES} 1>&2
+		printf "%s\n" ${OVE_CONFIG_FILES} 1>&2
 		return 1
 	fi
 	var=$2
@@ -6347,7 +6417,7 @@ function ove-add-config {
 function ove_config_validate_filename {
 	local f
 
-	for f in ${OVE_ALL_CONFIG_FILES}; do
+	for f in ${OVE_CONFIG_FILES}; do
 		[ "$1" == "${f}" ] && return 0
 	done
 
@@ -6366,7 +6436,7 @@ function ove_config_validate_file {
 
 function ove_config2file {
 	\grep -H "^${1} " \
-		${OVE_ALL_CONFIG_FILES} 2> /dev/null | \
+		${OVE_CONFIG_FILES} 2> /dev/null | \
 		\tail -1 | \
 		\cut -d: -f1
 }
@@ -6375,7 +6445,7 @@ function ove_list_oveconfig_files {
 	local f
 	local files
 
-	for f in ${OVE_ALL_CONFIG_FILES}; do
+	for f in ${OVE_CONFIG_FILES}; do
 		[ -e "${f}" ] && files+=("${f}")
 	done
 
@@ -7346,7 +7416,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "add-config" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist=${OVE_ALL_CONFIG_FILES}
+			wordlist=${OVE_CONFIG_FILES}
 		elif [ ${size} -eq 3 ]; then
 			wordlist="$(type ove_config_builtins_init | \
 				\grep -o 'OVE_[A-Z_]\+')"
@@ -7726,14 +7796,23 @@ function ove_dirs_init {
 function ove_config_init {
 	local f
 
-	# keep the order
-	OVE_ALL_CONFIG_FILES="${OVE_PROJECT_DIR}/.oveconfig"
-	OVE_ALL_CONFIG_FILES+=" ${OVE_PROJECT_STATE_DIR}/.oveconfig"
-	OVE_ALL_CONFIG_FILES+=" ${OVE_GLOBAL_STATE_DIR}/.oveconfig"
-	OVE_ALL_CONFIG_FILES+=" ${HOME}/.oveconfig"
-	export OVE_ALL_CONFIG_FILES
+	# cleanup previous configs
+	if [ "x${OVE_CONFIG_ALL}" != "x" ]; then
+		unset ${OVE_CONFIG_ALL} OVE_CONFIG_ALL
+	fi
 
-	for f in ${OVE_ALL_CONFIG_FILES}; do
+	# keep the order
+	OVE_CONFIG_FILES="${OVE_PROJECT_DIR}/.oveconfig"
+	OVE_CONFIG_FILES+=" ${OVE_PROJECT_STATE_DIR}/.oveconfig"
+	OVE_CONFIG_FILES+=" ${OVE_GLOBAL_STATE_DIR}/.oveconfig"
+	OVE_CONFIG_FILES+=" ${HOME}/.oveconfig"
+	export OVE_CONFIG_FILES
+
+	# first set any duplicates
+	ove_read_config_pre $OVE_CONFIG_FILES
+
+	# ...then read configs in order
+	for f in ${OVE_CONFIG_FILES}; do
 		if [ -e "${f}" ]; then
 			ove_read_config ${f}
 		fi
