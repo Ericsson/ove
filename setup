@@ -80,7 +80,16 @@ if [ "$#" -eq 3 ]; then
 	git -C .owel -c advice.detachedHead=false checkout "$3" || :
 fi
 
-owel_cache=/tmp/${USER}/ove/owel.cache
+if [ "x${USER}" != "x" ]; then
+	OVE_USER="${USER}"
+elif [ "x${LOGNAME}" != "x" ]; then
+	OVE_USER="${LOGNAME}"
+elif command -v whoami > /dev/null; then
+	OVE_USER="$(\whoami)"
+else
+	OVE_USER="ove"
+fi
+owel_cache=/tmp/${OVE_USER}/ove/owel.cache
 if [ -d /var/tmp ]; then
 	owel_cache=/var${owel_cache}
 fi

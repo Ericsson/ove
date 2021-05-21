@@ -322,7 +322,18 @@ function ove_main {
 	ove_red="\033[1;31;7m"
 	ove_blank="\033[0m"
 
-	OVE_TMP=/tmp/${USER}/ove
+	if [ "x${USER}" != "x" ]; then
+		OVE_USER="${USER}"
+	elif [ "x${LOGNAME}" != "x" ]; then
+		OVE_USER="${LOGNAME}"
+	elif command -v whoami > /dev/null; then
+		OVE_USER="$(\whoami)"
+	else
+		OVE_USER="ove"
+	fi
+	export OVE_USER
+
+	OVE_TMP=/tmp/${OVE_USER}/ove
 	export OVE_TMP
 	! [ -d "${OVE_TMP}" ] && \mkdir -p "${OVE_TMP}"
 
@@ -9040,7 +9051,7 @@ function ove-unittest {
 	shelltest=$(command -v shelltest)
 	shelltest_opts=" --debug "
 
-	\env -i - HOME=${HOME} USER=${USER} \
+	\env -i - HOME=${HOME} USER=${OVE_USER} \
 		${shelltest} ${tests} \
 		${shelltest_opts} \
 		--color \
@@ -9424,14 +9435,14 @@ function ove-pre-push {
 	[ -d ${OVE_PROJECT_TMP_DIR}/unittest ] && \rm -rf ${OVE_PROJECT_TMP_DIR}/unittest
 
 	if [ -n "${TMUX}" ]; then
-		ove-run-parallel 0 shell-check 0 unittest 0 generate-doc 0 "blame ${USER}"
+		ove-run-parallel 0 shell-check 0 unittest 0 generate-doc 0 "blame ${OVE_USER}"
 		sleep 1
 		\tail -f /dev/null --pid=$(\pgrep -f ove-unittest | \head -1)
 	else
 		ove-shell-check
 		ove-unittest
 		ove-generate-doc
-		ove-blame "${USER}"
+		ove-blame "${OVE_USER}"
 	fi
 
 	ove_externals
