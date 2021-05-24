@@ -7125,7 +7125,7 @@ function ove-lastlog {
 		cmin=$1
 	fi
 
-	\find ${OVE_LOG_DIR} -type f -cmin -${cmin} -print0 | \
+	\find ${OVE_LOG_DIR} -name '2*.log' -type f -cmin -${cmin} -print0 | \
 		\xargs -0 stat --format '%Y:%n:%s' | \
 		LC_ALL="C" \sort -nr | \
 		\cut -d: -f2- | \
