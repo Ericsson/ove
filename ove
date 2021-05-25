@@ -1097,7 +1097,7 @@ function ove_loop_command {
 			# start inotifywait in monitor mode in the background
 			# monitor all files (for now)
 			# shellcheck disable=SC2016
-			cmd='for f in $(ove_repo_cmd ${repo} ls-files); do [ -f ${f} ] && echo ${PWD}/${f}; done; echo ${PWD}/.git'
+			cmd='for f in $(ove_repo_cmd ${repo} ls-files); do [ -f ${f} ] && echo ${PWD}/${f}; done; [ -f ${PWD}/.git ] && echo ${PWD}/.git'
 			ove_revtab_forall_parallel "${cmd}" > ${all_files}
 
 			# extra files/directories to monitor?
