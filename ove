@@ -2882,7 +2882,7 @@ function ove_git_cmd_forall_parallel {
 }
 
 # $1: command
-# $2: args
+# $2: max number of jobs
 function ove_revtab_forall_parallel {
 	(
 	local max_parallel=0
@@ -6277,18 +6277,25 @@ EOF
 
 # ag:pattern:search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]
 function ove-ag {
+	local cmd
+
 	if ! command -v ag > /dev/null; then
 		ove_command_not_found "ag"
 		return 1
 	fi
 
-	if [ $# -eq 0 ]; then
-		echo "error: no pattern"
+	if [ $# -ne 1 ]; then
+		if [ $# -eq 0 ]; then
+			echo "error: no pattern"
+		fi
 		ove_command_usage
 		return 1
 	fi
 
-	ove_revtab_forall_parallel "\ag --hidden --color '$*' -- | \sed -e 's@^@${PWD}/@g'"
+	cmd="\ag --hidden --color '$*' -- | "
+	# shellcheck disable=SC2016
+	cmd+='\sed -e "s,^,${PWD}/,g"'
+	ove_revtab_forall_parallel "${cmd}"
 }
 
 # grep:[options] pattern:git grep [options] for all git repositories
