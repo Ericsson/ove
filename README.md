@@ -1,5 +1,7 @@
 ![OVE](ove.png)
 
+https://user-images.githubusercontent.com/25057211/120758396-1528a300-c512-11eb-82c8-ec479a800102.mp4
+
 # What is OVE?
 OVE is gathering git repositories and the knowledge how to build and test them. Well sort of, it is up to you to feed this information to OVE. However, OVE provides a well-defined structure for using and sharing this information with others. OVE also provides a number of commands for common tasks, flexible ways of including all sorts of projects as well as the ability to expand OVE on the go! OVE is not a one-entry-point tool, but rather a shell enhancer: All parts of the OVE workflow can be done manually from prompt. We like to view OVE as a way of removing not-updated-lately wikis, and instead share ready-to-use functionality.
 
