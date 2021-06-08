@@ -1858,7 +1858,7 @@ function ove-fzf {
 		else
 			args=$(printf '%s\n' "${COMPREPLY[@]}" | \
 				LC_ALL="C" \sort -u | \
-				fzf \
+				\fzf \
 					--cycle \
 					--preview "echo ESC\|CTRL+C to skip args $ ove ${cmd} {}" \
 					--preview-window=down:1)
@@ -6309,6 +6309,47 @@ function ove-grep {
 	ove_git_cmd_forall_parallel 0 "grep --color=always" "$@"
 }
 
+function ove_gf_helper {
+	if ! command -v fzf > /dev/null; then
+		echo "duckduckgo.com/?q=fzf"
+		return 1
+	fi
+
+	if [ $# -ne 1 ]; then
+		echo "error: no pattern"
+		return 1
+	fi
+
+	ove_git_cmd_forall_parallel 0 "grep -i -n --color=never" "$@"  | \
+		\sed -e "s,^\([^:]*\):\([0-9]\+\):,\1 +\2 ,"
+}
+
+# gfv:pattern:git grep+fzf+vi combo
+function ove-gfv {
+	local out
+
+	if ! out=$(ove_gf_helper "$@"); then
+		ove_command_usage
+		return 1
+	fi
+
+	printf "%s\n" "${out}" | \
+		\fzf --bind "enter:execute(eval \$(echo vi {} | \cut -d' ' -f1-3))"
+}
+
+# gfe:pattern:git grep+fzf+emacs combo
+function ove-gfe {
+	local out
+
+	if ! out=$(ove_gf_helper "$@"); then
+		ove_command_usage
+		return 1
+	fi
+
+	printf "%s\n" "${out}" | \
+		\fzf --bind "enter:execute(eval \$(echo emacs {} | \awk '{print \$1,\$3,\$2}'))"
+}
+
 # blame-history:pattern:git log -G -p pattern for all git repositories
 function ove-blame-history {
 	if [ $# -eq 0 ]; then
@@ -6320,7 +6361,7 @@ function ove-blame-history {
 	ove_revtab_forall 'ove_echo_yellow_noprefix ${repo_basename}; ove_repo_cmd ${repo} "--no-pager log" --color=always -p -G "'"$*"'"'
 }
 
-# blame:pattern:git grep-blame-log combo
+# blame:pattern:git grep+blame+log combo
 function ove-blame {
 	local f
 	local i
@@ -9371,6 +9412,7 @@ function ove_externals {
 	cmds+=('find')
 	cmds+=('flock')
 	cmds+=('fold')
+	cmds+=('fzf')
 	cmds+=('grep')
 	cmds+=('head')
 	cmds+=('inotifywait')
