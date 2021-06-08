@@ -6321,7 +6321,7 @@ function ove_gf_helper {
 		return 1
 	fi
 
-	ove_git_cmd_forall_parallel 0 "grep -i -n --color=never" "$@"  | \
+	ove_git_cmd_forall_parallel 0 "grep -i -I -n --color=never" "$@"  | \
 		\sed -e "s,^\([^:]*\):\([0-9]\+\):,\1 +\2 ,"
 }
 
