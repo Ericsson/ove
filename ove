@@ -6311,6 +6311,7 @@ function ove-grep {
 
 function ove_gf_helper {
 	if ! command -v fzf > /dev/null; then
+		ove_command_not_found "fzf"
 		echo "duckduckgo.com/?q=fzf"
 		return 1
 	fi
@@ -6328,26 +6329,44 @@ function ove_gf_helper {
 function ove-gfv {
 	local out
 
-	if ! out=$(ove_gf_helper "$@"); then
+	if ! command -v vi > /dev/null; then
+		ove_command_not_found "vi"
 		ove_command_usage
 		return 1
 	fi
 
+	if ! out=$(ove_gf_helper "$@"); then
+		ove_command_usage
+		return 1
+	elif [ "${out}" == "" ]; then
+		return 1
+	fi
+
 	printf "%s\n" "${out}" | \
-		\fzf --bind "enter:execute(eval \$(echo vi {} | \cut -d' ' -f1-3))"
+		\fzf --bind "enter:execute(eval \$(echo vi {} | \cut -d' ' -f1-3))" \
+		     --bind "left-click:execute(eval \$(echo vi {} | \cut -d' ' -f1-3))"
 }
 
 # gfe:pattern:git grep+fzf+emacs combo
 function ove-gfe {
 	local out
 
-	if ! out=$(ove_gf_helper "$@"); then
+	if ! command -v emacs > /dev/null; then
+		ove_command_not_found "emacs"
 		ove_command_usage
 		return 1
 	fi
 
+	if ! out=$(ove_gf_helper "$@"); then
+		ove_command_usage
+		return 1
+	elif [ "${out}" == "" ]; then
+		return 1
+	fi
+
 	printf "%s\n" "${out}" | \
-		\fzf --bind "enter:execute(eval \$(echo emacs {} | \awk '{print \$1,\$3,\$2}'))"
+		\fzf --bind "enter:execute(eval \$(echo emacs {} | \awk '{print \$1,\$3,\$2}'))" \
+		     --bind "left-click:execute(eval \$(echo emacs {} | \awk '{print \$1,\$3,\$2}'))"
 }
 
 # blame-history:pattern:git log -G -p pattern for all git repositories
