@@ -3819,10 +3819,16 @@ function ove-systest {
 			match=$(\grep -c -w ^${test_name} "${OVE_PROJECT_DIR}"/systests)
 			if [ ${match} -eq 0 ]; then
 				ove_echo_error_noprefix "${FUNCNAME[0]}:can not find '${test_name}'"
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+				summary+="${result}\n"
+				echo -e ${summary}
 				continue
 			elif [ ${match} -gt 1 ]; then
 				ove_echo_error_noprefix "${FUNCNAME[0]}:${match} match(es) for '${test_name}'"
 				\grep ^${test_name} "${OVE_PROJECT_DIR}"/systests
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+				summary+="${result}\n"
+				echo -e ${summary}
 				continue
 			fi
 		fi
@@ -3831,16 +3837,48 @@ function ove-systest {
 		test_name=${systest_row[0]}
 		systest_timeout=${systest_row[1]}
 		systest_type=${systest_row[2]}
-		systest_path=${OVE_BASE_DIR}/${systest_row[3]//\"}
-		systest_cmd=${systest_row[*]:4}
-		systest_cmd=${systest_cmd//\"}
 
-		if ! [ -d "${systest_path}" ]; then
-			ove_echo_error_noprefix "'${systest_path}' is not a valid path for systest: '${test_name}'"
+		systest_path=${systest_row[3]//\"}
+		systest_path=$(eval echo ${systest_path})
+		if [ "x${systest_path}" = "x" ]; then
+			ove_echo_error_noprefix "none valid path for systest '${test_name}'"
+			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+			summary+="${result}\n"
+			echo -e ${summary}
 			continue
 		fi
 
-		pushd "${systest_path}" &> /dev/null
+		if [ "${systest_path:0:1}" = "/" ]; then
+			# abs path
+			if ! [ -d "${systest_path}" ]; then
+				ove_echo_error_noprefix "path '${systest_path}' not found for systest '${test_name}'"
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+				summary+="${result}\n"
+				echo -e ${summary}
+				continue
+			fi
+		else
+			# rel path
+			if ! [ -d "${OVE_BASE_DIR}/${systest_path}" ]; then
+				ove_echo_error_noprefix "path '${OVE_BASE_DIR}/${systest_path}' not found for systest '${test_name}'"
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+				summary+="${result}\n"
+				echo -e ${summary}
+				continue
+			fi
+			systest_path="${OVE_BASE_DIR}/${systest_path}"
+		fi
+		systest_cmd=${systest_row[*]:4}
+		systest_cmd=${systest_cmd//\"}
+
+		if ! pushd "${systest_path}" &> /dev/null; then
+			ove_echo_error_noprefix "'pushd ${systest_path}' failed for systest '${test_name}'"
+			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+			summary+="${result}\n"
+			echo -e ${summary}
+			continue
+		fi
+
 		shift
 		printf "${FUNCNAME[0]}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
 
@@ -3861,7 +3899,7 @@ function ove-systest {
 				timeout_cmd="timeout --foreground --kill-after 30s ${systest_timeout}"
 			fi
 
-			if ${timeout_cmd} ${systest_cmd}; then
+			if ${timeout_cmd} bash -c "{ ${systest_cmd}; }"; then
 				# test passed
 				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_green}OK${ove_blank}]:${test_name}" ${i} ${nbr_tests})
 			else
@@ -3889,10 +3927,10 @@ function ove-systest {
 				fi
 
 				# test failed
-				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ${exit_status}]:${test_name}"  ${i} ${nbr_tests})
+				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ${exit_status}]:${test_name}" ${i} ${nbr_tests})
 
 				# type 1 systest or SIGINT => stop loop
-				if [ ${systest_type} -eq 1 ] || [ ${exit_status} == "SIGINT" ] ; then
+				if [ ${systest_type} -eq 1 ] || [ ${exit_status} == "SIGINT" ]; then
 					echo ${result}
 					summary+="${result}\n"
 					popd &> /dev/null
@@ -7646,7 +7684,7 @@ function ove_update_tab_complete {
 	OVE_ALL_COMMANDS+=" ${OVE_BUILT_INS}"
 
 	# scripts
-	if [ "${OVE_SCRIPTS_LIST}" != "" ];then
+	if [ "${OVE_SCRIPTS_LIST}" != "" ]; then
 		OVE_ALL_COMMANDS+=" ${OVE_SCRIPTS_LIST}"
 	fi
 
@@ -9030,8 +9068,8 @@ function ove_unittest_preparations {
 
 	# create systests
 	for a in $(\seq 1 ${nbr_of_systests}); do
-		echo "ok${a} 10 0 \"\" true" >> ${unittest_dir}/git-top/systests
-		echo "nok${a} 10 0 \"\" false" >> ${unittest_dir}/git-top/systests
+		echo "ok${a} 10 0 . true" >> ${unittest_dir}/git-top/systests
+		echo "nok${a} 10 0 / false" >> ${unittest_dir}/git-top/systests
 	done
 	# create systests-groups
 	echo "all:" >> ${unittest_dir}/git-top/systests-groups

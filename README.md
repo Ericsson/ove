@@ -152,17 +152,19 @@ We have already covered how OVE keeps track of repos, how sub-project build meth
 * name: Unique identifier for the test
 * timeout: time in seconds when the test should finish. 0 = no timeout.
 * type: 0 = normal. 1 = will break execution on failures if this test is part of a test suite.
-* path: where to execute the test
-* command: command to execute
+* path: where to execute the test (either relative to OVE_BASE_DIR or an absolute path)
+* command: command(s) to execute
 
 Example:
 
     $ cat systests
     # name       timeout (s)   type   path   command
     # ----------------------------------------------
-    t1              5          0      repoX  "sleep 4"
-    t2              1          0      repoX  "echo Hello"
-    t3           3600          0      repoY  "./long-duration-test
+    t1              5          0      repoX  sleep 4
+    t2              1          0      .      sleep 2
+    t3           3600          0      repoY  ./long-duration-test
+    t4              3          0      $HOME  echo hellu $LOGNAME; ls -l; whoami
+    t5              3          0      /tmp   pwd
 
 'systests-groups' is a YAML file that contains groups/sets of tests. Example:
 
