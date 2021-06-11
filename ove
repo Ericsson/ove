@@ -1075,6 +1075,10 @@ function ove_loop_command {
 	shift 3
 	(( i=0 ))
 	while true; do
+		if ! ove_verify_checksums && ! ove_reinit; then
+			read -r -p "" -t 3
+			continue
+		fi
 		(( i+=1 ))
 		[ ${max_count} -ne 0 ] && [ ${i} -gt ${max_count} ] && break
 		clear
