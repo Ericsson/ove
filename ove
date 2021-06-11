@@ -3515,6 +3515,14 @@ function ove-forall-parallel {
 	ove_revtab_forall_parallel "$*"
 }
 
+# list systest groups helper
+function ove_list_systest_groups {
+	if [ -e ${OVE_PROJECT_DIR}/systests-groups ]; then
+		\grep : "${OVE_PROJECT_DIR}"/systests-groups | \
+			\sed -e 's,[[:space:]],,g' -e 's,^-,,g' -e 's,:$,,g'
+	fi
+}
+
 # list-systests: :list available system tests
 function ove-list-systests {
 	! [ -e ${OVE_PROJECT_DIR}/systests ] && return
@@ -3526,10 +3534,8 @@ function ove-list-systests {
 		\awk '{print $1}' | \
 		\cut -d: -f1
 
-	if [ -e ${OVE_PROJECT_DIR}/systests-groups ]; then
-		\grep : "${OVE_PROJECT_DIR}"/systests-groups | \
-			\sed 's|[-:[:space:]]||g'
-	fi) | LC_ALL="C" \sort
+	ove_list_systest_groups
+	) | LC_ALL="C" \sort
 }
 
 # list-systests-aliases: :list available system test aliases
@@ -3728,9 +3734,7 @@ function ove-systest {
 	if ! [ -e ${OVE_PROJECT_DIR}/systests-groups ]; then
 		test_list="$*"
 	else
-		groups=$(\grep : ${OVE_PROJECT_DIR}/systests-groups | \
-			\sed 's|[-:[:space:]]||g'| \
-			LC_ALL="C" \sort)
+		groups=$(ove_list_systest_groups | LC_ALL="C" \sort)
 
 		if [ "${groups}" == "" ]; then
 			test_list="$*"
