@@ -6195,16 +6195,16 @@ function ove_help {
 	local g
 	local h
 
-	echo "Commands"
+	ove_echo_cyan_noprefix "commands"
 	echo "--------"
 	ove-list-commands
 	echo
 	\cat <<EOF
 
-Examples
-========
+$(ove_echo_cyan_noprefix "EXAMPLES")
+--------
 
-High level git commands
+$(ove_echo_cyan_noprefix "high level git commands")
 -----------------------
 # status of all git repositories
 $ ove status
@@ -6230,7 +6230,7 @@ $ ove format-patch featY.tar.bz2
 # apply an archive that someone sent me
 $ ove am featY.tar.bz2
 
-Build related commands
+$(ove_echo_cyan_noprefix "build related commands")
 ----------------------
 # list build order
 $ ove build-order
@@ -6258,7 +6258,7 @@ $ ove clean
 # remove all untracked files for all git repositories USE WITH CARE
 $ ove mrproper
 
-Utility commands
+$(ove_echo_cyan_noprefix "utility commands")
 ----------------
 # list patches your friends have upstreamed since your last pull
 $ ove news
@@ -6269,29 +6269,30 @@ $ ove show-news
 # run 'ls -l' for all repos
 $ ove forall ls -l
 
-# run 'git maintenance' for all repos (in parallel)
-$ ove forall-parallel git maintenance
+# run 'git maintenance run --quiet' for all repos (in parallel)
+$ ove forall-parallel git maintenance run --quiet
 
 # open your modified files in vi/emacs
 $ ove vi
 $ ove emacs
 
-# open all modified files in vi, but only files with 'test' in the name
+# open modified files in vi, but only files with 'test' in the name
 $ ove vi test
 
 # search all repositories for 'au' using The Silver Searcher
 $ ove ag au
 
+# search all repositories using fzf and vi
+$ ove gfv "int i = 0"
+
 # trigger a build of projX when a file is modified
 $ ove clean projX && ove loop 0 1 0 build projX
 # now modify a file within projX in another tmux pane/terminal
 
-Plugins
--------
 # open a few tmux panes that runs the following OVE commands: news, ahead, fetch and 'do . task'
 $ ove ide
 
-Configuration
+$(ove_echo_cyan_noprefix "configuration")
 -------------
 # OVE tries to keep all repos in-sync with whatever is stated in the '\${OVE_PROJECT_DIR}/revtab' file.
 # If you don't want this behaviour set the 'OVE_REVTAB_CHECK' config to '0'. Choose one of:
@@ -6313,7 +6314,7 @@ EOF
 		[ -s "${h}" ] || continue
 		echo
 		g=${h//${OVE_BASE_DIR}\/}
-		echo "${g}"
+		ove_echo_cyan_noprefix "${g}"
 		printf "%0.s-" $(eval echo {1..$((${#g}))})
 		echo
 		\cat "${h}"
