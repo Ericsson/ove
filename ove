@@ -6390,8 +6390,8 @@ function ove-gfv {
 
 	printf "%s\n" "${out}" | \
 		SHELL=$(command -v bash) \
-		\fzf --bind "enter:execute(eval \$(echo vi {} | \cut -d' ' -f1-3))" \
-		     --bind "left-click:execute(eval \$(echo vi {} | \cut -d' ' -f1-3))"
+		\fzf --bind "enter:execute(< /dev/tty eval \$(echo vi {} | \cut -d' ' -f1-3))" \
+		     --bind "left-click:execute(< /dev/tty eval \$(echo vi {} | \cut -d' ' -f1-3))"
 }
 
 # gfe:pattern:git grep+fzf+emacs combo
