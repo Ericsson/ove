@@ -1459,6 +1459,7 @@ function ove-loop-close {
 	fi
 
 	ove_kill_procs 1 0.2 $(\pgrep -f ove_loop_command)
+	ove_kill_procs 1 0.2 $(\pgrep -f "inotifywait.*${OVE_PROJECT_TMP_DIR}")
 }
 
 # loop:|[timeout|x] [inotify|x] [max-count|x] command]:loop one OVE command
