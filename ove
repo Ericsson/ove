@@ -3007,7 +3007,7 @@ function ove_revtab_checkout_one {
 	name=${ove_revtab_git_name[${1}]}
 	revision=${ove_revtab_rev[${1}]}
 	while true; do
-		if ! ove_repo_cmd "${OVE_BASE_DIR}/${name}" "-c advice.detachedHead=false checkout" "${revision}"; then
+		if ! ove_repo_cmd "${OVE_BASE_DIR}/${name}" "-c advice.detachedHead=false checkout" "${revision}" "--"; then
 			return 1
 		fi
 		break
