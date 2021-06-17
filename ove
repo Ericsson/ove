@@ -6027,6 +6027,11 @@ function ove-do {
 	cd ${OVE_BASE_DIR}/${dir} && eval "${cmd}"
 }
 
+# fetch-fetched: :git fetch --all for already fetched repositories, ends with ove status
+function ove-fetch-fetched {
+       ove-fetch $(ove-status | \awk '{print $1}')
+}
+
 # fetch:[git...]:git fetch --all for all/specified repositories, ends with ove status
 function ove-fetch {
 	local repos
