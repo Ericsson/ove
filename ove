@@ -208,7 +208,6 @@ function ove-unsource {
 		\grep -E '^ove($|[-_])' | \
 		\awk '{print $1}') \
 		${FUNCNAME[0]}
-	echo "OVE has been removed from this bash shell [pid:${BASHPID}]" 1>&2
 }
 
 # interactive shell? clean up
@@ -371,6 +370,11 @@ function ove_main {
 
 		# turn on monitor mode
 		set -m
+	else
+		if ! ove_init; then
+			ove-unsource
+			return 1
+		fi
 	fi
 }
 
@@ -1776,7 +1780,7 @@ function ove {
 
 		# run the command
 		SHELL=$(command -v bash) \
-			\script ${OVE_SCRIPT_OPTIONS} -c "source ${OVE_BASE_DIR}/ove; ove_init quick && ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
+			\script ${OVE_SCRIPT_OPTIONS} -c "source ${OVE_BASE_DIR}/ove; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
 			${OVE_LAST_COMMAND}
 		ret=$?
 
@@ -1833,7 +1837,7 @@ function ove-fzf {
 			\grep -v '!' | \
 			SHELL=${shell} \fzf \
 			--cycle \
-			--preview '${OVE_INIT_STRING}; ove-list-commands ^{1}:' \
+			--preview 'ove list-commands ^{1}:' \
 			--preview-window=down:1 \
 		)
 		[ "${cmd}" == "" ] && break
@@ -8086,6 +8090,7 @@ function ove_reinit {
 # init:initialize OVE workspace
 function ove_init {
 	local dir
+	local func
 	local script_help
 
 	if ! dir=$(ove_get_base_dir); then
@@ -8124,8 +8129,6 @@ function ove_init {
 			[ -e ${OVE_PROJECT_TMP_DIR}/trace.cont ] && break
 		done
 	fi
-
-	[ "$1" == "quick" ] && return 0
 
 	if ! ove_validate_self; then
 		return 1
@@ -8181,9 +8184,6 @@ function ove_init {
 	export OVE_SHA
 	OVE_LAST_COMMAND=
 	export OVE_LAST_COMMAND
-	# shellcheck disable=SC2016
-	OVE_INIT_STRING='eval source ${OVE_BASE_DIR}/ove; ove_init quick'
-	export OVE_INIT_STRING
 	OVE_PAGER="less -R"
 	export OVE_PAGER
 
@@ -8291,6 +8291,12 @@ function ove_init {
 	fi
 
 	ove_update_checksum
+
+	# export functions
+	for func in $(compgen -A function | \grep "^ove[-_]") ove; do
+		# shellcheck disable=SC2163
+		export -f ${func}
+	done
 
 	return 0
 }

@@ -23,10 +23,8 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$OVE_INIT_STRING
-
 # list all MAJOR.MINOR.PATCH tags
-ove-tag | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | sort -Vr > "${OVE_TMP}"/tags
+ove tag | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | sort -Vr > "${OVE_TMP}"/tags
 
 if ! [ -s "${OVE_TMP}"/tags ]; then
 	echo "error: no tags"
@@ -39,7 +37,7 @@ s=$(head -1 "${OVE_TMP}"/tags)
 # create a CHANGELOG
 for t in $(tail -n +2 "${OVE_TMP}"/tags); do
 	echo "${s}"
-	ove-log-project "${t}" "${s}";
+	ove log-project "${t}" "${s}";
 	s=$t
 done > "${OVE_PROJECT_DIR}"/CHANGELOG
 
