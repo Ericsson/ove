@@ -6859,19 +6859,14 @@ function ove-list-modified-files {
 	# shellcheck disable=SC2016
 	cmd='ove_repo_cmd ${repo} "--no-pager diff-index" --quiet HEAD || ove_repo_cmd ${repo} diff --name-only HEAD | \sed -e "s|^|${repo}/|g"'
 
-	ove_revtab_forsome_parallel "${cmd}" 0 "$(ove_dirty_repos)" | LC_ALL="C" \sort -u
+	ove_revtab_forsome_parallel "${cmd}" 0 "$(ove_dirty_repos)" 2> /dev/null | LC_ALL="C" \sort -u
 }
 
 # list-modified-files-basename: :list modified files (basename)
 function ove-list-modified-files-basename {
 	ove_entry
 
-	local cmd
-
-	# shellcheck disable=SC2016
-	cmd='ove_repo_cmd ${repo} "--no-pager diff-index" --quiet HEAD || ove_repo_cmd ${repo} diff --name-only HEAD | \sed -e "s|^|${repo}/|g" -e "s|.*/||g"'
-
-	ove_revtab_forsome_parallel "${cmd}" 0 "$(ove_dirty_repos)" | LC_ALL="C" \sort -u
+	ove-list-modified-files | \sed "s|.*/||g"
 }
 
 # list-committed-files:[days]:list committed files within 7 or days day(s)
