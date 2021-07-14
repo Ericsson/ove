@@ -1,0 +1,9 @@
+# no projs file
+bash -c "OVE_TEST_STRING; rm .owel/projs; . ove; ove nop"
+>>>= 0
+# empty projs file
+bash -c "OVE_TEST_STRING; > .owel/projs; . ove; ove nop"
+>>>= 0
+# corrupt projs file
+bash -c "OVE_TEST_STRING; echo 1234 > .owel/projs; . ove; ret=\$?; git -C .owel checkout projs; trap '' EXIT; exit \$ret"
+>>>= 1

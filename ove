@@ -2001,7 +2001,9 @@ function ove_projects_init {
 	unset ove_projects_name2index
 	ove_number_of_projects=0
 
-	[ ! -e "${OVE_PROJECT_DIR}/projs" ] && return
+	if [ ! -s "${OVE_PROJECT_DIR}/projs" ] || [ "x${OVE_PROJECT_LIST}" = "x" ]; then
+		return
+	fi
 
 	if ! eval $(ove_parse_yaml "${OVE_PROJECT_DIR}/projs") 2> /dev/null; then
 		ove_echo_error_noprefix "possible format error(s) in '${OVE_PROJECT_DIR}/projs'"
@@ -9361,6 +9363,10 @@ function ove_unittest_exit {
 	fi
 }
 
+function ove_unittest_cleanup {
+	\git -C ${OVE_PROJECT_DIR} checkout projs revtab
+}
+
 # unittest:[test...]:run all/specific unit tests
 function ove-unittest {
 	ove_entry
@@ -9434,7 +9440,7 @@ function ove-unittest {
 		--color \
 		--diff \
 		-a \
-		-DOVE_TEST_STRING="set -m; source ove > /dev/null; ove_init > /dev/null; export TIMEFORMAT=\"%3lR\"; ove-loglevel 0 > /dev/null" \
+		-DOVE_TEST_STRING="set -m; source ove > /dev/null; ove_init > /dev/null; export TIMEFORMAT=\"%3lR\"; ove-loglevel 0 > /dev/null; trap ove_unittest_cleanup EXIT" \
 		-DOVE_DEFAULT_BRANCH_NAME=${OVE_DEFAULT_BRANCH_NAME} \
 		-Dnbr_of_systests=$(((nbr_of_systests * 2) + 1)) \
 		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
