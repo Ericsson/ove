@@ -5258,15 +5258,23 @@ function ove_install_packages {
 	fi
 
 	cmd="${OVE_OS_PACKAGE_MANAGER} ${OVE_OS_PACKAGE_MANAGER_ARGS} ${missing_packages_sorted}"
-
-	echo "missing package(s):"
-	echo
-	echo "To fix this, run the following command:"
-	echo
 	[ ${EUID} != 0 ] && cmd="sudo ${cmd}"
-	echo -e "\t${cmd}"
-	echo
-	return 1
+
+	if [ ${OVE_INSTALL_PKG:?} -eq 1 ]; then
+		if ! ${cmd}; then
+			ove_echo_error_noprefix "${FUNCNAME[0]}: fatal: '${cmd}' failed"
+			return 1
+		fi
+		return 0
+	else
+		echo "missing package(s):"
+		echo
+		echo "To fix this, run the following command:"
+		echo
+		echo -e "\t${cmd}"
+		echo
+		return 1
+	fi
 }
 
 # export:[project...]:export project(s)
@@ -8316,6 +8324,11 @@ function ove_config_builtins_init {
 	# OVE_ACCELERATE_BUILDS:int:0|1:all-build-commands:prefix build acceleration tools (ccache/icecream) to PATH
 	if [ -z "${OVE_ACCELERATE_BUILDS+x}" ]; then
 		export OVE_ACCELERATE_BUILDS=0
+	fi
+
+	# OVE_INSTALL_PKG:int:0|1:install-pkg:prompt (=0) or install (=1) packages
+	if [ -z "${OVE_INSTALL_PKG+x}" ]; then
+		export OVE_INSTALL_PKG=0
 	fi
 }
 
