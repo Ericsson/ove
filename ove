@@ -8388,6 +8388,9 @@ function ove_init {
 		return 1
 	fi
 
+	# remove broken README symlink
+	find ${OVE_BASE_DIR} -maxdepth 1 -name 'README' -type l ! -exec test -e {} \; -delete
+
 	if ! [ -L ${OVE_BASE_DIR}/README ]; then
 		if [ -s ${OVE_PROJECT_DIR}/README ]; then
 			( cd ${OVE_BASE_DIR} && \ln -s -r ${OVE_PROJECT_DIR}/README .)
