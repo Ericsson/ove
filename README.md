@@ -66,8 +66,8 @@ How does OVE keep track of dependencies? Well, to start with there are (at least
     name:      name of project, characters allowed: a-z, A-Z, 0-9 and underscore
       deps:    list of projects that need to be built before myself
       needs:   list of packages that need to be installed before I can be built
-      path:    path to the source code of this project
-      version: Optional. Passed on to all build stages for this project.
+      path:    path to project work directory. Relative to OVE_BASE_DIR or an absolute path.
+      version: Optional. Passed on as a bash variable to all steps for this project.
 
 'needs' can be extended with specific distro requirements, syntax:
 
@@ -109,7 +109,7 @@ Example:
       needs_rhel:
         pkgE
       path:
-        repoY
+        /tmp/projC
 
 Thats how OVE resolves external and internal dependencies for builds. As you just read above, the 'version:' keyword creates an environment variable that is passed to all build steps. What are those steps exactly? We cover that in the next section:
 

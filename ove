@@ -2124,7 +2124,11 @@ function ove_projects_init {
 
 		# path
 		tmp_var="ove_${projects[${i}]}_path"
-		ove_projects_path[${i}]=${!tmp_var}
+		if [ "${!tmp_var:0:1}" = "/" ]; then
+			ove_projects_path[${i}]="${!tmp_var}"
+		else
+			ove_projects_path[${i}]="${OVE_BASE_DIR}/${!tmp_var}"
+		fi
 		unset ${tmp_var}
 
 		# needs
@@ -2198,7 +2202,7 @@ function ove_list_projects_paths {
 
 	i=0
 	while ((i < ove_number_of_projects)); do
-		s+="${OVE_BASE_DIR}/${ove_projects_path[${i}]} "
+		s+="${ove_projects_path[${i}]} "
 		(( i+=1 ))
 	done
 
@@ -2224,19 +2228,24 @@ function ove_projects_cmd {
 	! [ -e "${OVE_PROJECT_DIR}/projects/${target}/${cmd}" ] && return
 
 	i=${ove_projects_name2index[${target}]}
+	path="${ove_projects_path[${i}]}"
 
 	# create dir if needed
-	[ ! -d "${OVE_BASE_DIR}"/"${ove_projects_path[${i}]}" ] \
-		&& \mkdir -vp "${OVE_BASE_DIR}"/"${ove_projects_path[${i}]}"
-
-	path="${OVE_BASE_DIR}/${ove_projects_path[${i}]}"
-
-	if [ ${OVE_LOGLEVEL} -ne 0 ]; then
-		ove_echo_cyan_error "${target}: ${cmd}"
+	if [ ! -d "${path}" ]; then
+		if ! \mkdir -vp "${path}"; then
+			ove_echo_warning_noprefix "${target}: ${cmd}: 'mkdir -vp ${path}' failed"
+		fi
 	fi
 
 	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
-		pushd "${path}" &>/dev/null
+		if ! pushd "${path}" &>/dev/null; then
+			ove_echo_error_noprefix "${target}: ${cmd}: pushd '${path}' failed"
+			return 1
+		fi
+	fi
+
+	if [ ${OVE_LOGLEVEL} -ne 0 ]; then
+		ove_echo_cyan_error "${target}: ${cmd}"
 	fi
 
 	if [[ ${FUNCNAME[*]} == *-parallel ]] && [ "x${OVE_FORCE_SERIALIZE_COMMANDS}" != "x" ]; then
@@ -2281,7 +2290,11 @@ function ove_projects_cmd {
 	fi
 
 	# exit directory
-	[ "${OVE_DRY_RUN}" -eq 0 ] && popd &>/dev/null
+	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
+		if ! popd &>/dev/null; then
+			ove_echo_warning_noprefix "${target}: ${cmd}: popd failed"
+		fi
+	fi
 
 	if [ "${ret}" -ne 0 ]; then
 		ove_echo_error "${target}: ${cmd}"
@@ -5114,12 +5127,12 @@ function ove_get_paths_recursive {
 	i=${ove_projects_name2index[$1]}
 
 	if [ "${ove_projects_deps[${i}]}" == "" ]; then
-		echo -n "${OVE_BASE_DIR}/${ove_projects_path[${i}]} "
+		echo -n "${ove_projects_path[${i}]} "
 		return
 	fi
 
 	for dep in ${ove_projects_deps[${i}]}; do
-		echo -n "${OVE_BASE_DIR}/${ove_projects_path[${i}]} "
+		echo -n "${ove_projects_path[${i}]} "
 		ove_get_paths_recursive ${dep}
 	done
 }
@@ -5330,7 +5343,7 @@ function ove-export {
 					LC_ALL="C" \sort -u | \
 					\sed -e 's|^|    |g')\n"
 
-				paths+="${OVE_BASE_DIR}/${ove_projects_path[${i}]} "
+				paths+="${ove_projects_path[${i}]} "
 			done
 			str+="\n"
 		done
@@ -8655,7 +8668,7 @@ function ove_buildable_projects {
 	# remove projects with paths within git repos not yet fetched
 	for proj in ${OVE_PROJECT_LIST}; do
 		i=${ove_projects_name2index[${proj}]}
-		proj_path="${OVE_BASE_DIR}/${ove_projects_path[${i}]}"
+		proj_path="${ove_projects_path[${i}]}"
 		for q in ${OVE_REPO_LIST}; do
 			if [[ ${proj_path} == *"${q}"* ]] && ! [ -d "${q}" ]; then
 				test "${projs_hash["${proj}"]+isset}" && continue
