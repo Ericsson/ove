@@ -1800,7 +1800,7 @@ function ove {
 
 		# run the command
 		SHELL=$(command -v bash) \
-			\script ${OVE_SCRIPT_OPTIONS} -c "source ${OVE_BASE_DIR}/ove; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
+			\script ${OVE_SCRIPT_OPTIONS} -c "source ${OVE_BASE_DIR}/ove; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
 			${OVE_LAST_COMMAND}
 		ret=$?
 
