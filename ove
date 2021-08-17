@@ -316,12 +316,12 @@ function ove_main {
 		return 1
 	fi
 
-	ove_green="\033[1;32;7m"
-	ove_cyan="\033[1;36;7m"
-	ove_yellow_x="1;33;7m"
-	ove_yellow="\033[${ove_yellow_x}"
-	ove_red="\033[1;31;7m"
-	ove_blank="\033[0m"
+	export OVE_COLOR_GREEN="\033[1;32;7m"
+	export OVE_COLOR_CYAN="\033[1;36;7m"
+	export OVE_COLOR_YELLOW_X="1;33;7m"
+	export OVE_COLOR_YELLOW="\033[${OVE_COLOR_YELLOW_X}"
+	export OVE_COLOR_RED="\033[1;31;7m"
+	export OVE_COLOR_BLANK="\033[0m"
 
 	if [ "x${USER}" != "x" ]; then
 		OVE_USER="${USER}"
@@ -3703,35 +3703,35 @@ function ove_echo {
 }
 
 function ove_echo_cyan {
-	ove_echo "${ove_cyan}""$*""${ove_blank}"
+	ove_echo "${OVE_COLOR_CYAN}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_cyan_error {
-	ove_echo "${ove_cyan}""$*""${ove_blank}" 1>&2;
+	ove_echo "${OVE_COLOR_CYAN}""$*""${OVE_COLOR_BLANK}" 1>&2;
 }
 
 function ove_echo_cyan_error_noprefix {
-	echo -e "${ove_cyan}""$*""${ove_blank}" 1>&2;
+	echo -e "${OVE_COLOR_CYAN}""$*""${OVE_COLOR_BLANK}" 1>&2;
 }
 
 function ove_echo_yellow {
-	ove_echo "${ove_yellow}""$*""${ove_blank}"
+	ove_echo "${OVE_COLOR_YELLOW}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_green_noprefix {
-	echo -e "${ove_green}""$*""${ove_blank}"
+	echo -e "${OVE_COLOR_GREEN}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_red {
-	ove_echo "${ove_red}""$*""${ove_blank}"
+	ove_echo "${OVE_COLOR_RED}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_red_noprefix {
-	echo -e "${ove_red}""$*""${ove_blank}"
+	echo -e "${OVE_COLOR_RED}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_yellow_noprefix {
-	echo -e "${ove_yellow}""$*""${ove_blank}"
+	echo -e "${OVE_COLOR_YELLOW}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_warning {
@@ -3739,11 +3739,11 @@ function ove_echo_warning {
 }
 
 function ove_echo_cyan_noprefix {
-	echo -e "${ove_cyan}""$*""${ove_blank}"
+	echo -e "${OVE_COLOR_CYAN}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_note_noprefix {
-	echo -e "${ove_cyan}NOTE:${ove_blank} $*"
+	echo -e "${OVE_COLOR_CYAN}NOTE:${OVE_COLOR_BLANK} $*"
 }
 
 function ove_echo_error {
@@ -3895,14 +3895,14 @@ function ove-systest {
 			match=$(\grep -c -w ^${test_name} "${OVE_PROJECT_DIR}"/systests)
 			if [ ${match} -eq 0 ]; then
 				ove_echo_error_noprefix "${FUNCNAME[0]}:can not find '${test_name}'"
-				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
 				summary+="${result}\n"
 				echo -e ${summary}
 				continue
 			elif [ ${match} -gt 1 ]; then
 				ove_echo_error_noprefix "${FUNCNAME[0]}:${match} match(es) for '${test_name}'"
 				\grep ^${test_name} "${OVE_PROJECT_DIR}"/systests
-				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
 				summary+="${result}\n"
 				echo -e ${summary}
 				continue
@@ -3918,7 +3918,7 @@ function ove-systest {
 		systest_path=$(eval echo ${systest_path})
 		if [ "x${systest_path}" = "x" ]; then
 			ove_echo_error_noprefix "none valid path for systest '${test_name}'"
-			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
 			summary+="${result}\n"
 			echo -e ${summary}
 			continue
@@ -3928,7 +3928,7 @@ function ove-systest {
 			# abs path
 			if ! [ -d "${systest_path}" ]; then
 				ove_echo_error_noprefix "path '${systest_path}' not found for systest '${test_name}'"
-				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
 				summary+="${result}\n"
 				echo -e ${summary}
 				continue
@@ -3937,7 +3937,7 @@ function ove-systest {
 			# rel path
 			if ! [ -d "${OVE_BASE_DIR}/${systest_path}" ]; then
 				ove_echo_error_noprefix "path '${OVE_BASE_DIR}/${systest_path}' not found for systest '${test_name}'"
-				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
 				summary+="${result}\n"
 				echo -e ${summary}
 				continue
@@ -3949,7 +3949,7 @@ function ove-systest {
 
 		if ! pushd "${systest_path}" &> /dev/null; then
 			ove_echo_error_noprefix "'pushd ${systest_path}' failed for systest '${test_name}'"
-			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ENV]:${test_name}" ${i} ${nbr_tests})"
+			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
 			summary+="${result}\n"
 			echo -e ${summary}
 			continue
@@ -3967,7 +3967,7 @@ function ove-systest {
 
 		if [ "${OVE_DRY_RUN}" -eq 1 ]; then
 			# dry run
-			result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_green}OK${ove_blank}]:${test_name}" ${i} ${nbr_tests})
+			result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_GREEN}OK${OVE_COLOR_BLANK}]:${test_name}" ${i} ${nbr_tests})
 		else
 			if [ ${systest_timeout} -eq 0 ]; then
 				timeout_cmd=""
@@ -3977,7 +3977,7 @@ function ove-systest {
 
 			if ${timeout_cmd} bash -c "{ ${systest_cmd}; }"; then
 				# test passed
-				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_green}OK${ove_blank}]:${test_name}" ${i} ${nbr_tests})
+				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_GREEN}OK${OVE_COLOR_BLANK}]:${test_name}" ${i} ${nbr_tests})
 			else
 				systest_exit_code=$?
 
@@ -4003,7 +4003,7 @@ function ove-systest {
 				fi
 
 				# test failed
-				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${ove_yellow}NOK${ove_blank} ${exit_status}]:${test_name}" ${i} ${nbr_tests})
+				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ${exit_status}]:${test_name}" ${i} ${nbr_tests})
 
 				# type 1 systest or SIGINT => stop loop
 				if [ ${systest_type} -eq 1 ] || [ ${exit_status} == "SIGINT" ]; then
@@ -6097,7 +6097,7 @@ function ove-apply {
 	p="${OVE_PROJECT_TMP_DIR}/${1##*/}"
 
 	# get a list of line numbers where to split the file
-	lineno=$(\grep -n "${ove_yellow_x}" "${p}"| \tail -n +2 | \cut -d: -f1 | \xargs)
+	lineno=$(\grep -n "${OVE_COLOR_YELLOW_X}" "${p}"| \tail -n +2 | \cut -d: -f1 | \xargs)
 
 	# remove color codes
 	\sed -i \
