@@ -5753,7 +5753,7 @@ function ove-env {
 	fi
 
 	for e in ${v}; do
-		str+="${e}#${!e}\n"
+		str+="${e}#${!e/\\/\\\\}\n"
 	done
 
 	printf "${str}" | \
