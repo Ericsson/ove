@@ -4144,7 +4144,7 @@ function ove_extract_only_a {
 	repo=$(\awk '{print $2}' <<<${line})
 	sha_1=$(\awk '{print $3}' <<<${line})
 	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -d ${OVE_BASE_DIR}/${repo}/.git ]; then
-		only_a+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h\|%s" ${sha_1})\n"
+		only_a+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
 	else
 		only_a+="${line:1}\n"
 	fi
@@ -4159,7 +4159,7 @@ function ove_extract_only_b {
 	repo=$(\awk '{print $2}' <<<${line})
 	sha_1=$(\awk '{print $3}' <<<${line})
 	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -d ${OVE_BASE_DIR}/${repo}/.git ]; then
-		only_b+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h\|%s" ${sha_1})\n"
+		only_b+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
 	else
 		only_b+="${line:1}\n"
 	fi
@@ -6225,7 +6225,7 @@ function ove-do {
 function ove-fetch-fetched {
 	ove_entry
 
-       ove-fetch $(ove-status | \awk '{print $1}')
+	ove-fetch $(ove-status | \awk '{print $1}')
 }
 
 # fetch:[git...]:git fetch --all for all/specified repositories, ends with ove status
