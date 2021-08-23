@@ -2350,6 +2350,11 @@ function ove_revtab_init {
 			continue
 		fi
 
+		if [ "${array[0]}" == "${OVE_PROJECT_NAME}" ]; then
+			ove_echo_error_noprefix "${OVE_PROJECT_DIR}/revtab:${lineno}: name violation"
+			return 1
+		fi
+
 		ove_revtab_git_name[${ove_revtab_num_repositories}]=${array[0]}
 		ove_revtab_fetch_url[${ove_revtab_num_repositories}]=${array[1]}
 		ove_revtab_push_url[${ove_revtab_num_repositories}]=${array[2]}
