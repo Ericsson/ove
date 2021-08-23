@@ -9453,8 +9453,8 @@ function ove-unittest {
 	fi
 
 	nbr_of_files=3
-	nbr_of_projs=400
-	nbr_of_repos=100
+	nbr_of_projs=40
+	nbr_of_repos=10
 	nbr_of_systests=3
 
 	do_preparations=1
