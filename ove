@@ -9404,7 +9404,7 @@ function ove_unittest_exit {
 }
 
 function ove_unittest_cleanup {
-	\git -C ${OVE_PROJECT_DIR} checkout projs revtab
+	\git -C ${OVE_PROJECT_DIR} checkout projs revtab &> /dev/null
 }
 
 # unittest:[test...]:run all/specific unit tests
