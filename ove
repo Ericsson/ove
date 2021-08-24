@@ -9422,7 +9422,11 @@ function ove-unittest {
 	local shelltest_opts
 	local tests
 
-	if ! command -v shelltest > /dev/null; then
+	if command -v shelltest > /dev/null; then
+		shelltest=$(command -v shelltest)
+	elif [ -x "${HOME}/.cabal/bin/shelltest" ]; then
+		shelltest="${HOME}/.cabal/bin/shelltest"
+	else
 		ove_command_not_found "shelltestrunner" "Version 1.9 or greater is needed."
 		return 1
 	fi
@@ -9471,7 +9475,6 @@ function ove-unittest {
 
 	# launch shelltestrunner
 	cd ${OVE_PROJECT_TMP_DIR}/unittest || return 2
-	shelltest=$(command -v shelltest)
 	shelltest_opts=" --debug "
 
 	\env -i - HOME=${HOME} USER=${OVE_USER} \
