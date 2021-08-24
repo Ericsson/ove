@@ -29,6 +29,7 @@ if ! command -v lxc > /dev/null; then
 fi
 
 build=1
+unittest=1
 
 distro_list=()
 distro_list+=("alpine/3.14")
@@ -40,17 +41,34 @@ distro_list+=("ubuntu/21.04")
 distro_list+=("voidlinux/current")
 
 function run {
+	local start_sec=${SECONDS}
+	local stop_sec
+
+	echo
 	echo "[${distro}]$ $*"
 	if ! eval "$@"; then
 		echo "error: '$*' failed for distro ${distro}"
 		exit 1
 	fi
+
+	stop_sec=$((SECONDS - start_sec))
+	if [ ${stop_sec} -gt 0 ]; then
+		echo "[${distro}]$ # '$*' done in ${stop_sec} seconds"
+	fi
 }
 
 function run_no_exit {
+	local start_sec=${SECONDS}
+	local stop_sec
+
+	echo
 	echo "[${distro}]$ $*"
 	if ! eval "$@"; then
 		echo "warning: '$*' failed for distro ${distro}"
+	fi
+	stop_sec=$((SECONDS - start_sec))
+	if [ ${stop_sec} -gt 0 ]; then
+		echo "[${distro}]$ # '$*' done in ${stop_sec} seconds"
 	fi
 }
 
@@ -115,6 +133,30 @@ function main {
 			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove mrproper y'"
 			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove buildme-parallel tmux'"
 			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; stage/usr/bin/tmux -V'"
+		fi
+
+		if [ ${unittest} -eq 1 ]; then
+			run "lxc file push --uid 0 --gid 0 ${HOME}/.gitconfig ${lxc_name}/root/.gitconfig"
+
+			run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python3"
+			if [[ ${distro} == *alpine* ]]; then
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} py3-yaml"
+			elif [[ ${distro} == *opensuse* ]]; then
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python3-PyYAML"
+			else
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python3-yaml"
+			fi
+
+			if [[ ${distro} == *alpine* ]]; then
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} alpine-sdk cabal ghc"
+			elif [[ ${distro} == *voidlinux* ]]; then
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} cabal-install ghc"
+			else
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} cabal-install ghc happy"
+			fi
+			run "lxc exec ${lxc_exec_options} ${lxc_name} -- cabal update --verbose=0"
+			run "lxc exec ${lxc_exec_options} ${lxc_name} -- cabal install --verbose=0 shelltestrunner-1.9"
+			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove unittest'"
 		fi
 
 		run_no_exit "lxc stop ${lxc_name} --force"
