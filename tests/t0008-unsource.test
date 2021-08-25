@@ -2,7 +2,7 @@
 bash -c "OVE_TEST_STRING; ove-unsource; trap '' EXIT; set | grep -i ^ove"
 >>>= 1
 # make sure that unsource properly clean up the shell
-bash -c "set -m; set > before; OVE_TEST_STRING; set > after; ove-unsource; trap '' EXIT; set > unsource; diff -y --suppress-common-lines before unsource | grep -v -E 'BASH.*|PIPESTATUS|^_=|TIMEFORMAT=' | wc -l"
+bash -c "set -m; set > before; OVE_TEST_STRING; set > after; ove-unsource; trap '' EXIT; set > unsource; sed -i -e '/^BASH.*/d' -e '/^PIPESTATUS=.*/d' -e '/^_=.*/d' -e '/TIMEFORMAT=.*/d' before unsource; diff -U0 before unsource | wc -l"
 >>>
 0
 >>>= 0

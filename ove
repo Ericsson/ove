@@ -3995,12 +3995,11 @@ function ove-systest {
 				elif [ ${systest_exit_code} -gt 128 ] && [ ${systest_exit_code} -lt 166 ]; then
 					exit_status="SIG$(kill -l ${systest_exit_code})"
 				elif [ -e /usr/include/sysexits.h ] && \
-					\grep -P -q "#define EX_[A-Z]+\s+${systest_exit_code}" /usr/include/sysexits.h; then
-					exit_status=$(\grep -P "#define EX_[A-Z]+\s${systest_exit_code}" /usr/include/sysexits.h | \
-						\grep -o -P 'EX_[A-Z]+')
+					\grep -q "#define EX_[A-Z]\+.*\b${systest_exit_code}" /usr/include/sysexits.h; then
+					exit_status=$(\grep "#define EX_[A-Z]\+.*\b${systest_exit_code}" /usr/include/sysexits.h | \grep -o 'EX_[A-Z]\+')
 				elif [ -e ${OVE_PROJECT_DIR}/${OVE_PROJECT_NAME}-sysexits.h ] && \
-					\grep -P -q "#define [A-Z0-9_]+\s+${systest_exit_code}$" ${OVE_PROJECT_DIR}/${OVE_PROJECT_NAME}-sysexits.h; then
-					exit_status=$(\grep -P "#define [A-Z0-9_]+\s+${systest_exit_code}$" ${OVE_PROJECT_DIR}/${OVE_PROJECT_NAME}-sysexits.h | \
+					\grep -q "#define [A-Z0-9_]\+.*\b${systest_exit_code}$" ${OVE_PROJECT_DIR}/${OVE_PROJECT_NAME}-sysexits.h; then
+					exit_status=$(\grep "#define [A-Z0-9_]\+.*\b${systest_exit_code}$" ${OVE_PROJECT_DIR}/${OVE_PROJECT_NAME}-sysexits.h | \
 						\cut -f1 | \
 						\cut -d' ' -f2)
 				else
@@ -4240,7 +4239,11 @@ function ove-diff-project {
 	diff=$(eval ${cmd})
 	cmd="git -C ${OVE_PROJECT_DIR} diff --color=always $1 $2"
 	if [ "${diff}" != "" ]; then
-		echo -e "${diff}" | ${OVE_PAGER} -Ps"${OVE_PROJECT_NAME}\:${cmd//./\\.}"
+		if [ ${OVE_LESS_MORE_OPTIONS} -eq 1 ]; then
+			echo -e "${diff}" | ${OVE_PAGER} -Ps"${OVE_PROJECT_NAME}\:${cmd//./\\.}"
+		else
+			echo -e "${diff}" | ${OVE_PAGER}
+		fi
 	fi
 
 	while IFS= read -r line; do
@@ -4255,7 +4258,11 @@ function ove-diff-project {
 			diff=$(eval ${cmd})
 			cmd="git -C ${OVE_BASE_DIR}/${repo} diff --color=always ${sha_1} ${sha_2}"
 			if [ "${diff}" != "" ]; then
-				echo -e "${diff}" | ${OVE_PAGER} -Ps"${repo}\:${cmd//./\\.}"
+				if [ ${OVE_LESS_MORE_OPTIONS} -eq 1 ]; then
+					echo -e "${diff}" | ${OVE_PAGER} -Ps"${repo}\:${cmd//./\\.}"
+				else
+					echo -e "${diff}" | ${OVE_PAGER}
+				fi
 			fi
 		fi
 	done <<<"$(ove-revtab-diff "$1" "$2")"
@@ -7497,11 +7504,11 @@ function ove-dry-run {
 	ove-env ^OVE_DRY_RUN
 }
 
-# lastlog:[cmin]:list OVE logs created within last 60 min or cmin min
+# lastlog:[mmin]:list OVE logs created within last 60 min or mmin min
 function ove-lastlog {
 	ove_entry
 
-	local cmin=60
+	local mmin=60
 
 	if [ $# -eq 1 ]; then
 		if ! [[ "${1}" =~ ^[0-9]+$ ]]; then
@@ -7510,10 +7517,10 @@ function ove-lastlog {
 			return 1
 		fi
 
-		cmin=$1
+		mmin=$1
 	fi
 
-	\find ${OVE_LOG_DIR} -name '2*.log' -type f -cmin -${cmin} -print0 | \
+	\find ${OVE_LOG_DIR} -name '2*.log' -type f -mmin -${mmin} -print0 | \
 		\xargs -0 stat --format '%Y:%n:%s' | \
 		LC_ALL="C" \sort -nr | \
 		\cut -d: -f2- | \
