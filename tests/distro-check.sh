@@ -33,7 +33,10 @@ unittest=1
 
 distro_list=()
 distro_list+=("alpine/3.14")
+distro_list+=("archlinux/current")
 distro_list+=("debian/buster")
+distro_list+=("debian/bullseye")
+distro_list+=("fedora/34")
 distro_list+=("opensuse/tumbleweed")
 distro_list+=("ubuntu/18.04")
 distro_list+=("ubuntu/20.04")
@@ -44,7 +47,6 @@ function run {
 	local start_sec=${SECONDS}
 	local stop_sec
 
-	echo
 	echo "[${distro}]$ $*"
 	if ! eval "$@"; then
 		echo "error: '$*' failed for distro ${distro}"
@@ -53,7 +55,7 @@ function run {
 
 	stop_sec=$((SECONDS - start_sec))
 	if [ ${stop_sec} -gt 0 ]; then
-		echo "[${distro}]$ # '$*' done in ${stop_sec} seconds"
+		echo "[${distro}]$ # done in ${stop_sec} seconds"
 	fi
 }
 
@@ -61,14 +63,13 @@ function run_no_exit {
 	local start_sec=${SECONDS}
 	local stop_sec
 
-	echo
 	echo "[${distro}]$ $*"
 	if ! eval "$@"; then
 		echo "warning: '$*' failed for distro ${distro}"
 	fi
 	stop_sec=$((SECONDS - start_sec))
 	if [ ${stop_sec} -gt 0 ]; then
-		echo "[${distro}]$ # '$*' done in ${stop_sec} seconds"
+		echo "[${distro}]$ # done in ${stop_sec} seconds"
 	fi
 }
 
@@ -90,18 +91,26 @@ function main {
 			run "lxc delete --force ${lxc_name}"
 		fi
 
-		run "lxc launch images:${distro} ${lxc_name}"
-		run "sleep 5"
+		if [[ ${distro} == *archlinux* ]] || [[ ${distro} == *fedora* ]]; then
+			run "lxc launch images:${distro} -c security.nesting=true ${lxc_name}"
+		else
+			run "lxc launch images:${distro} ${lxc_name}"
+		fi
+		run "sleep 10"
 
 		ove_packs="bash bzip2 git curl file binutils util-linux coreutils"
 		if [[ ${distro} == *alpine* ]]; then
 			package_manager="apk add --no-progress -q"
+		elif [[ ${distro} == *archlinux* ]]; then
+			package_manager="pacman -S --noconfirm -q --noprogressbar"
 		elif [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]]; then
 			ove_packs+=" bsdmainutils"
 			package_manager="apt-get -y -qq install"
 			lxc_exec_options="--env DEBIAN_FRONTEND=noninteractive"
 		elif [[ ${distro} == *voidlinux* ]]; then
 			package_manager="xbps-install -y"
+		elif [[ ${distro} == *fedora* ]]; then
+			package_manager="dnf install -y"
 		elif [[ ${distro} == *opensuse* ]]; then
 			package_manager="zypper install -y"
 		fi
@@ -121,9 +130,13 @@ function main {
 			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1; ove config'"
 			if [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]]; then
 				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -yq; ove config'"
+			elif [[ ${distro} == *archlinux* ]]; then
+				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar; ove config'"
 			elif [[ ${distro} == *voidlinux* ]]; then
 				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y; ove config'"
 			elif [[ ${distro} == *opensuse* ]]; then
+				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y; ove config'"
+			elif [[ ${distro} == *fedora* ]]; then
 				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y; ove config'"
 			elif [[ ${distro} == *alpine* ]]; then
 				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q; ove config'"
@@ -131,6 +144,10 @@ function main {
 
 			run "lxc exec ${lxc_exec_options} -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; DEBIAN_FRONTEND=noninteractive ove install-pkg tmux'"
 			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove buildme tmux'"
+			if [[ ${distro} == *archlinux* ]]; then
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- locale-gen"
+			fi
 			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; stage/usr/bin/tmux -V'"
 			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove mrproper y'"
 			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove buildme-parallel tmux'"
@@ -143,6 +160,8 @@ function main {
 			run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python3"
 			if [[ ${distro} == *alpine* ]]; then
 				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} py3-yaml"
+			elif [[ ${distro} == *archlinux* ]]; then
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python-yaml"
 			elif [[ ${distro} == *opensuse* ]]; then
 				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python3-PyYAML"
 			else
@@ -157,7 +176,11 @@ function main {
 				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} cabal-install ghc happy"
 			fi
 			run "lxc exec ${lxc_exec_options} ${lxc_name} -- cabal update --verbose=0"
-			run "lxc exec ${lxc_exec_options} ${lxc_name} -- cabal install --verbose=0 shelltestrunner-1.9"
+			if [[ ${distro} == *archlinux* ]]; then
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- cabal install --verbose=0 --ghc-options=-dynamic shelltestrunner-1.9"
+			else
+				run "lxc exec ${lxc_exec_options} ${lxc_name} -- cabal install --verbose=0 shelltestrunner-1.9"
+			fi
 			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove unittest'"
 		fi
 

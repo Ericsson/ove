@@ -356,18 +356,17 @@ Configurable OVE commands can be found [here](ove-config-list.md)
 
 ## Supported Linux distributions
 
-OVE has been tested for the following distributions:
+OVE has been tested ([distro-check.sh](tests/distro-check.sh)) for the following Linux distributions:
 
-* Alpine Linux 3.9.0
-* Arch Linux
-* Centos
-* Debian GNU/Linux 9
-* Fedora 29
-* Gentoo
-* Ubuntu 16.04
-* Ubuntu 18.04
-* Ubuntu 19.10
-* Void Linux
+| Distribution        | Release(s)          |
+|---------------------|---------------------|
+| Alpine Linux        | 3.14                |
+| Arch Linux          | N/A                 |
+| Debian              | Buster, Bullseye    |
+| Fedora              | 34                  |
+| openSUSE Tumbleweed | N/A                 |
+| Ubuntu              | 18.04, 20.04, 21.04 |
+| Void Linux          | N/A                 |
 
 Want to know more about OVE? Please check out the OVE [tutorial](https://github.com/Ericsson/ove-tutorial) or ask OVE:
 
