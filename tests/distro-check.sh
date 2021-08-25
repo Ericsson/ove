@@ -95,7 +95,7 @@ function main {
 
 		ove_packs="bash bzip2 git curl file binutils util-linux coreutils"
 		if [[ ${distro} == *alpine* ]]; then
-			package_manager="apk add"
+			package_manager="apk add --no-progress -q"
 		elif [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]]; then
 			ove_packs+=" bsdmainutils"
 			package_manager="apt-get -y -qq install"
@@ -125,6 +125,8 @@ function main {
 				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y; ove config'"
 			elif [[ ${distro} == *opensuse* ]]; then
 				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y; ove config'"
+			elif [[ ${distro} == *alpine* ]]; then
+				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q; ove config'"
 			fi
 
 			run "lxc exec ${lxc_exec_options} -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; DEBIAN_FRONTEND=noninteractive ove install-pkg tmux'"
