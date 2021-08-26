@@ -5320,6 +5320,7 @@ function ove-export {
 	local projs
 	local re
 	local tmp_var
+	local v
 
 	\mkdir -p ${OVE_PROJECT_TMP_DIR}/export ${OVE_PROJECT_TMP_DIR}/export/projects
 	true > ${OVE_PROJECT_TMP_DIR}/export/revtab
@@ -5356,10 +5357,15 @@ function ove-export {
 			i=${ove_projects_name2index[${b}]}
 			for attr in $(ove_projects_attributes); do
 				tmp_var="ove_projects_${attr}[${i}]"
-				[ "${!tmp_var}" != "" ] && \
-					str+="  ${attr}:\n$(\tr ' ' '\n' <<<${!tmp_var} | \
+				if [ "${!tmp_var}" != "" ]; then
+					v=${!tmp_var}
+					if [ "${attr}" = "path" ]; then
+						v=${v/${OVE_BASE_DIR}\/}
+					fi
+					str+="  ${attr}:\n$(\tr ' ' '\n' <<<${v} | \
 					LC_ALL="C" \sort -u | \
 					\sed -e 's|^|    |g')\n"
+				fi
 
 				paths+="${ove_projects_path[${i}]} "
 			done
