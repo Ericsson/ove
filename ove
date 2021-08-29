@@ -5369,6 +5369,9 @@ function ove-export {
 					v=${!tmp_var}
 					if [ "${attr}" = "path" ]; then
 						v=${v/${OVE_BASE_DIR}\/}
+						if [ "x${v}" = "x" ]; then
+							continue
+						fi
 					fi
 					str+="  ${attr}:\n$(\tr ' ' '\n' <<<${v} | \
 					LC_ALL="C" \sort -u | \
