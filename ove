@@ -2140,13 +2140,21 @@ function ove_projects_init {
 		for m in ${OVE_OS_ID} ${OVE_OS_ID_LIKE}; do
 			tmp_var="ove_${projects[${i}]}_needs_${m//-/_}"
 			if [ "${!tmp_var}" != "" ]; then
-				ove_projects_needs[${i}]+=" ${!tmp_var}"
+				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
+					ove_projects_needs[${i}]="${!tmp_var}"
+				else
+					ove_projects_needs[${i}]+=" ${!tmp_var}"
+				fi
 				unset ${tmp_var}
 			fi
 
 			tmp_var="ove_${projects[${i}]}_needs_${m//-/_}_${OVE_OS_VER//./_}"
 			if [ "${!tmp_var}" != "" ]; then
-				ove_projects_needs[${i}]+=" ${!tmp_var}"
+				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
+					ove_projects_needs[${i}]="${!tmp_var}"
+				else
+					ove_projects_needs[${i}]+=" ${!tmp_var}"
+				fi
 				unset ${tmp_var}
 			fi
 		done
