@@ -4891,7 +4891,7 @@ function ove_stash_drop {
 }
 
 # $*: [message]
-function ove_stash_save {
+function ove_stash_push {
 	local cmd
 	local dirty_repos
 	local now
@@ -4960,7 +4960,7 @@ function ove_stash_list {
 	ove_stash_inspect list $1
 }
 
-# stash:[list|show [pattern]|drop [pattern]|pop [pattern]|save [msg...]]:git stash [drop|pop|show|list|save] for all git repositories
+# stash:[list|show [pattern]|drop [pattern]|pop [pattern]|push [msg...]]:git stash [drop|pop|show|list|push] for all git repositories
 function ove-stash {
 	ove_entry
 
@@ -4969,8 +4969,8 @@ function ove-stash {
 		[ "$1" == "show" ] ||
 		[ "$1" == "drop" ]; then
 		ove_stash_$1 $2
-	elif [ "$1" == "save" ] || [ $# -eq 0 ]; then
-		ove_stash_save "${@:2}"
+	elif [ "$1" == "save" ] || [ "$1" == "push" ] || [ $# -eq 0 ]; then
+		ove_stash_push "${@:2}"
 	else
 		ove_command_usage
 		return 1
@@ -7781,7 +7781,7 @@ function ove_bash_complete {
 		wordlist="loop"
 	elif [ "${subcommand}" == "stash" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist="drop list pop show save"
+			wordlist="drop list pop show push"
 		elif [ ${size} -eq 3 ]; then
 			if [ "${COMP_WORDS[2]}" == "drop" ] ||
 				[ "${COMP_WORDS[2]}" == "pop" ] ||
