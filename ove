@@ -7724,6 +7724,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "buildme" ] ||
 		[ "${subcommand}" == "buildme-parallel" ] ||
+		[ "${subcommand}" == "distrocheck" ] ||
 		[ "${subcommand}" == "export" ] ||
 		[ "${subcommand}" == "install-pkg" ] ||
 		[ "${subcommand}" == "list-needs" ] ||
@@ -9891,6 +9892,31 @@ function ove-nop {
 	ove_entry
 
 	:
+}
+
+# distrocheck:project:verify a project within multiple Linux distributions
+function ove-distrocheck {
+	ove_entry
+
+	local proj
+
+	if [ $# -ne 1 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	if ! [[ -v ove_projects_name2index[$1] ]]; then
+		ove_echo_error_noprefix "unknown project '$1'"
+		return 1
+	fi
+
+	proj="$1"
+	if [ ! -s "${OVE_PROJECT_DIR}/projects/${proj}/distcheck" ]; then
+		ove_echo_error_noprefix "file '${OVE_PROJECT_DIR}/projects/${proj}/distcheck' not found"
+		return 1
+	fi
+
+	${OVE_DIR}/tests/distro-check.sh "${OVE_PROJECT_DIR}/projects/${proj}/distcheck"
 }
 
 # pre-push: :shell-check+unittest+generate-doc combo

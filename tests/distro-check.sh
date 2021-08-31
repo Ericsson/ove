@@ -28,8 +28,16 @@ if ! command -v lxc > /dev/null; then
 	exit 1
 fi
 
-build=1
 unittest=1
+
+if [ $# -eq 1 ]; then
+	unittest=0
+	distcheck="$1"
+	if [ ! -e "${distcheck}" ]; then
+		echo "error: '${distcheck}' not found"
+		exit 1
+	fi
+fi
 
 distro_list=()
 distro_list+=("alpine/3.14")
@@ -42,9 +50,6 @@ distro_list+=("ubuntu/18.04")
 distro_list+=("ubuntu/20.04")
 distro_list+=("ubuntu/21.04")
 distro_list+=("voidlinux/current")
-
-ws_name="distro-check"
-prefix="cd ${ws_name}; source ove hush"
 
 function run {
 	local start_sec=${SECONDS}
@@ -142,31 +147,30 @@ function main {
 		fi
 
 		lxc_exec "${package_manager} ${ove_packs}"
-		lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/ove-tutorial'"
+		if [ -s "${OVE_PROJECT_DIR}/SETUP" ]; then
+			lxc_exec "bash -c '$(cat "${OVE_PROJECT_DIR}"/SETUP)'"
+			ws_name=$(lxc exec "${lxc_name}" -- bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2)
+			if [ "x${ws_name}" = "x" ]; then
+				echo "error: workspace name not found"
+				exit 1
+			fi
+		else
+			ws_name="distro-check"
+			lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/ove-tutorial'"
+		fi
+		prefix="cd ${ws_name}; source ove hush"
 		lxc_exec "bash -c -i 'cd ${ws_name}; source ove'"
 		lxc_exec "bash -c -i '${prefix}; ove env'"
 		lxc_exec "bash -c -i '${prefix}; ove status'"
 
 		package_manager_noconfirm
+		if [[ ${distro} == *archlinux* ]]; then
+			lxc_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
+			lxc_exec "locale-gen"
+		fi
 
-		if [ ${build} -eq 1 ]; then
-			lxc_exec "bash -c -i '${prefix}; ove fetch tmux'"
-			lxc_exec "bash -c -i '${prefix}; ove status'"
-
-			if [[ ${distro} == *opensuse* ]]; then
-				lxc_exec "zypper install -y -t pattern devel_basis"
-			fi
-
-			lxc_exec "bash -c -i '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg tmux'"
-			lxc_exec "bash -c -i '${prefix}; ove buildme tmux'"
-			if [[ ${distro} == *archlinux* ]]; then
-				lxc_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
-				lxc_exec "locale-gen"
-			fi
-			lxc_exec "bash -c -i '${prefix}; stage/usr/bin/tmux -V'"
-			lxc_exec "bash -c -i '${prefix}; ove mrproper y'"
-			lxc_exec "bash -c -i '${prefix}; ove buildme-parallel tmux'"
-			lxc_exec "bash -c -i '${prefix}; stage/usr/bin/tmux -V'"
+		if [[ ${distro} == *opensuse* ]]; then
+			lxc_exec "zypper install -y -t pattern devel_basis"
 		fi
 
 		if [ ${unittest} -eq 1 ]; then
@@ -197,6 +201,12 @@ function main {
 				lxc_exec "cabal install --verbose=0 shelltestrunner-1.9"
 			fi
 			lxc_exec "bash -c -i '${prefix}; ove unittest'"
+		fi
+
+		if [ "x${distcheck}" != "x" ]; then
+			run "lxc file push --uid 0 --gid 0 ${distcheck} ${lxc_name}/tmp/distcheck"
+			lxc_exec "bash -c -i '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg $(basename "$(dirname "${distcheck}")")'"
+			lxc_exec "bash -c -i '${prefix}; source /tmp/distcheck'"
 		fi
 
 		run_no_exit "lxc stop ${lxc_name} --force"
