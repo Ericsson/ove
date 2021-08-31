@@ -43,6 +43,9 @@ distro_list+=("ubuntu/20.04")
 distro_list+=("ubuntu/21.04")
 distro_list+=("voidlinux/current")
 
+ws_name="distro-check"
+prefix="cd ${ws_name}; source ove hush"
+
 function run {
 	local start_sec=${SECONDS}
 	local stop_sec
@@ -73,9 +76,33 @@ function run_no_exit {
 	fi
 }
 
+function lxc_exec {
+	local lxc_exec_options
+
+	lxc_exec_options="-t --env DEBIAN_FRONTEND=noninteractive"
+	run "lxc exec ${lxc_exec_options} ${lxc_name} -- $*"
+}
+
+function package_manager_noconfirm {
+	lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1'"
+	if [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]]; then
+		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -yq'"
+	elif [[ ${distro} == *archlinux* ]]; then
+		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
+	elif [[ ${distro} == *voidlinux* ]]; then
+		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y'"
+	elif [[ ${distro} == *opensuse* ]]; then
+		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
+	elif [[ ${distro} == *fedora* ]]; then
+		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
+	elif [[ ${distro} == *alpine* ]]; then
+		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q'"
+	fi
+	lxc_exec "bash -c -i '${prefix}; ove config'"
+}
+
 function main {
 	local distro
-	local lxc_exec_options
 	local lxc_name
 	local ove_packs
 	local package_manager
@@ -106,7 +133,6 @@ function main {
 		elif [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]]; then
 			ove_packs+=" bsdmainutils"
 			package_manager="apt-get -y -qq install"
-			lxc_exec_options="--env DEBIAN_FRONTEND=noninteractive"
 		elif [[ ${distro} == *voidlinux* ]]; then
 			package_manager="xbps-install -y"
 		elif [[ ${distro} == *fedora* ]]; then
@@ -115,73 +141,62 @@ function main {
 			package_manager="zypper install -y"
 		fi
 
-		run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} ${ove_packs}"
-		run "lxc exec ${lxc_name} -- bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s my-ove-workspace https://github.com/Ericsson/ove-tutorial'"
-		run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove'"
-		run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove status'"
-		run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove fetch tmux'"
-		run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove status'"
+		lxc_exec "${package_manager} ${ove_packs}"
+		lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/ove-tutorial'"
+		lxc_exec "bash -c -i 'cd ${ws_name}; source ove'"
+		lxc_exec "bash -c -i '${prefix}; ove env'"
+		lxc_exec "bash -c -i '${prefix}; ove status'"
+
+		package_manager_noconfirm
 
 		if [ ${build} -eq 1 ]; then
+			lxc_exec "bash -c -i '${prefix}; ove fetch tmux'"
+			lxc_exec "bash -c -i '${prefix}; ove status'"
+
 			if [[ ${distro} == *opensuse* ]]; then
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- zypper install -y -t pattern devel_basis"
+				lxc_exec "zypper install -y -t pattern devel_basis"
 			fi
 
-			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1; ove config'"
-			if [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]]; then
-				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -yq; ove config'"
-			elif [[ ${distro} == *archlinux* ]]; then
-				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar; ove config'"
-			elif [[ ${distro} == *voidlinux* ]]; then
-				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y; ove config'"
-			elif [[ ${distro} == *opensuse* ]]; then
-				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y; ove config'"
-			elif [[ ${distro} == *fedora* ]]; then
-				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y; ove config'"
-			elif [[ ${distro} == *alpine* ]]; then
-				run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q; ove config'"
-			fi
-
-			run "lxc exec ${lxc_exec_options} -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; DEBIAN_FRONTEND=noninteractive ove install-pkg tmux'"
-			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove buildme tmux'"
+			lxc_exec "bash -c -i '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg tmux'"
+			lxc_exec "bash -c -i '${prefix}; ove buildme tmux'"
 			if [[ ${distro} == *archlinux* ]]; then
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- locale-gen"
+				lxc_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
+				lxc_exec "locale-gen"
 			fi
-			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; stage/usr/bin/tmux -V'"
-			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove mrproper y'"
-			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove buildme-parallel tmux'"
-			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; stage/usr/bin/tmux -V'"
+			lxc_exec "bash -c -i '${prefix}; stage/usr/bin/tmux -V'"
+			lxc_exec "bash -c -i '${prefix}; ove mrproper y'"
+			lxc_exec "bash -c -i '${prefix}; ove buildme-parallel tmux'"
+			lxc_exec "bash -c -i '${prefix}; stage/usr/bin/tmux -V'"
 		fi
 
 		if [ ${unittest} -eq 1 ]; then
 			run "lxc file push --uid 0 --gid 0 ${HOME}/.gitconfig ${lxc_name}/root/.gitconfig"
 
-			run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python3"
+			lxc_exec "${package_manager} python3"
 			if [[ ${distro} == *alpine* ]]; then
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} py3-yaml"
+				lxc_exec "${package_manager} py3-yaml"
 			elif [[ ${distro} == *archlinux* ]]; then
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python-yaml"
+				lxc_exec "${package_manager} python-yaml"
 			elif [[ ${distro} == *opensuse* ]]; then
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python3-PyYAML"
+				lxc_exec "${package_manager} python3-PyYAML"
 			else
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} python3-yaml"
+				lxc_exec "${package_manager} python3-yaml"
 			fi
 
 			if [[ ${distro} == *alpine* ]]; then
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} alpine-sdk cabal ghc"
+				lxc_exec "${package_manager} alpine-sdk cabal ghc"
 			elif [[ ${distro} == *voidlinux* ]]; then
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} cabal-install ghc"
+				lxc_exec "${package_manager} cabal-install ghc"
 			else
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- ${package_manager} cabal-install ghc happy"
+				lxc_exec "${package_manager} cabal-install ghc happy"
 			fi
-			run "lxc exec ${lxc_exec_options} ${lxc_name} -- cabal update --verbose=0"
+			lxc_exec "cabal update --verbose=0"
 			if [[ ${distro} == *archlinux* ]]; then
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- cabal install --verbose=0 --ghc-options=-dynamic shelltestrunner-1.9"
+				lxc_exec "cabal install --verbose=0 --ghc-options=-dynamic shelltestrunner-1.9"
 			else
-				run "lxc exec ${lxc_exec_options} ${lxc_name} -- cabal install --verbose=0 shelltestrunner-1.9"
+				lxc_exec "cabal install --verbose=0 shelltestrunner-1.9"
 			fi
-			run "lxc exec -t ${lxc_name} -- bash -c -i 'cd my-ove-workspace; source ove hush; ove unittest'"
+			lxc_exec "bash -c -i '${prefix}; ove unittest'"
 		fi
 
 		run_no_exit "lxc stop ${lxc_name} --force"
