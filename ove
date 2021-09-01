@@ -2567,7 +2567,8 @@ function ove_revtab_status_parse_one {
 	fi
 }
 
-# $1: ahead|behind
+# $1   : ahead|behind
+# $2...: optional list of repositories
 function ove_revtab_status_parse {
 	local repo
 	local repos
@@ -2586,7 +2587,7 @@ function ove_revtab_status_parse {
 	elif ove_any_repo ${tense}; then
 		repos=$(ove_list_repos ${tense})
 	else
-		repos=${OVE_REPO_LIST}
+		return 0
 	fi
 
 	for repo in ${repos}; do
