@@ -9908,6 +9908,66 @@ function ove-nop {
 	:
 }
 
+# rename:[new]:rename OWEL/workspace, USE WITH CARE
+function ove-rename {
+	ove_entry
+
+	local a
+	local b
+	local cur
+	local link
+	local new
+	local resolved
+
+	if [ $# -gt 1 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	cur="${OVE_PROJECT_NAME}"
+	if [ $# -eq 1 ]; then
+		new="$1"
+	else
+		echo "current: ${cur}"
+		read -r -p "new name: "
+		if [ "x${REPLY}" = "x" ]; then
+			return
+		fi
+		new="${REPLY}"
+	fi
+
+	# sanity checks
+	if [ "x${new}" = "x" ] || [ "${new}" = "${cur}" ]; then
+		return 1
+	elif [ -e "${new}" ]; then
+		ove_echo_error_noprefix "'${new}' exists"
+		return 1
+	elif [[ "${new}" =~ [^a-zA-Z0-9_-] ]]; then
+		ove_echo_error_noprefix "the name '${new}' is not allowed. Try: a-zA-Z0-9_-"
+		return 1
+	elif \grep -q -w "${new}" <<<"archives ove stage tmp var ${OVE_USER}"; then
+		ove_echo_error_noprefix "'${new}' is a reserved word"
+		return 1
+	elif ove_uniq $(printf "%s\n" $(ove_revtab_list_basename) | \cut -d/ -f1) | \grep -q "^${new}$"; then
+		ove_echo_error_noprefix "'${new}' clash with a repo name in '${OVE_PROJECT_DIR}/revtab'"
+		return 1
+	fi
+
+	cd ${OVE_BASE_DIR} || return 1
+	for link in .owel .ove.state .ove.tmp README; do
+		resolved="$(\readlink ${link})"
+		if [[ "${resolved}" == *${cur}* ]]; then
+			if [ -d "${resolved}" ]; then
+				a="${resolved%%${cur}*}${cur}"
+				b="${resolved%%${cur}*}${new}"
+				\mv ${a} ${b}
+			fi
+			\rm ${link}
+			\ln -s ${resolved/${cur}/${new}} ${link}
+		fi
+	done
+}
+
 # distrocheck:project:verify a project within multiple Linux distributions
 function ove-distrocheck {
 	ove_entry

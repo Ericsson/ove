@@ -1,0 +1,22 @@
+bash -c "OVE_TEST_STRING; ove rename qwerty1234-_"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove rename git-top"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove rename 1 2"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove rename stage"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove rename archives"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove rename git-1"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove rename @"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove rename +"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove rename var"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove rename tmp"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove rename ove"
+>>>= 1
