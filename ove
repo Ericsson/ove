@@ -6017,8 +6017,15 @@ function ove-am {
 		r=${r/${d}\/}
 
 		ove_echo_yellow_noprefix ${r}
+		if [ ! -d "${OVE_BASE_DIR}/${r}" ]; then
+			ove_echo_error_noprefix "repo '${OVE_BASE_DIR}/${r}' does not exist, try 'ove fetch ${r}'"
+			((ret++))
+			continue
+		fi
+
 		# apply patch(es)
 		if ! ove_repo_cmd ${OVE_BASE_DIR}/${r} am ${d}/${r}/*; then
+			ove_echo_error_noprefix "git am failed for repo '${r}'. Automatically running 'git am --abort'. Failed patch(es): ${d}/${r}/"
 			ove_repo_cmd ${OVE_BASE_DIR}/${r} am --abort
 			((ret++))
 		fi
