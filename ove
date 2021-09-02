@@ -5971,12 +5971,18 @@ function ove-format-patch {
 
 	if [ $# -eq 1 ]; then
 		f="$1"
+		if [[ "${f}" != *.tar.bz2 ]]; then
+			f+=".tar.bz2"
+		fi
 	else
 		f="${PWD}/${OVE_PROJECT_NAME}-patches-$(\date '+%Y%m%d-%H%M%S').tar.bz2"
 	fi
 
-	\tar -C "${d}" -cjf "${f}" --owner=0 --group=0 .
-	\find "${f}" -type f
+	if ! \tar -C "${d}" -cjf "${f}" --owner=0 --group=0 .; then
+		ove_echo_error_noprefix "format-patch: tar failed"
+		return 1
+	fi
+	\readlink -f "${f}"
 }
 
 # am:file:apply a bz2 archive file created with 'format-patch'
