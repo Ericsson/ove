@@ -105,6 +105,14 @@ function run_no_exit {
 	fi
 }
 
+function lxc_command {
+	if ! lxc exec "${lxc_name}" -- sh -c "command -v $1" &> /dev/null; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 function lxc_exec {
 	local lxc_exec_options
 
@@ -114,20 +122,26 @@ function lxc_exec {
 
 function package_manager_noconfirm {
 	lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1'"
-	if [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]]; then
+
+	if [[ ${package_manager} == apt-get* ]];  then
 		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -yq'"
-	elif [[ ${distro} == *archlinux* ]]; then
+	elif [[ ${package_manager} == pacman* ]]; then
 		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
-	elif [[ ${distro} == *voidlinux* ]]; then
+	elif [[ ${package_manager} == xbps-install* ]]; then
 		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y'"
-	elif [[ ${distro} == *opensuse* ]]; then
+	elif [[ ${package_manager} == zypper* ]]; then
 		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
-	elif [[ ${distro} == *fedora* ]]; then
+	elif [[ ${package_manager} == dnf* ]]; then
 		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
-	elif [[ ${distro} == *alpine* ]]; then
+	elif [[ ${package_manager} == apk* ]]; then
 		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q'"
 	fi
 	lxc_exec "bash -c -i '${prefix}; ove config'"
+}
+
+function cleanup {
+	run_no_exit "lxc stop ${lxc_name} --force"
+	run_no_exit "lxc delete ${lxc_name} --force"
 }
 
 function main {
@@ -145,7 +159,7 @@ function main {
 		lxc_name="ove-distro-check-${distro//\//-}"
 		lxc_name="${lxc_name//./-}"
 
-		if lxc list | grep -q -w "${lxc_name}"; then
+		if lxc list --format csv | grep -q "^${lxc_name},"; then
 			run "lxc delete --force ${lxc_name}"
 		fi
 
@@ -157,19 +171,23 @@ function main {
 		run "sleep 10"
 
 		ove_packs="bash bzip2 git curl file binutils util-linux coreutils"
-		if [[ ${distro} == *alpine* ]]; then
+		if lxc_command "apk"; then
 			package_manager="apk add --no-progress -q"
-		elif [[ ${distro} == *archlinux* ]]; then
+		elif lxc_command "pacman"; then
 			package_manager="pacman -S --noconfirm -q --noprogressbar"
-		elif ove_debian_based; then
-			ove_packs+=" bsdmainutils"
+		elif lxc_command "apt-get"; then
+			ove_packs+=" bsdmainutils procps"
 			package_manager="apt-get -y -qq install"
-		elif [[ ${distro} == *voidlinux* ]]; then
+		elif lxc_command "xbps-install"; then
 			package_manager="xbps-install -y"
-		elif [[ ${distro} == *fedora* ]]; then
+		elif lxc_command "dnf"; then
 			package_manager="dnf install -y"
-		elif [[ ${distro} == *opensuse* ]]; then
+		elif lxc_command "zypper"; then
 			package_manager="zypper install -y"
+		else
+			echo "error: unknown package manager for '${distro}'"
+			cleanup
+			continue
 		fi
 
 		lxc_exec "${package_manager} ${ove_packs}"
@@ -178,6 +196,7 @@ function main {
 			ws_name=$(lxc exec "${lxc_name}" -- bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2)
 			if [ "x${ws_name}" = "x" ]; then
 				echo "error: workspace name not found"
+				cleanup
 				exit 1
 			fi
 		else
@@ -235,8 +254,7 @@ function main {
 			lxc_exec "bash -c -i '${prefix}; source /tmp/distcheck'"
 		fi
 
-		run_no_exit "lxc stop ${lxc_name} --force"
-		run_no_exit "lxc delete ${lxc_name} --force"
+		cleanup
 		run "# done in $((SECONDS - start_sec)) seconds"
 	done
 }
