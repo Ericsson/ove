@@ -364,6 +364,7 @@ OVE has been tested ([distro-check.sh](tests/distro-check.sh)) for the following
 | Arch Linux          | N/A                 |
 | Debian              | Buster, Bullseye    |
 | Fedora              | 34                  |
+| Linux Mint          | Uma                 |
 | openSUSE Tumbleweed | N/A                 |
 | Ubuntu              | 18.04, 20.04, 21.04 |
 | Void Linux          | N/A                 |

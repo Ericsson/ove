@@ -23,33 +23,57 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-if ! command -v lxc > /dev/null; then
-	echo "error: lxc missing"
-	exit 1
-fi
-
-unittest=1
-
-if [ $# -eq 1 ]; then
-	unittest=0
-	distcheck="$1"
-	if [ ! -e "${distcheck}" ]; then
-		echo "error: '${distcheck}' not found"
+function init {
+	if ! command -v lxc > /dev/null; then
+		echo "error: lxc missing"
 		exit 1
 	fi
-fi
 
-distro_list=()
-distro_list+=("alpine/3.14")
-distro_list+=("archlinux/current")
-distro_list+=("debian/buster")
-distro_list+=("debian/bullseye")
-distro_list+=("fedora/34")
-distro_list+=("opensuse/tumbleweed")
-distro_list+=("ubuntu/18.04")
-distro_list+=("ubuntu/20.04")
-distro_list+=("ubuntu/21.04")
-distro_list+=("voidlinux/current")
+	if [ $# -ne 2 ]; then
+		echo "usage: $(basename "$0") unittest|file pattern"
+		exit 1
+	fi
+
+	if [ "$1" = "unittest" ]; then
+		unittest=1
+	else
+		unittest=0
+		distcheck="$1"
+		if [ ! -e "${distcheck}" ]; then
+			echo "error: '${distcheck}' not found"
+			exit 1
+		fi
+	fi
+	arch=$(\uname -m)
+	if [ "${arch}" = "x86_64" ]; then
+		arch="amd64"
+	fi
+
+	if ! \lxc image list --format csv -cL images: arch=${arch} | \sed -e 's,",,g' -e '/^$/d' > "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images"; then
+		echo "error: 'lxc image list images:' failed"
+		exit 1
+	elif [ ! -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
+		echo "error: no images found"
+		exit 1
+	fi
+
+	mapfile -t distro_list <<<"$(\grep -E "$2" "${OVE_GLOBAL_STATE_DIR}/distro-check.images")"
+	if [ ${#distro_list[@]} -eq 0 ]; then
+		echo "error: no images, try to broaden the filter, choose from:"
+		\cat "${OVE_GLOBAL_STATE_DIR}/distro-check.images"
+		exit 1
+	fi
+
+	if [ "x${distcheck}" != "x" ] && [ ${#distro_list[@]} -gt 1 ];  then
+		echo "info: pattern matched these images:"
+		printf "%s\n" "${distro_list[@]}" | cat -n
+		for i in {3..1}; do
+			echo -en "\r${i}"
+			sleep 1
+		done
+		echo
+	fi
+}
 
 function run {
 	local start_sec=${SECONDS}
@@ -113,6 +137,8 @@ function main {
 	local package_manager
 	local start_sec
 
+	init "$@"
+
 	for distro in "${distro_list[@]}"; do
 		start_sec=${SECONDS}
 		# replace slashes and dots
@@ -135,7 +161,7 @@ function main {
 			package_manager="apk add --no-progress -q"
 		elif [[ ${distro} == *archlinux* ]]; then
 			package_manager="pacman -S --noconfirm -q --noprogressbar"
-		elif [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]]; then
+		elif [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]] || [[ ${distro} == *mint* ]]; then
 			ove_packs+=" bsdmainutils"
 			package_manager="apt-get -y -qq install"
 		elif [[ ${distro} == *voidlinux* ]]; then
@@ -147,7 +173,7 @@ function main {
 		fi
 
 		lxc_exec "${package_manager} ${ove_packs}"
-		if [ -s "${OVE_PROJECT_DIR}/SETUP" ]; then
+		if [ "${OVE_PROJECT_DIR}" != "x" ] && [ -s "${OVE_PROJECT_DIR}/SETUP" ]; then
 			lxc_exec "bash -c '$(cat "${OVE_PROJECT_DIR}"/SETUP)'"
 			ws_name=$(lxc exec "${lxc_name}" -- bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2)
 			if [ "x${ws_name}" = "x" ]; then

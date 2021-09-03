@@ -7738,12 +7738,19 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "buildme" ] ||
 		[ "${subcommand}" == "buildme-parallel" ] ||
-		[ "${subcommand}" == "distrocheck" ] ||
 		[ "${subcommand}" == "export" ] ||
 		[ "${subcommand}" == "install-pkg" ] ||
 		[ "${subcommand}" == "list-needs" ] ||
 		[ "${subcommand}" == "list-missing-projects" ]; then
 		wordlist=${OVE_PROJECT_LIST}
+	elif [ "${subcommand}" == "distrocheck" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist=${OVE_PROJECT_LIST}
+		elif [ ${size} -eq 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
+			wordlist=$(\cat "${OVE_GLOBAL_STATE_DIR}/distro-check.images")
+		else
+			return
+		fi
 	elif [ "${subcommand}" == "run" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist="TIMEOUT"
@@ -9968,29 +9975,28 @@ function ove-rename {
 	done
 }
 
-# distrocheck:project:verify a project within multiple Linux distributions
+# distrocheck:project [pattern]:verify a project (using LXC/LXD) within multiple Linux distributions
 function ove-distrocheck {
 	ove_entry
 
 	local proj
 
-	if [ $# -ne 1 ]; then
+	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
 		ove_command_usage
 		return 1
 	fi
 
-	if ! [[ -v ove_projects_name2index[$1] ]]; then
-		ove_echo_error_noprefix "unknown project '$1'"
+	proj="$1"
+	if ! [[ -v ove_projects_name2index[${proj}] ]]; then
+		ove_echo_error_noprefix "unknown project '${proj}'"
 		return 1
 	fi
 
-	proj="$1"
 	if [ ! -s "${OVE_PROJECT_DIR}/projects/${proj}/distcheck" ]; then
 		ove_echo_error_noprefix "file '${OVE_PROJECT_DIR}/projects/${proj}/distcheck' not found"
 		return 1
 	fi
-
-	${OVE_DIR}/tests/distro-check.sh "${OVE_PROJECT_DIR}/projects/${proj}/distcheck"
+	${OVE_DIR}/tests/distro-check.sh "${OVE_PROJECT_DIR}/projects/${proj}/distcheck" "$2"
 }
 
 # pre-push: :shell-check+unittest+generate-doc combo
@@ -10012,6 +10018,22 @@ function ove-pre-push {
 
 	ove_externals
 	ove-status .ove
+}
+
+# post-push: :run OVE unittests (using LXC/LXD) within Linux distributions specified by ${OVE_DIR}/tests/distro-check.list
+function ove-post-push {
+	ove_entry
+
+	local args
+
+	if [ ! -s "${OVE_DIR}/tests/distro-check.list" ]; then
+		return 1
+	fi
+
+	args=$(\sed -e '/^#/d' -e 's,^,^,g' -e 's,$,$|,g' "${OVE_DIR}/tests/distro-check.list")
+	args=${args//$'\n'/}
+	args=${args::-1}
+	${OVE_DIR}/tests/distro-check.sh "unittest" "${args}"
 }
 
 ove_main "$@"
