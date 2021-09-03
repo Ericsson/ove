@@ -9114,7 +9114,10 @@ function ove_packages_not_installed {
 		[[ ${OVE_OS} == *"Fedora"* ]] || \
 		[[ ${OVE_OS} == *"SLES"* ]] || \
 		[[ ${OVE_OS} == *"openSUSE"* ]] || \
-		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]]; then
+		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]] ||
+		[[ ${OVE_OS_ID_LIKE,,} == *rhel* ]] ||
+		[[ ${OVE_OS_ID_LIKE,,} == *centos* ]] ||
+		[[ ${OVE_OS_ID_LIKE,,} == *fedora* ]]; then
 		LC_ALL="C" \comm -2 -3 <(printf "%s\n" ${p_sort}) <(\rpm -qa --qf "%{NAME}\n"| LC_ALL="C" \sort)
 	elif ove_debian_based; then
 		\dpkg-query -W -f='${Package}:${Status}\n' ${p_sort} 2>&1 | \
