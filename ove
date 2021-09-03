@@ -8521,8 +8521,7 @@ function ove_init {
 	done
 	unset OVE_LD_SEARCH_PATH
 
-	if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
-		[[ ${OVE_OS} == *"Debian"* ]]; then
+	if ove_debian_based; then
 		OVE_LD_LIBRARY_PATH+="${OVE_STAGE_DIR}${OVE_PREFIX}/lib/x86_64-linux-gnu:"
 		OVE_LD_LIBRARY_PATH+="${OVE_STAGE_DIR}${OVE_PREFIX}/lib"
 		OVE_PKG_CONFIG_PATH+="${OVE_STAGE_DIR}${OVE_PREFIX}/lib/x86_64-linux-gnu/pkgconfig"
@@ -8551,8 +8550,7 @@ function ove_init {
 			# ccache
 			if command -v ccache > /dev/null && \
 				[[ ${PATH} != *ccache* ]]; then
-				if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
-					[[ ${OVE_OS} == *"Debian"* ]]; then
+				if ove_debian_based; then
 					dir="/usr/lib/ccache"
 				else
 					dir="/usr/lib64/ccache"
@@ -8965,14 +8963,27 @@ function ove-init {
 	fi
 }
 
+function ove_debian_based {
+	if [ "${OVE_OS_ID_LIKE,,}" == "debian" ]; then
+		return 0
+	elif [ "${OVE_OS_ID_LIKE,,}" == "ubuntu" ]; then
+		return 0
+	elif [[ ${OVE_OS} == *"Debian"* ]]; then
+		return 0
+	elif [[ ${OVE_OS} == *"Ubuntu"* ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
 # $1: command
 function ove_command_to_package {
 	local package
 
 	# column
 	if [ "$1" == "column" ]; then
-		if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
-			[[ ${OVE_OS} == *"Debian"* ]]; then
+		if ove_debian_based; then
 			package="bsdmainutils"
 		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
 			package="sys-apps/util-linux"
@@ -9006,14 +9017,12 @@ function ove_command_to_package {
 		package="mlocate"
 	# pgrep
 	elif [ "$1" == "pgrep" ]; then
-		if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
-			[[ ${OVE_OS} == *"Debian"* ]]; then
+		if ove_debian_based; then
 			package="procps"
 		fi
 	# script
 	elif [ "$1" == "script" ]; then
-		if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
-			[[ ${OVE_OS} == *"Debian"* ]]; then
+		if ove_debian_based; then
 			package="bsdutils"
 		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
 			package="sys-apps/util-linux"
@@ -9025,8 +9034,7 @@ function ove_command_to_package {
 		package="coreutils"
 	# xz
 	elif [ "$1" == "xz" ]; then
-		if [[ ${OVE_OS} == *"Ubuntu"* ]] || \
-			[[ ${OVE_OS} == *"Debian"* ]]; then
+		if ove_debian_based; then
 			package="xz-utils"
 		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
 			package="app-arch/xz"
@@ -9108,9 +9116,7 @@ function ove_packages_not_installed {
 		[[ ${OVE_OS} == *"openSUSE"* ]] || \
 		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]]; then
 		LC_ALL="C" \comm -2 -3 <(printf "%s\n" ${p_sort}) <(\rpm -qa --qf "%{NAME}\n"| LC_ALL="C" \sort)
-	elif [[ ${OVE_OS} == *"Debian"* ]] || \
-		[[ ${OVE_OS} == *"Raspbian"* ]] || \
-		[[ ${OVE_OS} == *"Ubuntu"* ]]; then
+	elif ove_debian_based; then
 		\dpkg-query -W -f='${Package}:${Status}\n' ${p_sort} 2>&1 | \
 			\grep -v ":install ok installed" | \
 			\sed -e 's/dpkg-query: no packages found matching //g' -e 's/:.*//g' | \
@@ -9151,9 +9157,7 @@ function ove_determine_dist_version_and_pack_manager {
 	elif [[ ${OVE_OS} == *"CentOS"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="yum"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
-	elif [[ ${OVE_OS} == *"Debian"* ]] || \
-		[[ ${OVE_OS} == *"Raspbian"* ]] || \
-		[[ ${OVE_OS} == *"Ubuntu"* ]]; then
+	elif ove_debian_based; then
 		OVE_OS_PACKAGE_MANAGER="apt"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
 	elif [[ ${OVE_OS} == *"Fedora"* ]] || \

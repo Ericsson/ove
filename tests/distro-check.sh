@@ -161,7 +161,7 @@ function main {
 			package_manager="apk add --no-progress -q"
 		elif [[ ${distro} == *archlinux* ]]; then
 			package_manager="pacman -S --noconfirm -q --noprogressbar"
-		elif [[ ${distro} == *ubuntu* ]] || [[ ${distro} == *debian* ]] || [[ ${distro} == *mint* ]]; then
+		elif ove_debian_based; then
 			ove_packs+=" bsdmainutils"
 			package_manager="apt-get -y -qq install"
 		elif [[ ${distro} == *voidlinux* ]]; then
