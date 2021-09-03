@@ -9164,7 +9164,8 @@ function ove_determine_dist_version_and_pack_manager {
 		OVE_OS_PACKAGE_MANAGER="apt"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
 	elif [[ ${OVE_OS} == *"Fedora"* ]] || \
-		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]]; then
+		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]] || \
+		command -v dnf > /dev/null; then
 		OVE_OS_PACKAGE_MANAGER="dnf"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
 	elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
