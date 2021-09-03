@@ -9281,7 +9281,7 @@ function ove-replicate {
 	ps_local="$"
 	ps_remote="[${host}]$"
 
-	q=$(\mktemp -p ${OVE_PROJECT_TMP_DIR})
+	q="$(\mktemp -p ${OVE_PROJECT_TMP_DIR}).tar.bz2"
 	echo "${ps_local} ove format-patch ${q}"
 	ove-format-patch ${q}
 	if [ -s "${q}" ]; then
