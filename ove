@@ -7748,6 +7748,8 @@ function ove_bash_complete {
 			wordlist=$(\find ${OVE_PROJECT_DIR}/projects/*/ -name 'distcheck' -exec dirname {} \;)
 			if [ "x${wordlist}" != "x" ]; then
 				wordlist=${wordlist//${OVE_PROJECT_DIR}\/projects\/}
+			else
+				wordlist=${OVE_PROJECT_LIST}
 			fi
 		elif [ ${size} -eq 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
 			wordlist=$(\cat "${OVE_GLOBAL_STATE_DIR}/distro-check.images")
