@@ -8722,16 +8722,22 @@ function ove_buildable_projects {
 	local proj_path
 	local projs_and_deps_not_buildable
 	local projs_not_buildable
+	local repos_not_fetched
 	local q
 	local re
 	declare -A projs_hash
 
+	for q in ${OVE_REPO_LIST}; do
+		[ -d "${q}" ] && continue
+		repos_not_fetched+="${q} "
+	done
+
 	# remove projects with paths within git repos not yet fetched
-	for proj in ${OVE_PROJECT_LIST}; do
-		i=${ove_projects_name2index[${proj}]}
-		proj_path="${ove_projects_path[${i}]}"
-		for q in ${OVE_REPO_LIST}; do
-			if [[ ${proj_path} == *"${q}"* ]] && ! [ -d "${q}" ]; then
+	for q in ${repos_not_fetched}; do
+		for proj in ${OVE_PROJECT_LIST}; do
+			i=${ove_projects_name2index[${proj}]}
+			proj_path="${ove_projects_path[${i}]}"
+			if [ "${proj_path}" = "${q}" ] || [[ ${proj_path} == ${q}/* ]]; then
 				test "${projs_hash["${proj}"]+isset}" && continue
 				projs_hash["${proj}"]=1
 				projs_not_buildable+="${proj} "
@@ -8739,7 +8745,7 @@ function ove_buildable_projects {
 		done
 	done
 
-	if [ "${projs_not_buildable}" == "" ]; then
+	if [ "x${projs_not_buildable}" = "x" ]; then
 		unset OVE_PROJECT_LIST_BUILDABLE
 		return
 	fi
