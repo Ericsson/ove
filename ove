@@ -10047,7 +10047,7 @@ function ove-post-push {
 	args=${args//$'\n'/}
 	args=${args::-1}
 	if [ -n "${TMUX}" ]; then
-		ove run 0 "do . tail -f ${OVE_LAST_COMMAND} | grep -A3 '^ Passed'"
+		ove run 0 "do . \tail -f ${OVE_LAST_COMMAND} | \grep -A3 '^ Passed'"
 	fi
 	${OVE_DIR}/tests/distro-check.sh "unittest" "${args}"
 }
