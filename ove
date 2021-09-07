@@ -8420,6 +8420,7 @@ function ove_reinit {
 function ove_init {
 	local dir
 	local func
+	local resolved
 	local script_help
 
 	if ! dir=$(ove_get_base_dir); then
@@ -8431,9 +8432,9 @@ function ove_init {
 	OVE_PROJECT_NAME=${OVE_PROJECT_DIR##*/}
 	OVE_PROJECT_LIST=$(ove_list_projects)
 	OVE_PROJECT_COMMANDS=$(ove_project_commands_list)
-	OVE_DIR="$(cd "$(\dirname "$(\readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/})")"; pwd -P)"
-	dir="$(\readlink -f ${OVE_BASE_DIR}/${BASH_SOURCE[0]##*/})"
-	OVE_BASENAME="${dir##*/}"
+	resolved="$(\readlink -f ${OVE_BASE_DIR}/ove)"
+	OVE_DIR="$(cd "$(\dirname "${resolved}")"; pwd -P)"
+	OVE_BASENAME="${resolved##*/}"
 	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
 
 	ove_dirs_init
