@@ -1918,29 +1918,18 @@ function ove_parse_yaml {
 	wait
 }
 
-# uniq list of project commands
 function ove_project_commands_list {
-	local f
-	local proj
-	local search_dirs
+	local a
 
-	# for each project, look for executable files
-	# ignore files with hyphens and underscore
-	for proj in ${OVE_PROJECT_LIST} common; do
-		# ignore projects without a project directory
-		[ ! -d ${OVE_PROJECT_DIR}/projects/${proj} ] && continue
+	# for each project, look for executable files, ignore files with hyphens and underscore
+	a=$(LC_ALL="C" \sort -u <(
+		for f in $(cd ${OVE_PROJECT_DIR} && \find projects/*/ -perm -u=x -type f -not -name '*-*' -not -name '*_*' 2> /dev/null); do
+			echo ${f##*/};
+		done))
 
-		search_dirs+="${proj} "
-	done
-
-	[ "${search_dirs}" == "" ] && return
-
-	for f in $(cd ${OVE_PROJECT_DIR}/projects && \find -L ${search_dirs} -perm -u=x -type f); do
-		echo ${f#*/}
-	done | \
-		\grep -v '[-_]' | \
-		LC_ALL="C" \sort -u | \
-		\xargs
+	if [ "x${a}" != "x" ]; then
+		echo ${a}
+	fi
 }
 
 # uniq list of mandatory attributes
@@ -2465,6 +2454,7 @@ function ove_status_one_repo {
 }
 
 function ove_validate_repo_list {
+	local out
 	local repos
 
 	while true; do
@@ -2472,12 +2462,19 @@ function ove_validate_repo_list {
 		if [[ "$1" == *[[:space:]]* ]]; then
 			:
 		elif [ "$1" == "${OVE_PROJECT_NAME}" ] || [ -v ove_revtab_name2index[${1}] ]; then
-			repos+="$(ove_repo2shortpath $1)\n"
+			repos+="$(ove_repo2shortpath $1) "
 		fi
 		shift
 	done
 
-	echo -e "${repos}" | LC_ALL="C" \sort -u | \xargs -n1
+	if [ "x${repos}" = "x" ]; then
+		return
+	fi
+
+	out=$(LC_ALL="C" \sort -u < <(printf "%s\n" ${repos}))
+	if [ "x${out}" != "x" ]; then
+		echo ${out}
+	fi
 }
 
 function ove_revtab_status {
@@ -3667,19 +3664,23 @@ function ove_list_scripts_directories {
 	local d
 	local repo
 
-	while true; do
-		# project scripts
-		[ -d "${OVE_PROJECT_DIR}/scripts" ] && d+="${OVE_PROJECT_DIR}/scripts "
-		# OVE scripts
-		[ -d "${OVE_DIR}/scripts" ] && d+="${OVE_DIR}/scripts "
-		# repo scripts
-		for repo in ${OVE_REPO_LIST}; do
-			[ -d "${repo}/.ove/scripts" ] || continue
-			d+="${repo}/.ove/scripts "
-		done
-		\find -L ${d} -maxdepth 1 -perm -u=x -not -name '*.help' -type f
-		break
-	done | \xargs dirname | LC_ALL="C" \sort -u
+	# project scripts
+	[ -d "${OVE_PROJECT_DIR}/scripts" ] && d+="${OVE_PROJECT_DIR}/scripts "
+	# OVE scripts
+	[ -d "${OVE_DIR}/scripts" ] && d+="${OVE_DIR}/scripts "
+	# repo scripts
+	for repo in ${OVE_REPO_LIST}; do
+		[ -d "${repo}/.ove/scripts" ] || continue
+		d+="${repo}/.ove/scripts "
+	done
+
+	if [ "x${d}" = "x" ]; then
+		return
+	fi
+
+	\find -L ${d} -maxdepth 1 -perm -u=x -not -name '*.help' -type f -print0 | \
+		\xargs -0 dirname | \
+		LC_ALL="C" \sort -u
 }
 
 function ove_echo {
