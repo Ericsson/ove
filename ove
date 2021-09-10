@@ -1923,7 +1923,7 @@ function ove_project_commands_list {
 
 	# for each project, look for executable files, ignore files with hyphens and underscore
 	a=$(LC_ALL="C" \sort -u <(
-		for f in $(cd ${OVE_PROJECT_DIR} && \find projects/*/ -perm -u=x -type f -not -name '*-*' -not -name '*_*' 2> /dev/null); do
+		for f in $(cd ${OVE_PROJECT_DIR} && \find -L projects/*/ -perm -u=x -type f -not -name '*-*' -not -name '*_*' 2> /dev/null); do
 			echo ${f##*/};
 		done))
 
