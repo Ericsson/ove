@@ -2851,6 +2851,13 @@ function ove_revtab_check_one {
 	ove_revtab_check_fetch_push "$1" "$2" "$3"
 }
 
+# revtab-sync: :sync all repos with 'revtab' (ignore OVE_REVTAB_CHECK)
+function ove-revtab-sync {
+	ove_entry
+
+	OVE_REVTAB_CHECK=1 ove_revtab_check
+}
+
 function ove_revtab_check {
 	local i
 	local n=${FUNCNAME^^}
