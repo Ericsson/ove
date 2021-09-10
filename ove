@@ -1717,6 +1717,7 @@ function ove_setup_trace_post {
 function ove {
 	local candidates
 	local cmd
+	local log_cmd
 	local re
 	local ret
 
@@ -1787,9 +1788,18 @@ function ove {
 	(cd ${OVE_LOG_DIR} && \ln -sfn ${OVE_SHA} current)
 	OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/$(\date '+%Y%m%d-%H%M%S%N')-ove-${cmd}-${HOSTNAME}-${OVE_PROJECT_NAME}.log"
 
+	# terminals and parallel project commands use 'script', everything else use 'tee'
+	log_cmd="tee"
 	if [ -t 1 ]; then
-		# terminals => run all commands through the 'script' command
+		log_cmd="script"
+	elif [[ ${cmd} = *-parallel ]]; then
+		re=\\b${cmd/-parallel/}\\b
+		if [[ "${OVE_PROJECT_COMMANDS} buildme" =~ ${re} ]]; then
+			log_cmd="script"
+		fi
+	fi
 
+	if [ "x${log_cmd}" = "xscript" ]; then
 		# trace hook
 		if ! ove_setup_trace; then
 			return 1
