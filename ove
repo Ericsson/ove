@@ -2012,6 +2012,8 @@ function ove_projects_init {
 	# create ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
 		eval "ove-${m}() {
+			ove_entry
+
 			local i
 			local helptext=\"${m}:[project...]:run the '${m}' step for all or individual projects\"
 			local p
@@ -2051,6 +2053,8 @@ function ove_projects_init {
 	# create parallel ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
 		eval "ove-${m}-parallel() {
+			ove_entry
+
 			local i
 			local helptext=\"${m}-parallel:[project...]:run the '${m}' step for all or individual projects (in parallel)\"
 			local p
@@ -5222,7 +5226,7 @@ function ove_validate_self {
 	fi
 
 	# make sure all ove- functions starts the same
-	if [ $(($(\grep -c 'ove_entry' ${OVE_SELF}) - 3 - $(\grep -c '^function ove-' ${OVE_SELF}))) -ne 0 ]; then
+	if [ $(($(\grep -c 'ove_entry' ${OVE_SELF}) - 5 - $(\grep -c '^function ove-' ${OVE_SELF}))) -ne 0 ]; then
 		ove_echo_error_noprefix "all ove- functions has to start with a 'ove_entry' hook. E.g.:"
 		type ove-nop
 		return 1
