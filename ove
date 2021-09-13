@@ -2865,11 +2865,36 @@ function ove_revtab_check_one {
 	ove_revtab_check_fetch_push "$1" "$2" "$3"
 }
 
-# revtab-sync: :sync all repos with 'revtab' (ignore OVE_REVTAB_CHECK)
+# revtab-sync:[git...]:sync all/specified git repositories with 'revtab' (ignore OVE_REVTAB_CHECK)
 function ove-revtab-sync {
 	ove_entry
 
-	OVE_REVTAB_CHECK=1 ove_revtab_check
+	local i
+	local r
+	local repos
+
+	if [ $# -eq 0 ]; then
+		repos="${OVE_REPO_LIST}"
+	else
+		repos=$(ove_validate_repo_list "$@")
+		if [ "x${repos}" = "x" ]; then
+			echo "error: invalid repo name: '${*}'"
+			return 1
+		fi
+	fi
+
+	for r in ${repos}; do
+		i=$(ove_repo2index ${r})
+		if [ "$i" = "owel" ]; then
+			continue
+		fi
+		ove_revtab_check_one \
+			${ove_revtab_git_name[${i}]} \
+			${ove_revtab_fetch_url[${i}]} \
+			${ove_revtab_push_url[${i}]} \
+			${ove_revtab_rev[${i}]} &
+	done | \grep -v '^\[' || true
+	wait
 }
 
 function ove_revtab_check {
@@ -4749,7 +4774,7 @@ function ove-branch {
 	branch_name=${a[*]: -1}
 	repos=$(ove_validate_repo_list ${args})
 	if [ "${repos}" == "" ]; then
-		echo "error: repo(s) '${args}' is not valid repo(s)"
+		echo "error: invalid repo name: '${args}'"
 		return 1
 	fi
 
@@ -7929,6 +7954,11 @@ function ove_bash_complete {
 		[ "${subcommand}" == "show-dangling" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
+		fi
+	elif [ "${subcommand}" == "revtab-sync" ]; then
+		if [ ${size} -ge 2 ]; then
+			wordlist=$(ove_revtab_list_basename)
+			wordlist=${wordlist/${OVE_PROJECT_NAME}/}
 		fi
 	elif [ "${subcommand}" == "news" ] ||
 		[ "${subcommand}" == "show-news" ] ||
