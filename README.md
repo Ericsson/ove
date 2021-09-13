@@ -54,8 +54,8 @@ Example:
 
     $ cat revtab
     # name        fetch URL          push URL           revision
-    repoX         ssh://xyz/repoX    ssh://xyz/repoX    master
-    deps/repoY    ssh://xyz/repoY    ssh://xyz/repoY    master
+    repoX         ssh://xyz/repoX    ssh://xyz/repoX    main
+    deps/repoY    https://xyz/repoY  https://xyz/repoY  stable
 
 Thats it! This is how OVE keeps track of git revisions. There is no intermediate representation for revisioning in OVE. What you put in the 'revision' column travels untouched to git, which means you can safely put anything there that git understands. Now, let's move on to top-view builds:
 
@@ -241,8 +241,8 @@ After successfully sourcing OVE, further instructions are given to enter the OVE
     Cloning into 'repoX'...
     Cloning into 'repoY'...
     ...
-    repoX ## master..origin/master
-    repoY ## master..origin/master
+    repoX ## main..origin/main
+    repoY ## main..origin/stable
     .ove  ## master..origin/master
 
 Done! As simple as that. Lets give a final example of what an OVE project file structure can look like when ready:
