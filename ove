@@ -9121,7 +9121,7 @@ function ove_deps {
 		echo
 		echo "To fix this, run the following command:"
 		echo
-		echo -e "\t${OVE_OS_PACKAGE_MANAGER} ${OVE_OS_PACKAGE_MANAGER_ARGS} ${str_packs}"
+		echo -e "\t${OVE_OS_PACKAGE_MANAGER} ${OVE_OS_PACKAGE_MANAGER_ARGS} $(printf "%s " $(ove_uniq ${str_packs}))"
 		echo
 		return 1
 	fi
