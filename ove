@@ -5231,7 +5231,7 @@ function ove_validate_revtab {
 				\awk 'a[$1]++{print $1}' | \
 				LC_ALL="C" \sort -u)"
 			for d in ${doublets}; do
-				\grep -n "^${d} " ${OVE_PROJECT_DIR}/revtab
+				\grep --color=never -n "^${d} " ${OVE_PROJECT_DIR}/revtab
 			done
 			return 1
 		fi
@@ -5364,130 +5364,254 @@ function ove_install_packages {
 	fi
 }
 
+# $1: patch file
+# $2: key
+function ove_modify_patch {
+	local f
+	local key
+	local n
+
+	f="$1"
+	key="$2"
+
+	n=$(\grep -n "^+++ b/${key}" ${f})
+	n=${n%%:*}
+	((n++))
+	\sed -i \
+		-e "${n}s, -0, -99999,g" \
+		-e "${n}s/ -[0-9]\+,0 +[0-9]\+,\([0-9]\+\) @@.*/ -99999,0 +1,\1 @@/g" \
+		${f}
+}
+
+# $1: proj
+# $2: work dir
+function ove_export_create_proj_patch {
+	local f
+	local proj
+	local wd
+
+	proj="$1"
+	wd="$2"
+
+	if \find ${OVE_PROJECT_DIR}/projects/${proj} -mindepth 1 -print -quit 2> /dev/null | \grep -q .; then
+		\mkdir -p "${wd}"/projects/${proj}
+		\cp -ar ${OVE_PROJECT_DIR}/projects/${proj}/* "${wd}"/projects/${proj}
+		for f in "${wd}"/projects/"${proj}"/*; do
+			(cd "${wd}" || exit 1
+			\git diff /dev/null ${f/${OVE_PROJECT_TMP_DIR}\/export\/} >> "${wd}"/${proj}.patch)
+		done
+	fi
+}
+
+function ove_export {
+	local _end
+	local proj
+	local projects
+	local proj_index
+	local proj_path
+	local repo_path
+	local _start
+	local wd="${OVE_PROJECT_TMP_DIR}/export"
+
+	\mkdir -p "${wd}"
+	find "${wd}" -maxdepth 1 -name '*.patch' -exec rm {} \;
+
+	if [ "$#" -eq 0 ]; then
+		projects="${OVE_PROJECT_LIST}"
+	else
+		projects="${*}"
+	fi
+
+	# preparations
+	true > "${wd}"/revtab
+	true > "${wd}"/projs
+	(cd "${wd}" || exit 1
+	if [ -d .git ]; then
+		\rm -rf .git
+	fi
+	\git init -q .
+	\git add revtab projs
+	\git commit -m "export: revtab projs" -q)
+
+	for proj in ${projects}; do
+		echo $proj
+
+		true > "${wd}"/revtab
+		true > "${wd}"/projs
+
+		_start=$(\grep -n '^[a-zA-Z0-9_]\+:' ${OVE_PROJECT_DIR}/projs |
+			\grep -A1 "^[0-9]\+:${proj}:" |
+			\sed -e 's,#.*$,,g')
+		if [ "$(printf "%s\n" $_start | \wc -l)" -eq 1 ]; then
+			_end=$(\wc -l < "${OVE_PROJECT_DIR}/projs")
+		else
+			_end=$(printf "%s\n" $_start | \tail -1 | \cut -d: -f1)
+			((_end--))
+		fi
+		_start="${_start%%:*}"
+
+		# projs
+		echo > "${wd}"/projs
+		\sed -n "${_start},${_end}p" ${OVE_PROJECT_DIR}/projs >> "${wd}"/projs
+		\sed -i -e '${/^$/d;}' "${wd}"/projs
+
+		ove_export_create_proj_patch "${proj}" "${wd}"
+		(cd "${wd}" || exit 1
+			\git diff -U0 projs >> "${wd}"/${proj}.patch)
+		ove_modify_patch "${wd}"/${proj}.patch "projs"
+
+		# revtab
+		proj_index=${ove_projects_name2index[${proj}]}
+		proj_path=${ove_projects_path[${proj_index}]}
+		while true; do
+			if [ "x${proj_path}" = "x" ]; then
+				break
+			fi
+			repo_path=$(printf "%s\n" ${OVE_REPO_LIST} | \grep ^${proj_path}$)
+			if [ "x${repo_path}" != "x" ]; then
+				i=${ove_revtab_name2index[${repo_path/${OVE_BASE_DIR}\/}]}
+				printf "%s %s %s %s\n" \
+					${ove_revtab_git_name[${i}]} \
+					${ove_revtab_fetch_url[${i}]} \
+					${ove_revtab_push_url[${i}]} \
+					${ove_revtab_rev[${i}]} >>"${wd}"/revtab
+				(cd "${wd}" || exit 1
+					\git diff revtab >> "${wd}"/${proj}.patch)
+				ove_modify_patch "${wd}"/${proj}.patch "revtab"
+				break
+			fi
+			proj_path="${proj_path%/*}"
+		done
+	done
+
+	# common
+	ove_export_create_proj_patch "common" "${wd}"
+
+	\rm -rf "${wd}"/{projs,revtab,projects,.git}
+}
+
 # export:[project...]:export project(s)
 function ove-export {
 	ove_entry
 
-	local attr
-	local b
-	local deps
-	local i
-	local paths
+	local args="$*"
+	local name
+	local num_args="$#"
 	local projs
-	local re
-	local tmp_var
-	local v
-
-	\mkdir -p ${OVE_PROJECT_TMP_DIR}/export ${OVE_PROJECT_TMP_DIR}/export/projects
-	true > ${OVE_PROJECT_TMP_DIR}/export/revtab
-	true > ${OVE_PROJECT_TMP_DIR}/export/projs
-	[ -d ${OVE_PROJECT_TMP_DIR}/export/projects ] && \rm -rf ${OVE_PROJECT_TMP_DIR}/export/projects
 
 	while true; do
+		if [ $# -eq 0 ]; then
+			break
+		fi
 		if [ $# -ge 1 ]; then
 			if ! [[ -v ove_projects_name2index[$1] ]]; then
 				ove_echo_error_noprefix "unknown project '$1'"
-				shift
-				[ $# -eq 0 ] && break
-				continue
+				return 1
 			fi
 
-			deps=$(ove_get_deps_recursive $1)
+			projs+="$(ove_get_deps_recursive $1) $1 "
 		fi
-
-		for b in $(printf "%s\n" ${OVE_BUILD_ORDER} | LC_ALL="C" \sort); do
-			if [ $# -ge 1 ]; then
-				re=\\b${b}\\b
-				if ! [[ "${deps}" =~ ${re} ]] && [ "${b}" != "$1" ]; then
-					continue
-				fi
-			fi
-
-			# already exported?
-			if \grep -q ^${b}: ${OVE_PROJECT_TMP_DIR}/export/projs; then
-				continue
-			fi
-
-			projs+="${b} "
-			str+="${b}:\n"
-			i=${ove_projects_name2index[${b}]}
-			for attr in $(ove_projects_attributes); do
-				tmp_var="ove_projects_${attr}[${i}]"
-				if [ "${!tmp_var}" != "" ]; then
-					v=${!tmp_var}
-					if [ "${attr}" = "path" ]; then
-						v=${v/${OVE_BASE_DIR}\/}
-						if [ "x${v}" = "x" ]; then
-							continue
-						fi
-					fi
-					str+="  ${attr}:\n$(\tr ' ' '\n' <<<${v} | \
-					LC_ALL="C" \sort -u | \
-					\sed -e 's|^|    |g')\n"
-				fi
-
-				paths+="${ove_projects_path[${i}]} "
-			done
-			str+="\n"
-		done
-
-		printf "${str}" | \sed '$ d' > ${OVE_PROJECT_TMP_DIR}/export/projs
-
-		for b in ${projs}; do
-			\mkdir -p ${OVE_PROJECT_TMP_DIR}/export/projects/${b}
-			if \find ${OVE_PROJECT_DIR}/projects/${b} -mindepth 1 -print -quit 2> /dev/null | \grep -q .; then
-				\cp -ar ${OVE_PROJECT_DIR}/projects/${b}/* ${OVE_PROJECT_TMP_DIR}/export/projects/${b}
-			fi
-		done
-
 		shift
-		[ $# -eq 0 ] && break
 	done
 
-	! [ -s ${OVE_PROJECT_TMP_DIR}/export/projs ] && return 1
+	if [ "x${projs}" != "x" ]; then
+		ove_export $(printf "%s\n" "$(ove_uniq $projs)" | LC_ALL="C" \sort)
+	else
+		ove_export
+	fi
 
-	# YAML header
-	\sed -i '1i ---' ${OVE_PROJECT_TMP_DIR}/export/projs
+	if [ "x$(\find "${OVE_PROJECT_TMP_DIR}/export" -maxdepth 1 -name '*.patch' -print -quit)" == "x" ]; then
+		ove_echo_error_noprefix "no project(s) exported"
+		return 1
+	fi
 
-	for b in $(\tr ' ' '\n' <<<${paths} | LC_ALL="C" \sort -u); do
-		while true; do
-			[ "${b}" == "" ] && break
-			if \xargs -n 1 <<<${OVE_REPO_LIST} 2> /dev/null | \grep -q ^${b}$; then
-				ove-list-repositories | \grep "^$(ove_repo2shortpath ${b}) " >> ${OVE_PROJECT_TMP_DIR}/export/revtab
-				break
-			fi
-			b="${b%/*}"
-		done
-	done
-	LC_ALL="C" \sort -u -o ${OVE_PROJECT_TMP_DIR}/export/revtab ${OVE_PROJECT_TMP_DIR}/export/revtab
-
-	\tar -C "${OVE_PROJECT_TMP_DIR}/export" -cjf "${OVE_PROJECT_TMP_DIR}/export.tar.bz2" .
-	echo "${OVE_PROJECT_TMP_DIR}/export.tar.bz2"
+	name="${OVE_BASE_DIR}/${OVE_PROJECT_NAME}-$(ove-describe ${OVE_PROJECT_NAME} | \awk '{print $2}')"
+	if [ $num_args -eq 1 ]; then
+		name+="-${args}"
+	fi
+	name+=".tar.bz2"
+	\tar -C "${OVE_PROJECT_TMP_DIR}/export" -cjf "${name}" .
+	echo "${name}"
 
 	return 0
 }
 
-# import:[file]:import project(s), see export
+function ove_patch_one_project {
+	local f
+	local proj
+
+	f="$1"
+	proj=${1##*/}
+	proj=${proj/.patch/}
+
+	echo "${proj}"
+	if \grep -q ^$proj: ${OVE_PROJECT_DIR}/projs; then
+		return
+	fi
+
+	ove_repo_cmd ${OVE_PROJECT_DIR} apply --whitespace=nowarn "${f}" 2> /dev/null
+}
+
+# import:file:import project(s), see export
 function ove-import {
 	ove_entry
 
 	local f
+	local lines
+	local patch
+	local proj
+	local repo
+	local ret=0
+	local out
 
-	if [ $# -eq 0 ]; then
-		f="${OVE_PROJECT_TMP_DIR}/export.tar.bz2"
-	elif [ $# -eq 1 ]; then
-		f="$1"
-	else
-		echo "error: too many args"
+	if [ $# -ne 1 ]; then
+		ove_command_usage
 		return 1
 	fi
 
-	if ! [ -s "${f}" ]; then
-		echo "error: file '${f}' is not found or file size is 0"
-		return 2
+	f="$1"
+	if [ ! -e "${f}" ]; then
+		echo "error: '${f}' not found"
+		return 1
+	elif [ ! -s "${f}" ]; then
+		echo "error: '${f}' file size is 0"
+		return 1
+	elif ! \file "${f}" | \grep -q "bzip2 compressed data"; then
+		echo "error: '${f}' is not a bzip2 compressed data file"
+		return 1
 	fi
 
-	\tar -C "${OVE_PROJECT_DIR}" -xf "${f}"
+	\mkdir -p "${OVE_PROJECT_TMP_DIR}/import"
+	\find "${OVE_PROJECT_TMP_DIR}/import" -maxdepth 1 -name '*.patch' -exec rm {} \;
+	\tar -C "${OVE_PROJECT_TMP_DIR}/import" -xf "${f}"
+
+	for patch in "${OVE_PROJECT_TMP_DIR}/import/"*.patch; do
+		if ! ove_patch_one_project "$patch"; then
+			((ret++))
+			continue
+		fi
+	done
+
+	# remove revtab duplicates
+	if ! out=$(ove_validate_revtab 2> /dev/null); then
+		lines=$(r_prev=; while read -r line; do
+			n=${line%%:*}
+			repo=${line##*:}
+			if [ "x$r_prev" = "x" ]; then
+				r_prev="$repo"
+				continue
+			elif [ "$r_prev" == "$repo" ]; then
+				echo $n
+				continue
+			elif [ "$r_prev" != "$repo" ]; then
+				r_prev="$repo"
+				continue
+			fi
+		done <<<$(printf "${out}" | \awk '{print $1}'))
+		\sed -i -e "$(printf "%sd;" $lines)" "${OVE_PROJECT_DIR}/revtab"
+	fi
+
+	return ${ret}
 }
 
 function ove_build_pre {

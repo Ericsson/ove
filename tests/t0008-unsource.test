@@ -6,3 +6,5 @@ bash -c "set -m; set > before; OVE_TEST_STRING; set > after; ove-unsource; trap 
 >>>
 0
 >>>= 0
+bash -c "rm after before unsource"
+>>>= 0

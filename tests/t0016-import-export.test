@@ -1,0 +1,24 @@
+bash -c "OVE_TEST_STRING; ove export"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove export foobar"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove import git-top-$(git -C git-top log -1 --format=%h).tar.bz2"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove export p40"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove import git-top-$(git -C git-top log -1 --format=%h)-p40.tar.bz2"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove export p39 p40"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove import git-top-$(git -C git-top log -1 --format=%h).tar.bz2"
+>>>= 0
+bash -c "OVE_TEST_STRING; ove import"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove import foo bar"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove import /dev/null"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove import foobar"
+>>>= 1
+bash -c "find -maxdepth 1 -name '*.bz2' -exec rm -v {} \;"
+>>>= 0

@@ -1,3 +1,0 @@
-# there should be no '$OVE_BASE_DIR' strings in 'projs' after export
-bash -c "OVE_TEST_STRING; ove export; find \$OVE_PROJECT_TMP_DIR -name 'export.tar.bz2' -exec tar xvf {} ./projs \;; grep \$OVE_BASE_DIR projs"
->>>= 1
