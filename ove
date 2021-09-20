@@ -2383,6 +2383,8 @@ function ove_revtab_init {
 	fi
 
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
+	OVE_REPO_LIST_WIDTH=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
+	((OVE_REPO_LIST_WIDTH+=2))
 }
 
 # $1: repo name (either 'name' or '${OVE_BASE_DIR}/'name')
@@ -2464,7 +2466,7 @@ function ove_status_one_repo {
 
 	s=$(ove_repo_cmd "${repo_fullpath}" "${OVE_GIT_OPTIONS} -c color.status=always status" -bs -uno)
 	s=${s//$'\n'/ }
-	printf "${repo_shortpath}:${revision}:$s\n"
+	printf "$(printf "%-$((OVE_REPO_LIST_WIDTH-2))s" ${repo_shortpath}):${revision}:$s\n"
 }
 
 function ove_validate_repo_list {
@@ -2814,7 +2816,6 @@ function ove_revtab_check_one {
 	local branch_name
 	local co=0
 	local detached=0
-	local m
 	local name
 	local rev_is_branch=0
 	local revision
@@ -2855,10 +2856,7 @@ function ove_revtab_check_one {
 		if ove_repo_is_dirty ${OVE_BASE_DIR}/${name}; then
 			ove_echo_error_noprefix "${name}: cannot checkout '${revision}' as repo is dirty"
 		else
-			m=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
-			ove_revtab_checkout ${name} |& \sed -e "1s|^|$(ove_echo_yellow_noprefix ${name})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#name}))}))|g" \
-				-e "2,10s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
-			ove_patch_repositories
+			ove_revtab_checkout ${name}
 		fi
 	fi
 
@@ -3063,10 +3061,13 @@ function ove_revtab_clone_and_checkout_one {
 			return 1
 		fi
 		break
-	done |& \sed "s|^|${name}  |g"
+	done |& \sed "s|^|$(printf "%-${OVE_REPO_LIST_WIDTH}s" ${name})|g"
 
 	ove_revtab_checkout "${name}"
 	ove_revtab_check_fetch_push "${name}" "${fetch_url}" "${push_url}"
+	ove_patch_repos ${name}
+
+	return 0
 }
 
 # $*: optional list of repositories
@@ -3115,7 +3116,7 @@ function ove_revtab_checkout_one {
 			return 1
 		fi
 		break
-	done |& \sed -e "s|^|${name}  |g"
+	done |& \sed -e "s|^|$(printf "%-${OVE_REPO_LIST_WIDTH}s" ${name})|g"
 }
 
 # $*: optional list of repositories
@@ -3222,8 +3223,8 @@ function ove_revtab_fetch {
 
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout "$@"
-		m=$(printf "%s\n" "$@" | \wc -L)
-		ove_revtab_forsome_parallel "ove_repo_cmd \${repo} fetch --all --tag |& \sed -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#i}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL} "$@"
+		m=${OVE_REPO_LIST_WIDTH}
+		ove_revtab_forsome_parallel "ove_repo_cmd \${repo} fetch --all --tag |& \sed -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} - \${#i}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL} "$@"
 		return $?
 	fi
 
@@ -3237,8 +3238,8 @@ function ove_revtab_fetch {
 
 	[ "${co_list}" != "" ] && ove_revtab_clone_and_checkout ${co_list}
 
-	m=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
-	ove_revtab_forall_parallel "ove_repo_cmd \${repo} fetch --all --tags |& \sed -e \"s|^|\${repo_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} + 2 - \${#repo_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
+	m=${OVE_REPO_LIST_WIDTH}
+	ove_revtab_forall_parallel "ove_repo_cmd \${repo} fetch --all --tags |& \sed -e \"s|^|\${repo_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} - \${#repo_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
 	return $?
 }
 
@@ -6266,7 +6267,11 @@ function ove-pull {
 		fi
 
 		if [ "${repo##*/}" == "${OVE_PROJECT_NAME}" ]; then
+			# validate revtab revision
 			ove_revtab_check
+
+			# patch repos
+			ove_patch_repos
 		fi
 	done
 
@@ -6372,17 +6377,105 @@ function ove-apply {
 	return ${ret}
 }
 
-function ove_patch_repositories {
-	! [ -d ${OVE_PROJECT_DIR}/patches ] && return
+# $1: repo
+# $2: patch file
+function ove_patch_one_repo {
+	local p
+	local repo
+	local ret=0
+	local repo_shortpath
 
-	# shellcheck disable=SC2016
-	ove_revtab_forall '[ -d ${OVE_PROJECT_DIR}/patches/${repo_basename} ] &&
-		for p in $(\find ${OVE_PROJECT_DIR}/patches/${repo_basename} -name "*.patch"); do
-			if ove_repo_cmd ${repo} apply --check $p 2> /dev/null; then
-				echo "${repo_basename}: apply patch: $p"
-				ove_repo_cmd ${repo} apply $p 2> /dev/null
+	repo="$1"
+	p="$2"
+	repo_s="$(ove_repo2shortpath ${repo})"
+
+	if [ ! -d "${repo}" ]; then
+		return 1
+	elif ove_repo_cmd ${repo} apply -R --check "${p}" 2> /dev/null; then
+		return 0
+	elif ove_repo_cmd ${repo} apply --check "${p}" 2> /dev/null; then
+		printf "%-${OVE_REPO_LIST_WIDTH}sApplying patch '%s'\n" ${repo_s} ${p}
+		if [ "${OVE_PATCH_REPOS_METHOD:?}" = "apply" ]; then
+			if ! ove_repo_cmd ${repo} apply "${p}" 2> /dev/null; then
+				ove_echo_error_noprefix "${repo_s}: patch does not apply: ${p}"
+				ret=1
 			fi
-		done'
+		elif [ "${OVE_PATCH_REPOS_METHOD:?}" = "am" ] || [ "${OVE_PATCH_REPOS_METHOD:?}" = "auto" ]; then
+			if ! ove_repo_cmd ${repo} am "${p}" 2> /dev/null; then
+				if [ "${OVE_PATCH_REPOS_METHOD:?}" = "am" ]; then
+					ove_echo_error_noprefix "${repo_s}: patch does not apply: ${p}"
+					ret=1
+				elif ! ove_repo_cmd ${repo} apply "${p}" 2> /dev/null; then
+					ove_echo_error_noprefix "${repo_s}: patch does not apply: ${p}"
+					ret=1
+				fi
+			fi
+		else
+			ove_echo_error_noprefix "unknown patch method: ${OVE_PATCH_REPOS_METHOD}"
+			ret=1
+		fi
+	else
+		ove_echo_error_noprefix "${repo_s}: patch does not apply: ${p}"
+		ret=1
+	fi
+
+	return ${ret}
+}
+
+# $1: repos [optional]
+function ove_patch_repos {
+	local find_opts
+	local find_search_dirs
+	local n=${FUNCNAME^^}
+	local p
+	local repo
+	local repos
+	local ret=0
+
+	if  [ ! -d ${OVE_PROJECT_DIR}/patches ]; then
+		return
+	elif [ -n "${!n}" ] && [ "${!n}" -eq 0 ]; then
+		return
+	fi
+
+	if [ $# -eq 0 ]; then
+		find_search_dirs="${OVE_PROJECT_DIR}/patches/"
+	else
+		repos=$(ove_validate_repo_list "$@")
+		if [ "x${repos}" = "x" ]; then
+			return 1
+		fi
+
+		for repo in ${repos}; do
+			if [ ! -d "${OVE_PROJECT_DIR}/patches/${repo}" ]; then
+				continue
+			fi
+			find_opts="-maxdepth 1"
+			find_search_dirs+="${OVE_PROJECT_DIR}/patches/${repo} "
+		done
+		if [ "x${find_search_dirs}" = "x" ]; then
+			return 1
+		fi
+	fi
+
+	while read -r p; do
+		repo="${p/${OVE_PROJECT_DIR}\/patches\/}"
+		repo="${repo%/*}"
+		repo="${OVE_BASE_DIR}/${repo}"
+
+		if ! ove_patch_one_repo "${repo}" "${p}"; then
+			((ret++))
+		fi
+	done < <(\find ${find_search_dirs} ${find_opts} -name "*.patch" -or -name "*.diff" | LC_ALL="C" \sort)
+
+	return ${ret}
+}
+
+# patch-repo:[git...]:patch all/specified repositories (ignore OVE_PATCH_REPO) with $OVE_PROJECT_DIR/patches/[<git>/]{*.diff,*.patch}
+function ove-patch-repo {
+	ove_entry
+
+	OVE_PATCH_REPOS=1 ove_patch_repos "$@"
 }
 
 # gitmodules2revtab: :import git submodules
@@ -6459,8 +6552,6 @@ function ove-fetch {
 	if ! ove_revtab_fetch ${repos}; then
 		return $?
 	fi
-
-	[ $# -eq 0 ] && ove_patch_repositories
 
 	ove-status ${repos}
 }
@@ -6544,10 +6635,10 @@ function ove-checkout {
 
 		ove_repo_cmd "${OVE_PROJECT_DIR}" fetch --all
 
-		m=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \wc -L)
+		m=${OVE_REPO_LIST_WIDTH}
 		ove_repo_cmd "${OVE_PROJECT_DIR}" "-c advice.detachedHead=false checkout" "${revision}" |& \
-			\sed -e "1s|^|$(ove_echo_yellow_noprefix ${OVE_PROJECT_NAME})$(printf "%0.s " $(eval echo {1..$((${m} + 2 - ${#OVE_PROJECT_NAME}))}))|g" \
-			-e "2s|^|$(printf "%0.s " $(eval echo {1..$((${m} + 2))}))|g"
+			\sed -e "1s|^|$(ove_echo_yellow_noprefix ${OVE_PROJECT_NAME})$(printf "%0.s " $(eval echo {1..$((${m} - ${#OVE_PROJECT_NAME}))}))|g" \
+			-e "2s|^|$(printf "%0.s " $(eval echo {1..$((${m}))}))|g"
 		if [ ${PIPESTATUS[0]} -ne 0 ]; then
 			# cleanup
 			if [ "$2" == "autostash" ]; then
@@ -6576,8 +6667,11 @@ function ove-checkout {
 			done
 		fi
 
-		ove_patch_repositories
+		# patch all repos
+		ove_patch_repos
 	fi
+
+	return 0
 }
 
 # list-commands:[pattern]:list commands
@@ -8106,6 +8200,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "fetch" ] ||
 		[ "${subcommand}" == "list-heads" ] ||
+		[ "${subcommand}" == "patch-repo" ] ||
 		[ "${subcommand}" == "status" ]; then
 		wordlist=$(ove_revtab_list_basename)
 	elif [ "${subcommand}" == "systest" ] ||
@@ -8510,6 +8605,16 @@ function ove_config_builtins_init {
 		export OVE_REVTAB_CHECK=1
 	fi
 
+	# OVE_PATCH_REPOS:int:0|1:patch-repo pull source:if set, use OVE_PATCH_REPOS_METHOD to apply patches
+	if [ -z "${OVE_PATCH_REPOS+x}" ]; then
+		export OVE_PATCH_REPOS=1
+	fi
+
+	# OVE_PATCH_REPOS_METHOD:string:am|apply|auto:patch-repo pull source:patch method
+	if [ -z "${OVE_PATCH_REPOS_METHOD+x}" ]; then
+		export OVE_PATCH_REPOS_METHOD="apply"
+	fi
+
 	# OVE_LOG_DIR_DISK_USAGE_WARNING_MB:int:[0-9]+:all:threshold when logs take too much space
 	if [ -z "${OVE_LOG_DIR_DISK_USAGE_WARNING_MB+x}" ]; then
 		export OVE_LOG_DIR_DISK_USAGE_WARNING_MB=100
@@ -8593,6 +8698,8 @@ function ove_reinit {
 	fi
 
 	ove_post_checks
+
+	return 0
 }
 
 # init:initialize OVE workspace
@@ -8892,6 +8999,11 @@ function ove_post_checks {
 
 	# validate revtab revision
 	ove_revtab_check
+
+	# patch repos
+	ove_patch_repos
+
+	return 0
 }
 
 function ove_buildable_projects {
