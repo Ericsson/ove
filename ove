@@ -5318,6 +5318,9 @@ function ove_install_packages {
 	local missing_packages
 	local missing_packages_sorted
 
+	if [ ${OVE_INSTALL_PKG:?} -eq 0 ]; then
+		return
+	fi
 	missing_packages=$(ove_packages_not_installed "$@")
 
 	# no missing packages?
@@ -5353,7 +5356,7 @@ function ove_install_packages {
 			return 1
 		fi
 		return 0
-	else
+	elif [ ${OVE_INSTALL_PKG:?} -eq 2 ]; then
 		echo "missing package(s):"
 		echo
 		echo "To fix this, run the following command:"
@@ -8577,9 +8580,9 @@ function ove_config_builtins_init {
 		export OVE_ACCELERATE_BUILDS=0
 	fi
 
-	# OVE_INSTALL_PKG:int:0|1:install-pkg:prompt (=0) or install (=1) packages
+	# OVE_INSTALL_PKG:int:0-2:buildme buildme-parallel install-pkg:skip (=0), install (=1) or prompt (=2) packages
 	if [ -z "${OVE_INSTALL_PKG+x}" ]; then
-		export OVE_INSTALL_PKG=0
+		export OVE_INSTALL_PKG=2
 	fi
 }
 
