@@ -5530,7 +5530,7 @@ function ove-export {
 		name+="-${args}"
 	fi
 	name+=".tar.bz2"
-	\tar -C "${OVE_PROJECT_TMP_DIR}/export" -cjf "${name}" .
+	\tar -C "${OVE_PROJECT_TMP_DIR}/export" -cjf "${name}" --owner=0 --group=0 .
 	echo "${name}"
 
 	return 0
@@ -5583,7 +5583,7 @@ function ove-import {
 
 	\mkdir -p "${OVE_PROJECT_TMP_DIR}/import"
 	\find "${OVE_PROJECT_TMP_DIR}/import" -maxdepth 1 -name '*.patch' -exec rm {} \;
-	\tar -C "${OVE_PROJECT_TMP_DIR}/import" -xf "${f}"
+	\tar -C "${OVE_PROJECT_TMP_DIR}/import" -xf "${f}" --no-same-owner
 
 	for patch in "${OVE_PROJECT_TMP_DIR}/import/"*.patch; do
 		if ! ove_patch_one_project "$patch"; then
