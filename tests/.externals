@@ -33,6 +33,8 @@ fold:
 
 fzf:
 
+getconf:
+
 grep:
 $ ove grep deadbeef
 mapfile -t res < <(ove_repo_cmd "${repo}" "--no-pager grep" --no-color -I -n "${s}" | \cut -d: -f1,2)

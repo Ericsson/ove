@@ -5818,10 +5818,7 @@ function ove-buildme {
 	return 0
 }
 
-# buildme-parallel:[project...]:build project(s) from scratch (=bootstrap, configure, build, install)
-function ove-buildme-parallel {
-	ove_entry
-
+function ove_buildme_parallel_shell {
 	local b
 	local build_list
 	local dep
@@ -5831,16 +5828,6 @@ function ove-buildme-parallel {
 	local pids
 	local re
 	local wait_for_deps
-
-	if ! ove_build_pre "$@"; then
-		return 1
-	fi
-	trap ove_build_post EXIT
-
-	# install packages
-	if ! ove-install-pkg "$@"; then
-		return 1
-	fi
 
 	if [ $# -ge 1 ]; then
 		build_list="$(ove_get_build_list "$@")"
@@ -5923,6 +5910,115 @@ function ove-buildme-parallel {
 	wait ${pids}
 
 	return 0
+}
+
+function ove_buildme_parallel_make {
+	local b
+	local build_list
+	local deps
+	local makefile
+	local p
+	local phony
+	local pre_steps
+	local re
+	declare -A pre_steps_projects
+
+	makefile="${OVE_PROJECT_TMP_DIR:?}/Makefile"
+	\cat > "${makefile}" << EOF
+SHELL := $(command -v bash)
+PID := \$(shell echo \$\$PPID)
+PREFIX := @MAKEFLAGS=-j\${OVE_BUILDME_PARALLEL_JOBS}
+SUFFIX := kill -TERM \$(PID)
+define BUILD =
+EOF
+	for p in ${OVE_BUILDME_STEPS}; do
+		if [ "$(type -t ove-${p})" == "function" ]; then
+			echo -e "\t\$(PREFIX) ove-${p} \$@ || \$(SUFFIX)" >> ${makefile}
+		fi
+	done
+	echo "endef" >> ${makefile}
+
+	if [ $# -ge 1 ]; then
+		build_list="$(ove_get_build_list "$@")"
+	fi
+
+	for p in ${OVE_BUILDME_PRE_STEPS}; do
+		for b in ${OVE_BUILD_ORDER}; do
+			if [ $# -ge 1 ]; then
+				re=\\b${b}\\b
+				if ! [[ "${build_list}" =~ ${re} ]]; then
+					continue
+				fi
+			fi
+
+			if [ ! -e "${OVE_PROJECT_DIR}/projects/${b}/${p}" ]; then
+				continue
+			fi
+			echo "${b}_${p}:" >> "${makefile}"
+			phony+=" ${b}_$p"
+			echo -e "\t\$(PREFIX) ove-${p} ${b} || \$(SUFFIX)" >> "${makefile}"
+			pre_steps_projects["${b}"]+="${b}_${p} "
+		done
+	done
+
+	for b in ${OVE_BUILD_ORDER}; do
+		if [ $# -ge 1 ]; then
+			re=\\b${b}\\b
+			if ! [[ "${build_list}" =~ ${re} ]]; then
+				continue
+			fi
+		fi
+
+		deps="$(ove_get_deps_recursive ${b})"
+		if [ "x${deps}" != "x" ]; then
+			deps="$(ove_uniq ${deps})"
+			deps="$(printf "%s " ${deps})"
+			deps=${deps::-1}
+		fi
+		pre_steps="${pre_steps_projects[${b}]}"
+		if [ "x${pre_steps}" != "x" ]; then
+			pre_steps=${pre_steps::-1}
+		fi
+		if [ "x${deps}" = "x" ] && [ "x${pre_steps}" = "x" ]; then
+			echo "$b:" >> "${makefile}"
+		elif [ "x${deps}" = "x" ] && [ "x${pre_steps}" != "x" ]; then
+			echo "$b: ${pre_steps}" >> "${makefile}"
+		elif [ "x${deps}" != "x" ] && [ "x${pre_steps}" = "x" ]; then
+			echo "$b: ${deps}" >> "${makefile}"
+		else
+			echo "$b: ${deps} ${pre_steps}" >> "${makefile}"
+		fi
+		echo -e "\t\$(BUILD)" >> "${makefile}"
+		phony+=" $b"
+	done
+
+	{ echo ".PHONY:$phony"; \
+		echo ".DEFAULT_GOAL := all"; \
+		echo "all:$phony"; } >> "${makefile}"
+
+	eval make -f "${makefile}" -j"${OVE_BUILDME_PARALLEL_JOBS}"
+	return $?
+}
+
+# buildme-parallel:[project...]:build project(s) from scratch (=bootstrap, configure, build, install)
+function ove-buildme-parallel {
+	ove_entry
+
+	if ! ove_build_pre "$@"; then
+		return 1
+	fi
+	trap ove_build_post EXIT
+
+	if ! ove-install-pkg "$@"; then
+		return 1
+	fi
+
+	if command -v make > /dev/null; then
+		ove_buildme_parallel_make "$@"
+	else
+		ove_buildme_parallel_shell "$@"
+	fi
+	return $?
 }
 
 # diff-check:[options]:git diff --check [options]
@@ -7598,7 +7694,7 @@ function ove-what-is {
 		[ ! -d "${dir}" ] && continue
 		echo "${dir}":
 		\find "${dir}" -not -path '*.git*' -print0 | \
-			\xargs -0 -P"$(nproc)" file | \
+			\xargs -0 -P"$(\getconf _NPROCESSORS_ONLN)" file | \
 			\awk '{$1=""; print $0}' | \
 			LC_ALL="C" \sort | \
 			\uniq -c | \
@@ -8612,6 +8708,12 @@ function ove_config_builtins_init {
 	# OVE_PATCH_REPOS_METHOD:string:am|apply|auto:patch-repo pull source:patch method
 	if [ -z "${OVE_PATCH_REPOS_METHOD+x}" ]; then
 		export OVE_PATCH_REPOS_METHOD="apply"
+	fi
+
+	# OVE_BUILDME_PARALLEL_JOBS:int::buildme-parallel:jobs option (-j) for 'make' and sub-make (through MAKEFLAGS=-j)
+	if [ -z "${OVE_BUILDME_PARALLEL_JOBS+x}" ]; then
+		OVE_BUILDME_PARALLEL_JOBS="$(\getconf _NPROCESSORS_ONLN)"
+		export OVE_BUILDME_PARALLEL_JOBS
 	fi
 
 	# OVE_LOG_DIR_DISK_USAGE_WARNING_MB:int:[0-9]+:all:threshold when logs take too much space
@@ -10157,6 +10259,7 @@ function ove_externals {
 	cmds+=('flock')
 	cmds+=('fold')
 	cmds+=('fzf')
+	cmds+=('getconf')
 	cmds+=('grep')
 	cmds+=('head')
 	cmds+=('inotifywait')
@@ -10193,6 +10296,9 @@ function ove_externals {
 	cmds+=('yamllint')
 
 	for cmd in "${cmds[@]}"; do
+		if ! command -v ${cmd} > /dev/null; then
+			ove_echo_warning_noprefix "'${cmd}' is not available on this machine"
+		fi
 		echo "${cmd}:"
 		\grep -v "\\\\${cmd} " ${OVE_SELF} | \
 			\grep "[[:blank:] ()]\+${cmd}\b" | \
