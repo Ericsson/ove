@@ -2219,52 +2219,9 @@ function ove_list_projects_paths {
 	echo -n "${s}"
 }
 
-# $1: project name
-# $2: project command
-function ove_projects_cmd {
+# helper for ove_projects_cmd
+function ove_projects_cmd_execute {
 	local e
-	local i
-	local path
-	local proj_command
-	local proj_name
-	local re
-	local ret
-
-	proj_name=$1
-	proj_command=$2
-	ret=0
-
-	# sanity check
-	! [ -e "${OVE_PROJECT_DIR}/projects/${proj_name}/${proj_command}" ] && return
-
-	i=${ove_projects_name2index[${proj_name}]}
-	path="${ove_projects_path[${i}]}"
-
-	# create dir if needed
-	if [ ! -d "${path}" ]; then
-		if ! \mkdir -vp "${path}"; then
-			ove_echo_warning_noprefix "${proj_name}: ${proj_command}: 'mkdir -vp ${path}' failed"
-		fi
-	fi
-
-	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
-		if ! pushd "${path}" &>/dev/null; then
-			ove_echo_error_noprefix "${proj_name}: ${proj_command}: pushd '${path}' failed"
-			return 1
-		fi
-	fi
-
-	if [ ${OVE_LOGLEVEL} -ne 0 ]; then
-		ove_echo_cyan_error "${proj_name}: ${proj_command}"
-	fi
-
-	if [[ ${FUNCNAME[*]} == *-parallel ]] && [ "x${OVE_FORCE_SERIALIZE_COMMANDS}" != "x" ]; then
-		re=\\b${proj_command}\\b
-		if [[ "${OVE_FORCE_SERIALIZE_COMMANDS}" =~ ${re} ]]; then
-			exec {fd}>${OVE_PROJECT_TMP_DIR}/.${proj_command}.lock
-			\flock ${OVE_FLOCK_OPTIONS} ${fd}
-		fi
-	fi
 
 	# common for this command?
 	if [ -e "${OVE_PROJECT_DIR}/projects/common/${proj_command}" ]; then
@@ -2305,7 +2262,6 @@ function ove_projects_cmd {
 		ret="$?"
 	fi
 
-	# exit directory
 	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
 		if ! popd &>/dev/null; then
 			ove_echo_warning_noprefix "${proj_name}: ${proj_command}: popd failed"
@@ -2318,6 +2274,62 @@ function ove_projects_cmd {
 		if [ ${OVE_LOGLEVEL} -ne 0 ]; then
 			ove_echo_cyan_error "${proj_name}: ${proj_command}: done"
 		fi
+	fi
+}
+
+# $1: project name
+# $2: project command
+function ove_projects_cmd {
+	local i
+	local path
+	local proj_command
+	local proj_name
+	local re
+	local ret
+	local with_flock=0
+
+	proj_name=$1
+	proj_command=$2
+	ret=0
+
+	# sanity check
+	! [ -e "${OVE_PROJECT_DIR}/projects/${proj_name}/${proj_command}" ] && return
+
+	i=${ove_projects_name2index[${proj_name}]}
+	path="${ove_projects_path[${i}]}"
+
+	# create dir if needed
+	if [ ! -d "${path}" ]; then
+		if ! \mkdir -vp "${path}"; then
+			ove_echo_warning_noprefix "${proj_name}: ${proj_command}: 'mkdir -vp ${path}' failed"
+		fi
+	fi
+
+	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
+		if ! pushd "${path}" &>/dev/null; then
+			ove_echo_error_noprefix "${proj_name}: ${proj_command}: pushd '${path}' failed"
+			return 1
+		fi
+	fi
+
+	if [ ${OVE_LOGLEVEL} -ne 0 ]; then
+		ove_echo_cyan_error "${proj_name}: ${proj_command}"
+	fi
+
+	if [ "x${OVE_FORCE_SERIALIZE_COMMANDS}" != "x" ]; then
+		re=\\b${proj_command}\\b
+		if [[ "${OVE_FORCE_SERIALIZE_COMMANDS}" =~ ${re} ]]; then
+			with_flock=1
+		fi
+	fi
+
+	if [ ${with_flock} -eq 1 ]; then
+		(
+			\flock ${fd}
+			ove_projects_cmd_execute "$@"
+		) {fd}>${OVE_PROJECT_TMP_DIR}/.${proj_command}.lock
+	else
+		ove_projects_cmd_execute "$@"
 	fi
 
 	return "${ret}"
