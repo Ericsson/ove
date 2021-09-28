@@ -171,6 +171,17 @@ function ove_unsource_user_env {
 			PKG_CONFIG_PATH=${PKG_CONFIG_PATH:1}
 		fi
 	fi
+
+	# cleanup MAKEFLAGS
+	if [ -n "${MAKEFLAGS}" ] && \
+		[[ ${MAKEFLAGS} == *"${OVE_MAKEFLAGS}"* ]]; then
+		MAKEFLAGS=${MAKEFLAGS/${OVE_MAKEFLAGS}/}
+		if [ "${MAKEFLAGS}" == "" ]; then
+			unset MAKEFLAGS
+		elif [ "${MAKEFLAGS: -1}" = " " ]; then
+			MAKEFLAGS=${MAKEFLAGS::-1}
+		fi
+	fi
 }
 
 function ove_unsource {
@@ -2245,8 +2256,9 @@ function ove_projects_cmd_execute {
 			e+=" OVE_ACTIVE_PROJECT_VERSION=${ove_projects_version[${i}]}"
 			if [ ${OVE_TAINT_USER_ENV} -eq 0 ]; then
 				e+=" LD_LIBRARY_PATH=${OVE_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}"
-				e+=" PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH}"
+				e+=" MAKEFLAGS=\"\${OVE_MAKEFLAGS}\""
 				e+=" PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/sbin:${OVE_STAGE_DIR}${OVE_PREFIX}/bin:${PATH}"
+				e+=" PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH}"
 			fi
 
 			# run it
@@ -5939,7 +5951,7 @@ function ove_buildme_parallel_make {
 	\cat > "${makefile}" << EOF
 SHELL := $(command -v bash)
 PID := \$(shell echo \$\$PPID)
-PREFIX := @MAKEFLAGS=-j\${OVE_BUILDME_PARALLEL_JOBS}
+PREFIX := @MAKEFLAGS="\${OVE_MAKEFLAGS}"
 SUFFIX := kill -TERM \$(PID)
 define BUILD =
 EOF
@@ -6008,7 +6020,7 @@ EOF
 		echo ".DEFAULT_GOAL := all"; \
 		echo "all:$phony"; } >> "${makefile}"
 
-	eval make -f "${makefile}" -j"${OVE_BUILDME_PARALLEL_JOBS}"
+	eval make -f "${makefile}" "${OVE_MAKEFLAGS}"
 	return $?
 }
 
@@ -8722,10 +8734,10 @@ function ove_config_builtins_init {
 		export OVE_PATCH_REPOS_METHOD="apply"
 	fi
 
-	# OVE_BUILDME_PARALLEL_JOBS:int::buildme-parallel:jobs option (-j) for 'make' and sub-make (through MAKEFLAGS=-j)
-	if [ -z "${OVE_BUILDME_PARALLEL_JOBS+x}" ]; then
-		OVE_BUILDME_PARALLEL_JOBS="$(\getconf _NPROCESSORS_ONLN)"
-		export OVE_BUILDME_PARALLEL_JOBS
+	# OVE_MAKEFLAGS:int::all-build-commands:passed on to 'make' based build systems through MAKEFLAGS
+	if [ -z "${OVE_MAKEFLAGS+x}" ]; then
+		OVE_MAKEFLAGS="-j$(\getconf _NPROCESSORS_ONLN)"
+		export OVE_MAKEFLAGS
 	fi
 
 	# OVE_LOG_DIR_DISK_USAGE_WARNING_MB:int:[0-9]+:all:threshold when logs take too much space
@@ -8733,7 +8745,7 @@ function ove_config_builtins_init {
 		export OVE_LOG_DIR_DISK_USAGE_WARNING_MB=100
 	fi
 
-	# OVE_TAINT_USER_ENV:int:0|1:user's env:taint user's PATH/LD_LIBRARY_PATH/PKG_CONFIG
+	# OVE_TAINT_USER_ENV:int:0|1:user's env:taint user's PATH/LD_LIBRARY_PATH/PKG_CONFIG/MAKEFLAGS
 	if [ -z "${OVE_TAINT_USER_ENV+x}" ]; then
 		export OVE_TAINT_USER_ENV=1
 	fi
@@ -8981,6 +8993,9 @@ function ove_init {
 			PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH}
 		fi
 		export PKG_CONFIG_PATH
+
+		MAKEFLAGS="${OVE_MAKEFLAGS}"
+		export MAKEFLAGS
 	else
 		ove_unsource_user_env
 	fi
