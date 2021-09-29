@@ -2487,8 +2487,11 @@ function ove_status_one_repo {
 		revision="${ove_revtab_rev[${i}]}"
 	fi
 
-	s=$(ove_repo_cmd "${repo_fullpath}" "${OVE_GIT_OPTIONS} -c color.status=always status" -bs -uno)
-	s=${s//$'\n'/ }
+	if ! s=$(ove_repo_cmd "${repo_fullpath}" "${OVE_GIT_OPTIONS} -c color.status=always status" -bs -uno 2> /dev/null); then
+		s="$(ove_echo_red_noprefix '??')"
+	else
+		s=${s//$'\n'/ }
+	fi
 	printf "$(printf "%-$((OVE_REPO_LIST_WIDTH-2))s" ${repo_shortpath}):${revision}:$s\n"
 }
 
