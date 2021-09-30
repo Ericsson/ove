@@ -1958,16 +1958,6 @@ function ove_project_commands_list {
 	fi
 }
 
-# uniq list of mandatory attributes
-function ove_projects_attributes {
-	if [ -f "${OVE_PROJECT_DIR}"/projs ]; then
-		\grep -E -o '  \w+:' "${OVE_PROJECT_DIR}"/projs | \
-			\cut -d: -f1 | \
-			\tr -d ' ' | \
-			LC_ALL="C" \sort -u
-	fi
-}
-
 # $1: dir (optional)
 function ove_list_tags_and_branches {
 	local d
@@ -2221,19 +2211,6 @@ function ove_list_projects_with_deps {
 		fi
 		(( i+=1 ))
 	done
-}
-
-function ove_list_projects_paths {
-	local i
-	local s
-
-	i=0
-	while ((i < ove_number_of_projects)); do
-		s+="${ove_projects_path[${i}]} "
-		(( i+=1 ))
-	done
-
-	echo -n "${s}"
 }
 
 # helper for ove_projects_cmd
@@ -5244,6 +5221,20 @@ function ove_get_paths_recursive {
 	done
 }
 
+# proj2path:project:print project path
+function ove-proj2path {
+	ove_entry
+
+	local i
+
+	if [ $# -ne 1 ] || [[ ! -v ove_projects_name2index[${1}] ]]; then
+		ove_command_usage
+		return 1
+	fi
+	i=${ove_projects_name2index[$1]}
+	echo "${ove_projects_path[${i}]}"
+}
+
 function ove_validate_revtab {
 	local a
 	local foo
@@ -8137,7 +8128,8 @@ function ove_bash_complete {
 		[ "${subcommand}" == "export" ] ||
 		[ "${subcommand}" == "install-pkg" ] ||
 		[ "${subcommand}" == "list-needs" ] ||
-		[ "${subcommand}" == "list-missing-projects" ]; then
+		[ "${subcommand}" == "list-missing-projects" ] ||
+		[ "${subcommand}" == "proj2path" ]; then
 		wordlist=${OVE_PROJECT_LIST}
 	elif [ "${subcommand}" == "distrocheck" ]; then
 		if [ ${size} -eq 2 ]; then
