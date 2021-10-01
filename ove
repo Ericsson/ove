@@ -2448,6 +2448,8 @@ function ove_repo2index {
 # $1: repo
 function ove_status_one_repo {
 	local i
+	local len
+	local m
 	local repo_fullpath
 	local repo_shortpath
 	local revision
@@ -2473,9 +2475,13 @@ function ove_status_one_repo {
 	if ! s=$(ove_repo_cmd "${repo_fullpath}" "${OVE_GIT_OPTIONS} -c color.status=always status" -bs -uno 2> /dev/null); then
 		s="$(ove_echo_red_noprefix '??')"
 	else
-		s=${s//$'\n'/ }
+		len=${#s}
+		if [ ${trunc} -eq 1 ] && [ ${len} -gt $((COLUMNS*LINES)) ]; then
+			m="$((COLUMNS*$((LINES/2 - 1))))"
+			s="${s:0:${m}} $(ove_echo_yellow_noprefix ...truncated $((len-m*2)) chars...) ${s: -${m}}"
+		fi
 	fi
-	printf "$(printf "%-$((OVE_REPO_LIST_WIDTH-2))s" ${repo_shortpath}):${revision}:$s\n"
+	printf "$(printf "%-$((OVE_REPO_LIST_WIDTH-2))s" ${repo_shortpath}):${revision}:$(printf "%s " $s)\n"
 }
 
 function ove_validate_repo_list {
@@ -2504,9 +2510,13 @@ function ove_validate_repo_list {
 
 function ove_revtab_status {
 	local f
+	local files
+	local i
 	local repo
 	local repos
 	local o
+	local p
+	local trunc=0
 
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list "$@")
@@ -2525,11 +2535,39 @@ function ove_revtab_status {
 
 	f+="/$(\date '+%Y%m%d-%H%M%S%N')-revtab-status"
 
-	for repo in ${repos}; do
-		ove_status_one_repo ${repo} >> ${f} &
-	done
+	if [[ ! "${OVE_STATUS_TRUNC}" =~ ^[0-1]$ ]]; then
+		ove_echo_warning_noprefix "OVE_STATUS_TRUNC is set to a none valid value '${OVE_STATUS_TRUNC}'"
+	elif [ "${OVE_STATUS_TRUNC:?}" -eq 1 ]; then
+		trunc=1
+		# make sure that COLUMNS/LINES is valid
+		if ! shopt -q checkwinsize; then
+			shopt -s checkwinsize
+			# force an update
+			if [ -x /bin/true ]; then
+				/bin/true
+			else
+				ove_echo_stderr_noprefix "/bin/true?"
+			fi
 
+			if [ "x${COLUMNS}" = "x" ]; then
+				trunc=0
+			fi
+		fi
+	fi
+
+	for repo in ${repos}; do
+		i=${ove_revtab_name2index[${repo/${OVE_BASE_DIR}\//}]}
+		ove_status_one_repo ${repo} > ${f}.${i} &
+	done
 	wait
+
+	files=
+	for repo in ${repos}; do
+		i=${ove_revtab_name2index[${repo/${OVE_BASE_DIR}\//}]}
+		files+="${f}.$i "
+	done
+	\cat ${files} > ${f}
+	\rm ${files}
 
 	LC_ALL="C" \sort -o ${f} ${f}
 	if [ "${OVE_COLUMN_WRAP_BUG}" -eq 1 ]; then
@@ -8809,6 +8847,11 @@ function ove_config_builtins_init {
 	# OVE_ACCELERATE_BUILDS:int:0|1:all-build-commands:prefix build acceleration tools (ccache/icecream) to PATH
 	if [ -z "${OVE_ACCELERATE_BUILDS+x}" ]; then
 		export OVE_ACCELERATE_BUILDS=0
+	fi
+
+	# OVE_STATUS_TRUNC:int:0|1:status:truncate output to fit terminal
+	if [ -z "${OVE_STATUS_TRUNC+x}" ]; then
+		export OVE_STATUS_TRUNC=1
 	fi
 
 	# OVE_INSTALL_PKG:int:0-2:buildme buildme-parallel install-pkg:skip (=0), install (=1) or prompt (=2) packages
