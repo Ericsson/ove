@@ -116,9 +116,17 @@ function lxc_command {
 }
 
 function lxc_exec {
+	local e
 	local lxc_exec_options
 
 	lxc_exec_options="-t --env DEBIAN_FRONTEND=noninteractive"
+	for e in ftp_proxy http_proxy https_proxy; do
+		if [ "x${!e}" = "x" ]; then
+			continue
+		fi
+		lxc_exec_options+=" --env ${e}=${!e}"
+	done
+
 	run "lxc exec ${lxc_exec_options} ${lxc_name} -- $*"
 }
 
@@ -180,6 +188,9 @@ function main {
 		elif lxc_command "apt-get"; then
 			ove_packs+=" bsdmainutils procps"
 			package_manager="apt-get -y -qq install"
+			if [ -s "/etc/apt/apt.conf" ]; then
+				run "lxc file push --uid 0 --gid 0 /etc/apt/apt.conf ${lxc_name}/etc/apt/apt.conf"
+			fi
 		elif lxc_command "xbps-install"; then
 			package_manager="xbps-install -y"
 		elif lxc_command "dnf"; then
@@ -190,6 +201,10 @@ function main {
 			echo "error: unknown package manager for '${distro}'"
 			cleanup
 			continue
+		fi
+
+		if [ -s "${HOME}"/.gitconfig ]; then
+			run "lxc file push --uid 0 --gid 0 ${HOME}/.gitconfig ${lxc_name}/root/.gitconfig"
 		fi
 
 		lxc_exec "${package_manager} ${ove_packs}"
@@ -221,7 +236,6 @@ function main {
 		fi
 
 		if [ ${unittest} -eq 1 ]; then
-			run "lxc file push --uid 0 --gid 0 ${HOME}/.gitconfig ${lxc_name}/root/.gitconfig"
 
 			lxc_exec "${package_manager} python3"
 			if [[ ${distro} == *alpine* ]]; then
