@@ -1780,15 +1780,19 @@ function ove {
 		return 1
 	fi
 
-	# commands that affect the user shell
+	# do not log commands that:
+	# * affect the user's shell
+	# * 'complex' commands (e.g. vi/emacs)
 	if [ "${cmd}" == "add-config" ] || \
 		[ "${cmd}" == "dry-run" ] || \
 		[ "${cmd}" == "config" ] || \
+		[ "${cmd}" == "emacs" ] || \
 		[ "${cmd}" == "loglevel" ] || \
 		[ "${cmd}" == "revtab-check" ] || \
 		[ "${cmd}" == "checkout" ] || \
 		[ "${cmd}" == "update-revtab" ] || \
-		[ "${cmd}" == "unsource" ]; then
+		[ "${cmd}" == "unsource" ] || \
+		[ "${cmd}" == "vi" ]; then
 		ove-${cmd} "${@:2}"
 		return $?
 	fi
