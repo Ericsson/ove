@@ -57,6 +57,8 @@ function init {
 		exit 1
 	fi
 
+	\sort -u -o "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images" "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images"
+
 	mapfile -t distro_list <<<"$(\grep -E "$2" "${OVE_GLOBAL_STATE_DIR}/distro-check.images")"
 	if [[ ( ${#distro_list[@]} -eq 0 ) || ( ${#distro_list[@]} -eq 1 && "x${distro_list[*]}" = "x" ) ]]; then
 		echo "error: no images, try to broaden the filter, choose from:"
