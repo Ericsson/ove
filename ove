@@ -2539,22 +2539,24 @@ function ove_revtab_status {
 
 	f+="/$(\date '+%Y%m%d-%H%M%S%N')-revtab-status"
 
-	if [[ ! "${OVE_STATUS_TRUNC}" =~ ^[0-1]$ ]]; then
-		ove_echo_warning_noprefix "OVE_STATUS_TRUNC is set to a none valid value '${OVE_STATUS_TRUNC}'"
-	elif [ "${OVE_STATUS_TRUNC:?}" -eq 1 ]; then
-		trunc=1
-		# make sure that COLUMNS/LINES is valid
-		if ! shopt -q checkwinsize; then
-			shopt -s checkwinsize
-			# force an update
-			if [ -x /bin/true ]; then
-				/bin/true
-			else
-				ove_echo_stderr_noprefix "/bin/true?"
-			fi
+	if [ -t 1 ]; then
+		if [[ ! "${OVE_STATUS_TRUNC}" =~ ^[0-1]$ ]]; then
+			ove_echo_warning_noprefix "OVE_STATUS_TRUNC is set to a none valid value '${OVE_STATUS_TRUNC}'"
+		elif [ "${OVE_STATUS_TRUNC:?}" -eq 1 ]; then
+			trunc=1
+			# make sure that COLUMNS/LINES is valid
+			if ! shopt -q checkwinsize; then
+				shopt -s checkwinsize
+				# force an update
+				if [ -x /bin/true ]; then
+					/bin/true
+				else
+					ove_echo_stderr_noprefix "/bin/true?"
+				fi
 
-			if [ "x${COLUMNS}" = "x" ]; then
-				trunc=0
+				if [ "x${COLUMNS}" = "x" ]; then
+					trunc=0
+				fi
 			fi
 		fi
 	fi
