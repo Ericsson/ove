@@ -49,6 +49,11 @@ function init {
 		arch="amd64"
 	fi
 
+	if [ -t 1 ]; then
+		bash_opt="-i"
+		lxc_opt="-t"
+	fi
+
 	if ! \lxc image list --format csv -cL images: arch=${arch} | \sed -e 's,",,g' -e '/^$/d' > "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images"; then
 		echo "error: 'lxc image list images:' failed"
 		exit 1
@@ -119,7 +124,7 @@ function lxc_exec {
 	local e
 	local lxc_exec_options
 
-	lxc_exec_options="-t --env DEBIAN_FRONTEND=noninteractive"
+	lxc_exec_options="${lxc_opt} --env DEBIAN_FRONTEND=noninteractive"
 	for e in ftp_proxy http_proxy https_proxy; do
 		if [ "x${!e}" = "x" ]; then
 			continue
@@ -131,22 +136,22 @@ function lxc_exec {
 }
 
 function package_manager_noconfirm {
-	lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1'"
+	lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1'"
 
 	if [[ ${package_manager} == apt-get* ]];  then
-		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -yq'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -yq'"
 	elif [[ ${package_manager} == pacman* ]]; then
-		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
 	elif [[ ${package_manager} == xbps-install* ]]; then
-		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y'"
 	elif [[ ${package_manager} == zypper* ]]; then
-		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
 	elif [[ ${package_manager} == dnf* ]]; then
-		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
 	elif [[ ${package_manager} == apk* ]]; then
-		lxc_exec "bash -c -i '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q'"
 	fi
-	lxc_exec "bash -c -i '${prefix}; ove config'"
+	lxc_exec "bash -c ${bash_opt} '${prefix}; ove config'"
 }
 
 function cleanup {
@@ -221,9 +226,9 @@ function main {
 			lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/ove-tutorial'"
 		fi
 		prefix="cd ${ws_name}; source ove hush"
-		lxc_exec "bash -c -i 'cd ${ws_name}; source ove'"
-		lxc_exec "bash -c -i '${prefix}; ove env'"
-		lxc_exec "bash -c -i '${prefix}; ove status'"
+		lxc_exec "bash -c ${bash_opt} 'cd ${ws_name}; source ove'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove env'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove status'"
 
 		package_manager_noconfirm
 		if [[ ${distro} == *archlinux* ]]; then
@@ -261,13 +266,13 @@ function main {
 			else
 				lxc_exec "cabal install --verbose=0 shelltestrunner-1.9"
 			fi
-			lxc_exec "bash -c -i '${prefix}; ove unittest'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; ove unittest'"
 		fi
 
 		if [ "x${distcheck}" != "x" ]; then
 			run "lxc file push --uid 0 --gid 0 ${distcheck} ${lxc_name}/tmp/distcheck"
-			lxc_exec "bash -c -i '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg $(basename "$(dirname "${distcheck}")")'"
-			lxc_exec "bash -c -i '${prefix}; source /tmp/distcheck'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg $(basename "$(dirname "${distcheck}")")'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; source /tmp/distcheck'"
 		fi
 
 		cleanup
