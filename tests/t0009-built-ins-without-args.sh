@@ -2,6 +2,7 @@
 
 set -e
 
+ignore+=" loop-close"
 ignore+=" post-push"
 ignore+=" pre-push"
 ignore+=" refresh"

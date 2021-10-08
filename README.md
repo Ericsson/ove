@@ -315,7 +315,6 @@ OVE implements a subset of the standard git commands as "high level" git command
 * pull
 * show
 * status
-* tag
 
 ### Build related commands
 This is a list of build related commands:
