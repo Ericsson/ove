@@ -9150,7 +9150,7 @@ function ove_post_checks {
 			echo
 			ove_echo_yellow_noprefix "warning: found ${#doublets[*]} config duplicate(s):"
 			for c in ${doublets[*]}; do
-				\grep -H -n -w ${c} ${f}
+				\grep -H -E -n -v '#|^$' ${f} | \grep -w ${c}
 			done
 		fi
 	done
