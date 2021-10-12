@@ -3366,7 +3366,7 @@ function ove_repo_cmd {
 	local repo
 
 	repo=$1
-	if [ "$2" != "clone" ] && [ ! -e ${repo}/.git ]; then
+	if [ "$2" != "clone" ] && [ "$2" != "ls-remote" ] && [ ! -e ${repo}/.git ]; then
 		return 1
 	fi
 
@@ -3392,7 +3392,7 @@ function ove_repo_cmd {
 	fi
 
 	# construct the git command
-	if [ "${git_cmd}" = "clone" ]; then
+	if [ "${git_cmd}" = "clone" ] || [ "${git_cmd}" = "ls-remote" ]; then
 		cmd="git $1 ${git_cmd_opt}"
 	else
 		cmd="git -C ${repo} $1 ${git_cmd_opt}"
