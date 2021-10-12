@@ -2465,7 +2465,7 @@ function ove_revtab_init {
 
 		read -a array -r <<<"${line}"
 
-		if [ "${array[1]}" == "" ] || [ "${array[2]}" == "" ] || [ "${array[3]}" == "" ]; then
+		if [ "${array[1]}" == "" ] || [ "${array[2]}" == "" ] || [ "${array[3]}" == "" ] || [ "${#array[*]}" -gt 4 ]; then
 			ove_echo_warning_noprefix "${OVE_PROJECT_DIR}/revtab:${lineno} format error"
 			continue
 		fi
