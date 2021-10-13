@@ -1999,6 +1999,8 @@ function ove_list_branches {
 function ove_projects_init {
 	local i
 	local m
+	local name
+	local needs_distro_version_found
 	local projects
 	local tmp_var
 
@@ -2124,19 +2126,20 @@ function ove_projects_init {
 	i=0
 	while ((i < ove_number_of_projects)); do
 		# name
-		ove_projects_name[${i}]=${projects[${i}]}
-		unset ove_${projects[${i}]}
+		name=${projects[${i}]}
+		ove_projects_name[${i}]=${name}
+		unset ove_${name}
 
 		# index
-		ove_projects_name2index[${projects[${i}]}]=${i}
+		ove_projects_name2index[${name}]=${i}
 
 		# deps
-		tmp_var="ove_${projects[${i}]}_deps"
+		tmp_var="ove_${name}_deps"
 		ove_projects_deps[${i}]=${!tmp_var}
 		unset ${tmp_var}
 
 		# path
-		tmp_var="ove_${projects[${i}]}_path"
+		tmp_var="ove_${name}_path"
 		if [ "${!tmp_var:0:1}" = "/" ]; then
 			ove_projects_path[${i}]="${!tmp_var}"
 		else
@@ -2145,24 +2148,23 @@ function ove_projects_init {
 		unset ${tmp_var}
 
 		# needs
-		tmp_var="ove_${projects[${i}]}_needs"
+		tmp_var="ove_${name}_needs"
 		ove_projects_needs[${i}]=${!tmp_var}
 		unset ${tmp_var}
 
 		# distro needs
+		needs_distro_version_found=0
 		for m in ${OVE_OS_ID} ${OVE_OS_ID_LIKE}; do
-			tmp_var="ove_${projects[${i}]}_needs_${m//-/_}"
+			tmp_var="ove_${name}_needs_${m//-/_}_${OVE_OS_VER//./_}"
 			if [ "${!tmp_var}" != "" ]; then
+				needs_distro_version_found=1
 				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
 					ove_projects_needs[${i}]="${!tmp_var}"
 				else
 					ove_projects_needs[${i}]+=" ${!tmp_var}"
 				fi
 				unset ${tmp_var}
-			fi
-
-			tmp_var="ove_${projects[${i}]}_needs_${m//-/_}_${OVE_OS_VER//./_}"
-			if [ "${!tmp_var}" != "" ]; then
+			elif [ $needs_distro_version_found -eq 0 ] && tmp_var="ove_${name}_needs_${m//-/_}" && [ "${!tmp_var}" != "" ]; then
 				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
 					ove_projects_needs[${i}]="${!tmp_var}"
 				else
@@ -2173,7 +2175,7 @@ function ove_projects_init {
 		done
 
 		# version
-		tmp_var="ove_${projects[${i}]}_version"
+		tmp_var="ove_${name}_version"
 		ove_projects_version[${i}]=${!tmp_var}
 		unset ${tmp_var}
 
