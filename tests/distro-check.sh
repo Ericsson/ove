@@ -139,7 +139,7 @@ function package_manager_noconfirm {
 	lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1'"
 
 	if [[ ${package_manager} == apt-get* ]];  then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -yq'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install'"
 	elif [[ ${package_manager} == pacman* ]]; then
 		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
 	elif [[ ${package_manager} == xbps-install* ]]; then
@@ -192,7 +192,7 @@ function main {
 			package_manager="pacman -S --noconfirm -q --noprogressbar"
 		elif lxc_command "apt-get"; then
 			ove_packs+=" bsdmainutils procps"
-			package_manager="apt-get -y -qq install"
+			package_manager="apt-get -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install"
 			if [ -s "/etc/apt/apt.conf" ]; then
 				run "lxc file push --uid 0 --gid 0 /etc/apt/apt.conf ${lxc_name}/etc/apt/apt.conf"
 			fi
