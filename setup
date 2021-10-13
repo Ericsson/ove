@@ -32,7 +32,7 @@ USAGE
 
 	path = workspace path
 	url  = OWEL url
-	rev  = a specific revision (SHA-1/TAG)
+	rev  = a specific revision (SHA-1/tag)
 
 EXAMPLES
 	# setup 'xyz-top' in directory 'xyz'
@@ -54,30 +54,7 @@ fi
 
 if ! command -v git > /dev/null; then
 	echo "error: 'git' is not found"
-	exit 2
-fi
-
-mkdir -vp "${path}"
-cd "${path}"
-
-if ! git clone "${url}"; then
-	echo "error: 'git clone ${url}' failed"
-	exit 3
-fi
-
-ove_url="https://github.com/Ericsson/ove.git"
-if ! git clone ${ove_url} .ove; then
-	echo "error: 'git clone ${ove_url} .ove' failed"
-	exit 4
-fi
-
-owel=${2##*/}
-owel=${owel%.*}
-ln -s "${owel}" .owel
-ln -s .ove/ove ove
-
-if [ "$#" -eq 3 ]; then
-	git -C .owel -c advice.detachedHead=false checkout "$3" || :
+	exit 1
 fi
 
 if [ "x${USER}" != "x" ]; then
@@ -89,6 +66,33 @@ elif command -v whoami > /dev/null; then
 else
 	OVE_USER="ove"
 fi
+
+if [ "$OVE_USER" = "root" ]; then
+	prompt="#"
+else
+	prompt="$"
+fi
+
+run() {
+	echo "${prompt} $*"
+	if ! eval "$*"; then
+		echo "error: '$*' failed"
+		exit 1
+	fi
+}
+
+run "mkdir -p ${path}"
+run "cd ${path}"
+run "git clone -q ${url}"
+run "git clone -q https://github.com/Ericsson/ove.git .ove"
+owel=${2##*/}
+owel=${owel%.*}
+run "ln -s ${owel} .owel"
+run "ln -s .ove/ove ove"
+if [ "$#" -eq 3 ]; then
+	run "git -C .owel -c advice.detachedHead=false checkout $3"
+fi
+
 owel_cache=/tmp/${OVE_USER}/ove/owel.cache
 if [ -d /var/tmp ]; then
 	owel_cache=/var${owel_cache}
