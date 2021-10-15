@@ -6695,7 +6695,7 @@ function ove_patch_one_repo {
 	repo_s="$(ove_repo2shortpath ${repo})"
 
 	if [ ! -d "${repo}" ]; then
-		return 1
+		return 0
 	elif ove_repo_cmd ${repo} apply -R --check "${p}" 2> /dev/null; then
 		return 0
 	elif ove_repo_cmd ${repo} apply --check "${p}" 2> /dev/null; then
