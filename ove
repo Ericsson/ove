@@ -402,17 +402,27 @@ function ove_strace_execve_one_pid {
 	cmd=
 	pid=$1
 	while read -r line; do
-		[ "${line}" == "" ] && continue
+		if [ "x${line}" = "x" ]; then
+			continue
+		fi
 		syscall=${line#* }
 		syscall=${syscall%%(*}
 
 		if [ "${syscall}" == "execve" ]; then
 			[[ "${line}" == *"ENOENT"* ]] && continue
-			cmd=${line##* [\"}
-			cmd=${cmd%%\"]*}
-			cmd=${cmd//\", \"/ }
+			# for slow string substitution in bash
+			if [ ${#line} -gt 1000 ]; then
+				cmd=$(echo $line | \cut -d'[' -f2 | \cut -d']' -f1 | \sed -e 's,"\, ", ,g' )
+				cmd=${cmd:1:-1}
+			else
+				cmd=${line##* [\"}
+				cmd=${cmd%%\"]*}
+				cmd=${cmd//\", \"/ }
+			fi
 			t0=$(ove_strace_get_t0 ${pid})
-			[ "${cmd}" == "" ] && continue
+			if [ "x${cmd}" = "x" ]; then
+				continue
+			fi
 			exit_code=$(ove_strace_get_exit_code ${pid})
 			if [ ${OVE_LOGLEVEL} -eq 3 ]; then
 				echo "${t0}:${pid}:${exit_code}:${cmd}"
@@ -770,9 +780,15 @@ function ove_strace_get_execve {
 
 		[ "${syscall}" != "execve" ] && continue
 		[[ "${line}" == *"ENOENT"* ]] && continue
-		cmd=${line##* [\"}
-		cmd=${cmd%%\"]*}
-		cmd=${cmd//\", \"/ }
+		# for slow string substitution in bash
+		if [ ${#line} -gt 1000 ]; then
+			cmd=$(echo $line | \cut -d'[' -f2 | \cut -d']' -f1 | \sed -e 's,"\, ", ,g' )
+			cmd=${cmd:1:-1}
+		else
+			cmd=${line##* [\"}
+			cmd=${cmd%%\"]*}
+			cmd=${cmd//\", \"/ }
+		fi
 	done <<< "${all_files[$1]}"
 
 	[ "${cmd}" == "" ] && cmd="NA"
@@ -846,9 +862,15 @@ function ove_strace_one_pid {
 			continue
 		elif [ "${syscall}" == "execve" ]; then
 			[[ "${line}" == *"ENOENT"* ]] && continue
-			cmd=${line##* [\"}
-			cmd=${cmd%%\"]*}
-			cmd=${cmd//\", \"/ }
+			# for slow string substitution in bash
+			if [ ${#line} -gt 1000 ]; then
+				cmd=$(echo $line | \cut -d'[' -f2 | \cut -d']' -f1 | \sed -e 's,"\, ", ,g' )
+				cmd=${cmd:1:-1}
+			else
+				cmd=${line##* [\"}
+				cmd=${cmd%%\"]*}
+				cmd=${cmd//\", \"/ }
+			fi
 			continue
 		elif [ "${syscall}" == "bind" ] ||
 			[ "${syscall}" == "connect" ]; then
