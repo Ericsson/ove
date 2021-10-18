@@ -1806,14 +1806,17 @@ function ove {
 	# * affect the user's shell
 	# * 'complex' commands (e.g. vi/emacs)
 	if [ "${cmd}" == "add-config" ] || \
-		[ "${cmd}" == "dry-run" ] || \
 		[ "${cmd}" == "config" ] || \
+		[ "${cmd}" == "checkout" ] || \
+		[ "${cmd}" == "dry-run" ] || \
 		[ "${cmd}" == "emacs" ] || \
+		[ "${cmd}" == "lastlog" ] || \
+		[ "${cmd}" == "lastlog-replay" ] || \
+		[ "${cmd}" == "lastlog-summary" ] || \
 		[ "${cmd}" == "loglevel" ] || \
 		[ "${cmd}" == "revtab-check" ] || \
-		[ "${cmd}" == "checkout" ] || \
-		[ "${cmd}" == "update-revtab" ] || \
 		[ "${cmd}" == "unsource" ] || \
+		[ "${cmd}" == "update-revtab" ] || \
 		[ "${cmd}" == "vi" ]; then
 		ove-${cmd} "${@:2}"
 		return $?
@@ -1846,7 +1849,7 @@ function ove {
 
 		# run the command
 		SHELL=$(command -v bash) \
-			\script ${OVE_SCRIPT_OPTIONS} -c "source ${OVE_BASE_DIR}/ove; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
+			\script ${OVE_SCRIPT_OPTIONS} -t${OVE_LAST_COMMAND}.timing -c "source ${OVE_BASE_DIR}/ove; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
 			${OVE_LAST_COMMAND}
 		ret=$?
 
@@ -8132,24 +8135,199 @@ function ove-dry-run {
 	ove-env ^OVE_DRY_RUN
 }
 
-# lastlog:[mmin]:list OVE logs created within last 60 min or mmin min
+# lastlog-summary:[pattern]:peek inside OVE logs and make a summary
+function ove-lastlog-summary {
+	ove_entry
+
+	local cmd
+	local d
+	local exit_code
+	local f
+	local f_base
+	local first
+	local ff
+	local last
+	local log_type
+	local second
+	local self=${FUNCNAME[0]/ove-/}
+	local t
+	local u
+
+	# ignore logs before October 1, 2021
+	\touch -t 202110010000 $OVE_TMP/ove-${self}-ref
+	\find /var/tmp/*/ove/logs -type f -name '2*' -newer $OVE_TMP/ove-${self}-ref -print  > $OVE_TMP/ove-${self}
+	\rm $OVE_TMP/ove-${self}-ref
+	if [ ! -s $OVE_TMP/ove-${self} ]; then
+		echo "error: no logs found"
+		if [ -e $OVE_TMP/ove-${self} ]; then
+			\rm $OVE_TMP/ove-${self}
+		fi
+		return 1
+	elif [ $# -ne 0 ]; then
+		\grep -E -i ".*$1.*" $OVE_TMP/ove-${self} > $OVE_TMP/ove-${self}.filter
+		if [ ! -s $OVE_TMP/ove-${self}.filter ]; then
+			echo "error: no logs found after filter"
+			if [ -e $OVE_TMP/ove-${self}.filter ]; then
+				\rm $OVE_TMP/ove-${self}.filter
+			fi
+			return 1
+		fi
+		mv $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
+	fi
+
+	printf "%-24s %-4s %s\n" "date" "exit" "command"
+	for f in $(\xargs stat --format '%Y:%n' < $OVE_TMP/ove-${self} | LC_ALL="C" \sort -nr); do
+		t=${f%%:*}
+		ff=${f#*:}
+
+		first=
+		second=
+		last=
+		exit_code=
+		while read -r line; do
+			if [ "x$first" = "x" ]; then
+				first=${line}
+			elif [ "x$second" = "x" ]; then
+				second=${line}
+				break
+			fi
+		done <$ff;
+
+		if [[ $first == "Script started"* ]]; then
+			log_type="script"
+			last=$(\tail -1 $ff)
+		else
+			log_type="tee"
+		fi
+
+		if [ "x$log_type" = "xscript" ]; then
+			cmd=$second
+			if [[ $last == "Script done"* ]]; then
+				exit_code=${last/*COMMAND_EXIT_CODE=\"}
+				exit_code=${exit_code%\"*}
+			fi
+		elif [ "x$log_type" = "xtee" ]; then
+			cmd=$first
+			exit_code=${cmd//*# exit code: /}
+			cmd=${cmd/\# exit code:*/}
+		fi
+		if [[ $cmd != \$* ]]; then
+			continue
+		fi
+
+		if [ "x$exit_code" = "x" ]; then
+			exit_code="NA"
+		elif ! [[ "${exit_code}" =~ ^[0-9]+$ ]]; then
+			exit_code="NA"
+		fi
+
+		if [ "x$cmd" = "x" ]; then
+			cmd="unknown"
+		else
+			cmd=${cmd:2}
+
+			if [[ $cmd != ove* ]]; then
+				cmd="unknown"
+			fi
+		fi
+
+		f_base=${ff##*/}
+		d=${f_base:0:24}
+		u=${ff#*/}
+		u=${u#*/}
+		u=${u#*/}
+		u=${u%%/*}
+		if [ "$u" == "$OVE_USER" ]; then
+			printf "%-24s %-4s %s\n" $d $exit_code "$cmd"
+		else
+			printf "%-24s %-10s %-3s %s\n" $d $u $exit_code "$cmd"
+		fi
+	done
+
+	if [ -e "$OVE_TMP/ove-${self}" ]; then
+		\rm "$OVE_TMP/ove-${self}"
+	fi
+
+	return 0
+}
+
+# lastlog-replay:[file [divisor]]|[pattern [divisor]]:replay OVE commands
+function ove-lastlog-replay {
+	ove_entry
+
+	local divisor=1
+	local f
+	local ff
+	local self=${FUNCNAME[0]/ove-/}
+
+	if [ $# -ne 0 ] && [ -s "$1" ]; then
+		echo "$1" > $OVE_TMP/ove-${self}
+		if [ $# -eq 2 ]; then
+			divisor=$2
+		fi
+	else
+		# ignore logs before October 18, 2021
+		\touch -t 202110180000 $OVE_TMP/ove-${self}-ref
+		\find /var/tmp/*/ove/logs -type f -name '2*' -newer $OVE_TMP/ove-${self}-ref -not -name '*.timing' -print  > $OVE_TMP/ove-${self}
+		\rm $OVE_TMP/ove-${self}-ref
+		if [ ! -s $OVE_TMP/ove-${self} ]; then
+			echo "error: no logs found"
+			if [ -e $OVE_TMP/ove-${self} ]; then
+				\rm $OVE_TMP/ove-${self}
+			fi
+			return 1
+		elif [ $# -ne 0 ]; then
+			\grep -E -i ".*$1.*" $OVE_TMP/ove-${self} > $OVE_TMP/ove-${self}.filter
+			if [ ! -s $OVE_TMP/ove-${self}.filter ]; then
+				echo "error: no logs found after filter"
+				if [ -e $OVE_TMP/ove-${self}.filter ]; then
+					\rm $OVE_TMP/ove-${self}.filter
+				fi
+				return 1
+			fi
+			\mv $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
+		fi
+
+		if [ $# -eq 2 ]; then
+			divisor=$2
+		fi
+	fi
+
+	for f in $(\xargs stat --format '%Y:%n' < $OVE_TMP/ove-${self} | LC_ALL="C" \sort -n); do
+		ff=${f#*:}
+		[ -e $ff.timing ] || continue
+		ove_echo_cyan_noprefix "$ff"
+		\scriptreplay --divisor $divisor --timing $ff.timing $ff 2> /dev/null
+	done
+
+	if [ -e "$OVE_TMP/ove-${self}" ]; then
+		\rm "$OVE_TMP/ove-${self}"
+	fi
+
+	return 0
+}
+
+# lastlog:[pattern]:list OVE logs
 function ove-lastlog {
 	ove_entry
 
-	local mmin=60
+	local find_opt
+	local self=${FUNCNAME[0]/ove-/}
 
-	if [ $# -eq 1 ]; then
-		if ! [[ "${1}" =~ ^[0-9]+$ ]]; then
-			echo "error: just numbers"
-			ove_command_usage
+	\find ${OVE_LOG_DIR} -name '2*.log' -type f ${find_opt} -print > $OVE_TMP/ove-${self}
+	if [ ! -s $OVE_TMP/ove-${self} ]; then
+		echo "error: no logs found"
+		return 1
+	elif [ $# -ne 0 ]; then
+		\grep -E -i ".*$1.*" $OVE_TMP/ove-${self} > $OVE_TMP/ove-${self}.filter
+		if [ ! -s $OVE_TMP/ove-${self}.filter ]; then
+			echo "error: no logs found after filter"
 			return 1
 		fi
-
-		mmin=$1
+		mv $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
 	fi
 
-	\find ${OVE_LOG_DIR} -name '2*.log' -type f -mmin -${mmin} -print0 | \
-		\xargs -0 stat --format '%Y:%n:%s' | \
+	\xargs stat --format '%Y:%n:%s' < $OVE_TMP/ove-${self}| \
 		LC_ALL="C" \sort -nr | \
 		\cut -d: -f2- | \
 		\grep -v ${FUNCNAME[0]} | \
@@ -8649,26 +8827,26 @@ function ove_update_tab_complete {
 
 function ove_add_script_func {
 	local htext
-	local script
-	local script_dir
+	local s
+	local s_dir
 
-	script_dir=$1
-	script=$2
+	s_dir=$1
+	s=$2
 
-	ove_scripts_name2path[${script}]=${script_dir}
-	ove_scripts_paths[${script_dir}]=
-	if [ -f ${script_dir}/${script}.help ]; then
-		htext=$(<${script_dir}/${script}.help)
-		eval "ove-${script}() {
+	ove_scripts_name2path[${s}]=${s_dir}
+	ove_scripts_paths[${s_dir}]=
+	if [ -f ${s_dir}/${s}.help ]; then
+		htext=$(<${s_dir}/${s}.help)
+		eval "ove-${s}() {
 		local helptext=\"${htext}\"
-		local __scriptname=ove-${script}
-		\"${script_dir}\"/${script} \$*
+		local __scriptname=ove-${s}
+		\"${s_dir}\"/${s} \$*
 		}"
 	else
-		eval "ove-${script}() {
-		local helptext=\"${script}: :run '${script_dir}/${script}'\"
-		local __scriptname=ove-${script}
-		\"${script_dir}\"/${script} \$*
+		eval "ove-${s}() {
+		local helptext=\"${s}: :run '${s_dir}/${s}'\"
+		local __scriptname=ove-${s}
+		\"${s_dir}\"/${s} \$*
 		}"
 	fi
 }
@@ -8678,8 +8856,8 @@ function ove_scripts_init {
 	local oldIFS
 	local prev_scripts
 	local repo
-	local script
-	local script_list
+	local s
+	local s_list
 
 	unset ove_scripts_name2path
 	unset ove_scripts_paths
@@ -8698,29 +8876,29 @@ function ove_scripts_init {
 
 	# project scripts
 	if [ -d "${OVE_PROJECT_DIR}/scripts" ]; then
-		script_list=$(\find ${OVE_PROJECT_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
-		for script in ${script_list}; do
-			ove_add_script_func ${OVE_PROJECT_DIR}/scripts ${script##*/}
-			OVE_SCRIPTS_LIST+="${script##*/} "
+		s_list=$(\find ${OVE_PROJECT_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
+		for s in ${s_list}; do
+			ove_add_script_func ${OVE_PROJECT_DIR}/scripts ${s##*/}
+			OVE_SCRIPTS_LIST+="${s##*/} "
 		done
 	fi
 
 	# OVE scripts
 	if [ -d "${OVE_DIR}/scripts" ]; then
-		script_list=$(\find ${OVE_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
-		for script in ${script_list}; do
-			ove_add_script_func ${OVE_DIR}/scripts ${script##*/}
-			OVE_SCRIPTS_LIST+="${script##*/} "
+		s_list=$(\find ${OVE_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
+		for s in ${s_list}; do
+			ove_add_script_func ${OVE_DIR}/scripts ${s##*/}
+			OVE_SCRIPTS_LIST+="${s##*/} "
 		done
 	fi
 
 	# repo scripts
 	for repo in $(ove_revtab_list_fullpath); do
 		! [ -d "${repo}/.ove/scripts" ] && continue
-		script_list=$(\find -L ${repo}/.ove/scripts -perm -u=x -not -name '*.help' -type f)
-		for script in ${script_list}; do
-			ove_add_script_func ${repo}/.ove/scripts ${script##*/}
-			OVE_SCRIPTS_LIST+="${script##*/} "
+		s_list=$(\find -L ${repo}/.ove/scripts -perm -u=x -not -name '*.help' -type f)
+		for s in ${s_list}; do
+			ove_add_script_func ${repo}/.ove/scripts ${s##*/}
+			OVE_SCRIPTS_LIST+="${s##*/} "
 		done
 	done
 
@@ -9317,7 +9495,7 @@ function ove_post_checks {
 	local doublets
 	local f
 	local res
-	local script
+	local s
 
 	# check for systest doublets
 	if [ -e ${OVE_PROJECT_DIR}/systests ]; then
@@ -9354,14 +9532,14 @@ function ove_post_checks {
 	fi
 
 	# check for script doublets
-	mapfile -t doublets < <(for script in $(ove-list-scripts); do echo ${script##*/}; done | \
+	mapfile -t doublets < <(for s in $(ove-list-scripts); do echo ${s##*/}; done | \
 		LC_ALL="C" \sort | \
 		\uniq -d)
 	if [ "${doublets[*]}" != "" ]; then
 		echo
 		ove_echo_yellow_noprefix "warning: found ${#doublets[*]} script duplicate(s):"
-		for script in ${doublets[*]}; do
-			ove-list-scripts | \grep "/${script}$"
+		for s in ${doublets[*]}; do
+			ove-list-scripts | \grep "/${s}$"
 		done
 	fi
 
@@ -10546,6 +10724,8 @@ function ove_externals {
 	cmds+=('rev')
 	cmds+=('rm')
 	cmds+=('rmdir')
+	cmds+=('script')
+	cmds+=('scriptreplay')
 	cmds+=('sed')
 	cmds+=('sort')
 	cmds+=('ssh')
