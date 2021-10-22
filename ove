@@ -7572,13 +7572,20 @@ function ove_uniq {
 }
 
 function ove_edit {
+	local a
+	local b
 	local editor
+	local editor_cmd
+	local editor_opt
+	local f
 	local files
 	local files_by_epoch
-
-	files=$(ove-list-modified-files)
-
-	[ "${files}" == "" ] && return
+	local line
+	local ls_files=0
+	local mod_files
+	local refresh=0
+	local res
+	local skip=0
 
 	editor="$1"
 	shift
@@ -7589,49 +7596,180 @@ function ove_edit {
 		return 1
 	fi
 
-	if [ $# -eq 0 ]; then
-		# stat every file
-		files_by_epoch=$(
-			for f in ${files}; do
-				[ -e ${f} ] || continue
-				echo $(\stat --format '%Y' ${f}):${f}
-			done | \
-			LC_ALL="C" \sort -r | \
-			\cut -d: -f2)
-	else
-		# stat based on args
-		files_by_epoch=$(
+	# check for files first
+	for f in "$@"; do
+		if [ -f "$f" ] || [ -h "$f" ]; then
+			files+=("$(\readlink -f $f)")
+		fi
+	done
+
+	# did we find all files already?
+	if [ $# -ne 0 ] && [ $# -eq ${#files[@]} ]; then
+		skip=1
+	fi
+
+	if [ $skip -eq 0 ]; then
+		if [ -e ${OVE_PROJECT_TMP_DIR}/ls-mod-files ]; then
+			a=$(\stat --format '%Y' "${OVE_PROJECT_TMP_DIR}/ls-mod-files")
+			b=$(\date +%s)
+			if [ $((b-a)) -gt $OVE_EDIT_LIFESPAN_TIME_IN_SEC ]; then
+				refresh=1
+			fi
+		else
+			refresh=1
+		fi
+
+		if [ $refresh -eq 1 ]; then
+			ove-list-modified-files > ${OVE_PROJECT_TMP_DIR}/ls-mod-files
+		fi
+		if [ -s ${OVE_PROJECT_TMP_DIR}/ls-mod-files ]; then
+			mapfile -t mod_files <<<$(\cat ${OVE_PROJECT_TMP_DIR}/ls-mod-files)
+		fi
+	fi
+
+	# any modified files?
+	if [ $skip -eq 0 ] && [ "${#mod_files[@]}" -ne 0 ]; then
+		if [ $# -eq 0 ]; then
+			if [ "${#mod_files[@]}" -gt 20 ]; then
+				while read -r line; do
+					[ "x$line" == "x" ] && continue
+					files+=("${line}")
+				done <<<"${mod_files[@]}"
+			else
+				# stat all modified files
+				files_by_epoch=$(
+				for f in "${mod_files[@]}"; do
+					[ -e ${f} ] || continue
+					echo $(\stat --format '%Y' ${f}):${f}
+				done | \
+					LC_ALL="C" \sort -r | \
+					\cut -d: -f2)
+				while read -r line; do
+					[ "x$line" == "x" ] && continue
+					files+=("${line}")
+				done<<<"${files_by_epoch}"
+			fi
+		else
+			# stat based on args
+			files_by_epoch=$(
 			for g in $(ove_uniq "$@"); do
-				for f in ${files}; do
+				for f in "${mod_files[@]}"; do
 					f_low=${f,,}
 					if [[ ${f_low/${OVE_BASE_DIR}\/} == *${g,,}* ]] && [ -e ${f} ]; then
 						echo $(\stat --format '%Y' ${f}):${f}
 					fi
 				done
 			done | \
-			LC_ALL="C" \sort -r | \
-			\cut -d: -f2)
-	fi
-
-	if [ "${files_by_epoch}" != "" ]; then
-		if [ "${editor}" == "vi" ]; then
-			\vi -o ${files_by_epoch} -c "wincmd H"
-		elif [ "${editor}" == "emacs" ]; then
-			\emacs ${files_by_epoch}
-		else
-			ove_echo_stderr_noprefix "unknown editor"
+				LC_ALL="C" \sort -r | \
+				\cut -d: -f2)
+			while read -r line; do
+				[ "x$line" == "x" ] && continue
+				files+=("${line}")
+			done <<<${files_by_epoch}
 		fi
 	fi
+
+	# still no hits? try all files
+	if [ $skip -eq 0 ] && [ "${#files[@]}" -eq 0 ]; then
+		refresh=0
+		if [ -e ${OVE_PROJECT_TMP_DIR}/ls-files ]; then
+			a=$(\stat --format '%Y' "${OVE_PROJECT_TMP_DIR}/ls-files")
+			b=$(\date +%s)
+			if [ $((b-a)) -gt $OVE_EDIT_LIFESPAN_TIME_IN_SEC ]; then
+				refresh=1
+			fi
+		else
+			refresh=1
+		fi
+		if [ $refresh -eq 1 ]; then
+			ove-ls-files > ${OVE_PROJECT_TMP_DIR}/ls-files
+		fi
+
+		if [ $# -eq 0 ]; then
+			mapfile -t files <<<$(\cat ${OVE_PROJECT_TMP_DIR}/ls-files)
+		else
+			for f in "$@"; do
+				# a direct hit take precedence
+				res=$(\grep "\/$f$" ${OVE_PROJECT_TMP_DIR}/ls-files)
+				if [ "x$res" != "x" ]; then
+					while read -r line; do
+						[ "x$line" == "x" ] && continue
+						files+=("$line")
+					done <<<$res
+				else
+					res=$(\grep "$f" ${OVE_PROJECT_TMP_DIR}/ls-files)
+					if [ "x$res" != "x" ]; then
+						while read -r line; do
+							[ "x$line" == "x" ] && continue
+							files+=("$line")
+						done <<<$res
+					fi
+				fi
+			done
+		fi
+		ls_files=1
+	fi
+
+	if [ "${#files[@]}" -eq 0 ]; then
+		return
+	fi
+
+	editor_opt=
+	if [ "x$editor" = "xvi" ]; then
+		# vim or vi?
+		if ! command -v vim > /dev/null; then
+			editor_cmd="vi"
+		else
+			editor_cmd="vim"
+
+			# get rid of "N files to edit" msg
+			if [ "${#files[@]}" -gt 1 ]; then
+				editor_opt+=" --not-a-term"
+			fi
+
+			if [ $ls_files -eq 0 ]; then
+				if [ "${#files[@]}" -gt 2 ]; then
+					editor_opt+=" -c 'wincmd H'"
+					editor_opt+=" -o"
+				elif [ "${#files[@]}" -eq 2 ]; then
+					editor_opt+=" -O"
+				fi
+			elif [ "${#files[@]}" -gt 1 ] && [ "${#files[@]}" -lt 20 ]; then
+				editor_opt+=" -O"
+			fi
+		fi
+	else
+		editor_cmd="$editor"
+	fi
+
+	if [ "${#files[@]}" -gt 1 ] && [ $ls_files -eq 1 ]; then
+		if ! command -v fzf > /dev/null; then
+			printf "%s\n" "${files[@]}" | \cat -n
+			read -r -t 1
+		else
+			# launch fzf and vi
+			# shellcheck disable=SC2016
+			printf "%s\n" "${files[@]}" | \
+				\fzf -m --bind "enter:execute(< /dev/tty eval \$(echo $editor_cmd $editor_opt {+}))" \
+				--bind "left-click:execute(< /dev/tty eval \$(echo $editor_cmd $editor_opt {+}))" \
+				--bind "ctrl-a:toggle-all" \
+				--bind "ctrl-w:deselect-all" \
+				--preview 'head -$LINES {}'
+			return
+		fi
+	fi
+
+	eval $editor_cmd $editor_opt $(ove_uniq "${files[@]}")
 }
 
-# emacs:[pattern|file...]:open modified files in emacs
+# emacs:[pattern|file...]:open files in emacs
 function ove-emacs {
 	ove_entry
 
 	ove_edit emacs "$@"
 }
 
-# vi:[pattern|file...]:open modified files in vi
+# vi:[pattern|file...]:open files in vi
 function ove-vi {
 	ove_entry
 
@@ -8455,8 +8593,11 @@ function ove-domains {
 }
 
 function ove_bash_complete {
+	local a
+	local b
 	local cmd
 	local cur
+	local refresh
 	local opts
 	local size
 	local subcommand
@@ -8641,11 +8782,37 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "vi" ] ||
 		[ "${subcommand}" == "emacs" ]; then
-		if [ ${size} -ge 2 ]; then
-			wordlist=$(ove-list-modified-files-basename)
-		else
+		if [ ${size} -lt 2 ]; then
 			return
 		fi
+		refresh=0
+		if [ -e ${OVE_PROJECT_TMP_DIR}/ls-mod-files-base ]; then
+			a=$(\stat --format '%Y' "${OVE_PROJECT_TMP_DIR}/ls-mod-files-base")
+			b=$(\date +%s)
+			if [ $((b-a)) -gt $OVE_EDIT_LIFESPAN_TIME_IN_SEC ]; then
+				refresh=1
+			fi
+		else
+				refresh=1
+		fi
+		if [ $refresh -eq 1 ]; then
+			ove-list-modified-files | \
+				\sed -e "s,${OVE_BASE_DIR}/,,g" > ${OVE_PROJECT_TMP_DIR}/ls-mod-files-base
+		fi
+		refresh=0
+		if [ -e ${OVE_PROJECT_TMP_DIR}/ls-files ]; then
+			a=$(\stat --format '%Y' "${OVE_PROJECT_TMP_DIR}/ls-files")
+			b=$(\date +%s)
+			if [ $((b-a)) -gt $OVE_EDIT_LIFESPAN_TIME_IN_SEC ]; then
+				refresh=1
+			fi
+		else
+				refresh=1
+		fi
+		if [ $refresh -eq 1 ]; then
+			ove-ls-files > ${OVE_PROJECT_TMP_DIR}/ls-files
+		fi
+		wordlist="$(\cat ${OVE_PROJECT_TMP_DIR}/ls-mod-files-base ${OVE_PROJECT_TMP_DIR}/ls-files)"
 	elif [ "${subcommand}" == "add-config" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist=${OVE_CONFIG_FILES}
@@ -9182,6 +9349,11 @@ function ove_config_builtins_init {
 	# OVE_LOCATE_LIFESPAN_TIME_IN_SEC:int::cd forowel locate locate-all refresh:local OVE workspace cache lifespan
 	if [ -z "${OVE_LOCATE_LIFESPAN_TIME_IN_SEC+x}" ]; then
 		export OVE_LOCATE_LIFESPAN_TIME_IN_SEC=86400
+	fi
+
+	# OVE_EDIT_LIFESPAN_TIME_IN_SEC:int::emacs vi:cache ls-files and ls-modified-files
+	if [ -z "${OVE_EDIT_LIFESPAN_TIME_IN_SEC+x}" ]; then
+		export OVE_EDIT_LIFESPAN_TIME_IN_SEC=30
 	fi
 
 	# OVE_IDE_LOOP_ARGS:string::ide:semi-colon separated list of arguments to 'ove-loop' to launch
