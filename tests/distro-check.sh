@@ -88,7 +88,7 @@ function run {
 
 	echo "[${distro}]$ $*"
 	if ! eval "$@"; then
-		echo "error: '$*' failed for distro ${distro}"
+		echo "error: '$*' failed for distro '${distro}' exited after $((SECONDS - start_sec)) seconds"
 		exit 1
 	fi
 
