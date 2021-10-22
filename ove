@@ -8827,28 +8827,28 @@ function ove_update_tab_complete {
 
 function ove_add_script_func {
 	local htext
+	local r_dir
 	local s
 	local s_dir
 
 	s_dir=$1
 	s=$2
+	r_dir=${s_dir%\/*}
+	r_dir=${r_dir%\/*}
 
 	ove_scripts_name2path[${s}]=${s_dir}
 	ove_scripts_paths[${s_dir}]=
 	if [ -f ${s_dir}/${s}.help ]; then
 		htext=$(<${s_dir}/${s}.help)
-		eval "ove-${s}() {
-		local helptext=\"${htext}\"
-		local __scriptname=ove-${s}
-		\"${s_dir}\"/${s} \$*
-		}"
 	else
-		eval "ove-${s}() {
-		local helptext=\"${s}: :run '${s_dir}/${s}'\"
-		local __scriptname=ove-${s}
-		\"${s_dir}\"/${s} \$*
-		}"
+		htext="${s}: :run '${s_dir}/${s}'"
 	fi
+
+	eval "ove-${s}() {
+	local helptext=\"${htext}\"
+	local __scriptname=ove-${s}
+	OVE_ACTIVE_REPO_DIR=${r_dir} \"${s_dir}\"/${s} \$*
+	}"
 }
 
 function ove_scripts_init {
