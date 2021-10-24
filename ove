@@ -7567,11 +7567,16 @@ function ove-config {
 function ove-ls-files {
 	ove_entry
 
+	local opts
+
 	if [ $# -eq 0 ]; then
-		ove_git_cmd_forall_parallel 0 "ls-files" "--"
+		opts="--"
 	else
-		ove_git_cmd_forall_parallel 0 "ls-files" "$@"
+		opts="$*"
 	fi
+
+	# shellcheck disable=SC2016
+	ove_revtab_forall 'ove_repo_cmd ${repo} ls-files '"${opts}"' | \sed -e "s|^|${repo}/|g"'
 }
 
 # list-modified-files: :list modified files
