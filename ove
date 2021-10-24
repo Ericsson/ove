@@ -2833,7 +2833,7 @@ function ove_repos_fetched {
 	local repo
 
 	for repo in ${OVE_REPO_LIST}; do
-		[ -d ${repo} ] && (( f+=1 ))
+		[ -d ${repo}/.git ] && (( f+=1 ))
 	done
 
 	echo ${f}
@@ -3256,6 +3256,16 @@ function ove_revtab_clone_and_checkout_one {
 	ove_revtab_check_fetch_push "${name}" "${fetch_url}" "${push_url}"
 	ove_patch_repos ${name}
 
+	if [ -e "${OVE_BASE_DIR}/${name}/.gitmodules" ]; then
+		if [ ${OVE_FETCH_SUBMODULES} -eq 1 ]; then
+			if ! ove-import-submodules ${name}; then
+				return 1
+			fi
+		else
+			printf "%-${OVE_REPO_LIST_WIDTH}s%s\n" ${name} "$(ove_echo_note_noprefix "run 'ove import-submodules ${name}' to import $(\grep -c '\[submodule' "${OVE_BASE_DIR}/${name}/.gitmodules") git submodule(s)")"
+		fi
+	fi
+
 	return 0
 }
 
@@ -3450,13 +3460,15 @@ function ove_revtab_fetch {
 
 	i=0
 	while ((i < ove_revtab_num_repositories)); do
-		if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}" ]; then
+		if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}/.git" ]; then
 			co_list+="${ove_revtab_git_name[${i}]} "
 		fi
 		(( i+=1 ))
 	done
 
-	[ "${co_list}" != "" ] && ove_revtab_clone_and_checkout ${co_list}
+	if [ "x${co_list}" != "x" ]; then
+		ove_revtab_clone_and_checkout ${co_list}
+	fi
 
 	m=${OVE_REPO_LIST_WIDTH}
 	ove_revtab_forall_parallel "ALLOW_OVERRIDE=1 ove_repo_cmd \${repo} fetch |& \sed -e \"s|^|\${repo_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} - \${#repo_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
@@ -6808,39 +6820,81 @@ function ove-patch-repo {
 	OVE_PATCH_REPOS=1 ove_patch_repos "$@"
 }
 
-# gitmodules2revtab: :import git submodules
-function ove-gitmodules2revtab {
-	ove_entry
-
+# append revtab with submodules
+function ove_submodule2revtab {
 	local repo
 	local repos_with_submodules
 	local sha
 	local submodule
 
-	for repo in ${OVE_REPO_LIST}; do
+	if [ $# -eq 0 ]; then
+		return
+	fi
+
+	for repo in "$@"; do
 		[ -s ${repo}/.gitmodules ] && repos_with_submodules+="${repo} "
 	done
 
-	[ "${repos_with_submodules}" == "" ] && return
+	if [ "x${repos_with_submodules}" = "x" ]; then
+		return
+	fi
 
 	for repo in ${repos_with_submodules}; do
 		for submodule in $(ove_repo_cmd ${repo} submodule--helper list | \awk '{print $4}'); do
+			# already imported?
+			if [ -v ove_revtab_name2index[${repo//${OVE_BASE_DIR}\/}/${submodule}] ]; then
+				continue
+			fi
+
 			url=$(ove_repo_cmd ${repo} config --file .gitmodules --list | \
 				\grep "^submodule.${submodule}.url=" | \
 				\cut -d= -f2)
-			[ "${url}" == "" ] && continue
+			if [ "x${url}" = "x" ]; then
+				continue
+			fi
 
 			sha=$(ove_repo_cmd ${repo} submodule--helper list | \
 				\awk '{print $4,$2}' | \
 				\grep "^${submodule} " | \awk '{print $2}')
-			[ "${sha}" == "" ] && continue
+			if [ "x${sha}" = "x" ]; then
+				continue
+			fi
 
 			echo "${repo//${OVE_BASE_DIR}\/}/${submodule} ${url} ${url} ${sha}"
 		done
-	done >> ${OVE_PROJECT_DIR}/revtab
+	done | \tee -a ${OVE_PROJECT_DIR}/revtab
 
-	# sort and prettify
-	LC_ALL="C" \sort -u -o ${OVE_PROJECT_DIR}/revtab <(\column -t ${OVE_PROJECT_DIR}/revtab)
+	return
+}
+
+# import-submodules:[git]:append submodule(s) to 'revtab' and run fetch for all/specified git repositories
+function ove-import-submodules {
+	ove_entry
+
+	local imports
+	local out
+	local repos
+
+	if [ $# -ge 1 ]; then
+		repos=$(ove_validate_repo_list "$@")
+	else
+		repos=${OVE_REPO_LIST}
+	fi
+	[ "${repos}" == "" ] && return
+
+	while true; do
+		out=$(ove_submodule2revtab ${repos})
+		imports=$(printf "%s\n" "${out}" | \awk '{print $1}')
+		if [ "x$imports" = "x" ]; then
+			break
+		elif ! ove_reinit; then
+			return 1
+		elif ! ove-fetch $imports; then
+			ove_echo_warning_noprefix "'ove fetch $(printf "%s " $imports)' failed"
+		fi
+	done
+
+	return 0
 }
 
 # do:dir command:run a command within 'dir' relative to ${OVE_BASE_DIR}
@@ -9236,6 +9290,11 @@ function ove_config_builtins_init {
 	# OVE_FETCH_MAX_PARALLEL:int:[0-9]+:fetch:max number of 'git fetch' to run in parallel
 	if [ -z "${OVE_FETCH_MAX_PARALLEL+x}" ]; then
 		export OVE_FETCH_MAX_PARALLEL=0
+	fi
+
+	# OVE_FETCH_SUBMODULES:int:0-1:add-repo,fetch:automatically run 'ove import-submodules' on inital clone
+	if [ -z "${OVE_FETCH_SUBMODULES+x}" ]; then
+		export OVE_FETCH_SUBMODULES=1
 	fi
 
 	# OVE_CLONE_MAX_PARALLEL:int:[0-9]+:fetch:max number of 'git clone' to run in parallel
