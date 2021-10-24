@@ -7590,7 +7590,7 @@ function ove-list-modified-files {
 function ove-list-modified-files-basename {
 	ove_entry
 
-	ove-list-modified-files | \sed "s|.*/||g"
+	ove-list-modified-files | \sed "s|.*/||g" | LC_ALL="C" \sort -u
 }
 
 # list-committed-files:[days]:list committed files within 7 or days day(s)
