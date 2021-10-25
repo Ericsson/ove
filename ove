@@ -7835,6 +7835,17 @@ function ove-vi {
 	ove_edit vi "$@"
 }
 
+# edit:[pattern|file...]:open files in $EDITOR
+function ove-edit {
+	ove_entry
+
+	if [ "x$EDITOR" = "x" ]; then
+		return 1
+	fi
+
+	ove_edit "${EDITOR}" "$@"
+}
+
 # helper function for mrproper
 function ove_rmdir {
 	local _dir
@@ -8840,6 +8851,7 @@ function ove_bash_complete {
 			wordlist=$(ove_list_workspaces_base)
 		fi
 	elif [ "${subcommand}" == "vi" ] ||
+		[ "${subcommand}" == "edit" ] ||
 		[ "${subcommand}" == "emacs" ]; then
 		if [ ${size} -lt 2 ]; then
 			return
