@@ -10429,7 +10429,14 @@ function ove-replicate {
 		echo "OVE workspace has been replicated to '${host}:${d}'"
 	fi
 
-	\rm ${p} ${q}
+	if [ -e ${p} ]; then
+		\rm ${p}
+	fi
+	if [ -e ${q} ]; then
+		\rm ${q}
+	fi
+
+	return 0
 }
 
 function ove_unittest_preparations {
