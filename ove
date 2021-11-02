@@ -9998,7 +9998,7 @@ function ove-init {
 		fi
 
 		((i++))
-		echo -en "Scanning '${dir}'. #repos: ${i}\r"
+		echo -en "scanning '${dir}'. #repos: ${i}\r"
 		str+="${name} ${fetch_url} ${push_url} ${revision}\n"
 	done < <(\find "${dir}" -type d -name .git 2>/dev/null)
 
@@ -10039,12 +10039,9 @@ function ove-init {
 		ove_echo_note_noprefix "found a few repos with the same fetch url:"
 		for d in ${doublets[*]}; do
 			\grep -H -n "${d}" ${revtab_file}
-			echo "--"
 		done | \column -t
 	fi
 
-	echo "---"
-	echo "Init summary:"
 	echo "* created/updated '${revtab_file}' and with ${i} repositories"
 	if [ "${ove_link}" != "" ]; then
 		echo "* created a symbolic link '${dir}/ove' -> '${ove_link}'"
@@ -10061,6 +10058,8 @@ function ove-init {
 		cd ${dir} || return 1
 		echo "* changed current working directory to ${dir}"
 	fi
+	echo "$ ove status"
+	ove-status
 }
 
 function ove_debian_based {
