@@ -1022,7 +1022,7 @@ function ove_strace_create_graph {
 	local pid
 
 	! [ -d "$1" ] && return 1
-	[ $# -ne 2 ] && return 2
+	[ $# -ne 2 ] && return 1
 
 	o_base="${OVE_PROJECT_TMP_DIR}/strace-${2}"
 	o_dot=${o_base}.dot
@@ -4919,7 +4919,7 @@ function ove_set_workspace {
 
 		if [ ${REPLY} -gt ${#projs[@]} ] || [ ${REPLY} -eq 0 ]; then
 			echo "error: out of bounds"
-			return 2
+			return 1
 		fi
 
 		eval $(printf "cd %s; . ove > /dev/null\n" ${projs[$((REPLY - 1))]})
@@ -5591,7 +5591,7 @@ function ove_install_packages {
 
 	if ! command -v ${OVE_OS_PACKAGE_MANAGER} > /dev/null; then
 		ove_command_not_found "${OVE_OS_PACKAGE_MANAGER}"
-		return 2
+		return 1
 	fi
 
 	cmd="${OVE_OS_PACKAGE_MANAGER} ${OVE_OS_PACKAGE_MANAGER_ARGS} ${missing_packages_sorted}"
@@ -6518,7 +6518,7 @@ function ove-am {
 
 	if ! [ -e $1 ]; then
 		ove_command_usage
-		return 2
+		return 1
 	fi
 
 	d="${OVE_PROJECT_TMP_DIR}/am"
@@ -6526,10 +6526,10 @@ function ove-am {
 	\find ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
 
 	# unpack
-	\tar -C "${d}" -xf "$1" --no-same-owner || return 3
+	\tar -C "${d}" -xf "$1" --no-same-owner || return 1
 
 	repos=$(\find ${d} -type f -print0 | \xargs -0 dirname | LC_ALL="C" \sort -u)
-	[ "${repos}" == "" ] && return 4
+	[ "${repos}" == "" ] && return 1
 	for r in ${repos}; do
 		r=${r/${d}\/}
 
@@ -10011,7 +10011,7 @@ function ove-init {
 	\mkdir -p ${dir}/${owel_name}
 
 	if [ ${do_init_git} -eq 1 ]; then
-		git -C ${dir}/${owel_name} init || return 2
+		git -C ${dir}/${owel_name} init || return 1
 	fi
 
 	# owel symlink
@@ -10359,14 +10359,14 @@ function ove-replicate {
 		s="$(ove-setup)"
 		if [ "${s}" == "" ]; then
 			ove_echo_error_noprefix "'${OVE_PROJECT_DIR}/SETUP' file not found"
-			return 2
+			return 1
 		fi
 	fi
 
 	host="$1"
 	if ! \ssh -q ${host} exit 0; then
 		ove_echo_error_noprefix "'${host}' is not reachable via ssh"
-		return 3
+		return 1
 	fi
 
 	# remote directory
@@ -10377,7 +10377,7 @@ function ove-replicate {
 		# sanity check
 		if ! \ssh -q ${host} "[ -L ${d}/ove ] && [ -L ${d}/.owel ]"; then
 			ove_echo_error_noprefix "'${d}' is not a valid OVE workspace on '${host}'"
-			return 4
+			return 1
 		fi
 	fi
 
@@ -10394,7 +10394,7 @@ function ove-replicate {
 		if ! \scp -q ${q} ${host}:${q_remote}; then
 			ove_echo_error_noprefix "not possible to transfer patch archive to '${host}'"
 			\rm ${q}
-			return 5
+			return 1
 		fi
 	fi
 
@@ -10407,7 +10407,7 @@ function ove-replicate {
 		if ! \scp -q ${p} ${host}:${p_remote}; then
 			ove_echo_error_noprefix "not possible to transfer patch file to '${host}'"
 			\rm ${p} ${q}
-			return 6
+			return 1
 		fi
 	fi
 
@@ -10635,7 +10635,7 @@ function ove-unittest {
 		ove_unittest_preparations ${nbr_of_files} ${nbr_of_projs} ${nbr_of_repos} ${nbr_of_systests}
 
 	# launch shelltestrunner
-	cd ${OVE_PROJECT_TMP_DIR}/unittest || return 2
+	cd ${OVE_PROJECT_TMP_DIR}/unittest || return 1
 	shelltest_opts=" --debug "
 
 	\env -i - HOME=${HOME} USER=${OVE_USER} \
