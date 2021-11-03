@@ -9480,6 +9480,16 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_GIT_COMMAND_OPTIONS_OVERRIDE+x}" ]; then
 		export OVE_GIT_COMMAND_OPTIONS_OVERRIDE=
 	fi
+
+	# OVE_ALIAS:int:0|1::enable/disable aliases defined in OVE_ALIAS_LIST
+	if [ -z "${OVE_ALIAS+x}" ]; then
+		export OVE_ALIAS=0
+	fi
+
+	# OVE_ALIAS_LIST:string:::semi-colon separated list of shell aliases
+	if [ -z "${OVE_ALIAS_LIST+x}" ]; then
+		export OVE_ALIAS_LIST="a=ove-ahead;d=ove-diff;f=ove-fetch;h=ove-list-aliases;n=ove-news;s=ove-status;sa=ove-show-ahead;sn=ove-show-news"
+	fi
 }
 
 # re-initialize
@@ -9738,6 +9748,43 @@ function ove_disk_usage_check {
 	fi
 }
 
+function ove_aliases {
+	local a
+	local aliases
+
+	if [[ $- != *i* ]]; then
+		return
+	elif [ "x${OVE_ALIAS}" = "x0" ]; then
+		return
+	elif [ "x${OVE_ALIAS_LIST}" = "x" ]; then
+		return
+	fi
+
+	IFS=';' read -r -a aliases <<< "${OVE_ALIAS_LIST}"
+	for a in "${!aliases[@]}"; do
+		alias "${aliases[$a]}"
+	done
+}
+
+# list-aliases: :list OVE aliases
+function ove-list-aliases {
+	ove_entry
+
+	local a
+	local aliases
+
+	if [ "x${OVE_ALIAS}" = "x0" ]; then
+		ove_echo_note_noprefix "OVE aliases are DISABLED, enable with 'ove add-config \$HOME/.oveconfig OVE_ALIAS 1'"
+	fi
+
+	IFS=';' read -r -a aliases <<< "${OVE_ALIAS_LIST}"
+	for a in "${!aliases[@]}"; do
+		echo "alias ${aliases[$a]}"
+	done
+
+	return 0
+}
+
 function ove_post_checks {
 	local c
 	local doublets
@@ -9799,6 +9846,9 @@ function ove_post_checks {
 
 	# patch repos
 	ove_patch_repos
+
+	# aliases
+	ove_aliases
 
 	return 0
 }
