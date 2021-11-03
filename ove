@@ -6313,6 +6313,10 @@ function ove_entry {
 		return
 	fi
 
+	if ! ove_get_base_dir &> /dev/null; then
+		return 1
+	fi
+
 	if ! [ -v ove_revtab_fetch_url ]; then
 		ove_revtab_init
 	fi
