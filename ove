@@ -1773,6 +1773,8 @@ function ove {
 		return 1
 	fi
 
+	ove_update_terminal_stats
+
 	if [ $# -eq 0 ]; then
 		ove-fzf || ove-help
 		return $?
@@ -2615,8 +2617,8 @@ function ove_status_one_repo {
 		s="$(ove_echo_red_noprefix '??')"
 	else
 		len=${#s}
-		if [ ${trunc} -eq 1 ] && [ ${len} -gt $((COLUMNS*LINES)) ]; then
-			m="$((COLUMNS*$((LINES/2 - 1))))"
+		if [ ${OVE_STATUS_TRUNC:?} -eq 1 ] && [ "x$OVE_COLUMNS" != "x" ] && [ ${len} -gt $((OVE_COLUMNS*OVE_LINES)) ]; then
+			m="$((OVE_COLUMNS*$((OVE_LINES/2 - 1))))"
 			s="${s:0:${m}} $(ove_echo_yellow_noprefix ...truncated $((len-m*2)) chars...) ${s: -${m}}"
 		fi
 	fi
@@ -2655,7 +2657,6 @@ function ove_revtab_status {
 	local repos
 	local o
 	local p
-	local trunc=0
 
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list "$@")
@@ -2673,28 +2674,6 @@ function ove_revtab_status {
 	o=${f}
 
 	f+="/$(\date '+%Y%m%d-%H%M%S%N')-revtab-status"
-
-	if [ -t 1 ]; then
-		if [[ ! "${OVE_STATUS_TRUNC}" =~ ^[0-1]$ ]]; then
-			ove_echo_warning_noprefix "OVE_STATUS_TRUNC is set to a none valid value '${OVE_STATUS_TRUNC}'"
-		elif [ "${OVE_STATUS_TRUNC:?}" -eq 1 ]; then
-			trunc=1
-			# make sure that COLUMNS/LINES is valid
-			if ! shopt -q checkwinsize; then
-				shopt -s checkwinsize
-				# force an update
-				if [ -x /bin/true ]; then
-					/bin/true
-				else
-					ove_echo_stderr_noprefix "/bin/true?"
-				fi
-
-				if [ "x${COLUMNS}" = "x" ]; then
-					trunc=0
-				fi
-			fi
-		fi
-	fi
 
 	for repo in ${repos}; do
 		i=${ove_revtab_name2index[${repo/${OVE_BASE_DIR}\//}]}
@@ -6328,6 +6307,8 @@ function ove_entry {
 	if ! [[ -v ove_scripts_paths[@] ]]; then
 		ove_scripts_init
 	fi
+
+	ove_update_terminal_stats
 }
 
 # status:[git...]:git status -zbs -uno for all/specified repositories
@@ -9789,6 +9770,27 @@ function ove-list-aliases {
 	return 0
 }
 
+function ove_update_terminal_stats {
+	if ! shopt -q checkwinsize; then
+		shopt -s checkwinsize
+		# force an update
+		if [ -x /bin/true ]; then
+			/bin/true
+		fi
+
+	fi
+	if [ "x${COLUMNS}" != "x" ]; then
+		OVE_COLUMNS=$COLUMNS
+		OVE_LINES=$LINES
+	else
+		OVE_COLUMNS=0
+		OVE_LINES=0
+	fi
+
+	export OVE_COLUMNS
+	export OVE_LINES
+}
+
 function ove_post_checks {
 	local c
 	local doublets
@@ -9853,6 +9855,8 @@ function ove_post_checks {
 
 	# aliases
 	ove_aliases
+
+	ove_update_terminal_stats
 
 	return 0
 }
