@@ -4970,7 +4970,7 @@ function ove-branch {
 
 	if [ $# -lt 2 ]; then
 		# shellcheck disable=SC2016
-		cmd='ove_echo_yellow_noprefix ${repo_basename} && ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} "--no-pager branch"; echo'
+		cmd='ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} "--no-pager branch" | \sed "s|^|$(printf "%-${OVE_REPO_LIST_WIDTH}s" ${repo_basename})|g"'
 		if [ $# -eq 0 ]; then
 		        ove_revtab_forall "${cmd}"
 		else
@@ -9445,7 +9445,7 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_GIT_COMMAND_OPTIONS_DEFAULT+x}" ]; then
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT=
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@add:-p;"
-		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@branch:-vv;"
+		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@branch:-vv --color=always;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@checkout:-p;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@clone: ;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@describe:--tags --always --dirty --long;"
