@@ -2701,10 +2701,10 @@ function ove_revtab_status {
 
 # $1: ahead|behind
 function ove_revtab_status_parse_one {
+	local branch_status
 	local git_args
 	local git_fmt
 	local repo_fullpath
-	local git_status
 	local i
 	local nbr_commits
 	local tense
@@ -2719,22 +2719,22 @@ function ove_revtab_status_parse_one {
 		return
 	fi
 
-	git_status=$(ove_repo_cmd "${repo_fullpath}" "${OVE_GIT_OPTIONS} status" -zbs -uno | \tr '\0' ' ')
+	branch_status=$(ove_repo_cmd "${repo_fullpath}" "${OVE_GIT_OPTIONS} branch" -v)
 	nbr_commits=0
 
 	# keep 'ahead X, behind Y'
-	git_status=${git_status##*[}
-	git_status=${git_status%%]*}
+	branch_status=${branch_status##*[}
+	branch_status=${branch_status%%]*}
 
-	if [[ "${git_status}" == *"${tense}"* ]]; then
+	if [[ "${branch_status}" == *"${tense}"* ]]; then
 		if [ "${tense}" == "ahead" ]; then
-			git_status=${git_status%%,*}
-			nbr_commits=${git_status##${tense} }
+			branch_status=${branch_status%%,*}
+			nbr_commits=${branch_status##${tense} }
 		elif [ "${tense}" == "behind" ]; then
 			if ! ove_repo_cmd "${repo_fullpath}" "cat-file" -e "FETCH_HEAD" 2> /dev/null; then
 				return 1
 			fi
-			nbr_commits=${git_status##*${tense} }
+			nbr_commits=${branch_status##*${tense} }
 			git_args="FETCH_HEAD"
 		else
 			return 1
@@ -6538,9 +6538,8 @@ function ove-am {
 
 # $1: behind|ahead
 function ove_any_repo {
-	ove_revtab_status &> /dev/null
-
-	if \grep -q "${1}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status; then
+	# shellcheck disable=SC2016
+	if ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v' | \grep -q "${1}.*]"; then
 		return 0
 	else
 		return 1
