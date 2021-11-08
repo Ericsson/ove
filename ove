@@ -4691,8 +4691,8 @@ function ove-refresh {
 			echo '$ cd %s'
 			cd %s
 			ove_init
-			echo '$ ove fetch'
-			ove fetch
+			echo '$ ove fetch-fetched'
+			ove fetch-fetched
 			if ove news > /dev/null; then
 				ove news
 				while true; do
