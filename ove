@@ -9966,6 +9966,7 @@ function ove-init {
 	local doublets
 	local fetch_url
 	local i
+	local init_opt
 	local name
 	local ove_link
 	local owel_default
@@ -10105,7 +10106,17 @@ function ove-init {
 	\mkdir -p ${dir}/${owel_name}
 
 	if [ ${do_init_git} -eq 1 ]; then
-		git -C ${dir}/${owel_name} init || return 1
+		# Git v2.28
+		if \git init -h | \grep -q '\-\-initial-branch'; then
+			init_opt="--initial-branch ${OVE_DEFAULT_BRANCH_NAME}"
+		else
+			init_opt=""
+		fi
+
+		if ! \git -C ${dir}/${owel_name} init ${init_opt}; then
+			ove_echo_error_noprefix "'git -C ${dir}/${owel_name} init ${init_opt}' failed"
+			return 1
+		fi
 	fi
 
 	# owel symlink
@@ -10153,7 +10164,7 @@ function ove-init {
 		echo "* changed current working directory to ${dir}"
 	fi
 	echo "$ ove status"
-	ove-status
+	ove status
 }
 
 function ove_debian_based {
