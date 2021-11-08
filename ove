@@ -2723,7 +2723,7 @@ function ove_revtab_status_parse_one {
 	nbr_commits=0
 
 	# keep 'ahead X, behind Y'
-	branch_status=${branch_status##*[}
+	branch_status=${branch_status#*[}
 	branch_status=${branch_status%%]*}
 
 	if [[ "${branch_status}" == *"${tense}"* ]]; then
