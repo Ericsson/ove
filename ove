@@ -4967,6 +4967,7 @@ function ove-branch {
 	local i
 	local r
 	local repos
+	local ret=0
 
 	if [ $# -lt 2 ]; then
 		# shellcheck disable=SC2016
@@ -5008,15 +5009,22 @@ function ove-branch {
 		done
 
 		# checkout branch
-		if ! ove_repo_cmd "${OVE_BASE_DIR}/${r}" checkout -b ${branch_name} ${branch_start_point} |& \sed "s|^|${r}: |g"; then
+		ove_repo_cmd "${OVE_BASE_DIR}/${r}" checkout -b ${branch_name} ${branch_start_point} |& \sed "s|^|${r}: |g"
+		if [ ${PIPESTATUS[0]} -ne 0 ]; then
+			((ret++))
 			continue
 		fi
 
-		[ -e "${OVE_PROJECT_DIR}/revtab" ] || continue
-		[ "${OVE_PROJECT_NAME}" == "${r}" ] && continue
+		if [ ! -e "${OVE_PROJECT_DIR}/revtab" ]; then
+			continue
+		elif [ "${OVE_PROJECT_NAME}" == "${r}" ]; then
+			continue
+		fi
 
 		ove-update-revtab ${r} ${branch_name}
 	done
+
+	return ${ret}
 }
 
 # remote:[git...]:git remote -v for all/specified git repositories
