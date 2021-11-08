@@ -10024,7 +10024,7 @@ function ove-init {
 		return 1
 	fi
 
-	mapfile -t revtabs < <(\find ${dir} -mindepth 2 -maxdepth 2 -name revtab)
+	mapfile -t revtabs < <(\find ${dir} -mindepth 2 -maxdepth 2 -name revtab 2> /dev/null)
 	if [ $# -lt 2 ] && [ ${#revtabs[*]} -eq 1 ]; then
 		owel_default="$(\basename $(\dirname ${revtabs[0]}))"
 	else
