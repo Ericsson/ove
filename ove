@@ -4696,7 +4696,7 @@ function ove-refresh {
 			if ove news > /dev/null; then
 				ove news
 				while true; do
-					read -p '%s [?,a,A,c,d,n,p,q,s,x]? ' -r -n1
+					read -p '%s [?,a,A,b,B,c,d,l,n,p,q,s,S,x]? ' -r -n1
 					echo
 					if [[ \${REPLY} =~ ^[Pp]$ ]]; then
 						echo '$ ove pull'
@@ -4709,6 +4709,14 @@ function ove-refresh {
 					elif [[ \${REPLY} =~ ^[A]$ ]]; then
 						echo '$ ove show-ahead'
 						ove show-ahead
+						echo
+					elif [[ \${REPLY} =~ ^[b]$ ]]; then
+						echo '$ ove behind'
+						ove behind
+						echo
+					elif [[ \${REPLY} =~ ^[B]$ ]]; then
+						echo '$ ove show-behind'
+						ove show-behind
 						echo
 					elif [[ \${REPLY} =~ ^[Cc]$ ]]; then
 						echo '$ ove checkout'
@@ -4742,7 +4750,9 @@ function ove-refresh {
 						break
 					elif [[ \${REPLY} =~ ^[?]$ ]]; then
 						echo 'a - ahead'
-						echo 'A - show ahead'
+						echo 'A - show-ahead'
+						echo 'b - behind'
+						echo 'B - show-behind'
 						echo 'c - checkout'
 						echo 'd - diff'
 						echo 'l - log'
@@ -4750,7 +4760,7 @@ function ove-refresh {
 						echo 'p - pull'
 						echo 'q - quit'
 						echo 's - status'
-						echo 'S - show news'
+						echo 'S - show-news'
 						echo 'x - pull and next'
 						echo '? - this help'
 						continue
@@ -6336,12 +6346,25 @@ function ove-status {
 # news:[git...]:list upstream changes for all/specified repositories
 function ove-news {
 	ove_entry
+	ove-behind "$@"
+}
+
+# behind:[git...]:list upstream changes for all/specified repositories
+function ove-behind {
+	ove_entry
 
 	if [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
 		ove_revtab_status_parse behind "$@" | \tee ${OVE_PROJECT_STATE_DIR}/revtab-news
 	else
 		ove_revtab_status_parse behind "$@"
 	fi
+}
+
+# show-behind:[git...]:run 'ove show' on upstream changes for all/specified repositories
+function ove-show-behind {
+	ove_entry
+
+	ove-show-news "$@"
 }
 
 # show-news:[git...]:run 'ove show' on upstream changes for all/specified repositories
@@ -7164,7 +7187,7 @@ $(ove_echo_cyan_noprefix "utility commands")
 $ ove news
 
 # show new patches
-$ ove show-news
+$ ove show-news (or show-behind)
 
 # run 'ls -l' for all repos
 $ ove forall ls -l
@@ -8920,6 +8943,8 @@ function ove_bash_complete {
 			wordlist=${wordlist/${OVE_PROJECT_NAME}/}
 		fi
 	elif [ "${subcommand}" == "news" ] ||
+		[ "${subcommand}" == "behind" ] ||
+		[ "${subcommand}" == "show-behind" ] ||
 		[ "${subcommand}" == "show-news" ] ||
 		[ "${subcommand}" == "pull" ]; then
 		if ove_any_repo behind; then
@@ -9480,7 +9505,7 @@ function ove_config_builtins_init {
 
 	# OVE_ALIAS_LIST:string:::semi-colon separated list of shell aliases
 	if [ -z "${OVE_ALIAS_LIST+x}" ]; then
-		export OVE_ALIAS_LIST="a=ove-ahead;d=ove-diff;f=ove-fetch;h=ove-list-aliases;n=ove-news;s=ove-status;sa=ove-show-ahead;sn=ove-show-news"
+		export OVE_ALIAS_LIST="a=ove-ahead;b=ove-behind;d=ove-diff;f=ove-fetch;h=ove-list-aliases;n=ove-news;s=ove-status;sa=ove-show-ahead;sb=ove-show-behind;sn=ove-show-news"
 	fi
 }
 
