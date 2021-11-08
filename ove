@@ -9522,6 +9522,7 @@ function ove_reinit {
 
 # init:initialize OVE workspace
 function ove_init {
+	local broken_link
 	local dir
 	local func
 	local resolved
@@ -9569,7 +9570,10 @@ function ove_init {
 	fi
 
 	# remove broken README symlink
-	find ${OVE_BASE_DIR} -maxdepth 1 -name 'README' -type l ! -exec test -e {} \; -delete
+	broken_link=$(\find ${OVE_BASE_DIR} -maxdepth 1 -name 'README' -type l ! -exec test -e {} \; -print)
+	if [ "x${broken_link}" != "x" ]; then
+		\rm "${broken_link}"
+	fi
 
 	if ! [ -L ${OVE_BASE_DIR}/README ]; then
 		if [ -s ${OVE_PROJECT_DIR}/README ]; then
