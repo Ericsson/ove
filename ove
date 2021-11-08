@@ -2719,7 +2719,7 @@ function ove_revtab_status_parse_one {
 		return
 	fi
 
-	branch_status=$(ove_repo_cmd "${repo_fullpath}" "${OVE_GIT_OPTIONS} branch" -v)
+	branch_status=$(ove_repo_cmd "${repo_fullpath}" "${OVE_GIT_OPTIONS} branch" -v | \grep '^\*')
 	nbr_commits=0
 
 	# keep 'ahead X, behind Y'
@@ -6547,7 +6547,7 @@ function ove-am {
 # $1: behind|ahead
 function ove_any_repo {
 	# shellcheck disable=SC2016
-	if ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v' | \grep -q "${1}.*]"; then
+	if ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v | \grep ^\*' | \grep -q "${1}.*]"; then
 		return 0
 	else
 		return 1
