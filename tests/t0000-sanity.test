@@ -1,3 +1,6 @@
 # make sure that no OVE variable is defined before running any test
 bash -c "set | grep ^OVE"
 >>>= 1
+# only bash (for now)
+sh -c ". ./ove"
+>>>= 1

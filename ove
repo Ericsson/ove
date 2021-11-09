@@ -23,6 +23,12 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+/proc/self/exe --version 2> /dev/null | \grep -q 'GNU bash'
+if test $? -ne 0; then
+	echo 'error: run this in bash'
+	return 1
+fi
+
 function ove_read_config_validate_varname {
 	local re="[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,}"
 	local var="$1"
@@ -316,12 +322,6 @@ function ove_version_check {
 }
 
 function ove_main {
-	/proc/self/exe --version | \grep -q 'GNU bash'
-	if test $? -ne 0; then
-		echo 'error: run this in bash'
-		return 1
-	fi
-
 	if ! ove_version_check_early; then
 		ove-unsource
 		return 1
