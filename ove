@@ -10108,7 +10108,8 @@ function ove-init {
 	if [ ${do_init_git} -eq 1 ]; then
 		# Git v2.28
 		if \git init -h | \grep -q '\-\-initial-branch'; then
-			init_opt="--initial-branch ${OVE_DEFAULT_BRANCH_NAME}"
+			# $OVE_DEFAULT_BRANCH_NAME is not available at this moment
+			init_opt="--initial-branch main"
 		else
 			init_opt=""
 		fi
