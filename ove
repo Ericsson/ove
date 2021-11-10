@@ -5108,11 +5108,58 @@ function ove_repo_is_dirty {
 	fi
 }
 
-function ove_dirty_repos {
+# $1: repo
+# $2: 1 = index or 2 = worktree
+function ove_repo_is_dirty_helper {
+	local s
+
+	s="$(ove_repo_cmd ${1} "${OVE_GIT_OPTIONS} --no-pager status" --porcelain -uno)"
+	if [ "x${s}" = "x" ]; then
+		return 1
+	fi
+	s=$(\cut -b${2} <<<$s)
+	s=${s//$'\n'/}
+	s=${s//[[:space:]]/}
+	if [ "x${s}" = "x" ]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
+function ove_repo_is_dirty_index {
+	ove_repo_is_dirty_helper "${1}" 1
+	return $?
+}
+
+function ove_repo_is_dirty_worktree {
+	ove_repo_is_dirty_helper "${1}" 2
+	return $?
+}
+
+function ove_list_dirty_repos {
 	local repo
 
 	# shellcheck disable=SC2016
 	for repo in $(ove_revtab_forall_parallel 'ove_repo_is_dirty ${repo} && echo ${PWD}'); do
+		ove_repo2shortpath ${repo}
+	done | LC_ALL="C" \sort
+}
+
+function ove_list_dirty_repos_index {
+	local repo
+
+	# shellcheck disable=SC2016
+	for repo in $(ove_revtab_forall_parallel 'ove_repo_is_dirty_index ${repo} && echo ${PWD}'); do
+		ove_repo2shortpath ${repo}
+	done | LC_ALL="C" \sort
+}
+
+function ove_list_dirty_repos_worktree {
+	local repo
+
+	# shellcheck disable=SC2016
+	for repo in $(ove_revtab_forall_parallel 'ove_repo_is_dirty_worktree ${repo} && echo ${PWD}'); do
 		ove_repo2shortpath ${repo}
 	done | LC_ALL="C" \sort
 }
@@ -5174,7 +5221,7 @@ function ove_stash_push {
 	local dirty_repos
 	local now
 
-	dirty_repos=$(ove_dirty_repos | \xargs)
+	dirty_repos=$(ove_list_dirty_repos | \xargs)
 	[ "${dirty_repos}" == "" ] && return
 
 	now=$(\date '+%Y%m%d-%H%M%S')
@@ -5262,11 +5309,19 @@ function ove-diff {
 	local cmd
 	local repos
 
+	if [ $# -eq 0 ]; then
+		repos="$(ove_list_dirty_repos_worktree)"
+	else
+		repos="$(ove_validate_repo_list "$@")"
+	fi
+
+	if [ "x${repos}" = "x" ]; then
+		return
+	fi
+
 	cmd="ove_repo_cmd \${repo} '--no-pager diff-files' --quiet || \
 		(ove_echo_yellow_noprefix \${repo_basename} && \
 		ALLOW_OVERRIDE=1 ove_repo_cmd \${repo} '--no-pager diff' ${OVE_DIFF_OPTIONS})"
-
-	[ $# -eq 0 ] && repos="$(ove_dirty_repos)" || repos="$*"
 
 	ove_revtab_forsome "${cmd}" "${repos}" | ${OVE_PAGER}
 }
@@ -5302,7 +5357,15 @@ function ove-diff-cached {
 		(ove_echo_yellow_noprefix \${repo_basename} && \
 		ALLOW_OVERRIDE=1 ove_repo_cmd \${repo} '--no-pager diff' --cached ${OVE_DIFF_OPTIONS})"
 
-	[ $# -eq 0 ] && repos="$(ove_dirty_repos)" || repos="$*"
+	if [ $# -eq 0 ]; then
+		repos="$(ove_list_dirty_repos_index)"
+	else
+		repos="$(ove_validate_repo_list "$@")"
+	fi
+
+	if [ "x${repos}" = "x" ]; then
+		return
+	fi
 
 	ove_revtab_forsome "${cmd}" "${repos}" | ${OVE_PAGER}
 }
@@ -5353,7 +5416,15 @@ function ove-add {
 	# shellcheck disable=SC2016
 	cmd+=' (ove_echo_yellow_noprefix ${repo_basename} && ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} "--no-pager add")'
 
-	[ $# -eq 0 ] && repos="$(ove_dirty_repos)" || repos="$*"
+	if [ $# -eq 0 ]; then
+		repos="$(ove_list_dirty_repos_worktree)"
+	else
+		repos="$(ove_validate_repo_list "$@")"
+	fi
+
+	if [ "x${repos}" = "x" ]; then
+		return
+	fi
 
 	ove_revtab_forsome "${cmd}" "${repos}"
 }
@@ -5375,7 +5446,7 @@ function ove-commit {
 		\rm ${OVE_PROJECT_TMP_DIR}/commit-template)"
 
 	if [ $# -eq 0 ]; then
-		ove_revtab_forsome "${cmd}" "$(ove_dirty_repos)"
+		ove_revtab_forsome "${cmd}" "$(ove_list_dirty_repos_index)"
 	else
 		ove_revtab_forsome "${cmd}" "$@"
 	fi
@@ -6989,7 +7060,7 @@ function ove-checkout {
 	revision="$1"
 
 	if [ $# -eq 0 ]; then
-		dirty_repos=$(ove_dirty_repos)
+		dirty_repos=$(ove_list_dirty_repos)
 
 		# shellcheck disable=SC2016
 		cmd='ove_repo_cmd ${repo} diff --quiet || (ove_echo_yellow_noprefix ${repo_basename}; ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} checkout)'
@@ -7011,13 +7082,13 @@ function ove-checkout {
 				fi
 			fi
 		elif [ "$2" == "autostash" ]; then
-			dirty_repos=$(ove_dirty_repos)
+			dirty_repos=$(ove_list_dirty_repos)
 
 			for repo in ${dirty_repos}; do
 				ove_repo_cmd "${repo}" stash save -q "stashed by ove-checkout"
 			done
 		else
-			dirty_repos=$(ove_dirty_repos)
+			dirty_repos=$(ove_list_dirty_repos)
 
 			if [ "${dirty_repos}" != "" ]; then
 				ove_echo_error_noprefix "you have staged/unstaged changes in the following repositories:"
@@ -7603,7 +7674,7 @@ function ove-list-modified-files {
 	# shellcheck disable=SC2016
 	cmd='ove_repo_cmd ${repo} "--no-pager diff-index" --quiet HEAD || ove_repo_cmd ${repo} diff --name-only HEAD | \sed -e "s|^|${repo}/|g"'
 
-	ove_revtab_forsome_parallel "${cmd}" 0 "$(ove_dirty_repos)" 2> /dev/null | LC_ALL="C" \sort -u
+	ove_revtab_forsome_parallel "${cmd}" 0 "$(ove_list_dirty_repos)" 2> /dev/null | LC_ALL="C" \sort -u
 }
 
 # list-modified-files-basename: :list modified files (basename)
@@ -8916,15 +8987,25 @@ function ove_bash_complete {
 				wordlist=$(${cmd} | \sed  -e "s/\x1B\[[0-9;]*[mK]//g" -e "s|^/.*/\.oveconfig||g" -e "s|^:||" | \awk '{print $1}')
 			fi
 		fi
+	elif [ "${subcommand}" == "reset-hard" ]; then
+		if [ ${size} -ge 2 ]; then
+			wordlist=$(ove_list_dirty_repos)
+		fi
 	elif [ "${subcommand}" == "add" ] ||
+		[ "${subcommand}" == "diff" ] ||
+		[ "${subcommand}" == "wdiff" ]; then
+		if [ ${size} -ge 2 ]; then
+			wordlist=$(ove_list_dirty_repos_worktree)
+		fi
+	elif [ "${subcommand}" == "add" ] ||
+		[ "${subcommand}" == "commit" ] ||
 		[ "${subcommand}" == "diff" ] ||
 		[ "${subcommand}" == "diff-cached" ] ||
 		[ "${subcommand}" == "reset" ] ||
-		[ "${subcommand}" == "reset-hard" ] ||
 		[ "${subcommand}" == "wdiff" ] ||
 		[ "${subcommand}" == "wdiff-cached" ]; then
 		if [ ${size} -ge 2 ]; then
-			wordlist=$(ove_dirty_repos)
+			wordlist=$(ove_list_dirty_repos_index)
 		fi
 	elif [ "${subcommand}" == "branch" ] ||
 		[ "${subcommand}" == "describe" ] ||
