@@ -6650,9 +6650,10 @@ function ove_any_repo {
 
 # $1: behind|ahead
 function ove_list_repos {
-	[ -e ${OVE_PROJECT_STATE_DIR}/revtab-status ] || return
-
-	\grep "${1}.*]" ${OVE_PROJECT_STATE_DIR}/revtab-status | \cut -d: -f1
+	# shellcheck disable=SC2016
+	ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v | \sed -e "s|^\*|${repo_basename}|g"' |
+		\grep "${1}.*]" |
+		\awk '{print $1}'
 }
 
 # pull:[git...]:git pull for all/specified repositories
