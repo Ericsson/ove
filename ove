@@ -9901,8 +9901,8 @@ function ove_update_terminal_stats {
 		OVE_COLUMNS=$COLUMNS
 		OVE_LINES=$LINES
 	else
-		OVE_COLUMNS=0
-		OVE_LINES=0
+		OVE_COLUMNS=
+		OVE_LINES=
 	fi
 
 	export OVE_COLUMNS
