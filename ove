@@ -10599,17 +10599,33 @@ function ove-replicate {
 	fi
 
 	if ! \ssh ${host} "
-		echo '${ps_local} ssh ${host}';
-		echo '${ps_remote} cd ${d}'; cd ${d};
-		[ $# -eq 1 ] && echo '${ps_remote} ${s}' && set -o pipefail && eval ${s} || exit;
-		[ $# -eq 1 ] && cd \$(\find \${PWD} -maxdepth 1 -mindepth 1 -type d);
-		[ $# -eq 1 ] && echo '${ps_remote} pwd' && echo \${PWD};
-		echo '${ps_remote} source ove'; source ove;
-		ove_init;
-		[ $# -eq 1 ] && echo '${ps_remote} ove fetch' && ove-fetch;
-		[ -e \"${q_remote}\" ] && echo '${ps_remote} ove am ${q_remote}' && ove-am ${q_remote};
-		[ -e \"${p_remote}\" ] && echo '${ps_remote} ove apply ${p_remote}' && ove-apply ${p_remote};
-		echo '${ps_remote} ove status'; ove-status"; then
+		echo '${ps_local} ssh ${host}'
+		echo '${ps_remote} cd ${d}'
+		cd ${d}
+		if [ $# -eq 1 ]; then
+			echo '${ps_remote} ${s}'
+			set -o pipefail
+			eval ${s} || exit
+			cd \$(\find \${PWD} -maxdepth 1 -mindepth 1 -type d)
+			echo '${ps_remote} pwd'
+			echo \${PWD}
+		fi
+		echo '${ps_remote} source ove'
+		source ove
+		if [ $# -eq 1 ]; then
+			echo '${ps_remote} ove fetch'
+			ove-fetch
+		fi
+		if [ -e \"${q_remote}\" ]; then
+			echo '${ps_remote} ove am ${q_remote}'
+			ove-am ${q_remote}
+		fi
+		if [ -e \"${p_remote}\" ]; then
+			echo '${ps_remote} ove apply ${p_remote}'
+			ove-apply ${p_remote}
+		fi
+		echo '${ps_remote} ove status'
+		ove-status"; then
 		ove_echo_error_noprefix "trying to replicate OVE workspace on '${host}'"
 	else
 		echo
