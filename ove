@@ -10601,7 +10601,7 @@ function ove-replicate {
 	if ! \ssh ${host} "
 		echo '${ps_local} ssh ${host}';
 		echo '${ps_remote} cd ${d}'; cd ${d};
-		[ $# -eq 1 ] && echo '${ps_remote} ${s}' && eval ${s};
+		[ $# -eq 1 ] && echo '${ps_remote} ${s}' && set -o pipefail && eval ${s} || exit;
 		[ $# -eq 1 ] && cd \$(\find \${PWD} -maxdepth 1 -mindepth 1 -type d);
 		[ $# -eq 1 ] && echo '${ps_remote} pwd' && echo \${PWD};
 		echo '${ps_remote} source ove'; source ove;
