@@ -230,7 +230,9 @@ function ove-unsource {
 }
 
 # interactive shell? clean up
-[[ $- == *i* ]] && ove_unsource
+if [[ $- == *i* ]]; then
+	ove_unsource
+fi
 
 function ove_welcome_msg {
 	local script_ver
@@ -262,7 +264,10 @@ function ove_version_check_early {
 		fi
 	fi
 
-	[ ${ret} -eq 0 ] || echo "error: bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} is too old. I need bash>=4.3"
+	if [ ${ret} -ne 0 ]; then
+		echo "error: bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} is too old. I need bash>=4.3"
+	fi
+
 	return ${ret}
 }
 
@@ -322,17 +327,22 @@ function ove_version_check {
 }
 
 function ove_main {
-	if ! ove_version_check_early; then
-		ove-unsource
-		return 1
-	fi
-
+	# some error messages use colors. I.e. keep this early
 	export OVE_COLOR_GREEN="\033[1;32;7m"
 	export OVE_COLOR_CYAN="\033[1;36;7m"
 	export OVE_COLOR_YELLOW_X="1;33;7m"
 	export OVE_COLOR_YELLOW="\033[${OVE_COLOR_YELLOW_X}"
 	export OVE_COLOR_RED="\033[1;31;7m"
 	export OVE_COLOR_BLANK="\033[0m"
+
+	# set OVE_OS_* variables ('ove_deps' need them)
+	ove_determine_dist_version_and_pack_manager
+
+	# shell version and dependency checks
+	if ! ove_version_check_early || ! ove_deps; then
+		ove-unsource
+		return 1
+	fi
 
 	if [ "x${USER}" != "x" ]; then
 		OVE_USER="${USER}"
@@ -347,32 +357,30 @@ function ove_main {
 
 	OVE_TMP=/tmp/${OVE_USER}/ove
 	export OVE_TMP
-	! [ -d "${OVE_TMP}" ] && \mkdir -p "${OVE_TMP}"
+	if ! [ -d "${OVE_TMP}" ]; then
+		\mkdir -p "${OVE_TMP}"
+	fi
 
-	# set OVE_OS_* variables
-	ove_determine_dist_version_and_pack_manager
-
-	# interactive shell?
+	# run 'ove init' if this is not a workspace (interactive shells)
 	if [[ $- == *i* ]]; then
 		# turn off monitor mode to get rid of "Done" messages
 		set +m
-
-		if ! ove_deps; then
-			ove-unsource
-			return 1
-		fi
 
 		if [ -e ".owel" ] && [ -e ove ]; then
 			:
 		else
 			ove-init
 		fi
+	fi
 
-		if ! ove_init; then
-			ove-unsource
-			return 1
-		fi
+	# init workspace
+	if ! ove_init; then
+		ove-unsource
+		return 1
+	fi
 
+	# welcome and post checks (interactive shells)
+	if [[ $- == *i* ]]; then
 		if [ ${OVE_LOGLEVEL} -eq 0 ] || [[ "$*" == *"hush"* ]]; then
 			:
 		else
@@ -383,11 +391,6 @@ function ove_main {
 
 		# turn on monitor mode
 		set -m
-	else
-		if ! ove_init; then
-			ove-unsource
-			return 1
-		fi
 	fi
 }
 
