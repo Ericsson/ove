@@ -5639,7 +5639,9 @@ function ove_install_packages {
 	missing_packages=$(ove_packages_not_installed "$@")
 
 	# no missing packages?
-	[ "${missing_packages}" == "" ] && return
+	if [ "x${missing_packages}" = "x" ]; then
+		return
+	fi
 
 	# sort the list
 	missing_packages_sorted="$(printf "%s\n" ${missing_packages} | \
@@ -5663,7 +5665,9 @@ function ove_install_packages {
 	fi
 
 	cmd="${OVE_OS_PACKAGE_MANAGER} ${OVE_OS_PACKAGE_MANAGER_ARGS} ${missing_packages_sorted}"
-	[ ${EUID} != 0 ] && cmd="sudo ${cmd}"
+	if [ ${EUID} != 0 ]; then
+		cmd="sudo ${cmd}"
+	fi
 
 	if [ ${OVE_INSTALL_PKG:?} -eq 1 ]; then
 		if ! ${cmd}; then
@@ -5672,9 +5676,7 @@ function ove_install_packages {
 		fi
 		return 0
 	elif [ ${OVE_INSTALL_PKG:?} -eq 2 ]; then
-		echo "missing package(s):"
-		echo
-		echo "To fix this, run the following command:"
+		echo "error: missing package(s): '${missing_packages_sorted}'. To fix this, run the following command:"
 		echo
 		echo -e "\t${cmd}"
 		echo
