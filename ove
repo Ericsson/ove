@@ -10528,6 +10528,7 @@ function ove-readme {
 function ove-replicate {
 	ove_entry
 
+	local base_dir
 	local d
 	local host
 	local now
@@ -10569,7 +10570,7 @@ function ove-replicate {
 	fi
 
 	now=$(\date '+%Y%m%d-%H%M%S')
-	ps_local="$"
+	ps_local="[${HOSTNAME}]$"
 	ps_remote="[${host}]$"
 
 	q="$(\mktemp -p ${OVE_PROJECT_TMP_DIR}).tar.bz2"
@@ -10629,7 +10630,16 @@ function ove-replicate {
 		ove_echo_error_noprefix "trying to replicate OVE workspace on '${host}'"
 	else
 		echo
-		echo "OVE workspace has been replicated to '${host}:${d}'"
+		echo -n "OVE workspace has been replicated to '${host}:${d}'"
+		base_dir=$(\ssh ${host} find ${d} -maxdepth 2 -name .owel 2> /dev/null)
+		if [ "x${base_dir}" != "x" ]; then
+			echo ". Start a login shell on '${host}' and enter the replicated workspace:"
+			echo
+			base_dir=${base_dir%/*}
+			echo -e " ssh -t ${host} 'cd ${base_dir}; bash --login'"
+		else
+			echo
+		fi
 	fi
 
 	if [ -e ${p} ]; then
@@ -11217,6 +11227,7 @@ function ove_externals {
 				-e 's|\s\+echo.*||g' \
 				-e 's|\s\+ove_echo_.*||g' \
 				-e 's|.*find.*-exec.*||g' \
+				-e 's|.*ssh.*find.*||g' \
 				-e 's|.*find.*xargs -0.*||g' \
 				-e "s|.*xargs.*${cmd}.*||g" \
 				-e '/^$/d' | \
