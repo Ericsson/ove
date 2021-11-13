@@ -23,11 +23,14 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-/proc/self/exe --version 2> /dev/null | \grep -q 'GNU bash'
-if test $? -ne 0; then
+# shellcheck disable=SC2009
+p=$(\ps | \grep -w $$ | \grep -v grep)
+if [ "${p#*bash}" = "$p" ]; then
 	echo 'error: run this in bash'
+	unset p
 	return 1
 fi
+unset p
 
 function ove_read_config_validate_varname {
 	local re="[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,}"
@@ -11193,6 +11196,7 @@ function ove_externals {
 	cmds+=('mkdir')
 	cmds+=('mktemp')
 	cmds+=('pgrep')
+	cmds+=('ps')
 	cmds+=('readlink')
 	cmds+=('rev')
 	cmds+=('rm')

@@ -62,6 +62,8 @@ d=$(\ssh ${host} mktemp -d)
 
 pgrep:
 
+ps:
+
 readlink:
 
 rev:
