@@ -244,7 +244,7 @@ function ove_welcome_msg {
 	if ! [ -e "${HOME}/.ove.bash" ]; then
 		echo
 		echo "Do you want to skip the initial 'source ove' step? Run this:"
-		echo " cp ${OVE_DIR}/ove.bash ${HOME}/.ove.bash && echo '[ -f ~/.ove.bash ] && source ~/.ove.bash' >> ${HOME}/.bashrc"
+		echo " cp -a ${OVE_DIR}/ove.bash ${HOME}/.ove.bash && echo '[ -f ~/.ove.bash ] && source ~/.ove.bash' >> ${HOME}/.bashrc"
 	fi
 
 	script_ver=$(\script --version | \awk '{print $NF}')
@@ -10620,7 +10620,7 @@ function ove-replicate {
 			echo \${PWD}
 		fi
 		echo '${ps_remote} source ove'
-		source ove
+		source ove || exit
 		if [ $# -eq 1 ]; then
 			echo '${ps_remote} ove fetch'
 			ove-fetch
