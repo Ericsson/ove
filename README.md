@@ -196,6 +196,10 @@ As discussed in the Overview, in most larger projects there is a strong need for
 
 Any executable found in any of these locations will become an OVE command. And provided that tab completion scripts and help texts exist at the same location, they will also be part of the OVE help and support tab completion for their arguments.
 
+If you are using a plugin that reads from stdin AND you need this plugin within a pipe, please use this construct:
+
+    $ echo foo | ove-bar
+
 We now covered the four main functionality areas of OVE. Next we will go through how to make life easy for developers or CI/CD machines when it comes to setting up an OVE project:
 
 ## Setup
