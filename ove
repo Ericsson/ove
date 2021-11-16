@@ -1990,7 +1990,7 @@ function ove_parse_yaml {
 function ove_project_commands_list {
 	local a
 
-	# for each project, look for executable files, ignore files with hyphens and underscore
+	# for each project, look for executable files, ignore files with hyphen-minus and underscore
 	a=$(LC_ALL="C" \sort -u <(
 		for f in $(cd ${OVE_PROJECT_DIR} && \find -L projects/*/ -perm -u=x -type f -not -name '*-*' -not -name '*_*' 2> /dev/null); do
 			echo ${f##*/};
@@ -2040,6 +2040,7 @@ function ove_projects_init {
 	local m
 	local name
 	local needs_distro_version_found
+	local os_version
 	local projects
 	local tmp_var
 
@@ -2161,6 +2162,8 @@ function ove_projects_init {
 	read -a projects -r <<<"${OVE_PROJECT_LIST}"
 	ove_number_of_projects=${#projects[@]}
 
+	# bash does not like variables with hyphen-minus and dots
+	os_version="${OVE_OS_VER//[.-]/_}"
 	# set projects deps|name|path|needs|version
 	i=0
 	while ((i < ove_number_of_projects)); do
@@ -2194,7 +2197,7 @@ function ove_projects_init {
 		# distro needs
 		needs_distro_version_found=0
 		for m in ${OVE_OS_ID} ${OVE_OS_ID_LIKE}; do
-			tmp_var="ove_${name}_needs_${m//-/_}_${OVE_OS_VER//./_}"
+			tmp_var="ove_${name}_needs_${m//-/_}_${os_version}"
 			if [ "${!tmp_var}" != "" ]; then
 				needs_distro_version_found=1
 				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then

@@ -73,7 +73,7 @@ How does OVE keep track of dependencies? Well, to start with there are (at least
 
     needs[_ID][_VER]]
 
-ID is a string and is matched vs. one string within: "${OVE_OS_ID//-/_} ${OVE_OS_ID_LIKE//-/_}". Examples: "ubuntu", "debian", "centos", "rhel", "fedora", "opensuse_tumbleweed", "suse". VER is a string and is matched vs. "${OVE_OS_VER//./_}". Examples: "18_04", "3_12_0", "20200923".
+ID is a string and is matched vs. one string within: "${OVE_OS_ID//-/_} ${OVE_OS_ID_LIKE//-/_}". Examples: "ubuntu", "debian", "centos", "rhel", "fedora", "opensuse_tumbleweed", "suse". VER is a string and is matched vs. "${OVE_OS_VER//[.-]/_}". Examples: "18_04", "3_12_0", "20200923".
 
 Example:
 
