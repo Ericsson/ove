@@ -361,7 +361,13 @@ function ove_main {
 	OVE_TMP=/tmp/${OVE_USER}/ove
 	export OVE_TMP
 	if ! [ -d "${OVE_TMP}" ]; then
-		\mkdir -p "${OVE_TMP}"
+		if ! \mkdir -p "${OVE_TMP}" 2> /dev/null; then
+			if ! OVE_TMP="$(\mktemp -d)"; then
+				ove_echo_error_noprefix "weird! '/tmp' is missing/none-writable and 'mktemp -d' fails"
+				ove-unsource
+				return 1
+			fi
+		fi
 	fi
 
 	# run 'ove init' if this is not a workspace (interactive shells)
@@ -9346,7 +9352,11 @@ function ove_dirs_init {
 	OVE_TMP_LINK_NAME="${OVE_BASE_DIR}/.ove.tmp"
 
 	# global state
-	[ -d /var/tmp ] && OVE_GLOBAL_STATE_DIR=/var${OVE_TMP} || OVE_GLOBAL_STATE_DIR=${OVE_TMP}
+	if [ -d /var/tmp ]; then
+		OVE_GLOBAL_STATE_DIR=/var${OVE_TMP}
+	else
+		OVE_GLOBAL_STATE_DIR=${OVE_TMP}
+	fi
 	export OVE_GLOBAL_STATE_DIR
 
 	# project state
