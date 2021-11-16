@@ -25,7 +25,7 @@
 
 i=0
 case $- in
-  *i*) i=1;;
+	*i*) i=1;;
 esac
 if [ "${i}" -eq 1 ]; then
 	# shellcheck disable=SC2009
@@ -1180,7 +1180,7 @@ function ove_loop_command {
 			files_modified_by_command="${OVE_PROJECT_TMP_DIR}/inotifywait-${cmd}-${all_files: -10}"
 			f_stderr="${files_modified_by_command}-stderr"
 			true > ${f_stderr}
-			if [ $(\cat /proc/sys/fs/inotify/max_user_watches) -lt $(\wc -l < ${all_files}) ]; then
+			if [ -e /proc/sys/fs/inotify/max_user_watches ] && [ $(\cat /proc/sys/fs/inotify/max_user_watches) -lt $(\wc -l < ${all_files}) ]; then
 				ove_echo_error_noprefix "you need to increase the number of inotify user watches. Try:"
 				echo
 				[ ${EUID} != 0 ] && prefix="sudo"
@@ -6169,6 +6169,11 @@ function ove_buildme_parallel_shell {
 	local re
 	local wait_for_deps
 
+	if [ ! -e /proc ]; then
+		ove_echo_error_noprefix "procfs mount point '/proc' is missing"
+		return 1
+	fi
+
 	if [ $# -ge 1 ]; then
 		build_list="$(ove_get_build_list "$@")"
 	fi
@@ -6201,7 +6206,11 @@ function ove_buildme_parallel_shell {
 	# pids db
 	declare -A pids_db=()
 
-	inotify_max_user_instances=$(($(\cat /proc/sys/fs/inotify/max_user_instances) - 20))
+	if [ -e /proc/sys/fs/inotify/max_user_instances ]; then
+		inotify_max_user_instances=$(($(\cat /proc/sys/fs/inotify/max_user_instances) - 20))
+	else
+		inotify_max_user_instances=1024
+	fi
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
