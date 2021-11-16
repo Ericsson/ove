@@ -8297,7 +8297,14 @@ function ove-cd {
 function ove-version {
 	ove_entry
 
-	echo "OVE [SHA-1: ${OVE_SHA} @ ${OVE_OS} ${OVE_OS_VER}]"
+	local os_real
+
+	os_real=$(\uname -o 2> /dev/null)
+	if [ "x${os_real}" = "x" ]; then
+		echo "OVE ${OVE_SHA} | ${OVE_OS} ${OVE_OS_VER}"
+	else
+		echo "OVE ${OVE_SHA} | ${OVE_OS} ${OVE_OS_VER} | ${os_real}"
+	fi
 }
 
 # revtab-check:[0|1]:disable/enable if OVE should keep repos in-sync with 'revtab'
