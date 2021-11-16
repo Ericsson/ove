@@ -2,5 +2,5 @@
 bash -c "set | grep ^OVE"
 >>>= 1
 # only bash (for now)
-sh -c ". ./ove"
+sh -i -c ". ./ove"
 >>>= 1

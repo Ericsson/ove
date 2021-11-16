@@ -23,14 +23,22 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# shellcheck disable=SC2009
-p=$(\ps | \grep -w $$ | \grep -v grep)
-if [ "${p#*bash}" = "$p" ]; then
-	echo 'error: run this in bash'
+i=0
+case $- in
+  *i*) i=1;;
+esac
+if [ "${i}" -eq 1 ]; then
+	# shellcheck disable=SC2009
+	p=$(\ps | \grep -w $$ | \grep -v grep)
+	if [ "${p#*bash}" = "$p" ]; then
+		echo 'error: run this in bash'
+		unset i
+		unset p
+		return 1
+	fi
 	unset p
-	return 1
 fi
-unset p
+unset i
 
 function ove_read_config_validate_varname {
 	local re="[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,}"
