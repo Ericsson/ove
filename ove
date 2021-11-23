@@ -7350,7 +7350,34 @@ EOF
 	done
 }
 
-# ag:pattern:search OVE workspace using The Silver Searcher [duckduckgo.com/?q=The+Silver+Searcher]
+# rg:pattern:search OVE workspace using rg [duckduckgo.com/?q=ripgrep]
+function ove-rg {
+	ove_entry
+
+	local cmd
+
+	if ! command -v rg > /dev/null; then
+		ove_command_not_found "rg"
+		return 1
+	fi
+
+	if [ $# -ne 1 ]; then
+		if [ $# -eq 0 ]; then
+			echo "error: no pattern"
+		fi
+		ove_command_usage
+		return 1
+	fi
+
+	cmd="\rg --no-ignore --hidden -S -n --color=always $* -- | "
+	# shellcheck disable=SC2016
+	cmd+='\sed -e "s,^,${PWD}/,g"'
+	if ! (cd $OVE_BASE_DIR || exit; eval $cmd; ); then
+		return 1
+	fi
+}
+
+# ag:pattern:search OVE workspace using ag [duckduckgo.com/?q=The+Silver+Searcher]
 function ove-ag {
 	ove_entry
 
@@ -7369,10 +7396,12 @@ function ove-ag {
 		return 1
 	fi
 
-	cmd="\ag --hidden --color '$*' -- | "
+	cmd="\ag --hidden -U --color '$*' -- | "
 	# shellcheck disable=SC2016
 	cmd+='\sed -e "s,^,${PWD}/,g"'
-	ove_revtab_forall_parallel "${cmd}"
+	if ! (cd $OVE_BASE_DIR || exit; eval $cmd; ); then
+		return 1
+	fi
 }
 
 # grep:[options] pattern:git grep [options] for all git repositories
