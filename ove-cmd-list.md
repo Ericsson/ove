@@ -2,6 +2,7 @@
 |-|-|-|
 | add                            | [git...]                                                               | git add for all/specified repositories                                                                                |
 | add-config                     | file config value                                                      | add config/value pair to one oveconfig file                                                                           |
+| add-project                    | [name path]\|[name path cmd...]\|[name path cmd@content...]            | add one project to 'projs' and 'projects/...'                                                                         |
 | add-repo                       | url\|url name\|url name rev                                            | add a new repo to this OVE workspace                                                                                  |
 | ag                             | pattern                                                                | search OVE workspace using ag [duckduckgo.com/?q=The+Silver+Searcher]                                                 |
 | ahead                          | [git...]                                                               | list local commits not yet published for all/specified repositories                                                   |

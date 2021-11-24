@@ -40,8 +40,8 @@ if [ "${i}" -eq 1 ]; then
 fi
 unset i
 
-function ove_read_config_validate_varname {
-	local re="[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,}"
+function ove_read_config_validate_name {
+	local re="^[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,}$"
 	local var="$1"
 
 	if ! [[ "${var}" =~ ${re} ]]; then
@@ -124,7 +124,7 @@ function ove_read_config {
 		p_arr=( ${p} )
 		var=${p_arr[0]}
 
-		if [ $# -eq 1 ] && ! ove_read_config_validate_varname ${var}; then
+		if [ $# -eq 1 ] && ! ove_read_config_validate_name ${var}; then
 			echo "error: config name '${var}' is not allowed:" 1>&2
 			\grep -w ^${var} -H -n ${1} 1>&2
 			continue
@@ -7603,7 +7603,7 @@ function ove-add-config {
 		return 1
 	fi
 	var=$2
-	if ! ove_read_config_validate_varname ${var}; then
+	if ! ove_read_config_validate_name ${var}; then
 		ove_echo_error_noprefix "config name '${var}' is not allowed"
 		return 1
 	fi
@@ -9129,6 +9129,10 @@ function ove_bash_complete {
 		[ "${subcommand}" == "systest-parallel" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(ove-list-systests)
+		fi
+	elif [ "${subcommand}" == "add-project" ]; then
+		if [ ${size} -ge 4 ]; then
+			wordlist="deps needs bootstrap configure build install clean test"
 		fi
 	elif [ "${subcommand}" == "apply" ]; then
 		if [ ${size} -ge 2 ]; then
@@ -11116,6 +11120,186 @@ function ove-add-repo {
 	fi
 
 	return 0
+}
+
+# add-project:[name path]|[name path cmd...]|[name path cmd@content...]:add one project to 'projs' and 'projects/...'
+function ove-add-project {
+	ove_entry
+
+	local c
+	local cmd
+	local content
+	local deps
+	local i
+	local j
+	local name
+	local name_check_ok
+	local needs
+	local needs_dist
+	local path
+	local proj_dir
+
+	if [ $# -eq 1 ]; then
+		ove_command_usage
+		return 1
+	elif [ $# -ge 2 ]; then
+		name="$1"
+
+		if ! ove_read_config_validate_name ${name}; then
+			ove_echo_error_noprefix "project name '${name}' is not allowed"
+			return 1
+		fi
+
+		path="$2"
+		proj_dir="$OVE_PROJECT_DIR/projects/${name}"
+		if ! \mkdir -p ${proj_dir}; then
+			ove_echo_error_noprefix "fatal: 'mkdir -p ${proj_dir}' failed"
+			return 1
+		fi
+
+		shift 2
+		for c in "$@"; do
+			if [[ ${c} == *@* ]]; then
+				cmd=${c%%@*}
+				content="${c#*@}"
+				if [ "x${cmd}" = "x" ]; then
+					ove_echo_error_noprefix "format error: ${c}"
+					continue
+				fi
+			else
+				cmd=${c}
+			fi
+
+			if [ "${cmd}" = "name" ] || [ "${cmd}" = "path" ]; then
+				ove_echo_error_noprefix "reserved word: ${cmd}"
+				continue
+			fi
+
+			if [[ ${c} != *@* ]]; then
+				while true; do
+					read -p "$(printf "%-9s" ${cmd}): " -r
+					if [ "x$REPLY" = "x" ]; then
+						continue
+					fi
+					content="$REPLY"
+					break
+				done
+			fi
+
+			if [ "${cmd}" = "deps" ] || [ "${cmd}" = "needs" ]; then
+				if [ -v ${cmd} ]; then
+					eval ${cmd}="\"${!cmd} ${content}\""
+				else
+					eval local ${cmd}="\"${content}\""
+				fi
+				continue
+			elif [[ "${cmd}" = needs_* ]]; then
+				if [ -v ${cmd} ]; then
+					eval ${cmd}="\"${!cmd} ${content}\""
+				else
+					eval local ${cmd}="\"${content}\""
+					needs_dist+=" $cmd"
+				fi
+				continue
+			fi
+			echo -e "${content}" > ${proj_dir}/${cmd}
+			if ! chmod +x ${proj_dir}/${cmd}; then
+				ove_echo_error_noprefix "fatal: chmod failed"
+				return 1
+			fi
+		done
+
+	else
+		name_check_ok=0
+		for c in name path deps needs bootstrap configure build install clean test; do
+			while true; do
+				read -p "$(printf "%-9s" ${c}): " -r
+				if [ "${c}" = "name" ] || [ "${c}" = "path" ]; then
+					if [ "x$REPLY" = "x" ]; then
+						continue
+					fi
+
+					if [ "${c}" = "name" ]; then
+						if [ $name_check_ok -eq 0 ] && ! ove_read_config_validate_name "${REPLY}"; then
+							ove_echo_error_noprefix "project name '${REPLY}' is not allowed"
+							continue
+						fi
+						name_check_ok=1
+					fi
+					eval local ${c}="$REPLY"
+					continue 2
+				elif [ "${c}" = "deps" ] || [ "${c}" = "needs" ]; then
+					if [ "x$REPLY" = "x" ]; then
+						echo -en "\033[1A\033[2K"
+					else
+						eval local ${c}="$REPLY"
+					fi
+					continue 2
+				elif [ "x$REPLY" = "x" ]; then
+					echo -en "\033[1A\033[2K"
+					continue 2
+				fi
+				break
+			done
+
+			if [ "${c}" = "path" ] || [ "${c}" = "deps" ] || [ "${c}" = "needs" ] ; then
+				continue
+			fi
+
+			proj_dir="$OVE_PROJECT_DIR/projects/${name}"
+
+			if ! \mkdir -p ${proj_dir}; then
+				ove_echo_error_noprefix "fatal: 'mkdir -p ${proj_dir}' failed"
+				return 1
+			fi
+
+			echo "$REPLY" > ${proj_dir}/${c}
+			if ! chmod +x ${proj_dir}/${c}; then
+				ove_echo_error_noprefix "fatal: chmod failed"
+				return 1
+			fi
+		done
+	fi
+
+	if [ -s $OVE_PROJECT_DIR/projs ] && \grep -q ${name}: $OVE_PROJECT_DIR/projs; then
+		ove_echo_note_noprefix "project '${name}' is already present in '$OVE_PROJECT_DIR/projs':"
+		\grep -H -n -A3 --color=always "${name}:" $OVE_PROJECT_DIR/projs | \sed -e "s,$OVE_BASE_DIR/,,g"
+	else
+		if [ -s $OVE_PROJECT_DIR/projs ]; then
+			echo >> $OVE_PROJECT_DIR/projs
+		else
+			echo "---" >> $OVE_PROJECT_DIR/projs
+		fi
+		echo -e "${name}:\n  path:\n    ${path}" >> $OVE_PROJECT_DIR/projs
+
+		if [ "x${deps}" != "x" ]; then
+			echo -e "  deps:" >> $OVE_PROJECT_DIR/projs
+			while read -r i; do
+				echo "    $i" >> $OVE_PROJECT_DIR/projs
+			done < <(LC_ALL="C" \sort <<<"$(printf "%s\n" ${deps})")
+		fi
+
+		if [ "x${needs}" != "x" ]; then
+			echo -e "  needs:" >> $OVE_PROJECT_DIR/projs
+			while read -r i; do
+				echo "    $i" >> $OVE_PROJECT_DIR/projs
+			done < <(LC_ALL="C" \sort <<<"$(printf "%s\n" ${needs})")
+		fi
+
+		if [ "x${needs_dist}" != "x" ]; then
+			for i in ${needs_dist}; do
+				echo -e "  $i:" >> $OVE_PROJECT_DIR/projs
+				while read -r j; do
+					echo "    $j" >> $OVE_PROJECT_DIR/projs
+				done < <(LC_ALL="C" \sort <<<"$(printf "%s\n" ${!i})")
+			done
+		fi
+	fi
+
+	if [ "x${proj_dir}" != "x" ]; then
+		ove_reinit
+		ove-list-projects ${name}
+	fi
 }
 
 # generate-doc: :generate OVE documentation (ove-cmd-list.md/ove.bash)
