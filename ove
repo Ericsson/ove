@@ -5910,6 +5910,7 @@ function ove-import {
 
 	local f
 	local lines
+	local n
 	local patch
 	local proj
 	local repo
@@ -5937,12 +5938,22 @@ function ove-import {
 	\find "${OVE_PROJECT_TMP_DIR}/import" -maxdepth 1 -name '*.patch' -exec rm {} \;
 	\tar -C "${OVE_PROJECT_TMP_DIR}/import" -xf "${f}" --no-same-owner
 
+	n=0
+	if [ ! -s ${OVE_PROJECT_DIR}/projs ]; then
+		echo "---" > ${OVE_PROJECT_DIR}/projs
+		n=1
+	fi
 	for patch in "${OVE_PROJECT_TMP_DIR}/import/"*.patch; do
 		if ! ove_patch_one_project "$patch"; then
 			((ret++))
 			continue
 		fi
 	done
+
+	if [ $ret -eq 0 ] && [ $n -eq 1 ]; then
+		# remove empty 2nd line in 'projs'
+		\sed -i -e '2d' ${OVE_PROJECT_DIR}/projs
+	fi
 
 	# remove revtab duplicates
 	if ! out=$(ove_validate_revtab 2> /dev/null); then
