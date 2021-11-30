@@ -6450,7 +6450,7 @@ function ove_entry {
 	fi
 
 	for f in ${FUNCNAME[*]}; do
-		if [ "x${f}" = "xsource" ]; then
+		if [ "x${f}" = "xsource" ] || [ "x${f}" = "xmain" ]; then
 			continue
 		elif [ "x$(type -t ${f})" != "xfunction" ]; then
 			ove_echo_stderr_noprefix "$f: command not found"
