@@ -2272,6 +2272,7 @@ function ove_list_projects_with_deps {
 # helper for ove_projects_cmd
 function ove_projects_cmd_execute {
 	local e
+	local ret=0
 
 	# common for this command?
 	if [ -e "${OVE_PROJECT_DIR}/projects/common/${proj_command}" ]; then
@@ -2326,6 +2327,8 @@ function ove_projects_cmd_execute {
 			ove_echo_cyan_error "${proj_name}: ${proj_command}: done"
 		fi
 	fi
+
+	return $ret
 }
 
 # $1: project name
@@ -2378,9 +2381,12 @@ function ove_projects_cmd {
 		(
 			\flock ${fd}
 			ove_projects_cmd_execute "$@"
+			exit $?
 		) {fd}>${OVE_PROJECT_TMP_DIR}/.${proj_command}.lock
+		ret=$?
 	else
 		ove_projects_cmd_execute "$@"
+		ret=$?
 	fi
 
 	return "${ret}"
