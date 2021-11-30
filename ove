@@ -5616,7 +5616,7 @@ function ove_validate_self {
 	fi
 
 	# make sure all ove- functions starts the same
-	if [ $(($(\grep -c 'ove_entry' ${OVE_SELF}) - 5 - $(\grep -c '^function ove-' ${OVE_SELF}))) -ne 0 ]; then
+	if [ $(($(\grep -c 'ove_entry' ${OVE_SELF}) - 6 - $(\grep -c '^function ove-' ${OVE_SELF}))) -ne 0 ]; then
 		ove_echo_error_noprefix "all ove- functions has to start with a 'ove_entry' hook. E.g.:"
 		type ove-nop
 		return 1
@@ -9282,10 +9282,12 @@ function ove_add_script_func {
 	fi
 
 	eval "ove-${s}() {
-	local helptext=\"${htext}\"
-	local __scriptname=ove-${s}
-	OVE_ACTIVE_REPO_DIR=${r_dir} \"${s_dir}\"/${s} \$*
+		ove_entry
+		local helptext=\"${htext}\"
+		local __scriptname=ove-${s}
+		OVE_ACTIVE_REPO_DIR=${r_dir} \"${s_dir}\"/${s} \$*
 	}"
+	export -f ove-${s}
 }
 
 function ove_scripts_init {
