@@ -230,7 +230,7 @@ function ove_unsource {
 
 # unsource: :clean up all OVE vars/funcs from this shell
 function ove-unsource {
-	ove_entry
+	ove_entry || return
 
 	ove_unsource
 	# unset leftovers and myself
@@ -983,7 +983,7 @@ function ove_command_usage {
 
 # strace-graph:dir:run strace graph analysis
 function ove-strace-graph {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -ne 1 ]; then
 		ove_command_usage
@@ -995,7 +995,7 @@ function ove-strace-graph {
 
 # strace-execve-timeline:dir:run strace execve timeline analysis
 function ove-strace-execve-timeline {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -ne 1 ]; then
 		ove_command_usage
@@ -1008,7 +1008,7 @@ function ove-strace-execve-timeline {
 
 # strace-execve-time:dir:run strace execve time analysis
 function ove-strace-execve-time {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -ne 1 ]; then
 		ove_command_usage
@@ -1020,7 +1020,7 @@ function ove-strace-execve-time {
 
 # strace-connect:dir:run strace connect time analysis
 function ove-strace-connect {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -ne 1 ]; then
 		ove_command_usage
@@ -1344,7 +1344,7 @@ function ove_loop_command {
 
 # ide:[close|reopen]:launch one or more 'loop'-commands specified by OVE_IDE_LOOP_ARGS (tmux only)
 function ove-ide {
-	ove_entry
+	ove_entry || return
 
 	local i
 	local line
@@ -1385,7 +1385,7 @@ function ove-ide {
 
 # run-parallel:t0 c0 t1 c1 t2 c2...:run OVE commands in parallel (tmux only)
 function ove-run-parallel {
-	ove_entry
+	ove_entry || return
 
 	local n=$#
 	local t
@@ -1418,7 +1418,7 @@ function ove_validate_int_float {
 
 # run:|t c:run one OVE command 'c' in terminal/tmux with timeout 't' (0=no timeout)
 function ove-run {
-	ove_entry
+	ove_entry || return
 
 	local _cmd
 	local cmd
@@ -1526,7 +1526,7 @@ function ove_kill_procs {
 
 # loop-close: :close all 'loop'-panes (tmux only)
 function ove-loop-close {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -gt 0 ] || [ -z "${TMUX}" ]; then
 		ove_command_usage
@@ -1539,7 +1539,7 @@ function ove-loop-close {
 
 # loop:|[timeout|x] [inotify|x] [max-count|x] command]:loop one OVE command
 function ove-loop {
-	ove_entry
+	ove_entry || return
 
 	local _cmd
 	local cmd
@@ -1909,7 +1909,7 @@ function ove {
 
 # fzf:[loop]:OVE fzf [duckduckgo.com/?q=fzf]
 function ove-fzf {
-	ove_entry
+	ove_entry || return
 
 	local args
 	local cmd
@@ -2082,7 +2082,7 @@ function ove_projects_init {
 	# create ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
 		eval "ove-${m}() {
-			ove_entry
+			ove_entry || return
 
 			local i
 			local helptext=\"${m}:[project...]:run the '${m}' step for all or individual projects\"
@@ -2123,7 +2123,7 @@ function ove_projects_init {
 	# create parallel ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
 		eval "ove-${m}-parallel() {
-			ove_entry
+			ove_entry || return
 
 			local i
 			local helptext=\"${m}-parallel:[project...]:run the '${m}' step for all or individual projects (in parallel)\"
@@ -2477,7 +2477,7 @@ function ove_read_git_command_options {
 
 # list-git-command-options: :list git command options (d=default, o=override)
 function ove-list-git-command-options {
-	ove_entry
+	ove_entry || return
 
 	local k
 	local s
@@ -3063,7 +3063,7 @@ function ove_revtab_check_one {
 
 # revtab-sync:[git...]:sync all/specified git repositories with 'revtab' (ignore OVE_REVTAB_CHECK)
 function ove-revtab-sync {
-	ove_entry
+	ove_entry || return
 
 	local i
 	local r
@@ -3567,7 +3567,7 @@ function ove_file_fingerprint {
 
 # make:[project[-nodeps]]:build project(s)
 function ove-make {
-	ove_entry
+	ove_entry || return
 
 	local fingerprint_a
 	local fingerprint_b
@@ -3704,7 +3704,7 @@ function ove-make {
 
 # list-projects:[project...]:list projects
 function ove-list-projects {
-	ove_entry
+	ove_entry || return
 
 	local f_basename
 	local f
@@ -3751,7 +3751,7 @@ function ove-list-projects {
 
 # digraph: :create a DOT directed graph for all projects
 function ove-digraph {
-	ove_entry
+	ove_entry || return
 
 	local i
 
@@ -3791,7 +3791,7 @@ function ove_build_topology {
 
 # build-order: :show build order
 function ove-build-order {
-	ove_entry
+	ove_entry || return
 
 	local autonomous_projs
 	local topology
@@ -3814,7 +3814,7 @@ function ove-build-order {
 
 # forowel:command:run 'command' for all OVE workspaces on this host
 function ove-forowel {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local i
@@ -3841,7 +3841,7 @@ function ove-forowel {
 
 # forowel-parallel:command:run 'command' in parallel for all OVE workspaces on this host
 function ove-forowel-parallel {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local i
@@ -3870,7 +3870,7 @@ function ove-forowel-parallel {
 
 # forall:command:run 'command' for all git repositories
 function ove-forall {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -eq 0 ]; then
 		ove_command_usage
@@ -3882,7 +3882,7 @@ function ove-forall {
 
 # forall-parallel:command:run 'command' in parallel for all git repositories
 function ove-forall-parallel {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -eq 0 ]; then
 		ove_command_usage
@@ -3902,7 +3902,7 @@ function ove_list_systests_groups {
 
 # list-systests: :list available system tests
 function ove-list-systests {
-	ove_entry
+	ove_entry || return
 
 	! [ -e ${OVE_PROJECT_DIR}/systests ] && return
 	(
@@ -3915,7 +3915,7 @@ function ove-list-systests {
 
 # list-systests-aliases: :list available system test aliases
 function ove-list-systests-aliases {
-	ove_entry
+	ove_entry || return
 
 	! [ -e ${OVE_PROJECT_DIR}/systests ] && return
 
@@ -3928,7 +3928,7 @@ function ove-list-systests-aliases {
 
 # list-scripts: :list available scripts
 function ove-list-scripts {
-	ove_entry
+	ove_entry || return
 
 	local p
 	local repo
@@ -4088,7 +4088,7 @@ function ove_command_not_found {
 
 # systest:[test|group...]:run one or more system tests/groups described in ${OVE_PROJECT_DIR}/systests-groups and ${OVE_PROJECT_DIR}/systests
 function ove-systest {
-	ove_entry
+	ove_entry || return
 
 	local exit_status
 	local groups
@@ -4379,7 +4379,7 @@ function ove_revtab_sanity_check {
 
 # revtab-diff:<rev> <rev>:print changes between two project revisions
 function ove-revtab-diff {
-	ove_entry
+	ove_entry || return
 
 	local a
 	local b
@@ -4527,7 +4527,7 @@ function ove_extract_repo_and_sha {
 
 # diff-project:<rev> <rev>:diff the entire project
 function ove-diff-project {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local diff
@@ -4580,7 +4580,7 @@ function ove-diff-project {
 
 # log-project:<rev> <rev>:git log the project '${OVE_PROJECT_NAME}'
 function ove-log-project {
-	ove_entry
+	ove_entry || return
 
 	local diff
 	local line
@@ -4623,7 +4623,7 @@ function ove-log-project {
 
 # shortlog-project:<rev> <rev>:git shortlog the project
 function ove-shortlog-project {
-	ove_entry
+	ove_entry || return
 
 	local diff
 	local line
@@ -4693,7 +4693,7 @@ function ove_locate_print {
 
 # setup: :print how to set this project up
 function ove-setup {
-	ove_entry
+	ove_entry || return
 
 	[ -e "${OVE_PROJECT_DIR}/SETUP" ] && \cat "${OVE_PROJECT_DIR}/SETUP"
 
@@ -4702,7 +4702,7 @@ function ove-setup {
 
 # refresh:[pattern...]:refresh OVE workspaces on this host
 function ove-refresh {
-	ove_entry
+	ove_entry || return
 
 	local i
 	local p
@@ -4885,7 +4885,7 @@ function ove_list_workspaces_base {
 
 # locate: :print OVE workspaces owned by you on this host
 function ove-locate {
-	ove_entry
+	ove_entry || return
 
 	local owel
 	local owels
@@ -4898,7 +4898,7 @@ function ove-locate {
 
 # locate-all: :print all OVE workspaces on this host
 function ove-locate-all {
-	ove_entry
+	ove_entry || return
 
 	local owel
 	local owels
@@ -4971,7 +4971,7 @@ function ove_set_workspace {
 
 # update-revtab:git rev:update 'revtab' with a another (existing) 'rev' for the repository named 'git'
 function ove-update-revtab {
-	ove_entry
+	ove_entry || return
 
 	local i
 	local repo
@@ -5007,7 +5007,7 @@ function ove-update-revtab {
 
 # branch:[git...]|[git... name]:list branch(es) or create-and-checkout 'name' branch for 'git...' and update 'revtab' accordingly
 function ove-branch {
-	ove_entry
+	ove_entry || return
 
 	local a
 	local args
@@ -5079,7 +5079,7 @@ function ove-branch {
 
 # remote:[git...]:git remote -v for all/specified git repositories
 function ove-remote {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -5095,7 +5095,7 @@ function ove-remote {
 
 # remote-set-url:url [git...]:change the URL of 'origin' remote for all/specified repositories
 function ove-remote-set-url {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local url
@@ -5119,7 +5119,7 @@ function ove-remote-set-url {
 
 # remote-check: :sanity check that all remotes are online
 function ove-remote-check {
-	ove_entry
+	ove_entry || return
 
 	local i
 	local url
@@ -5327,7 +5327,7 @@ function ove_stash_list {
 
 # stash:[list|show [pattern]|drop [pattern]|pop [pattern]|push [msg...]]:git stash [drop|pop|show|list|push] for all git repositories
 function ove-stash {
-	ove_entry
+	ove_entry || return
 
 	if [ "$1" == "pop" ] ||
 		[ "$1" == "list" ] ||
@@ -5344,7 +5344,7 @@ function ove-stash {
 
 # diff:[git...]:git diff for all/specified git repositories
 function ove-diff {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local repos
@@ -5368,7 +5368,7 @@ function ove-diff {
 
 # wdiff:[git...]:git diff (word diff) for all/specified git repositories
 function ove-wdiff {
-	ove_entry
+	ove_entry || return
 
 	local OVE_DIFF_OPTIONS
 
@@ -5378,7 +5378,7 @@ function ove-wdiff {
 
 # wdiff-cached:[git...]:git diff --cached (word diff) for all/specified git repositories
 function ove-wdiff-cached {
-	ove_entry
+	ove_entry || return
 
 	local OVE_DIFF_OPTIONS
 
@@ -5388,7 +5388,7 @@ function ove-wdiff-cached {
 
 # diff-cached:[git...]:git diff --cached for all/specified repositories
 function ove-diff-cached {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local repos
@@ -5412,7 +5412,7 @@ function ove-diff-cached {
 
 # reset:[git...]:git reset for all/specified repositories
 function ove-reset {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -5430,7 +5430,7 @@ function ove-reset {
 
 # reset-hard:[git...]:git reset --hard for all/specified repositories, USE WITH CARE
 function ove-reset-hard {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -5446,7 +5446,7 @@ function ove-reset-hard {
 
 # add:[git...]:git add for all/specified repositories
 function ove-add {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local repos
@@ -5471,7 +5471,7 @@ function ove-add {
 
 # commit:[git...]:git commit for all/specified git repositories
 function ove-commit {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -5494,7 +5494,7 @@ function ove-commit {
 
 # list-missing-projects:[project...]:list any missing project(s)
 function ove-list-missing-projects {
-	ove_entry
+	ove_entry || return
 
 	local d
 	declare -A m
@@ -5554,7 +5554,7 @@ function ove_get_paths_recursive {
 
 # proj2path:project:print project path
 function ove-proj2path {
-	ove_entry
+	ove_entry || return
 
 	local i
 
@@ -5852,7 +5852,7 @@ function ove_export {
 
 # export:[project...]:export project(s)
 function ove-export {
-	ove_entry
+	ove_entry || return
 
 	local args="$*"
 	local name
@@ -5914,7 +5914,7 @@ function ove_patch_one_project {
 
 # import:file:import project(s), see export
 function ove-import {
-	ove_entry
+	ove_entry || return
 
 	local f
 	local lines
@@ -6064,7 +6064,7 @@ function ove_get_build_list {
 
 # list-needs:[project...]:list OS packages needs for all/specified project(s)
 function ove-list-needs {
-	ove_entry
+	ove_entry || return
 
 	local b
 	local build_list
@@ -6109,7 +6109,7 @@ function ove-list-needs {
 
 # install-pkg:[project...]:install needed OS packages
 function ove-install-pkg {
-	ove_entry
+	ove_entry || return
 
 	local pack_list
 
@@ -6126,7 +6126,7 @@ function ove-install-pkg {
 
 # buildme:[project...]:build project(s) from scratch (=bootstrap, configure, build, install)
 function ove-buildme {
-	ove_entry
+	ove_entry || return
 
 	local b
 	local build_list
@@ -6379,7 +6379,7 @@ EOF
 
 # buildme-parallel:[project...]:build project(s) from scratch (=bootstrap, configure, build, install)
 function ove-buildme-parallel {
-	ove_entry
+	ove_entry || return
 
 	if ! ove_build_pre "$@"; then
 		return 1
@@ -6400,7 +6400,7 @@ function ove-buildme-parallel {
 
 # diff-check:[options]:git diff --check [options]
 function ove-diff-check {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -6410,14 +6410,14 @@ function ove-diff-check {
 
 # list-repositories: :list all git repositories
 function ove-list-repositories {
-	ove_entry
+	ove_entry || return
 
 	ove_revtab_list
 }
 
 # env:[pattern]:show OVE environment variables
 function ove-env {
-	ove_entry
+	ove_entry || return
 
 	local e
 	local str
@@ -6439,6 +6439,8 @@ function ove-env {
 }
 
 function ove_entry {
+	local f
+
 	if [[ ${FUNCNAME[*]} == *"ove_main"* ]]; then
 		return
 	fi
@@ -6446,6 +6448,15 @@ function ove_entry {
 	if ! ove_get_base_dir &> /dev/null; then
 		return 1
 	fi
+
+	for f in ${FUNCNAME[*]}; do
+		if [ "x${f}" = "xsource" ]; then
+			continue
+		elif [ "x$(type -t ${f})" != "xfunction" ]; then
+			ove_echo_stderr_noprefix "$f: command not found"
+			return 127
+		fi
+	done
 
 	if ! [ -v ove_revtab_fetch_url ]; then
 		ove_revtab_init
@@ -6464,7 +6475,7 @@ function ove_entry {
 
 # status:[git...]:git status -zbs -uno for all/specified repositories
 function ove-status {
-	ove_entry
+	ove_entry || return
 
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
@@ -6478,13 +6489,13 @@ function ove-status {
 
 # news:[git...]:list upstream changes for all/specified repositories
 function ove-news {
-	ove_entry
+	ove_entry || return
 	ove-behind "$@"
 }
 
 # behind:[git...]:list upstream changes for all/specified repositories
 function ove-behind {
-	ove_entry
+	ove_entry || return
 
 	if [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
 		ove_revtab_status_parse behind "$@" | \tee ${OVE_PROJECT_STATE_DIR}/revtab-news
@@ -6495,14 +6506,14 @@ function ove-behind {
 
 # show-behind:[git...]:run 'ove show' on upstream changes for all/specified repositories
 function ove-show-behind {
-	ove_entry
+	ove_entry || return
 
 	ove-show-news "$@"
 }
 
 # show-news:[git...]:run 'ove show' on upstream changes for all/specified repositories
 function ove-show-news {
-	ove_entry
+	ove_entry || return
 
 	local less_opt
 	local line
@@ -6542,7 +6553,7 @@ function ove-show-news {
 
 # ahead:[git...]:list local commits not yet published for all/specified repositories
 function ove-ahead {
-	ove_entry
+	ove_entry || return
 
 	if [ -w "${OVE_PROJECT_STATE_DIR}" ]; then
 		ove_revtab_status_parse ahead "$@" | \tee ${OVE_PROJECT_STATE_DIR}/revtab-ahead
@@ -6553,7 +6564,7 @@ function ove-ahead {
 
 # show-ahead:[git...]:run 'ove show' on local commits not yet published for all/specified repositories
 function ove-show-ahead {
-	ove_entry
+	ove_entry || return
 
 	local sha_list
 
@@ -6568,7 +6579,7 @@ function ove-show-ahead {
 
 # reset-ahead:[git...]:git reset --hard HEAD~N where N is number of commits ahead for all or specified repositories, USE WITH CARE
 function ove-reset-ahead {
-	ove_entry
+	ove_entry || return
 
 	ove-ahead "$@" | \
 		\sed -r \
@@ -6584,7 +6595,7 @@ function ove-reset-ahead {
 
 # rebase-autosquash:[git...]:run 'git rebase -i HEAD~N --autosquash' where N is the number of local commits not yet published
 function ove-rebase-autosquash {
-	ove_entry
+	ove_entry || return
 
 	if ! \git help config | \grep -q GIT_SEQUENCE_EDITOR; then
 		ove_echo_error_noprefix "'GIT_SEQUENCE_EDITOR' not available, too old git version?"
@@ -6610,7 +6621,7 @@ function ove-rebase-autosquash {
 
 # format-patch:[name]:create a bz2 archive for all local commits not yet published
 function ove-format-patch {
-	ove_entry
+	ove_entry || return
 
 	local d
 	local f
@@ -6653,7 +6664,7 @@ function ove-format-patch {
 
 # am:file:apply a bz2 archive file created with 'format-patch'
 function ove-am {
-	ove_entry
+	ove_entry || return
 
 	local d
 	local r
@@ -6720,7 +6731,7 @@ function ove_list_repos {
 
 # pull:[git...]:git pull for all/specified repositories
 function ove-pull {
-	ove_entry
+	ove_entry || return
 
 	local repo
 	local repos
@@ -6776,7 +6787,7 @@ function ove-pull {
 
 # apply:patch:apply one OVE patch
 function ove-apply {
-	ove_entry
+	ove_entry || return
 
 	local lineno
 	local p
@@ -6964,7 +6975,7 @@ function ove_patch_repos {
 
 # patch-repo:[git...]:patch all/specified repositories (ignore OVE_PATCH_REPO) with $OVE_PROJECT_DIR/patches/[<git>/]{*.diff,*.patch}
 function ove-patch-repo {
-	ove_entry
+	ove_entry || return
 
 	OVE_PATCH_REPOS=1 ove_patch_repos "$@"
 }
@@ -7018,7 +7029,7 @@ function ove_submodule2revtab {
 
 # import-submodules:[git]:append submodule(s) to 'revtab' and run fetch for all/specified git repositories
 function ove-import-submodules {
-	ove_entry
+	ove_entry || return
 
 	local imports
 	local out
@@ -7048,7 +7059,7 @@ function ove-import-submodules {
 
 # do:dir command:run a command within 'dir' relative to ${OVE_BASE_DIR}
 function ove-do {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local dir
@@ -7066,14 +7077,14 @@ function ove-do {
 
 # fetch-fetched: :git fetch for already fetched repositories, ends with ove status
 function ove-fetch-fetched {
-	ove_entry
+	ove_entry || return
 
 	ove-fetch $(ove-status | \awk '{print $1}')
 }
 
 # fetch:[git...]:git fetch for all/specified repositories, ends with ove status
 function ove-fetch {
-	ove_entry
+	ove_entry || return
 
 	local repos
 
@@ -7091,14 +7102,14 @@ function ove-fetch {
 
 # tag: :list all project tags
 function ove-tag {
-	ove_entry
+	ove_entry || return
 
 	ove_repo_cmd "${OVE_PROJECT_DIR}" log --tags --simplify-by-decoration --pretty="format:%ai %D"
 }
 
 # log: :project commit log for branch '${OVE_PROJECT_CI_BRANCH}'
 function ove-log {
-	ove_entry
+	ove_entry || return
 
 	local b
 
@@ -7111,7 +7122,7 @@ function ove-log {
 
 # checkout:[rev[ [purge|autostash]]]:git checkout for all git repositories or checkout a new project revision, USE 'purge' WITH CARE
 function ove-checkout {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local dirty_repos
@@ -7209,7 +7220,7 @@ function ove-checkout {
 
 # list-commands:[pattern]:list commands
 function ove-list-commands {
-	ove_entry
+	ove_entry || return
 
 	local a
 	local b
@@ -7238,7 +7249,7 @@ function ove-list-commands {
 
 # help:[pattern]:OVE help
 function ove-help {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -eq 0 ]; then
 		ove_help
@@ -7380,7 +7391,7 @@ EOF
 
 # rg:pattern:search OVE workspace using rg [duckduckgo.com/?q=ripgrep]
 function ove-rg {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -7407,7 +7418,7 @@ function ove-rg {
 
 # ag:pattern:search OVE workspace using ag [duckduckgo.com/?q=The+Silver+Searcher]
 function ove-ag {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -7434,7 +7445,7 @@ function ove-ag {
 
 # grep:[options] pattern:git grep [options] for all git repositories
 function ove-grep {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -eq 0 ]; then
 		echo "error: no pattern"
@@ -7463,7 +7474,7 @@ function ove_gf_helper {
 
 # gfv:pattern:git grep+fzf+vi combo
 function ove-gfv {
-	ove_entry
+	ove_entry || return
 
 	local out
 
@@ -7488,7 +7499,7 @@ function ove-gfv {
 
 # gfe:pattern:git grep+fzf+emacs combo
 function ove-gfe {
-	ove_entry
+	ove_entry || return
 
 	local out
 
@@ -7513,7 +7524,7 @@ function ove-gfe {
 
 # blame-history:pattern:git log -G -p pattern for all git repositories
 function ove-blame-history {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -eq 0 ]; then
 		echo "error: no pattern"
@@ -7526,7 +7537,7 @@ function ove-blame-history {
 
 # blame:pattern:git grep+blame+log combo
 function ove-blame {
-	ove_entry
+	ove_entry || return
 
 	local f
 	local i
@@ -7604,7 +7615,7 @@ function ove_config_one {
 
 # add-config:file config value:add config/value pair to one oveconfig file
 function ove-add-config {
-	ove_entry
+	ove_entry || return
 
 	local cfg
 	local val
@@ -7681,7 +7692,7 @@ function ove_list_oveconfig_files {
 
 # config:[file[config[[value]]]]|[config[[value]]]:show/modify .oveconfig files, configs are read in order so last config takes precedence
 function ove-config {
-	ove_entry
+	ove_entry || return
 
 	local cfg
 	local cfg_diff
@@ -7743,7 +7754,7 @@ function ove-config {
 
 # ls-files:[options]:git ls-files [options] for all git repositories
 function ove-ls-files {
-	ove_entry
+	ove_entry || return
 
 	local opts
 
@@ -7759,7 +7770,7 @@ function ove-ls-files {
 
 # list-modified-files: :list modified files
 function ove-list-modified-files {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -7771,14 +7782,14 @@ function ove-list-modified-files {
 
 # list-modified-files-basename: :list modified files (basename)
 function ove-list-modified-files-basename {
-	ove_entry
+	ove_entry || return
 
 	ove-list-modified-files | \sed "s|.*/||g" | LC_ALL="C" \sort -u
 }
 
 # list-committed-files:[days]:list committed files within 7 or days day(s)
 function ove-list-committed-files {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local days
@@ -8001,21 +8012,21 @@ function ove_edit {
 
 # emacs:[pattern|file...]:open files in emacs
 function ove-emacs {
-	ove_entry
+	ove_entry || return
 
 	ove_edit emacs "$@"
 }
 
 # vi:[pattern|file...]:open files in vi
 function ove-vi {
-	ove_entry
+	ove_entry || return
 
 	ove_edit vi "$@"
 }
 
 # edit:[pattern|file...]:open files in $EDITOR
 function ove-edit {
-	ove_entry
+	ove_entry || return
 
 	if [ "x$EDITOR" = "x" ]; then
 		return 1
@@ -8064,7 +8075,7 @@ function ove_rmdir {
 
 # mrproper:[y]:remove untracked repository files, '${OVE_STAGE_DIR}/*' and '${OVE_ARCHIVE_DIR}/*', USE WITH CARE
 function ove-mrproper {
-	ove_entry
+	ove_entry || return
 
 	local nbr_untracked_files
 
@@ -8101,7 +8112,7 @@ function ove-mrproper {
 
 # wipe-base-dir:[y]:remove untracked files from ${OVE_BASE_DIR}, USE WITH CARE
 function ove-wipe-base-dir {
-	ove_entry
+	ove_entry || return
 
 	local candidates
 	local remove
@@ -8141,7 +8152,7 @@ function ove-wipe-base-dir {
 
 # l:[pattern]:view last command output in pager (=${OVE_PAGER}) or print lines matching pattern
 function ove-l {
-	ove_entry
+	ove_entry || return
 
 	[ -f "${OVE_LAST_COMMAND}" ] || return
 
@@ -8160,7 +8171,7 @@ function ove-l {
 
 # describe:[git...]:git describe+log+status combo for all/specified git repositories
 function ove-describe {
-	ove_entry
+	ove_entry || return
 
 	local func
 
@@ -8176,7 +8187,7 @@ function ove-describe {
 
 # list-heads:[git...]:git log for all/specified git repositories
 function ove-list-heads {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -8198,7 +8209,7 @@ function ove-list-heads {
 
 # ls-remote: :git ls-remote <remote.origin.url> HEAD for all git repositories
 function ove-ls-remote {
-	ove_entry
+	ove_entry || return
 
 	local i
 	local p
@@ -8251,7 +8262,7 @@ function ove-ls-remote {
 
 # heads2revtab:[git...]:update 'revtab' with current SHA-1
 function ove-heads2revtab {
-	ove_entry
+	ove_entry || return
 
 	local repo
 	local repos
@@ -8274,7 +8285,7 @@ function ove-heads2revtab {
 
 # head-tail:file [num]:display first/last 3(=num) lines of a text file
 function ove-head-tail {
-	ove_entry
+	ove_entry || return
 
 	local c
 	local f
@@ -8309,7 +8320,7 @@ function ove-head-tail {
 
 # what-is:dir...:classify files inside 'dir' using 'file'
 function ove-what-is {
-	ove_entry
+	ove_entry || return
 
 	local dir
 
@@ -8327,7 +8338,7 @@ function ove-what-is {
 
 # show:[rev...]:ove list-heads or search for 'rev' within all git repositories. If found run 'git show rev'
 function ove-show {
-	ove_entry
+	ove_entry || return
 
 	local revision
 
@@ -8356,7 +8367,7 @@ function ove-show {
 
 # cd:[pattern|@] :'cd ${OVE_BASE_DIR}' OR switch to a OVE workspace specified by pattern
 function ove-cd {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -eq 0 ]; then
 		cd "${OVE_BASE_DIR}"
@@ -8369,7 +8380,7 @@ function ove-cd {
 
 # version: :print OVE version
 function ove-version {
-	ove_entry
+	ove_entry || return
 
 	local os_real
 
@@ -8383,7 +8394,7 @@ function ove-version {
 
 # revtab-check:[0|1]:disable/enable if OVE should keep repos in-sync with 'revtab'
 function ove-revtab-check {
-	ove_entry
+	ove_entry || return
 
 	local cfg
 	local reinit=0
@@ -8413,7 +8424,7 @@ function ove-revtab-check {
 
 # loglevel:[level] :show or change loglevel [0-9]
 function ove-loglevel {
-	ove_entry
+	ove_entry || return
 
 	local bcc_tool
 	local cfg
@@ -8512,7 +8523,7 @@ function ove-loglevel {
 
 # dry-run:[0|1]:toggle or set OVE_DRY_RUN
 function ove-dry-run {
-	ove_entry
+	ove_entry || return
 
 	if [ $# -eq 1 ] && ! [[ "$1" =~ ^[0-1]$ ]]; then
 		ove_command_usage
@@ -8530,7 +8541,7 @@ function ove-dry-run {
 
 # lastlog-summary:[pattern]:peek inside OVE logs and make a summary
 function ove-lastlog-summary {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 	local d
@@ -8646,7 +8657,7 @@ function ove-lastlog-summary {
 
 # lastlog-replay:[file [divisor]]|[pattern [divisor]]:replay OVE commands
 function ove-lastlog-replay {
-	ove_entry
+	ove_entry || return
 
 	local divisor=1
 	local f
@@ -8702,7 +8713,7 @@ function ove-lastlog-replay {
 
 # lastlog:[pattern]:list OVE logs
 function ove-lastlog {
-	ove_entry
+	ove_entry || return
 
 	local find_opt
 	local self=${FUNCNAME[0]/ove-/}
@@ -8730,7 +8741,7 @@ function ove-lastlog {
 
 # rm-logs:[days [y]]:remove OVE logs older than 30|days days. days=0 => all logs
 function ove-rm-logs {
-	ove_entry
+	ove_entry || return
 
 	local days=30
 	local find_opt="-mtime +${days}"
@@ -8803,7 +8814,7 @@ function ove-rm-logs {
 
 # authors: :list author summary for all git repositories
 function ove-authors {
-	ove_entry
+	ove_entry || return
 
 	local repo
 
@@ -8842,7 +8853,7 @@ function ove-authors {
 
 # domains: :list email domain summary for all git repositories
 function ove-domains {
-	ove_entry
+	ove_entry || return
 
 	ove-authors | \grep '@' | \cut -d@ -f2 | LC_ALL="C" \sort | \uniq -c | LC_ALL="C" \sort -nr
 }
@@ -9282,7 +9293,7 @@ function ove_add_script_func {
 	fi
 
 	eval "ove-${s}() {
-		ove_entry
+		ove_entry || return
 		local helptext=\"${htext}\"
 		local __scriptname=ove-${s}
 		OVE_ACTIVE_REPO_DIR=${r_dir} \"${s_dir}\"/${s} \$*
@@ -9350,7 +9361,7 @@ function ove_scripts_init {
 
 # show-configuration: :show current build configuration for each project
 function ove-show-configuration {
-	ove_entry
+	ove_entry || return
 
 	if [ -d "${OVE_PROJECT_DIR}/projects" ]; then
 		\find ${OVE_PROJECT_DIR}/projects -type f -name 'configure' -print -or -type l -name 'configure' -exec file {} \; | \
@@ -9363,7 +9374,7 @@ function ove-show-configuration {
 
 # select-configuration:[pattern|default]:select build configuration for each project
 function ove-select-configuration {
-	ove_entry
+	ove_entry || return
 
 	local c
 	local configs
@@ -9977,7 +9988,7 @@ function ove_aliases {
 
 # list-aliases: :list OVE aliases
 function ove-list-aliases {
-	ove_entry
+	ove_entry || return
 
 	local a
 	local aliases
@@ -10146,7 +10157,7 @@ function ove_buildable_projects {
 
 # init:|[dir]|[dir name]:scan directories and look for git repositories, if found create/update a OVE workspace
 function ove-init {
-	ove_entry
+	ove_entry || return
 
 	local d
 	local dir
@@ -10585,7 +10596,7 @@ function ove_determine_dist_version_and_pack_manager {
 
 # fsck:[git...]:git fsck --full for all/specified git repositories
 function ove-fsck {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -10602,7 +10613,7 @@ function ove-fsck {
 
 # show-dangling:[git...]:show dangling git objects (=blob|commit|tag|tree) for all/specified git repositories
 function ove-show-dangling {
-	ove_entry
+	ove_entry || return
 
 	local sha_list
 
@@ -10612,7 +10623,7 @@ function ove-show-dangling {
 
 # readme:[git...]:display README files for all/specified git repositories
 function ove-readme {
-	ove_entry
+	ove_entry || return
 
 	local cmd
 
@@ -10631,7 +10642,7 @@ function ove-readme {
 
 # replicate:host [path]:replicate OVE workspace on 'host'
 function ove-replicate {
-	ove_entry
+	ove_entry || return
 
 	local base_dir
 	local d
@@ -10888,7 +10899,7 @@ function ove_unittest_cleanup {
 
 # unittest:[test...]:run all/specific unit tests
 function ove-unittest {
-	ove_entry
+	ove_entry || return
 
 	local a
 	local b
@@ -10973,14 +10984,14 @@ function ove-unittest {
 
 # less-lastlog:[user...]:peek into user(s) last OVE log using less
 function ove-less-lastlog {
-	ove_entry
+	ove_entry || return
 
 	ove_watch_logs "less" "$@"
 }
 
 # tail-lastlog:[user...]:peek into user(s) last OVE log using tail -f
 function ove-tail-lastlog {
-	ove_entry
+	ove_entry || return
 
 	ove_watch_logs "tail" "$@"
 }
@@ -11096,7 +11107,7 @@ function ove_watch_logs {
 
 # add-repo:url|url name|url name rev:add a new repo to this OVE workspace
 function ove-add-repo {
-	ove_entry
+	ove_entry || return
 
 	local name
 	local revision=${OVE_DEFAULT_BRANCH_NAME}
@@ -11145,7 +11156,7 @@ function ove-add-repo {
 
 # add-project:[name path]|[name path cmd...]|[name path cmd@content...]:add one project to 'projs' and 'projects/...'
 function ove-add-project {
-	ove_entry
+	ove_entry || return
 
 	local c
 	local cmd
@@ -11325,7 +11336,7 @@ function ove-add-project {
 
 # generate-doc: :generate OVE documentation (ove-cmd-list.md/ove.bash)
 function ove-generate-doc {
-	ove_entry
+	ove_entry || return
 
 	local a
 	local b
@@ -11387,7 +11398,7 @@ function ove-generate-doc {
 
 # shell-check: :run shellcheck on OVE
 function ove-shell-check {
-	ove_entry
+	ove_entry || return
 
 	local exclude
 	local sc
@@ -11531,14 +11542,14 @@ function ove_externals {
 
 # nop: :do nothing
 function ove-nop {
-	ove_entry
+	ove_entry || return
 
 	:
 }
 
 # rename:[new]:rename OWEL/workspace, USE WITH CARE
 function ove-rename {
-	ove_entry
+	ove_entry || return
 
 	local a
 	local b
@@ -11598,7 +11609,7 @@ function ove-rename {
 
 # distrocheck:project [pattern]:verify a project (using LXC/LXD) within multiple Linux distributions
 function ove-distrocheck {
-	ove_entry
+	ove_entry || return
 
 	local proj
 
@@ -11622,7 +11633,7 @@ function ove-distrocheck {
 
 # pre-push: :shell-check+unittest+generate-doc combo
 function ove-pre-push {
-	ove_entry
+	ove_entry || return
 
 	[ -d ${OVE_PROJECT_TMP_DIR}/unittest ] && \rm -rf ${OVE_PROJECT_TMP_DIR}/unittest
 
@@ -11643,7 +11654,7 @@ function ove-pre-push {
 
 # post-push: :run OVE unittests (using LXC/LXD) within Linux distributions specified by ${OVE_DIR}/tests/distro-check.list
 function ove-post-push {
-	ove_entry
+	ove_entry || return
 
 	local args
 
