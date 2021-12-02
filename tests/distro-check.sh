@@ -165,14 +165,33 @@ function main {
 	local ove_packs
 	local package_manager
 	local start_sec
+	local tag
 
 	init "$@"
 
+	# re-use date+time (ignore micro/nano) from OVE_LAST_COMMAND
+	if [ "x${OVE_LAST_COMMAND}" != "x" ]; then
+		tag="${OVE_LAST_COMMAND##*/}"
+		tag="${tag:0:18}"
+	fi
+
 	for distro in "${distro_list[@]}"; do
 		start_sec=${SECONDS}
+
+		if [ "x${tag}" != "x" ]; then
+			lxc_name="ove-${tag}-${distro}"
+		else
+			lxc_name="ove-${distro}"
+		fi
+
 		# replace slashes and dots
-		lxc_name="ove-distro-check-${distro//\//-}"
+		lxc_name="${lxc_name//\//-}"
 		lxc_name="${lxc_name//./-}"
+
+		if [ ${#lxc_name} -gt 63 ]; then
+			echo "info: lxc name '${lxc_name}' tuncated"
+			lxc_name=${lxc_name:0:63}
+		fi
 
 		if lxc list --format csv | grep -q "^${lxc_name},"; then
 			run "lxc delete --force ${lxc_name}"
