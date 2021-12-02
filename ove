@@ -1824,6 +1824,15 @@ function ove {
 		return 1
 	fi
 
+	if [ -n "${OVE_LOCAL_ECHO+x}" ] && [ "${OVE_LOCAL_ECHO}" -eq 1 ]; then
+		if [ ${EUID} -eq 0 ]; then
+			echo -n "# "
+		else
+			echo -n "$ "
+		fi
+		echo "ove ${cmd} ${*:2}"
+	fi
+
 	# do not log commands that:
 	# * affect the user's shell
 	# * 'complex' commands (e.g. vi/emacs)
@@ -9560,6 +9569,11 @@ function ove_config_builtins_init {
 	# OVE_AUTOCORRECT:int:0|1:all:auto correct commands
 	if [ -z "${OVE_AUTOCORRECT+x}" ]; then
 		export OVE_AUTOCORRECT=0
+	fi
+
+	# OVE_LOCAL_ECHO:int:0|1:all:print command to be executed on stdout
+	if [ -z "${OVE_LOCAL_ECHO+x}" ]; then
+		export OVE_LOCAL_ECHO=0
 	fi
 
 	# OVE_AUTO_RM_LOGS:int:0|days:all:automatically remove OVE logs
