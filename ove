@@ -1907,6 +1907,10 @@ function ove {
 		fi
 	fi
 
+	if [ -n "${OVE_ANONYMIZE_LOGS+x}" ] && [ "${OVE_ANONYMIZE_LOGS}" -eq 1 ]; then
+		\sed -i -e "s,$OVE_BASE_DIR,\$OVE_BASE_DIR,g" -e "s,$OVE_USER,\$OVE_USER,g" ${OVE_LAST_COMMAND}
+	fi
+
 	\ln -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
 
 	# auto remove old logs?
@@ -9579,6 +9583,11 @@ function ove_config_builtins_init {
 	# OVE_AUTO_RM_LOGS:int:0|days:all:automatically remove OVE logs
 	if [ -z "${OVE_AUTO_RM_LOGS+x}" ]; then
 		export OVE_AUTO_RM_LOGS=0
+	fi
+
+	# OVE_ANONYMIZE_LOGS:int:0|1:all:try to anonymize logs by removing user specific info
+	if [ -z "${OVE_ANONYMIZE_LOGS+x}" ]; then
+		export OVE_ANONYMIZE_LOGS=0
 	fi
 
 	# OVE_REVTAB_CHECK:int:0|1:all:keep repos in-sync with 'revtab'
