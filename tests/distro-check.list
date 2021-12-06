@@ -1,12 +1,17 @@
 alpine/3.14
+alpine/3.15
 archlinux
 debian/10
 debian/11
+debian/12
+fedora/33
 fedora/34
+fedora/35
 mint/uma
 opensuse/tumbleweed
 ubuntu/16.04
 ubuntu/18.04
 ubuntu/20.04
 ubuntu/21.04
+ubuntu/22.04
 voidlinux

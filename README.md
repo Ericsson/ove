@@ -361,16 +361,16 @@ Configurable OVE commands can be found [here](ove-config-list.md)
 
 OVE has been tested ([distro-check.sh](tests/distro-check.sh)) for the following Linux distributions:
 
-| Distribution        | Release(s)          |
-|---------------------|---------------------|
-| Alpine Linux        | 3.14                |
-| Arch Linux          | N/A                 |
-| Debian              | Buster, Bullseye    |
-| Fedora              | 34                  |
-| Linux Mint          | Uma                 |
-| openSUSE Tumbleweed | N/A                 |
-| Ubuntu              | 18.04, 20.04, 21.04 |
-| Void Linux          | N/A                 |
+| Distribution        | Release(s)                 |
+|---------------------|----------------------------|
+| Alpine Linux        | 3.14, 3.15                 |
+| Arch Linux          | N/A                        |
+| Debian              | Buster, Bullseye, Bookworm |
+| Fedora              | 33, 34, 35                 |
+| Linux Mint          | Uma                        |
+| openSUSE Tumbleweed | N/A                        |
+| Ubuntu              | 18.04, 20.04, 21.04, 22.04 |
+| Void Linux          | N/A                        |
 
 Want to know more about OVE? Please check out the OVE [tutorial](https://github.com/Ericsson/ove-tutorial) or ask OVE:
 
