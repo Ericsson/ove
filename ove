@@ -8671,7 +8671,7 @@ function ove-lastlog-summary {
 	return 0
 }
 
-# demo:[git...]:run 'lastlog-replay' on logs found at '<git>/.ove/demo', '<OVE_PROJECT_DIR>/demo' or '<OVE_DIR>/demo'
+# demo:[git...|pattern]:run 'lastlog-replay' on logs found at '<git>/.ove/demo', '<OVE_PROJECT_DIR>/demo' or '<OVE_DIR>/demo'
 function ove-demo {
 	ove_entry || return
 
@@ -8679,18 +8679,20 @@ function ove-demo {
 	declare demos
 	local demo_list
 	local p
+	local re
 	local repo
 	local repo_fullpath
 	local repos
 
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list "$@")
-		if [ "x${repos}" = "x" ]; then
-			ove_command_usage
-			return
-		fi
 	else
-		repos=${OVE_REPO_LIST}
+		repos="${OVE_REPO_LIST}"
+	fi
+
+	if [ $# -eq 1 ] && [ "x${repos}" = "x" ]; then
+		re="$1"
+		repos="${OVE_REPO_LIST}"
 	fi
 
 	demos=()
@@ -8711,18 +8713,37 @@ function ove-demo {
 
 		demo_list=$(\find -L ${p} -name '*.log' -type f | LC_ALL="C" \sort)
 		for d in ${demo_list}; do
-			demos+=("$d")
+			if [ "${re}" != "x" ]; then
+			       if [[ $d =~ $re ]]; then
+				       demos+=("${d/.log/}")
+			       fi
+			       continue
+		       fi
+		       demos+=("${d/.log/}")
 		done
 	done
 
-	if [ ${#demos[@]} -eq 0 ]; then
+	if [ "x${demo_list}" = "x" ]; then
 		echo "no demos found" 1>&2
+		return 0
+	elif [ ${#demos[@]} -eq 0 ]; then
+		echo "no demos found, available demos:" 1>&2
+		printf "%s\n" "${demo_list}" | \cat -n 1>&2
 		return 0
 	fi
 
 	for d in "${!demos[@]}"; do
-		echo "$ ove lastlog-replay ${demos[$d]} ${OVE_DEMO_DIVISOR}"
-		ove-lastlog-replay "${demos[$d]}" ${OVE_DEMO_DIVISOR}
+		if [ -s "${demos[$d]}".pre ]; then
+			if ! source "${demos[$d]}".pre; then
+				continue
+			fi
+		fi
+
+		ove-lastlog-replay "${demos[$d]}".log ${OVE_DEMO_DIVISOR}
+
+		if [ -s "${demos[$d]}".post ]; then
+			source "${demos[$d]}".post
+		fi
 	done
 }
 
