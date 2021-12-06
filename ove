@@ -8668,6 +8668,61 @@ function ove-lastlog-summary {
 	return 0
 }
 
+# demo:[git...]:run 'lastlog-replay' on logs found at '<git>/.ove/demo', '<OVE_PROJECT_DIR>/demo' or '<OVE_DIR>/demo'
+function ove-demo {
+	ove_entry || return
+
+	local d
+	declare demos
+	local demo_list
+	local p
+	local repo
+	local repo_fullpath
+	local repos
+
+	if [ $# -ge 1 ]; then
+		repos=$(ove_validate_repo_list "$@")
+		if [ "x${repos}" = "x" ]; then
+			ove_command_usage
+			return
+		fi
+	else
+		repos=${OVE_REPO_LIST}
+	fi
+
+	demos=()
+	for repo in ${repos}; do
+		repo_fullpath=$(ove_repo2fullpath $repo)
+
+		if [ "x${repo_fullpath}" = "x${OVE_BASE_DIR}/${OVE_PROJECT_NAME}" ]; then
+			p="${OVE_BASE_DIR}/${OVE_PROJECT_NAME}/demo"
+		elif [ "x${repo_fullpath}" = "x${OVE_DIR}" ]; then
+			p="${OVE_DIR}/demo"
+		else
+			p="${repo_fullpath}/.ove/demo"
+		fi
+
+		if [ ! -d "${p}" ]; then
+			continue
+		fi
+
+		demo_list=$(\find -L ${p} -not -name '*.timing' -type f)
+		for d in ${demo_list}; do
+			demos+=("$d")
+		done
+	done
+
+	if [ ${#demos[@]} -eq 0 ]; then
+		echo "no demos found" 1>&2
+		return 0
+	fi
+
+	for d in "${!demos[@]}"; do
+		echo "$ ove lastlog-replay ${demos[$d]} ${OVE_DEMO_DIVISOR}"
+		ove-lastlog-replay "${demos[$d]}" ${OVE_DEMO_DIVISOR}
+	done
+}
+
 # lastlog-replay:[file [divisor]]|[pattern [divisor]]:replay OVE commands
 function ove-lastlog-replay {
 	ove_entry || return
@@ -9163,7 +9218,8 @@ function ove_bash_complete {
 		else
 			wordlist=$(ove_revtab_list_basename)
 		fi
-	elif [ "${subcommand}" == "fetch" ] ||
+	elif [ "${subcommand}" == "demo" ] ||
+		[ "${subcommand}" == "fetch" ] ||
 		[ "${subcommand}" == "list-heads" ] ||
 		[ "${subcommand}" == "patch-repo" ] ||
 		[ "${subcommand}" == "status" ]; then
@@ -9728,6 +9784,11 @@ function ove_config_builtins_init {
 	# OVE_ALIAS_LIST:string:::semi-colon separated list of shell aliases
 	if [ -z "${OVE_ALIAS_LIST+x}" ]; then
 		export OVE_ALIAS_LIST="a=ove-ahead;b=ove-behind;d=ove-diff;f=ove-fetch;h=ove-list-aliases;n=ove-news;s=ove-status;sa=ove-show-ahead;sb=ove-show-behind;sn=ove-show-news"
+	fi
+
+	# OVE_DEMO_DIVISOR:int::demo:divisor sent to 'lastlog-replay' and later to 'scriptreplay'
+	if [ -z "${OVE_DEMO_DIVISOR+x}" ]; then
+		export OVE_DEMO_DIVISOR=20
 	fi
 }
 
