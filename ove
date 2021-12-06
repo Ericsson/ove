@@ -1908,7 +1908,10 @@ function ove {
 	fi
 
 	if [ -n "${OVE_ANONYMIZE_LOGS+x}" ] && [ "${OVE_ANONYMIZE_LOGS}" -eq 1 ]; then
-		\sed -i -e "s,$OVE_BASE_DIR,\$OVE_BASE_DIR,g" -e "s,$OVE_USER,\$OVE_USER,g" ${OVE_LAST_COMMAND}
+		\sed -i \
+			-e "s,$OVE_BASE_DIR,\$OVE_BASE_DIR,g" \
+			-e "s,$OVE_USER,\$OVE_USER,g" \
+			-e "s,$HOSTNAME,\$HOSTNAME,g" ${OVE_LAST_COMMAND}
 	fi
 
 	\ln -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
