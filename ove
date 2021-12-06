@@ -8709,7 +8709,7 @@ function ove-demo {
 			continue
 		fi
 
-		demo_list=$(\find -L ${p} -not -name '*.timing' -type f)
+		demo_list=$(\find -L ${p} -name '*.log' -type f | LC_ALL="C" \sort)
 		for d in ${demo_list}; do
 			demos+=("$d")
 		done
