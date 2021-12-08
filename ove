@@ -1880,7 +1880,7 @@ function ove {
 
 		# run the command
 		SHELL=$(command -v bash) \
-			\script ${OVE_SCRIPT_OPTIONS} -t${OVE_LAST_COMMAND}.timing -c "source ${OVE_BASE_DIR}/ove; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
+			\script ${OVE_SCRIPT_OPTIONS} -t${OVE_LAST_COMMAND/.log}.timing -c "source ${OVE_BASE_DIR}/ove; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
 			${OVE_LAST_COMMAND}
 		ret=$?
 
@@ -8751,6 +8751,7 @@ function ove-demo {
 function ove-lastlog-replay {
 	ove_entry || return
 
+	local d
 	local divisor=1
 	local f
 	local ff
@@ -8791,9 +8792,14 @@ function ove-lastlog-replay {
 
 	for f in $(\xargs stat --format '%Y:%n' < $OVE_TMP/ove-${self} | LC_ALL="C" \sort -n); do
 		ff=${f#*:}
-		[ -e $ff.timing ] || continue
-		ove_echo_cyan_noprefix "$ff"
-		\scriptreplay --divisor $divisor --timing $ff.timing $ff 2> /dev/null
+		[ -e ${ff/.log}.timing ] || continue
+		d=${ff##*/}
+		# truncate ove logs and just show the date
+		if [[ $d = 2*-ove-* ]]; then
+			d=${d:0:22}
+		fi
+		ove_echo_cyan_noprefix "$d"
+		\scriptreplay --divisor $divisor --timing ${ff/.log}.timing $ff 2> /dev/null
 	done
 
 	if [ -e "$OVE_TMP/ove-${self}" ]; then
