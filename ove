@@ -6654,6 +6654,9 @@ function ove-format-patch {
 		\grep --color=never ': [0-9]\+ new commit' | \
 		while IFS=' ' read -r repo n foo bar; do
 			repo=${repo/:/}
+			if [ "x$repo" = "x$OVE_PROJECT_NAME" ]; then
+				repo=".owel"
+			fi
 			\mkdir -p ${d}/${repo}
 			ove_repo_cmd ${OVE_BASE_DIR}/${repo} format-patch -q -${n} -o ${d}/${repo}
 		done
@@ -6708,8 +6711,12 @@ function ove-am {
 	[ "${repos}" == "" ] && return 1
 	for r in ${repos}; do
 		r=${r/${d}\/}
+		if [ "x$r" = "x.owel" ]; then
+			ove_echo_yellow_noprefix "${OVE_PROJECT_NAME}"
+		else
+			ove_echo_yellow_noprefix "${r}"
+		fi
 
-		ove_echo_yellow_noprefix ${r}
 		if [ ! -d "${OVE_BASE_DIR}/${r}" ]; then
 			ove_echo_error_noprefix "repo '${OVE_BASE_DIR}/${r}' does not exist, try 'ove fetch ${r}'"
 			((ret++))
