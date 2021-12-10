@@ -4083,6 +4083,10 @@ function ove_echo_error_noprefix {
 	ove_echo_red_noprefix "error: $*" 1>&2;
 }
 
+function ove_echo_fatal_noprefix {
+	ove_echo_red_noprefix "fatal: $*" 1>&2;
+}
+
 function ove_echo_warning_noprefix {
 	ove_echo_yellow_noprefix "warning: $*" 1>&2;
 }
@@ -5711,7 +5715,7 @@ function ove_install_packages {
 	fi
 
 	if [ "${OVE_OS_PACKAGE_MANAGER}" == "unknown" ]; then
-		ove_echo_error_noprefix "${FUNCNAME[0]}: fatal: package manager is not set"
+		ove_echo_fatal_noprefix "package manager is not set"
 		return 1
 	fi
 
@@ -5727,7 +5731,7 @@ function ove_install_packages {
 
 	if [ ${OVE_INSTALL_PKG:?} -eq 1 ]; then
 		if ! ${cmd}; then
-			ove_echo_error_noprefix "${FUNCNAME[0]}: fatal: '${cmd}' failed"
+			ove_echo_fatal_noprefix "'${cmd}' failed"
 			return 1
 		fi
 		return 0
@@ -6066,7 +6070,13 @@ function ove_build_post {
 		f+="${OVE_ARCHIVE_DIR} "
 	fi
 
-	[ "${f}" != "" ] && \rmdir ${f}
+	if [ "x${f}" != "x" ]; then
+		if ! \rmdir ${f}; then
+			ove_echo_fatal_noprefix "'rmdir ${f}' failed"
+		fi
+	fi
+
+	return 0
 }
 
 function ove_get_build_list {
@@ -11306,7 +11316,7 @@ function ove-add-project {
 		path="$2"
 		proj_dir="$OVE_PROJECT_DIR/projects/${name}"
 		if ! \mkdir -p ${proj_dir}; then
-			ove_echo_error_noprefix "fatal: 'mkdir -p ${proj_dir}' failed"
+			ove_echo_fatal_noprefix "'mkdir -p ${proj_dir}' failed"
 			return 1
 		fi
 
@@ -11357,7 +11367,7 @@ function ove-add-project {
 			fi
 			echo -e "${content}" > ${proj_dir}/${cmd}
 			if ! chmod +x ${proj_dir}/${cmd}; then
-				ove_echo_error_noprefix "fatal: chmod failed"
+				ove_echo_fatal_noprefix "'chmod +x ${proj_dir}/${cmd}' failed"
 				return 1
 			fi
 		done
@@ -11402,13 +11412,13 @@ function ove-add-project {
 			proj_dir="$OVE_PROJECT_DIR/projects/${name}"
 
 			if ! \mkdir -p ${proj_dir}; then
-				ove_echo_error_noprefix "fatal: 'mkdir -p ${proj_dir}' failed"
+				ove_echo_fatal_noprefix "'mkdir -p ${proj_dir}' failed"
 				return 1
 			fi
 
 			echo "$REPLY" > ${proj_dir}/${c}
 			if ! chmod +x ${proj_dir}/${c}; then
-				ove_echo_error_noprefix "fatal: chmod failed"
+				ove_echo_fatal_noprefix "'chmod +x ${proj_dir}/${c}' failed"
 				return 1
 			fi
 		done
