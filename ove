@@ -1770,6 +1770,7 @@ function ove_setup_trace_post {
 function ove {
 	local candidates
 	local cmd
+	local cmd_and_args
 	local log_cmd
 	local re
 	local ret
@@ -1869,6 +1870,18 @@ function ove {
 		fi
 	fi
 
+	if [ ${EUID} -eq 0 ]; then
+		cmd_and_args="#"
+	else
+		cmd_and_args="$"
+	fi
+
+	if [ $# -gt 1 ]; then
+		cmd_and_args+=" ove ${cmd} ${*:2}"
+	else
+		cmd_and_args+=" ove ${cmd}"
+	fi
+
 	if [ "x${log_cmd}" = "xscript" ]; then
 		# trace hook
 		if ! ove_setup_trace; then
@@ -1887,8 +1900,11 @@ function ove {
 		# trace post hook
 		ove_setup_trace_post
 
-		# remove some weird chars and insert command/args at line 2
-		\sed -i -e 's/\r$//' -e 's/\x0//' -e "2i$ ove ${cmd} ${*:2}" ${OVE_LAST_COMMAND}
+		# remove any NULL bytes AND insert command and args at line 2
+		\sed -i -e 's/\x0//' -e "2i${cmd_and_args}" ${OVE_LAST_COMMAND}
+
+		# compensate timing file for command, args and linefeed
+		\sed -i -e "1i0 $((${#cmd_and_args}+1))" ${OVE_LAST_COMMAND/.log}.timing
 
 		# turn on monitor mode
 		set -m
@@ -1899,11 +1915,11 @@ function ove {
 		} 2>&1 | \tee -i ${OVE_LAST_COMMAND}
 		ret=${PIPESTATUS[0]}
 
-		# remove some weird chars and insert command/args/exit code at line 1
+		# remove NULL bytes AND insert command, args and exit code at line 1
 		if [ -s "${OVE_LAST_COMMAND}" ]; then
-			\sed -i -e 's/\x0//g' -e "1i$ ove ${cmd} ${*:2} # exit code: ${ret}" ${OVE_LAST_COMMAND}
+			\sed -i -e 's/\x0//g' -e "1i${cmd_and_args} # exit code: ${ret}" ${OVE_LAST_COMMAND}
 		else
-			echo "$ ove ${cmd} ${*:2} # exit code: ${ret}" > ${OVE_LAST_COMMAND}
+			echo "${cmd_and_args} # exit code: ${ret}" > ${OVE_LAST_COMMAND}
 		fi
 	fi
 
