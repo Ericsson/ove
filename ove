@@ -2042,22 +2042,6 @@ function ove_list_tags_and_branches {
 	) | LC_ALL="C" \sort -V
 }
 
-# $1: dir (optional)
-function ove_list_branches {
-	local d
-
-	[ $# -eq 0 ] && d=${OVE_PROJECT_DIR} || d=$1
-	! [ -d ${d} ] && return
-
-	(
-	ove_repo_cmd "${d}" branch --no-color --all --list | \
-		\grep -v HEAD | \
-		\tr -d '*' | \
-		\xargs | \
-		\tr ' ' '\n'
-	) | LC_ALL="C" \sort -V
-}
-
 # iterate through projects
 function ove_projects_init {
 	local i
@@ -3004,7 +2988,7 @@ function ove_revtab_check_fetch_push {
 	[ -d "${OVE_BASE_DIR}/${name}/.git" ] || return
 
 	# fetch URL
-	if ! remote_url=$(ove_repo_cmd "${OVE_BASE_DIR}/${name}" "remote" get-url origin 2> /dev/null); then
+	if ! remote_url=$(git -C "${OVE_BASE_DIR}/${name}" "remote" get-url origin 2> /dev/null); then
 		return
 	fi
 	revtab_url="$2"
@@ -3013,7 +2997,7 @@ function ove_revtab_check_fetch_push {
 	fi
 
 	# push URL
-	if ! remote_url=$(ove_repo_cmd "${OVE_BASE_DIR}/${name}" "remote" get-url --push origin 2> /dev/null); then
+	if ! remote_url=$(git -C "${OVE_BASE_DIR}/${name}" "remote" get-url --push origin 2> /dev/null); then
 		return
 	fi
 	revtab_url="$3"
@@ -3040,16 +3024,21 @@ function ove_revtab_check_one {
 	[ -d "${OVE_BASE_DIR}/${name}/.git" ] || return
 
 	revision=$4
-	sha_a=$(ove_repo_cmd ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
-	sha_b=$(ove_repo_cmd ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null)
+	sha_a=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
+	sha_b=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null)
 	[ $? -ne 0 ] && sha_b=""
 
 	if [ "${sha_a}" != "${sha_b}" ]; then
 		# diff => checkout
 		co=1
 	else
-		ove_repo_cmd "${OVE_BASE_DIR}/${name}" symbolic-ref -q HEAD > /dev/null || detached=1
-		[[ "$(ove_list_branches ${OVE_BASE_DIR}/${name} | \xargs)" =~ (^| )${revision}($| ) ]] && rev_is_branch=1
+		if ! git -C "${OVE_BASE_DIR}/${name}" symbolic-ref -q HEAD > /dev/null; then
+			detached=1
+		fi
+
+		if git -C ${OVE_BASE_DIR}/${name} show-ref -q --heads $revision; then
+			rev_is_branch=1
+		fi
 
 		# detached and rev is a branch => checkout
 		if [ ${detached} -eq 1 ] && [ ${rev_is_branch} -eq 1 ]; then
@@ -3059,7 +3048,7 @@ function ove_revtab_check_one {
 			co=1
 		# switched branch?
 		elif [ ${detached} -eq 0 ] && [ ${rev_is_branch} -eq 1 ]; then
-			branch_name=$(ove_repo_cmd ${OVE_BASE_DIR}/${name} rev-parse --abbrev-ref HEAD)
+			branch_name=$(git -C ${OVE_BASE_DIR}/${name} rev-parse --abbrev-ref HEAD)
 			if [ "${branch_name}" != "${revision}" ]; then
 				co=1
 			fi
