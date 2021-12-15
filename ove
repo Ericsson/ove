@@ -9276,6 +9276,19 @@ function ove_bash_complete {
 		[ "${subcommand}" == "patch-repo" ] ||
 		[ "${subcommand}" == "status" ]; then
 		wordlist=$(ove_revtab_list_basename)
+	elif [ "${subcommand}" == "worktree" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist="add"
+			wordlist+=" list"
+			wordlist+=" prune"
+			wordlist+=" remove"
+		elif [ ${size} -ge 3 ]; then
+			if [ "${COMP_WORDS[2]}" == "list" ] ||\
+				[ "${COMP_WORDS[2]}" == "remove" ]; then
+				wordlist=$(\find $OVE_PROJECT_STATE_DIR/worktree/ -mindepth 1 -maxdepth 1 -type l 2> /dev/null)
+				wordlist=${wordlist//$OVE_PROJECT_STATE_DIR\/worktree\/}
+			fi
+		fi
 	elif [ "${subcommand}" == "systest" ] ||
 		[ "${subcommand}" == "systest-parallel" ]; then
 		if [ ${size} -ge 2 ]; then
@@ -10776,6 +10789,184 @@ function ove-readme {
 	fi
 }
 
+# $1: worktree name
+# $2: rev to checkout [optional]
+function ove_worktree_add {
+	local i
+	local name
+	local revision
+	local worktree
+	local worktree_base
+	local worktree_dir
+
+	if [ $# -eq 0 ] || [ $# -ge 3 ]; then
+		return 1
+	fi
+
+	if ! worktree="$(\readlink -f $1)"; then
+		ove_echo_error_noprefix "$1 is not a valid path"
+		return 1
+	fi
+	worktree_base="${worktree##*/}"
+	worktree_dir="${worktree%/*}"
+
+	if [[ ${worktree} == ${OVE_BASE_DIR}/* ]]; then
+		ove_echo_error_noprefix "use a path that is outside of the OVE workspace"
+		return 1
+	elif [ -d "${worktree}" ]; then
+		ove_echo_error_noprefix "'${worktree}' already exist"
+		return 1
+	elif [ -h "${OVE_PROJECT_STATE_DIR}/worktree/${worktree_base}" ]; then
+		ove_echo_error_noprefix "'${worktree_base}' name is already taken"
+		return 1
+	elif [ ! -w "${worktree_dir}" ]; then
+		ove_echo_error_noprefix "'${worktree_dir}' is not writable"
+		return 1
+	fi
+
+	if [ $# -eq 2 ]; then
+		if ! ove_repo_cmd "${OVE_PROJECT_DIR}" cat-file -e "$2" &> /dev/null; then
+			ove_echo_error_noprefix "'$2' is not a valid revision"
+			return 1
+		fi
+
+		# get revtab for revision '$2'
+		\mkdir -p ${OVE_PROJECT_TMP_DIR}/worktree
+		ove_repo_cmd "${OVE_PROJECT_DIR}" show $2:revtab > ${OVE_PROJECT_TMP_DIR}/worktree/revtab
+		if [ ! -s ${OVE_PROJECT_TMP_DIR}/worktree/revtab ]; then
+			ove_echo_error_noprefix "revtab was empty/non-existing in '$2'"
+			return 1
+		fi
+
+		(
+			# run this in a subshell
+			OVE_PROJECT_DIR=${OVE_PROJECT_TMP_DIR}/worktree ove_revtab_init
+			i=0
+			while ((i < ove_revtab_num_repositories)); do
+				name=${ove_revtab_git_name[${i}]}
+				revision=${ove_revtab_rev[${i}]}
+				if [ ! -d $OVE_BASE_DIR/${name} ]; then
+					ove_echo_warning_noprefix "$OVE_BASE_DIR/${name} is missing"
+					continue
+				fi
+				ove_repo_cmd "$OVE_BASE_DIR/${name}" worktree add -B ove-worktree-${worktree_base} -f ${worktree}/${name} ${revision}
+				(( i+=1 ))
+			done
+			ove_repo_cmd "$OVE_PROJECT_DIR" worktree add -B ove-worktree-${worktree_base} -f ${worktree}/$OVE_PROJECT_NAME $2
+		)
+	else
+		ove-forall "ove_repo_cmd \$repo worktree add -B ove-worktree-${worktree_base} -f ${worktree}/\$repo_basename &> /dev/null"
+	fi
+	( cd ${worktree} || return 1; [ -h ove ] || \ln -s ${OVE_SELF/$OVE_BASE_DIR\/} ove; [ -h .owel ] || \ln -s $OVE_PROJECT_NAME .owel)
+
+	\mkdir -p $OVE_PROJECT_STATE_DIR/worktree
+	(cd $OVE_PROJECT_STATE_DIR/worktree || return 1; \ln -s ${worktree} ${worktree_base})
+
+	ove_worktree_list ${worktree_base}
+
+	return 0
+}
+
+function ove_worktree_gc {
+	local broken_links
+
+	if [ ! -d $OVE_PROJECT_STATE_DIR/worktree ]; then
+		return
+	fi
+
+	broken_links=$(\find $OVE_PROJECT_STATE_DIR/worktree/ -maxdepth 1 -type l ! -exec test -e {} \; -print)
+	if [ "x${broken_links}" != "x" ]; then
+		\rm ${broken_links}
+	fi
+}
+
+function ove_worktree_remove {
+	local ret
+	local w
+	local worktree
+
+	if [ $# -eq 0 ]; then
+		return 1
+	fi
+
+	ret=0
+	for w in $(ove_uniq "$@"); do
+		worktree="$OVE_PROJECT_STATE_DIR/worktree/${w##*/}"
+		if [ ! -e "${worktree}" ]; then
+			((ret++))
+			continue
+		fi
+
+		ove-forall "git worktree remove ${worktree}/\$repo_basename 2> /dev/null"
+		\rm -rf ${worktree:?}/
+		\rmdir $(\readlink -f ${worktree})
+	done
+
+	return ${ret}
+}
+
+# $1: worktree path
+function ove_worktree_status_one {
+	ove_echo_green_noprefix "$(readlink -f $1)"
+	$(command -v bash) -i -c "cd $1; . ove hush; ove status"
+}
+
+# $1: worktree basename
+function ove_worktree_list {
+	local d
+
+	if [ ! -d $OVE_PROJECT_STATE_DIR/worktree ]; then
+		return 1
+	fi
+
+	if [ $# -eq 0 ]; then
+		for d in $(\find $OVE_PROJECT_STATE_DIR/worktree/ -mindepth 1 -maxdepth 1 -type l 2> /dev/null | LC_ALL="C" \sort -V); do
+			ove_worktree_status_one "${d}"
+		done
+
+	else
+		for d in $(ove_uniq "$@"); do
+			if [ -d $OVE_PROJECT_STATE_DIR/worktree/${d} ]; then
+				ove_worktree_status_one "$OVE_PROJECT_STATE_DIR/worktree/${d}"
+			fi
+		done
+	fi
+
+	return 0
+}
+
+# worktree:[add <worktree> [rev]]|list [worktree...]|prune|remove worktree...]:replicate OVE workspace on this host using 'git worktree'
+function ove-worktree {
+	ove_entry || return
+	local name
+
+	ove_worktree_gc
+
+	if [ $# -eq 0 ]; then
+		ove_worktree_list
+	elif [ $# -ge 1 ] && [ "x$1" = "xlist" ]; then
+		shift
+		ove_worktree_list "$@"
+	elif [ $# -eq 1 ] && [ "x$1" = "xprune" ]; then
+		ove-forall 'git worktree prune -v'
+	elif [ $# -ge 2 ] && [ "x$1" = "xremove" ]; then
+		shift
+		if ! ove_worktree_remove "$@"; then
+			return 1
+		fi
+	elif [ $# -ge 2 ] && [ "x$1" = "xadd" ]; then
+		shift
+		if ! ove_worktree_add "$@"; then
+			return 1
+		fi
+	else
+		ove_command_usage
+		return 1
+	fi
+
+	return 0
+}
+
 # replicate:host [path]:replicate OVE workspace on 'host'
 function ove-replicate {
 	ove_entry || return
@@ -11648,7 +11839,7 @@ function ove_externals {
 
 	for cmd in "${cmds[@]}"; do
 		if ! command -v ${cmd} > /dev/null; then
-			ove_echo_warning_noprefix "'${cmd}' is not available on this machine"
+			ove_echo_warning_noprefix "'${cmd}' is not available on this host"
 		fi
 		echo "${cmd}:"
 		\grep -v "\\\\${cmd} " ${OVE_SELF} | \
