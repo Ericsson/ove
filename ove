@@ -9282,9 +9282,11 @@ function ove_bash_complete {
 			wordlist+=" list"
 			wordlist+=" prune"
 			wordlist+=" remove"
+			wordlist+=" status"
 		elif [ ${size} -ge 3 ]; then
-			if [ "${COMP_WORDS[2]}" == "list" ] ||\
-				[ "${COMP_WORDS[2]}" == "remove" ]; then
+			if [ "${COMP_WORDS[2]}" == "list" ] ||
+				[ "${COMP_WORDS[2]}" == "remove" ] ||
+				[ "${COMP_WORDS[2]}" == "status" ]; then
 				wordlist=$(\find $OVE_PROJECT_STATE_DIR/worktree/ -mindepth 1 -maxdepth 1 -type l 2> /dev/null)
 				wordlist=${wordlist//$OVE_PROJECT_STATE_DIR\/worktree\/}
 			fi
@@ -10912,8 +10914,9 @@ function ove_worktree_status_one {
 }
 
 # $1: worktree basename
-function ove_worktree_list {
+function ove_worktree_status {
 	local d
+	local d_base
 
 	if [ ! -d $OVE_PROJECT_STATE_DIR/worktree ]; then
 		return 1
@@ -10926,8 +10929,9 @@ function ove_worktree_list {
 
 	else
 		for d in $(ove_uniq "$@"); do
-			if [ -d $OVE_PROJECT_STATE_DIR/worktree/${d} ]; then
-				ove_worktree_status_one "$OVE_PROJECT_STATE_DIR/worktree/${d}"
+			d_base=${d##*/}
+			if [ -d $OVE_PROJECT_STATE_DIR/worktree/${d_base} ]; then
+				ove_worktree_status_one "$OVE_PROJECT_STATE_DIR/worktree/${d_base}"
 			fi
 		done
 	fi
@@ -10935,7 +10939,33 @@ function ove_worktree_list {
 	return 0
 }
 
-# worktree:[add <worktree> [rev]]|list [worktree...]|prune|remove worktree...]:replicate OVE workspace on this host using 'git worktree'
+# $1: worktree basename
+function ove_worktree_list {
+	local d
+	local d_base
+
+	if [ ! -d $OVE_PROJECT_STATE_DIR/worktree ]; then
+		return 1
+	fi
+
+	if [ $# -eq 0 ]; then
+		for d in $(\find $OVE_PROJECT_STATE_DIR/worktree/ -mindepth 1 -maxdepth 1 -type l 2> /dev/null | LC_ALL="C" \sort -V); do
+			ove_echo_green_noprefix "$(readlink -f ${d})"
+		done
+
+	else
+		for d in $(ove_uniq "$@"); do
+			d_base=${d##*/}
+			if [ -d $OVE_PROJECT_STATE_DIR/worktree/${d_base} ]; then
+				ove_echo_green_noprefix "$(readlink -f $OVE_PROJECT_STATE_DIR/worktree/${d_base})"
+			fi
+		done
+	fi
+
+	return 0
+}
+
+# worktree:[add <worktree> [rev]]|list [worktree...]|prune|remove worktree...|status [worktree...]]:replicate OVE workspace on this host using 'git worktree'
 function ove-worktree {
 	ove_entry || return
 	local name
@@ -10947,6 +10977,9 @@ function ove-worktree {
 	elif [ $# -ge 1 ] && [ "x$1" = "xlist" ]; then
 		shift
 		ove_worktree_list "$@"
+	elif [ $# -ge 1 ] && [ "x$1" = "xstatus" ]; then
+		shift
+		ove_worktree_status "$@"
 	elif [ $# -eq 1 ] && [ "x$1" = "xprune" ]; then
 		ove-forall 'git worktree prune -v'
 	elif [ $# -ge 2 ] && [ "x$1" = "xremove" ]; then
