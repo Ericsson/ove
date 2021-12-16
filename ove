@@ -8040,7 +8040,7 @@ function ove_edit {
 				--bind "left-click:execute(< /dev/tty eval \$(echo $editor_cmd $editor_opt {+}))" \
 				--bind "ctrl-a:toggle-all" \
 				--bind "ctrl-w:deselect-all" \
-				--preview 'head -$LINES {}'
+				--preview 'if [ ! -h {} ]; then head -$LINES {}; else find -L {} -xdev -type f -print0 | xargs -0 head -$LINES | head -$LINES; fi'
 			return
 		fi
 	fi
