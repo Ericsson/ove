@@ -2074,6 +2074,7 @@ function ove_projects_init {
 	unset ove_projects_needs
 	unset ove_projects_version
 	unset ove_projects_name2index
+	unset ove_projects_tags
 	ove_number_of_projects=0
 
 	if [ ! -s "${OVE_PROJECT_DIR}/projs" ] || [ "x${OVE_PROJECT_LIST}" = "x" ]; then
@@ -2094,6 +2095,7 @@ function ove_projects_init {
 	declare -a -g ove_projects_needs
 	declare -a -g ove_projects_version
 	declare -A -g ove_projects_name2index
+	declare -A -g ove_projects_tags
 
 	# create ove-functions for all project commands
 	for m in ${OVE_PROJECT_COMMANDS}; do
@@ -2101,8 +2103,9 @@ function ove_projects_init {
 			ove_entry || return
 
 			local i
-			local helptext=\"${m}:[project...]:run the '${m}' step for all or individual projects\"
+			local helptext=\"${m}:[project...|tag...]:run the '${m}' step for all or individual projects\"
 			local p
+			local proj_list
 
 			if ! ove_build_pre \$*; then
 				return 1
@@ -2122,7 +2125,11 @@ function ove_projects_init {
 					(( i+=1 ))
 				done
 			else
-				for p in \$@; do
+				if ! proj_list=\$(ove_validate_project_list \"\$@\"); then
+					return 1
+				fi
+
+				for p in \$proj_list; do
 					if ! ove_projects_cmd \${p} ${m}; then
 						return 1
 					fi
@@ -2142,8 +2149,9 @@ function ove_projects_init {
 			ove_entry || return
 
 			local i
-			local helptext=\"${m}-parallel:[project...]:run the '${m}' step for all or individual projects (in parallel)\"
+			local helptext=\"${m}-parallel:[project...|tag...]:run the '${m}' step for all or individual projects (in parallel)\"
 			local p
+			local proj_list
 
 			if ! ove_build_pre \$*; then
 				return 1
@@ -2165,7 +2173,11 @@ function ove_projects_init {
 					(( i+=1 ))
 				done
 			else
-				for p in \$@; do
+				if ! proj_list=\$(ove_validate_project_list \"\$@\"); then
+					return 1
+				fi
+
+				for p in \$proj_list; do
 					{
 						if ! ove_projects_cmd \${p} ${m}; then
 							kill -USR1 \$\$
@@ -2216,6 +2228,17 @@ function ove_projects_init {
 		# needs
 		tmp_var="ove_${name}_needs"
 		ove_projects_needs[${i}]=${!tmp_var}
+		unset ${tmp_var}
+
+		# tags
+		tmp_var="ove_${name}_tags"
+		for t in ${!tmp_var};  do
+			if [ "x${ove_projects_tags[${t}]}" = "x" ]; then
+				ove_projects_tags[${t}]="${name}"
+			else
+				ove_projects_tags[${t}]+=" ${name}"
+			fi
+		done
 		unset ${tmp_var}
 
 		# distro needs
@@ -3723,13 +3746,14 @@ function ove-make {
 	fi
 }
 
-# list-projects:[project...]:list projects
+# list-projects:[project...|tag...]:list projects
 function ove-list-projects {
 	ove_entry || return
 
 	local f_basename
 	local f
 	local p
+	local proj_list
 	local projects
 
 	if [ $# -eq 0 ]; then
@@ -3739,14 +3763,11 @@ function ove-list-projects {
 		return 0
 	fi
 
-	for p in "$@"; do
-		if ! [[ -v ove_projects_name2index[${p}] ]]; then
-			ove_echo_error_noprefix "unknown project '${p}'"
-			return 1
-		fi
-	done
+	if ! proj_list=$(ove_validate_project_list "$@"); then
+		return 1
+	fi
 
-	projects="$(ove_get_build_list "$@")"
+	projects="$(ove_get_build_list ${proj_list})"
 	for p in ${projects}; do
 		# ignore projects without a project directory
 		[ ! -d "${OVE_PROJECT_DIR}"/projects/${p} ] && continue
@@ -5517,21 +5538,23 @@ function ove-commit {
 	fi
 }
 
-# list-missing-projects:[project...]:list any missing project(s)
+# list-missing-projects:[project...|tag...]:list any missing project(s)
 function ove-list-missing-projects {
 	ove_entry || return
 
 	local d
 	declare -A m
-	local projs
+	local proj_list
 
 	if [ $# -eq 0 ]; then
-		projs="${OVE_PROJECT_LIST}"
+		proj_list="${OVE_PROJECT_LIST}"
 	else
-		projs="${*}"
+		if ! proj_list=$(ove_validate_project_list "$@"); then
+			return 1
+		fi
 	fi
 
-	for d in $(ove_get_deps_recursive ${projs}); do
+	for d in $(ove_get_deps_recursive ${proj_list}); do
 		[[ -v ove_projects_name2index[${d}] ]] || m[${d}]=
 	done
 
@@ -5660,21 +5683,32 @@ function ove_validate_projs {
 	local d
 	local doublets
 	local i
+	local name
+	declare -a r
 
 	[ ! -e "${OVE_PROJECT_DIR}/projs" ] && return
 
 	i=0
 	while ((i < ove_number_of_projects)); do
+		name="${ove_projects_name[${i}]}"
 		if [ "${ove_projects_deps[${i}]}" != "" ]; then
 			for d in ${ove_projects_deps[${i}]}; do
 				echo "${ove_projects_name[${i}]} ${d}"
 			done
 		fi
+
+		if [[ -v ove_projects_tags[${name}] ]]; then
+			ove_echo_error_noprefix "tag '${name}' is already used as a project name, try another tag!"
+			\grep -C 3 -n -H -w -E "^${name}:|${name}" ${OVE_PROJECT_DIR}/projs 1>&2
+			return 1
+		fi
 		(( i+=1 ))
 	done | \tsort > /dev/null
+	read -r -a r <<<"${PIPESTATUS[@]}"
 
-	# shellcheck disable=SC2181
-	if [ $? -ne 0 ]; then
+	if [ ${r[0]} -ne 0 ]; then
+		return 1
+	elif [ ${r[1]} -ne 0 ]; then
 		ove_echo_error_noprefix "circular dependency in '${OVE_PROJECT_DIR}/projs', see output from 'tsort' above"
 		return 1
 	fi
@@ -5875,34 +5909,23 @@ function ove_export {
 	\rm -rf "${wd}"/{projs,revtab,projects,.git}
 }
 
-# export:[project...]:export project(s)
+# export:[project...|tag...]:export project(s)
 function ove-export {
 	ove_entry || return
 
 	local args="$*"
 	local name
-	local num_args="$#"
-	local projs
+	local proj_list
 
-	while true; do
-		if [ $# -eq 0 ]; then
-			break
-		fi
-		if [ $# -ge 1 ]; then
-			if ! [[ -v ove_projects_name2index[$1] ]]; then
-				ove_echo_error_noprefix "unknown project '$1'"
-				return 1
-			fi
-
-			projs+="$(ove_get_deps_recursive $1) $1 "
-		fi
-		shift
-	done
-
-	if [ "x${projs}" != "x" ]; then
-		ove_export $(printf "%s\n" "$(ove_uniq $projs)" | LC_ALL="C" \sort)
-	else
+	if [ $# -eq 0 ]; then
 		ove_export
+	else
+		if ! proj_list=$(ove_validate_project_list "$@"); then
+			return 1
+		fi
+
+		proj_list="$(ove_get_deps_recursive $proj_list) $proj_list"
+		ove_export $(printf "%s\n" "$(ove_uniq $proj_list)" | LC_ALL="C" \sort)
 	fi
 
 	if [ "x$(\find "${OVE_PROJECT_TMP_DIR}/export" -maxdepth 1 -name '*.patch' -print -quit)" == "x" ]; then
@@ -5911,7 +5934,7 @@ function ove-export {
 	fi
 
 	name="${OVE_BASE_DIR}/${OVE_PROJECT_NAME}-$(ove-describe ${OVE_PROJECT_NAME} | \awk '{print $2}')"
-	if [ $num_args -eq 1 ]; then
+	if [ $# -eq 1 ]; then
 		name+="-${args}"
 	fi
 	name+=".tar.bz2"
@@ -6010,8 +6033,52 @@ function ove-import {
 	return ${ret}
 }
 
+function ove_tags2projects {
+	local a
+	local b
+	declare -a p
+
+	if [ ${#ove_projects_tags[*]} -eq 0 ]; then
+		echo "$@"
+		return 0
+	fi
+
+	for a in "$@"; do
+		if [[ -v ove_projects_tags[$a] ]]; then
+			for b in ${ove_projects_tags[$a]}; do
+				p+=("$b")
+			done
+		else
+			p+=("$a")
+		fi
+	done
+
+	echo "${p[*]}"
+
+	return 0
+}
+
+function ove_validate_project_list {
+	local a
+	declare -a p
+
+	p=("$(ove_tags2projects "$@")")
+	for a in ${p[*]}; do
+		if ! [[ -v ove_projects_name2index[${a}] ]]; then
+			ove_echo_error_noprefix "unknown project '${a}'"
+			return 1
+		fi
+	done
+
+	echo "${p[*]}"
+
+	return 0
+}
+
 function ove_build_pre {
+	local a
 	local p
+	local proj_list
 	local q
 	local re
 	local repos
@@ -6026,16 +6093,20 @@ function ove_build_pre {
 			return 1
 		fi
 	else
-		while true; do
-			if ! [[ -v ove_projects_name2index[$1] ]]; then
-				ove_echo_error_noprefix "unknown project '$1'"
+		if ! proj_list=$(ove_validate_project_list "$@"); then
+			return 1
+		fi
+
+		for a in ${proj_list}; do
+			if ! [[ -v ove_projects_name2index[$a] ]]; then
+				ove_echo_error_noprefix "unknown project '$a'"
 				return 1
 			fi
 
 			if [ -n "${OVE_PROJECT_LIST_BUILDABLE+x}" ]; then
-				re=\\b$1\\b
+				re=\\b$a\\b
 				if ! [[ "${OVE_PROJECT_LIST_BUILDABLE}" =~ ${re} ]]; then
-					for p in $(ove_get_paths_recursive $1 | \xargs -n1 | LC_ALL="C" \sort -u); do
+					for p in $(ove_get_paths_recursive $a | \xargs -n1 | LC_ALL="C" \sort -u); do
 						[ -d ${p} ] && continue
 						for q in ${OVE_REPO_LIST}; do
 							if [[ ${p} == *"${q}"* ]] && ! [ -d "${q}" ]; then
@@ -6045,19 +6116,21 @@ function ove_build_pre {
 					done
 					if [ "${repos}" != "" ]; then
 						repos=$(printf "%s\n" ${repos} | LC_ALL="C" \sort -u | \xargs)
-						ove_echo_error_noprefix "'$1' is not a buildable project. Try: 'ove fetch ${repos}'"
+						ove_echo_error_noprefix "'$a' is not a buildable project. Try: 'ove fetch ${repos}'"
 					fi
 					return 1
 				fi
 			fi
-			shift
-			[ $# -eq 0 ] && break
 		done
 	fi
 
 	# create stage/archive directories if needed
-	[ ! -d "${OVE_STAGE_DIR}" ] && \mkdir -p "${OVE_STAGE_DIR}"
-	[ ! -d "${OVE_ARCHIVE_DIR}" ] && \mkdir -p "${OVE_ARCHIVE_DIR}"
+	if [ ! -d "${OVE_STAGE_DIR}" ]; then
+		\mkdir -p "${OVE_STAGE_DIR}"
+	fi
+	if [ ! -d "${OVE_ARCHIVE_DIR}" ]; then
+		\mkdir -p "${OVE_ARCHIVE_DIR}"
+	fi
 
 	return 0
 }
@@ -6093,7 +6166,21 @@ function ove_get_build_list {
 	echo ${b}
 }
 
-# list-needs:[project...]:list OS packages needs for all/specified project(s)
+# list-tags: :list project tags
+function ove-list-tags {
+	ove_entry || return
+	local t
+
+	if [ ${#ove_projects_tags[*]} -eq 0 ]; then
+		return 0
+	fi
+
+	for t in ${!ove_projects_tags[*]}; do
+		printf "%s|%s\n" $t "${ove_projects_tags[$t]}"
+	done | LC_ALL="C" \sort | \column -t -s'|'
+}
+
+# list-needs:[project...|tag...]:list OS packages needs for all/specified project(s)
 function ove-list-needs {
 	ove_entry || return
 
@@ -6103,17 +6190,15 @@ function ove-list-needs {
 	local n
 	local p
 	local pack_list
+	local proj_list
 	local re
 
 	if [ $# -ge 1 ]; then
-		for p in "$@"; do
-			if ! [[ -v ove_projects_name2index[${p}] ]]; then
-				ove_echo_error_noprefix "unknown project '${p}'"
-				return 1
-			fi
-		done
+		if ! proj_list=$(ove_validate_project_list "$@"); then
+			return 1
+		fi
 
-		build_list="$(ove_get_build_list "$@")"
+		build_list="$(ove_get_build_list ${proj_list})"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
@@ -6138,7 +6223,7 @@ function ove-list-needs {
 	return 0
 }
 
-# install-pkg:[project...]:install needed OS packages
+# install-pkg:[project...|tag...]:install needed OS packages
 function ove-install-pkg {
 	ove_entry || return
 
@@ -6155,13 +6240,14 @@ function ove-install-pkg {
 	fi
 }
 
-# buildme:[project...]:build project(s) from scratch (=bootstrap, configure, build, install)
+# buildme:[project|tag...]:build project(s) from scratch (=bootstrap, configure, build, install)
 function ove-buildme {
 	ove_entry || return
 
 	local b
 	local build_list
 	local p
+	local proj_list
 	local re
 
 	if ! ove_build_pre "$@"; then
@@ -6175,7 +6261,11 @@ function ove-buildme {
 	fi
 
 	if [ $# -ge 1 ]; then
-		build_list="$(ove_get_build_list "$@")"
+		if ! proj_list=$(ove_validate_project_list "$@"); then
+			return 1
+		fi
+
+		build_list="$(ove_get_build_list ${proj_list})"
 	fi
 
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
@@ -6223,6 +6313,7 @@ function ove_buildme_parallel_shell {
 	local dep
 	local inotify_max_user_instances
 	local p
+	local proj_list
 	local pid
 	local pids
 	local re
@@ -6234,7 +6325,11 @@ function ove_buildme_parallel_shell {
 	fi
 
 	if [ $# -ge 1 ]; then
-		build_list="$(ove_get_build_list "$@")"
+		if ! proj_list=$(ove_validate_project_list "$@"); then
+			return 1
+		fi
+
+		build_list="$(ove_get_build_list ${proj_list})"
 	fi
 
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
@@ -6326,6 +6421,7 @@ function ove_buildme_parallel_make {
 	local deps
 	local makefile
 	local p
+	local proj_list
 	local phony
 	local pre_steps
 	local re
@@ -6347,7 +6443,11 @@ EOF
 	echo "endef" >> ${makefile}
 
 	if [ $# -ge 1 ]; then
-		build_list="$(ove_get_build_list "$@")"
+		if ! proj_list=$(ove_validate_project_list "$@"); then
+			return 1
+		fi
+
+		build_list="$(ove_get_build_list ${proj_list})"
 	fi
 
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
@@ -6408,7 +6508,7 @@ EOF
 	return $?
 }
 
-# buildme-parallel:[project...]:build project(s) from scratch (=bootstrap, configure, build, install)
+# buildme-parallel:[project...|tag...]:build project(s) from scratch (=bootstrap, configure, build, install)
 function ove-buildme-parallel {
 	ove_entry || return
 
@@ -7138,7 +7238,7 @@ function ove-fetch {
 	ove-status ${repos}
 }
 
-# tag: :list all project tags
+# tag: :list git tags within ${OVE_PROJECT_DIR}
 function ove-tag {
 	ove_entry || return
 
@@ -9009,7 +9109,7 @@ function ove_bash_complete {
 		if [ "${cmd}" == "${subcommand}" ] ||
 			[ "${cmd}-parallel" == "${subcommand}" ]; then
 			if [ ${size} -ge 2 ]; then
-				COMPREPLY=( $(compgen -W "${OVE_PROJECT_LIST}" -- "${cur}") )
+				COMPREPLY=( $(compgen -W "${OVE_PROJECT_LIST} ${!ove_projects_tags[*]}" -- "${cur}") )
 				return
 			fi
 		fi
@@ -9044,8 +9144,12 @@ function ove_bash_complete {
 		[ "${subcommand}" == "install-pkg" ] ||
 		[ "${subcommand}" == "list-needs" ] ||
 		[ "${subcommand}" == "list-missing-projects" ] ||
-		[ "${subcommand}" == "list-projects" ] ||
-		[ "${subcommand}" == "proj2path" ]; then
+		[ "${subcommand}" == "list-projects" ]; then
+		wordlist=${OVE_PROJECT_LIST}
+		if [ ${#ove_projects_tags[*]} -ne 0 ]; then
+			wordlist+=" ${!ove_projects_tags[*]}"
+		fi
+	elif [ "${subcommand}" == "proj2path" ]; then
 		wordlist=${OVE_PROJECT_LIST}
 	elif [ "${subcommand}" == "distrocheck" ]; then
 		if [ ${size} -eq 2 ]; then
@@ -11530,6 +11634,7 @@ function ove-add-project {
 	local needs_dist
 	local path
 	local proj_dir
+	local tags
 
 	if [ $# -eq 1 ]; then
 		ove_command_usage
@@ -11578,7 +11683,7 @@ function ove-add-project {
 				done
 			fi
 
-			if [ "${cmd}" = "deps" ] || [ "${cmd}" = "needs" ]; then
+			if [ "${cmd}" = "deps" ] || [ "${cmd}" = "needs" ] || [ "${cmd}" = "tags" ]; then
 				if [ -v ${cmd} ]; then
 					eval ${cmd}="\"${!cmd} ${content}\""
 				else
@@ -11603,7 +11708,7 @@ function ove-add-project {
 
 	else
 		name_check_ok=0
-		for c in name path deps needs bootstrap configure build install clean test; do
+		for c in name path deps needs tags bootstrap configure build install clean test; do
 			while true; do
 				read -p "$(printf "%-9s" ${c}): " -r
 				if [ "${c}" = "name" ] || [ "${c}" = "path" ]; then
@@ -11620,7 +11725,7 @@ function ove-add-project {
 					fi
 					eval local ${c}="$REPLY"
 					continue 2
-				elif [ "${c}" = "deps" ] || [ "${c}" = "needs" ]; then
+				elif [ "${c}" = "deps" ] || [ "${c}" = "needs" ] || [ "${c}" = "tags" ]; then
 					if [ "x$REPLY" = "x" ]; then
 						echo -en "\033[1A\033[2K"
 					else
@@ -11634,7 +11739,7 @@ function ove-add-project {
 				break
 			done
 
-			if [ "${c}" = "path" ] || [ "${c}" = "deps" ] || [ "${c}" = "needs" ] ; then
+			if [ "${c}" = "path" ] || [ "${c}" = "deps" ] || [ "${c}" = "needs" ] || [ "${c}" = "tags" ]; then
 				continue
 			fi
 
@@ -11676,6 +11781,13 @@ function ove-add-project {
 			while read -r i; do
 				echo "    $i" >> $OVE_PROJECT_DIR/projs
 			done < <(LC_ALL="C" \sort <<<"$(printf "%s\n" ${needs})")
+		fi
+
+		if [ "x${tags}" != "x" ]; then
+			echo -e "  tags:" >> $OVE_PROJECT_DIR/projs
+			while read -r i; do
+				echo "    $i" >> $OVE_PROJECT_DIR/projs
+			done < <(LC_ALL="C" \sort <<<"$(printf "%s\n" ${tags})")
 		fi
 
 		if [ "x${needs_dist}" != "x" ]; then
