@@ -7523,7 +7523,11 @@ EOF
 		ove_echo_cyan_noprefix "${g}"
 		printf "%0.s-" $(eval echo {1..$((${#g}))})
 		echo
-		\cat "${h}"
+		if [ -x "${h}" ]; then
+			source "${h}"
+		else
+			\cat "${h}"
+		fi
 	done
 }
 
