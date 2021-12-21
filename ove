@@ -338,6 +338,8 @@ function ove_version_check {
 }
 
 function ove_main {
+	ove_externals_init
+
 	# some error messages use colors. I.e. keep this early
 	export OVE_COLOR_GREEN="\033[1;32;7m"
 	export OVE_COLOR_CYAN="\033[1;36;7m"
@@ -2894,6 +2896,8 @@ function ove_repos_fetched {
 function ove_verify_checksums {
 	local cfgs
 	local md5
+
+	ove_externals_init
 
 	# OVE_BASE_DIR got lost? keep this as early as possible
 	if [ -z "${OVE_BASE_DIR+x}" ]; then
@@ -6606,6 +6610,11 @@ function ove_entry {
 			return 127
 		fi
 	done
+
+	# keep this early
+	if ! [[ -v ove_cmd2pathname[@] ]]; then
+		ove_externals_init
+	fi
 
 	if ! [ -v ove_revtab_fetch_url ]; then
 		ove_revtab_init
@@ -11992,9 +12001,15 @@ function ove-shell-check {
 	fi
 }
 
-function ove_externals {
+function ove_externals_init {
 	local cmds=()
 	local cmd
+	local pathname
+	local restore
+
+	if [[ -v ove_cmd2pathname[@] ]]; then
+		return
+	fi
 
 	cmds+=('ag')
 	cmds+=('awk')
@@ -12006,34 +12021,42 @@ function ove_externals {
 	cmds+=('csplit')
 	cmds+=('cut')
 	cmds+=('date')
+	cmds+=('diff')
 	cmds+=('dirname')
 	cmds+=('du')
+	cmds+=('env')
 	cmds+=('file')
 	cmds+=('find')
 	cmds+=('flock')
 	cmds+=('fold')
 	cmds+=('fzf')
 	cmds+=('getconf')
+	cmds+=('git')
 	cmds+=('grep')
 	cmds+=('head')
 	cmds+=('inotifywait')
 	cmds+=('ld')
 	cmds+=('less')
+	cmds+=('ln')
 	cmds+=('locate')
 	cmds+=('lsb_release')
 	cmds+=('md5deep')
 	cmds+=('md5sum')
 	cmds+=('mkdir')
 	cmds+=('mktemp')
+	cmds+=('mv')
 	cmds+=('pgrep')
 	cmds+=('ps')
 	cmds+=('readlink')
 	cmds+=('rev')
 	cmds+=('rm')
 	cmds+=('rmdir')
+	cmds+=('scp')
 	cmds+=('script')
 	cmds+=('scriptreplay')
 	cmds+=('sed')
+	cmds+=('seq')
+	cmds+=('sleep')
 	cmds+=('sort')
 	cmds+=('ssh')
 	cmds+=('stat')
@@ -12043,43 +12066,50 @@ function ove_externals {
 	cmds+=('tar')
 	cmds+=('tee')
 	cmds+=('timeout')
+	cmds+=('tmux')
 	cmds+=('tr')
 	cmds+=('tsort')
+	cmds+=('touch')
 	cmds+=('uname')
 	cmds+=('uniq')
 	cmds+=('wc')
 	cmds+=('which')
+	cmds+=('whoami')
 	cmds+=('xargs')
 	cmds+=('yamllint')
 
-	for cmd in "${cmds[@]}"; do
-		if ! command -v ${cmd} > /dev/null; then
-			ove_echo_warning_noprefix "'${cmd}' is not available on this host"
-		fi
-		echo "${cmd}:"
-		\grep -v "\\\\${cmd} " ${OVE_SELF} | \
-			\grep "[[:blank:] ()]\+${cmd}\b" | \
-			\grep -v "${cmd}-" | \
-			\sed -e "s|^#.*${cmd}.*||g" \
-				-e "s|^\t\+#.*${cmd}.*||g" \
-				-e "s|.*command.*${cmd}.*||g" \
-				-e 's|\s\+echo.*||g' \
-				-e 's|\s\+ove_echo_.*||g' \
-				-e 's|.*find.*-exec.*||g' \
-				-e 's|.*ssh.*find.*||g' \
-				-e 's|.*find.*xargs -0.*||g' \
-				-e "s|.*xargs.*${cmd}.*||g" \
-				-e '/^$/d' | \
-			\grep --color=auto -w ${cmd}
-		echo
-	done | \head -n -1 | \sed 's|^\s\+||g' > "${OVE_DIR}/tests/.externals"
+	declare -g -A ove_cmd2pathname
 
-	\git --no-pager -C "${OVE_DIR}" diff -- tests/.externals
-	if \git -C "${OVE_DIR}" diff-files  --quiet -- tests/.externals; then
-		return 0
-	else
-		return 1
+	restore=0
+
+	if shopt -q expand_aliases; then
+		shopt -u expand_aliases
+		restore=1
 	fi
+	for cmd in "${cmds[@]}"; do
+		unset -f $cmd
+		if ! pathname=$(command -v ${cmd}); then
+			continue
+		fi
+
+		ove_cmd2pathname["$cmd"]="${pathname}"
+	done
+	if [ $restore -eq 1 ]; then
+		shopt -s expand_aliases
+	fi
+}
+
+# list-externals: :list all external commands that OVE is dependent on
+function ove-list-externals {
+	ove_entry || return
+
+	local cmd
+	local md5
+
+	for cmd in "${!ove_cmd2pathname[@]}"; do
+		md5="$(${ove_cmd2pathname["md5sum"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${ove_cmd2pathname[$cmd]}))"
+		echo "$cmd ${ove_cmd2pathname[$cmd]} $md5"
+	done | ${ove_cmd2pathname["column"]:?} -t | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 }
 
 # nop: :do nothing
@@ -12190,7 +12220,6 @@ function ove-pre-push {
 		ove-blame "${OVE_USER}"
 	fi
 
-	ove_externals
 	ove-status .ove
 }
 
