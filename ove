@@ -9540,7 +9540,7 @@ function ove_add_script_func {
 		ove_entry || return
 		local helptext=\"${htext}\"
 		local __scriptname=ove-${s}
-		OVE_ACTIVE_REPO_DIR=${r_dir} \"${s_dir}\"/${s} \$*
+		OVE_ACTIVE_REPO_DIR=${r_dir} \"${s_dir}\"/${s} \"\$@\"
 	}"
 	export -f ove-${s}
 }
