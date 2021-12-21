@@ -6793,7 +6793,7 @@ function ove-format-patch {
 		ove_echo_error_noprefix "format-patch: tar failed"
 		return 1
 	fi
-	\readlink -f "${f}"
+	\readlink -f -- "${f}"
 }
 
 # am:file:apply a bz2 archive file created with 'format-patch'
@@ -7768,7 +7768,7 @@ function ove-add-config {
 		return 1
 	fi
 
-	cfg=$(\readlink -f $1)
+	cfg=$(\readlink -f -- $1)
 	if ! ove_config_validate_filename ${cfg}; then
 		ove_echo_error_noprefix "file '${cfg}' is not a valid oveconfig file, select one of:"
 		printf "%s\n" ${OVE_CONFIG_FILES} 1>&2
@@ -7806,7 +7806,7 @@ function ove_config_validate_filename {
 function ove_config_validate_file {
 	local f
 
-	f=$(\readlink -f $1)
+	f=$(\readlink -f -- $1)
 	[ -s "$f" ] || return 1
 	ove_config_validate_filename "${f}" || return 1
 
@@ -7989,7 +7989,7 @@ function ove_edit {
 	# check for files first
 	for f in "$@"; do
 		if [ -f "$f" ] || [ -h "$f" ]; then
-			files+=("$(\readlink -f $f)")
+			files+=("$(\readlink -f -- $f)")
 		fi
 	done
 
@@ -9258,7 +9258,7 @@ function ove_bash_complete {
 			wordlist=$(ove_revtab_list_basename)
 		elif [ ${size} -eq 3 ]; then
 			[ -d ${OVE_BASE_DIR}/${COMP_WORDS[2]} ] &&
-				wordlist=$(\find $(\readlink -f ${OVE_BASE_DIR}/${COMP_WORDS[2]}) -perm -u=x -not -path '*.git*' -type f)
+				wordlist=$(\find $(\readlink -f -- ${OVE_BASE_DIR}/${COMP_WORDS[2]}) -perm -u=x -not -path '*.git*' -type f)
 		elif [ ${size} -gt 3 ]; then
 			return
 		fi
@@ -9424,11 +9424,11 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "what-is" ]; then
 		if [ ${size} -ge 2 ]; then
-			wordlist=$(\find $(\readlink -f ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type d -exec basename {} \;)
+			wordlist=$(\find $(\readlink -f -- ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type d -exec basename {} \;)
 		fi
 	elif [ "${subcommand}" == "head-tail" ]; then
 		if [ ${size} -ge 2 ]; then
-			wordlist=$(\find $(\readlink -f ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type f -exec basename {} \;)
+			wordlist=$(\find $(\readlink -f -- ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type f -exec basename {} \;)
 		fi
 	elif [ "${subcommand}" == "select-configuration" ]; then
 		if [ ${size} -eq 2 ]; then
@@ -9703,7 +9703,7 @@ function ove_dirs_init {
 	export OVE_GLOBAL_STATE_DIR
 
 	# project state
-	if ! [ -h ${OVE_STATE_LINK_NAME} ] || [ "$(\readlink -f ${OVE_STATE_LINK_NAME})" == "" ]; then
+	if ! [ -h ${OVE_STATE_LINK_NAME} ] || [ "$(\readlink -f -- ${OVE_STATE_LINK_NAME})" == "" ]; then
 		[ -h ${OVE_STATE_LINK_NAME} ] && \rm ${OVE_STATE_LINK_NAME}
 		OVE_PROJECT_STATE_DIR=$(\mktemp -u -d -p ${OVE_GLOBAL_STATE_DIR}/${OVE_PROJECT_NAME} state-XXXXXXXXXX)
 
@@ -9713,20 +9713,20 @@ function ove_dirs_init {
 		# always re-create tmp link
 		[ -h ${OVE_TMP_LINK_NAME} ] && \rm ${OVE_TMP_LINK_NAME}
 	else
-		OVE_PROJECT_STATE_DIR=$(\readlink -f ${OVE_STATE_LINK_NAME})
+		OVE_PROJECT_STATE_DIR=$(\readlink -f -- ${OVE_STATE_LINK_NAME})
 		! [ -e "${OVE_STATE_LINK_NAME}" ] && \mkdir -p ${OVE_PROJECT_STATE_DIR}
 	fi
 	export OVE_PROJECT_STATE_DIR
 
 	# project tmp
-	if ! [ -h ${OVE_TMP_LINK_NAME} ] || [ "$(\readlink -f ${OVE_TMP_LINK_NAME})" == "" ]; then
+	if ! [ -h ${OVE_TMP_LINK_NAME} ] || [ "$(\readlink -f -- ${OVE_TMP_LINK_NAME})" == "" ]; then
 		[ -h ${OVE_TMP_LINK_NAME} ] && \rm ${OVE_TMP_LINK_NAME}
 		# re-use last 10 characters from OVE_PROJECT_STATE_DIR
 		OVE_PROJECT_TMP_DIR="${OVE_TMP}/${OVE_PROJECT_NAME}/tmp-${OVE_PROJECT_STATE_DIR: -10}"
 		\mkdir -p ${OVE_PROJECT_TMP_DIR}
 		\ln -s ${OVE_PROJECT_TMP_DIR} ${OVE_TMP_LINK_NAME}
 	else
-		OVE_PROJECT_TMP_DIR=$(\readlink -f ${OVE_TMP_LINK_NAME})
+		OVE_PROJECT_TMP_DIR=$(\readlink -f -- ${OVE_TMP_LINK_NAME})
 		! [ -e "${OVE_TMP_LINK_NAME}" ] && \mkdir -p ${OVE_PROJECT_TMP_DIR}
 	fi
 	export OVE_PROJECT_TMP_DIR
@@ -9781,7 +9781,7 @@ function ove_config_builtins_init {
 
 	# OVE_LOCATE_SEARCH_DIR:string::locate:where to search for OVE workspaces (only if 'locate' is unavailable)
 	if [ -z "${OVE_LOCATE_SEARCH_DIR+x}" ]; then
-		OVE_LOCATE_SEARCH_DIR=$(\readlink -f $(\dirname ${HOME}))
+		OVE_LOCATE_SEARCH_DIR=$(\readlink -f -- $(\dirname ${HOME}))
 		export OVE_LOCATE_SEARCH_DIR
 	fi
 
@@ -9991,11 +9991,11 @@ function ove_init {
 	fi
 	OVE_BASE_DIR="${dir}"
 
-	OVE_PROJECT_DIR=$(\readlink -f ${OVE_BASE_DIR}/.owel)
+	OVE_PROJECT_DIR=$(\readlink -f -- ${OVE_BASE_DIR}/.owel)
 	OVE_PROJECT_NAME=${OVE_PROJECT_DIR##*/}
 	OVE_PROJECT_LIST=$(ove_list_projects)
 	OVE_PROJECT_COMMANDS=$(ove_project_commands_list)
-	resolved="$(\readlink -f ${OVE_BASE_DIR}/ove)"
+	resolved="$(\readlink -f -- ${OVE_BASE_DIR}/ove)"
 	OVE_DIR="$(cd "$(\dirname "${resolved}")"; pwd -P)"
 	OVE_BASENAME="${resolved##*/}"
 	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
@@ -10508,7 +10508,7 @@ function ove-init {
 		owel_name=${2}
 	fi
 
-	dir=$(\readlink -f ${dir})
+	dir=$(\readlink -f -- ${dir})
 	i=0
 	do_init_git=0
 
@@ -10584,7 +10584,7 @@ function ove-init {
 	# symlink self
 	if ! [ -L ${dir}/ove ]; then
 		if [ "${OVE_SELF}" == "" ]; then
-			ove_link=$(\readlink -f ${BASH_SOURCE[0]})
+			ove_link=$(\readlink -f -- ${BASH_SOURCE[0]})
 		else
 			ove_link=${OVE_SELF}
 		fi
@@ -10913,7 +10913,7 @@ function ove_worktree_add {
 		return 1
 	fi
 
-	if ! worktree="$(\readlink -f $1)"; then
+	if ! worktree="$(\readlink -f -- $1)"; then
 		ove_echo_error_noprefix "$1 is not a valid path"
 		return 1
 	fi
@@ -11009,7 +11009,7 @@ function ove_worktree_remove {
 
 		ove-forall "git worktree remove ${worktree}/\$repo_basename 2> /dev/null"
 		\rm -rf ${worktree:?}/
-		\rmdir $(\readlink -f ${worktree})
+		\rmdir $(\readlink -f -- ${worktree})
 	done
 
 	return ${ret}
@@ -11017,7 +11017,7 @@ function ove_worktree_remove {
 
 # $1: worktree path
 function ove_worktree_status_one {
-	ove_echo_green_noprefix "$(readlink -f $1)"
+	ove_echo_green_noprefix "$(readlink -f -- $1)"
 	$(command -v bash) -i -c "cd $1; . ove hush; ove status"
 }
 
@@ -11058,14 +11058,14 @@ function ove_worktree_list {
 
 	if [ $# -eq 0 ]; then
 		for d in $(\find $OVE_PROJECT_STATE_DIR/worktree/ -mindepth 1 -maxdepth 1 -type l 2> /dev/null | LC_ALL="C" \sort -V); do
-			ove_echo_green_noprefix "$(readlink -f ${d})"
+			ove_echo_green_noprefix "$(readlink -f -- ${d})"
 		done
 
 	else
 		for d in $(ove_uniq "$@"); do
 			d_base=${d##*/}
 			if [ -d $OVE_PROJECT_STATE_DIR/worktree/${d_base} ]; then
-				ove_echo_green_noprefix "$(readlink -f $OVE_PROJECT_STATE_DIR/worktree/${d_base})"
+				ove_echo_green_noprefix "$(readlink -f -- $OVE_PROJECT_STATE_DIR/worktree/${d_base})"
 			fi
 		done
 	fi
