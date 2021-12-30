@@ -6748,6 +6748,7 @@ function ove-rebase-autosquash {
 		return 1
 	fi
 
+	ove-ahead "$@"
 	ove-ahead "$@" | \
 		\sed -r \
 		-e "s/\x1b\[1;3[0-9];7m//g" \
@@ -6763,6 +6764,7 @@ function ove-rebase-autosquash {
 				return 1
 			fi
 		done
+	ove-ahead "$@"
 }
 
 # format-patch:[name]:create a bz2 archive for all local commits not yet published
