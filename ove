@@ -3064,8 +3064,9 @@ function ove_revtab_check_one {
 
 	revision=$4
 	sha_a=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
-	sha_b=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null)
-	[ $? -ne 0 ] && sha_b=""
+	if ! sha_b=$(git -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit ${revision} -- 2> /dev/null); then
+		sha_b=""
+	fi
 
 	if [ "${sha_a}" != "${sha_b}" ]; then
 		# diff => checkout
@@ -3551,7 +3552,9 @@ function ove_get_base_dir {
 		s=${s%/*}
 	done
 
-	popd > /dev/null
+	if ! popd > /dev/null; then
+		return 1
+	fi
 
 	# base directory found?
 	if [ "${s}" == "" ]; then
@@ -3564,7 +3567,13 @@ function ove_get_base_dir {
 
 	# Have we moved to another OVE workspace? source that project
 	elif [ "${s}" != "${OVE_BASE_DIR}" ] && [[ $- == *i* ]]; then
-		cd ${s} && . ove > /dev/null && cd -
+		if ! cd ${s}; then
+			return 1
+		elif ! . ove > /dev/null; then
+			return 1
+		elif ! cd -; then
+			return 1
+		fi
 	fi
 }
 export -f ove_get_base_dir
@@ -4367,7 +4376,10 @@ function ove-systest {
 				if [ ${systest_type} -eq 1 ] || [ ${exit_status} == "SIGINT" ]; then
 					echo ${result}
 					summary+="${result}\n"
-					popd &> /dev/null
+					if ! popd &> /dev/null; then
+						ove_echo_fatal_noprefix "'popd' failed"
+						return 1
+					fi
 					break
 				fi
 			fi
@@ -4375,7 +4387,10 @@ function ove-systest {
 
 		summary+="${result}\n"
 		echo -e ${summary}
-		popd &> /dev/null
+		if ! popd &> /dev/null; then
+			ove_echo_fatal_noprefix "'popd' failed"
+			return 1
+		fi
 	done
 	echo
 	if [ ${nbr_tests} -gt 1 ]; then
@@ -8518,7 +8533,7 @@ function ove-cd {
 	ove_entry || return
 
 	if [ $# -eq 0 ]; then
-		cd "${OVE_BASE_DIR}"
+		cd "${OVE_BASE_DIR}" || return 1
 	elif [ $# -eq 1 ] && [ "$1" == "@" ]; then
 		ove_set_workspace
 	else
@@ -9457,10 +9472,14 @@ function ove_bash_complete {
 	elif [ "${subcommand}" == "tail-lastlog" ] ||
 		[ "${subcommand}" == "less-lastlog" ]; then
 		if [ ${size} -ge 2 ]; then
+			if [ -d /var/tmp ]; then
+				a="/var/tmp"
+			else
+				a="/tmp"
+			fi
+
 			# shellcheck disable=SC2015
-			wordlist=$([ -d /var/tmp ] && cd /var/tmp || cd /tmp; \
-				\find ./*/ove/logs -maxdepth 0 -type d | \
-				\cut -d/ -f2)
+			wordlist=$(\find ${a}/*/ove/logs -maxdepth 0 -type d | \rev | \cut -d'/' -f3 | \rev)
 		else
 			return
 		fi
@@ -9655,9 +9674,16 @@ function ove-select-configuration {
 				for c in ${configs}; do
 					if \grep -w -q configure-$1 <<< "${c##*/}"; then
 						ove_echo_green_noprefix ${p}:
-						pushd ${OVE_PROJECT_DIR}/projects/${p} &>/dev/null
-						\ln -sfv configure-$1 configure
-						popd &>/dev/null
+						if ! pushd ${OVE_PROJECT_DIR}/projects/${p} &>/dev/null; then
+							ove_echo_fatal_noprefix "'pushd ${OVE_PROJECT_DIR}/projects/${p}' failed"
+							return 1
+						elif ! \ln -sfv configure-$1 configure; then
+							ove_echo_fatal_noprefix "'ln' failed"
+							return 1
+						elif ! popd &>/dev/null; then
+							ove_echo_fatal_noprefix "'popd' failed"
+							return 1
+						fi
 						break
 					fi
 				done
@@ -9682,9 +9708,16 @@ function ove-select-configuration {
 				else
 					cfg=$(echo ${configs} | \cut -d' ' -f${REPLY})
 					cfg_basename=${cfg##*/}
-					pushd ${OVE_PROJECT_DIR}/projects/${p} &>/dev/null
-					\ln -sfv ${cfg_basename} configure
-					popd &>/dev/null
+					if ! pushd ${OVE_PROJECT_DIR}/projects/${p} &>/dev/null; then
+						ove_echo_fatal_noprefix "'pushd ${OVE_PROJECT_DIR}/projects/${p}' failed"
+						return 1
+					elif ! \ln -sfv ${cfg_basename} configure; then
+						ove_echo_fatal_noprefix "'ln' failed"
+						return 1
+					elif ! popd &>/dev/null; then
+						ove_echo_fatal_noprefix "'popd' failed"
+						return 1
+					fi
 				fi
 			fi
 		fi
@@ -10002,7 +10035,9 @@ function ove_init {
 	OVE_PROJECT_LIST=$(ove_list_projects)
 	OVE_PROJECT_COMMANDS=$(ove_project_commands_list)
 	resolved="$(\readlink -f -- ${OVE_BASE_DIR}/ove)"
-	OVE_DIR="$(cd "$(\dirname "${resolved}")"; pwd -P)"
+	if ! OVE_DIR="$(cd "$(\dirname "${resolved}")" || exit 1; pwd -P)"; then
+		return 1
+	fi
 	OVE_BASENAME="${resolved##*/}"
 	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
 
@@ -11295,9 +11330,9 @@ function ove_unittest_preparations {
 	# add some files
 	for a in $(\seq 1 ${nbr_of_repos}); do
 		if [ $((a%2)) -eq 0 ]; then
-			cd ${unittest_dir}/testing/src/git-${a}
+			cd ${unittest_dir}/testing/src/git-${a} || return 1
 		else
-			cd ${unittest_dir}/git-${a}
+			cd ${unittest_dir}/git-${a} || return 1
 		fi
 
 		for i in $(\seq 1 ${nbr_of_files}); do
@@ -11434,8 +11469,11 @@ function ove-unittest {
 		fi
 	fi
 
-	[ ${do_preparations} -eq 1 ] && \
-		ove_unittest_preparations ${nbr_of_files} ${nbr_of_projs} ${nbr_of_repos} ${nbr_of_systests}
+	if [ ${do_preparations} -eq 1 ]; then
+		if ! ove_unittest_preparations ${nbr_of_files} ${nbr_of_projs} ${nbr_of_repos} ${nbr_of_systests}; then
+			return 1
+		fi
+	fi
 
 	# launch shelltestrunner
 	cd ${OVE_PROJECT_TMP_DIR}/unittest || return 1
