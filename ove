@@ -8289,11 +8289,11 @@ function ove-wipe-base-dir {
 	if [ "$1" == "y" ]; then
 		rm_options=""
 	else
-		\file "${remove[@]}" | \cat -n
+		echo "${remove[@]}" | \xargs file | \cat -n
 		echo
 	fi
 
-	\rm -rf ${rm_options} "${remove[@]}"
+	\xargs -a <(echo "${remove[@]}") rm -rf ${rm_options}
 
 	return 0
 }
