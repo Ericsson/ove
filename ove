@@ -8269,6 +8269,12 @@ function ove-wipe-base-dir {
 	# search for files/dirs
 	mapfile -t candidates <<<$(\find $OVE_BASE_DIR -mindepth 1 -maxdepth 1)
 
+	# sanity check
+	if [ "${#candidates[@]}" -eq 1 ]; then
+		ove_echo_fatal_noprefix "no candidates found, bash mapfile bug? bash version: ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}"
+		return 1
+	fi
+
 	# repos and some reserved files and directories
 	read -a reserved -r <<<$(echo $(ove_revtab_list_fullpath) ${OVE_PROJECT_DIR} ${OVE_STAGE_DIR} ${OVE_ARCHIVE_DIR} ${OVE_BASE_DIR}/{.owel,ove,.ove*,README*})
 
