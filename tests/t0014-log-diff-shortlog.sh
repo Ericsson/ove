@@ -24,10 +24,10 @@ for t in 0.0.1 0.0.2 0.0.3; do
 done
 
 for r in {1..10}; do
-	echo $r:log-project
-	ove log-project HEAD~$r HEAD
-	echo $r:shortlog-project
-	ove shortlog-project HEAD~$r HEAD
-	echo $r:diff-project
-	ove diff-project HEAD~$r HEAD
+	echo $r:log-owel
+	ove log-owel HEAD~$r HEAD
+	echo $r:shortlog-owel
+	ove shortlog-owel HEAD~$r HEAD
+	echo $r:diff-owel
+	ove diff-owel HEAD~$r HEAD
 done

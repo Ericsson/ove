@@ -201,7 +201,7 @@ Thats it for system tests! Now lets go ahead and look at plugins:
 As discussed in the Overview, in most larger projects there is a strong need for flexibility when it comes to what a developer or CI/CD machinery wants to be able to do with it. To accommodate these needs, OVE provides a way of extending the OVE command list with customized commands. We call them plugins, and they can be exposed to your OVE project in three ways: From your workspace, from your OWEL (top repo) or from any repo included in the revtab. What are they really then? They are executables, optionally accompanied with a help text and/or a tab completion script. OVE looks for plugins at the following locations:
 
     $OVE_BASE_DIR/scripts/
-    $OVE_PROJECT_DIR/scripts/
+    $OVE_OWEL_DIR/scripts/
     <all repositories>/.ove/scripts/
 
 Any executable found in any of these locations will become an OVE command. And provided that tab completion scripts and help texts exist at the same location, they will also be part of the OVE help and support tab completion for their arguments.

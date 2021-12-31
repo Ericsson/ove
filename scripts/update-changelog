@@ -39,11 +39,11 @@ for t in $(tail -n +2 "${OVE_TMP}"/tags); do
 	echo "${s}"
 	ove log-project "${t}" "${s}";
 	s=$t
-done > "${OVE_PROJECT_DIR}"/CHANGELOG
+done > "${OVE_OWEL_DIR}"/CHANGELOG
 
 # remove color codes
 sed -i \
 	-r \
 	-e "s/\x1b\[1;3[1,3]m//g" \
 	-e "s/\x1b\[[0-9]+m//g" \
-	-e "s/\x1b\[m//g" "${OVE_PROJECT_DIR}"/CHANGELOG
+	-e "s/\x1b\[m//g" "${OVE_OWEL_DIR}"/CHANGELOG

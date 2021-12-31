@@ -232,8 +232,8 @@ function main {
 		fi
 
 		lxc_exec "${package_manager} ${ove_packs}"
-		if [ "${OVE_PROJECT_DIR}" != "x" ] && [ -s "${OVE_PROJECT_DIR}/SETUP" ]; then
-			lxc_exec "bash -c '$(cat "${OVE_PROJECT_DIR}"/SETUP)'"
+		if [ "${OVE_OWEL_DIR}" != "x" ] && [ -s "${OVE_OWEL_DIR}/SETUP" ]; then
+			lxc_exec "bash -c '$(cat "${OVE_OWEL_DIR}"/SETUP)'"
 			ws_name=$(lxc exec "${lxc_name}" -- bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2)
 			if [ "x${ws_name}" = "x" ]; then
 				echo "error: workspace name not found"
