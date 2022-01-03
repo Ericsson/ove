@@ -6746,9 +6746,11 @@ function ove-reset-ahead {
 function ove-rebase-autosquash {
 	ove_entry || return
 
-	if ! \git help config | \grep -q GIT_SEQUENCE_EDITOR; then
-		ove_echo_error_noprefix "'GIT_SEQUENCE_EDITOR' not available, too old git version?"
-		return 1
+	if \git help config &> /dev/null; then
+		if ! \git help config | \grep -q GIT_SEQUENCE_EDITOR; then
+			ove_echo_error_noprefix "'GIT_SEQUENCE_EDITOR' not available, too old git version?"
+			return 1
+		fi
 	fi
 
 	ove-ahead "$@"
