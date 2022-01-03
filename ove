@@ -8715,7 +8715,7 @@ function ove-loglevel {
 		ove-add-config ${cfg} OVE_LOGLEVEL $1
 	fi
 
-	while true; do
+	{
 		echo "0: silence is golden"
 		echo "1: normal"
 		echo "2: debug                [set -x]"
@@ -8726,8 +8726,8 @@ function ove-loglevel {
 		echo "7: execsnoop            [bcc]"
 		echo "8: tcpconnect           [bcc]"
 		echo "9: opensnoop            [bcc]"
-		break
-	done | ${ove_cmd2pathname["grep"]:?} -E --color "$|${OVE_LOGLEVEL}"
+	} | ${ove_cmd2pathname["sed"]:?} -e "s/^${OVE_LOGLEVEL}:\(.*\)$/${OVE_LOGLEVEL}:\1 */g" | \
+		${ove_cmd2pathname["grep"]:?} -E --color "$|${OVE_LOGLEVEL}:.*"
 
 	if [ $# -eq 1 ]; then
 		OVE_REDIRECT_OUTPUT=""
