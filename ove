@@ -5848,7 +5848,7 @@ function ove_export {
 	local wd="${OVE_OWEL_TMP_DIR}/export"
 
 	\mkdir -p "${wd}"
-	find "${wd}" -maxdepth 1 -name '*.patch' -exec rm {} \;
+	\find "${wd}" -maxdepth 1 -name '*.patch' -exec rm {} \;
 
 	if [ "$#" -eq 0 ]; then
 		projects="${OVE_PROJECT_LIST}"
@@ -11060,7 +11060,12 @@ function ove_worktree_remove {
 
 # $1: worktree path
 function ove_worktree_status_one {
-	ove_echo_green_noprefix "$(readlink -f -- $1)"
+	if ! ove_is_base_dir "$1"; then
+		ove_echo_yellow_noprefix "worktree '$(\readlink -f -- $1)' is corrupt, fixme!"
+		return 1
+	fi
+
+	ove_echo_green_noprefix "$(\readlink -f -- $1)"
 	$(command -v bash) -i -c "cd $1; . ove hush; ove status"
 }
 
@@ -11075,6 +11080,11 @@ function ove_worktree_status {
 
 	if [ $# -eq 0 ]; then
 		for d in $(\find $OVE_OWEL_STATE_DIR/worktree/ -mindepth 1 -maxdepth 1 -type l 2> /dev/null | LC_ALL="C" \sort -V); do
+			if [ ! -d "${d}" ]; then
+				ove_echo_yellow_noprefix "worktree '$(\readlink -f -- $d)' is not a directory as expected, fixme!"
+				continue
+			fi
+
 			ove_worktree_status_one "${d}"
 		done
 
@@ -11101,14 +11111,19 @@ function ove_worktree_list {
 
 	if [ $# -eq 0 ]; then
 		for d in $(\find $OVE_OWEL_STATE_DIR/worktree/ -mindepth 1 -maxdepth 1 -type l 2> /dev/null | LC_ALL="C" \sort -V); do
-			ove_echo_green_noprefix "$(readlink -f -- ${d})"
+			if [ ! -d "${d}" ]; then
+				ove_echo_yellow_noprefix "worktree '$(\readlink -f $d)' is not a directory as expected, fixme!"
+				continue
+			fi
+
+			ove_echo_green_noprefix "$(\readlink -f -- ${d})"
 		done
 
 	else
 		for d in $(ove_uniq "$@"); do
 			d_base=${d##*/}
 			if [ -d $OVE_OWEL_STATE_DIR/worktree/${d_base} ]; then
-				ove_echo_green_noprefix "$(readlink -f -- $OVE_OWEL_STATE_DIR/worktree/${d_base})"
+				ove_echo_green_noprefix "$(\readlink -f -- $OVE_OWEL_STATE_DIR/worktree/${d_base})"
 			fi
 		done
 	fi
