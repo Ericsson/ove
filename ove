@@ -1973,9 +1973,9 @@ function ove-fzf {
 		# shellcheck disable=SC2016
 		cmd=$(${ove_cmd2pathname["xargs"]:?} -n 1 <<<${OVE_ALL_COMMANDS} | \
 			${ove_cmd2pathname["grep"]:?} -v '!' | \
-			SHELL=${shell} ${ove_cmd2pathname["fzf"]:?} \
+			OVE_LOCAL_ECHO=0 SHELL=${shell} ${ove_cmd2pathname["fzf"]:?} \
 			--cycle \
-			--preview 'ove list-commands ^{1}:' \
+			--preview 'ove-list-commands ^{1}:' \
 			--preview-window=down:1 \
 		)
 		[ "${cmd}" == "" ] && break
