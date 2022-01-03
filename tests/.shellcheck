@@ -1,15 +1,11 @@
-57
+46
      21  SC2059: Don't use variables in the printf format string. Use printf "..%s.." "$foo".
       7  SC2031: all_files was modified in a subshell. That change might be lost.
       5  SC2206: Quote to prevent word splitting/globbing, or split robustly with mapfile or read -a.
-      4  SC2013: To read lines rather than words, pipe/redirect to a 'while read' loop.
       3  SC2207: Prefer mapfile or read -a to split command output (or quote to avoid splitting).
       3  SC2175: Quote this invalid brace expansion since it should be passed literally to eval.
-      3  SC2044: For loops over find output are fragile. Use find -exec or a while read loop.
-      3  SC2001: See if you can use ${variable//search/replace} instead.
       2  SC2030: Modification of all_files is local (to subshell caused by pipeline).
       2  SC2004: $/${} is unnecessary on arithmetic variables.
       1  SC2129: Consider using { cmd1; cmd2; } >> file instead of individual redirects.
       1  SC2034: foo appears unused. Verify use (or export if used externally).
       1  SC2034: bar appears unused. Verify use (or export if used externally).
-      1  SC2029: Note that, unescaped, this expands on the client side.
