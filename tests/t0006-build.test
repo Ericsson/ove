@@ -4,13 +4,13 @@ bash -c "OVE_TEST_STRING; ove buildme-parallel"
 >>>= 0
 bash -c "OVE_TEST_STRING; ove buildme p1"
 >>>= 0
-bash -c "OVE_TEST_STRING; ove buildme p40 p30"
+bash -c "OVE_TEST_STRING; ove buildme p10 p2"
 >>>= 0
-bash -c "OVE_TEST_STRING; ove loglevel 1 > /dev/null; ove buildme p31 p40 |& wc -l"
+bash -c "OVE_TEST_STRING; ove loglevel 1 > /dev/null; ove buildme p6 p10 |& wc -l"
 >>>
-120
+60
 >>>= 0
-bash -c "OVE_TEST_STRING; ove loglevel 1 > /dev/null; ove buildme-parallel p31 p40 |& wc -l"
+bash -c "OVE_TEST_STRING; ove loglevel 1 > /dev/null; ove buildme-parallel p6 p10 |& wc -l"
 >>>
-120
+60
 >>>= 0
