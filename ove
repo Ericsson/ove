@@ -1848,6 +1848,7 @@ function ove {
 		[ "${cmd}" == "config" ] || \
 		[ "${cmd}" == "checkout" ] || \
 		[ "${cmd}" == "dry-run" ] || \
+		[ "${cmd}" == "echo" ] || \
 		[ "${cmd}" == "emacs" ] || \
 		[ "${cmd}" == "lastlog" ] || \
 		[ "${cmd}" == "lastlog-replay" ] || \
@@ -4083,6 +4084,30 @@ function ove_echo {
 	OVE_PREV_NS=${now_ns}
 }
 
+# echo:[green|cyan|yellow|red] txt:prefix echo with date and time diff
+function ove-echo {
+	ove_entry || return
+
+	local f
+
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	if [ "$(type -t ove_echo_$1)" == "function" ]; then
+		if [ $# -eq 1 ]; then
+			ove_command_usage
+			return 1
+		fi
+		f="ove_echo_$1"
+		shift
+		$f "$@"
+	else
+		ove_echo "$@"
+	fi
+}
+
 function ove_echo_cyan {
 	ove_echo "${OVE_COLOR_CYAN}""$*""${OVE_COLOR_BLANK}"
 }
@@ -4097,6 +4122,10 @@ function ove_echo_cyan_error_noprefix {
 
 function ove_echo_yellow {
 	ove_echo "${OVE_COLOR_YELLOW}""$*""${OVE_COLOR_BLANK}"
+}
+
+function ove_echo_green {
+	ove_echo "${OVE_COLOR_GREEN}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_green_noprefix {
