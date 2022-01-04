@@ -2030,9 +2030,12 @@ function ove_parse_yaml {
 function ove_project_commands_list {
 	local a
 
-	# for each project, look for executable files, ignore files with hyphen-minus and underscore
+	# for each project, look for executable files, ignore files with hyphen-minus, underscore and number sign
 	a=$(LC_ALL="C" \sort -u <(
-		for f in $(cd ${OVE_OWEL_DIR} && \find -L projects/*/ -perm -u=x -type f -not -name '*-*' -not -name '*_*' 2> /dev/null); do
+		for f in $(cd ${OVE_OWEL_DIR} && \find -L projects/*/ -perm -u=x -type f \
+			-not -name '*-*' \
+			-not -name '*_*' \
+			-not -name '*#*' 2> /dev/null); do
 			echo ${f##*/};
 		done))
 
