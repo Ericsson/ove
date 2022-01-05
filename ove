@@ -2969,7 +2969,14 @@ function ove_verify_checksums {
 
 	md5=$(ove_file_fingerprint $(ove_list_scripts_directories))
 	# got updated?
-	if [ -n "${OVE_SCRIPTS_MD5+x}" ] && [ "${md5}" != "${OVE_SCRIPTS_MD5}" ]; then
+	if [ -n "${OVE_SCRIPTS_CONTENT_MD5+x}" ] && [ "${md5}" != "${OVE_SCRIPTS_CONTENT_MD5}" ]; then
+		return 1
+	fi
+
+	md5=$(ove-list-scripts | ${ove_cmd2pathname["md5sum"]:?})
+	md5=${md5%% *}
+	# got updated?
+	if [ -n "${OVE_SCRIPTS_NAMES_MD5+x}" ] && [ "${md5}" != "${OVE_SCRIPTS_NAMES_MD5}" ]; then
 		return 1
 	fi
 
@@ -3022,8 +3029,12 @@ function ove_update_checksum {
 		export OVE_REPOS_MD5
 	fi
 
-	OVE_SCRIPTS_MD5=$(ove_file_fingerprint "${!ove_scripts_paths[@]}")
-	export OVE_SCRIPTS_MD5
+	OVE_SCRIPTS_CONTENT_MD5=$(ove_file_fingerprint "${!ove_scripts_paths[@]}")
+	export OVE_SCRIPTS_CONTENT_MD5
+
+	OVE_SCRIPTS_NAMES_MD5=$(ove-list-scripts | ${ove_cmd2pathname["md5sum"]:?})
+	OVE_SCRIPTS_NAMES_MD5=${OVE_SCRIPTS_NAMES_MD5%% *}
+	export OVE_SCRIPTS_NAMES_MD5
 
 	OVE_REPOS_FETCHED=$(ove_repos_fetched)
 	export OVE_REPOS_FETCHED
@@ -3590,7 +3601,6 @@ function ove_get_base_dir {
 		fi
 	fi
 }
-export -f ove_get_base_dir
 
 function ove_list_projects {
 	local p
@@ -3601,7 +3611,6 @@ function ove_list_projects {
 		echo ${p::-1}
 	fi
 }
-export -f ove_list_projects
 
 # $*: file(s)
 function ove_file_md5sum {
