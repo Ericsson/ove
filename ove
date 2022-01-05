@@ -1890,6 +1890,7 @@ function ove {
 		cmd_and_args+=" ove ${cmd}"
 	fi
 
+	${ove_cmd2pathname["ln"]:?} -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/ongo
 	if [ "x${log_cmd}" = "xscript" ]; then
 		# trace hook
 		if ! ove_setup_trace; then
@@ -11696,10 +11697,13 @@ function ove_watch_logs {
 			if [ "${cmd}" == "${ove_cmd2pathname["less"]:?}" ] && [ "${OVE_LESS_MORE_OPTIONS}" -eq 1 ]; then
 				_cmd="${ove_cmd2pathname["less"]:?} -Ps\"${log//./\\.}\""
 			else
-				_cmd=${cmd}
+				if [ -h "${d}/${u}/ove/logs/ongo" ]; then
+					log="${d}/${u}/ove/logs/ongo"
+				fi
+				_cmd="${cmd} -s 0.1 -q -F"
 			fi
 
-			${ove_cmd2pathname["tmux"]:?} split-window -h "${_cmd} ${log}"
+			${ove_cmd2pathname["tmux"]:?} split-window -h "${_cmd} ${log} 2> /dev/null"
 			[ $# -eq 1 ] && return
 			${ove_cmd2pathname["tmux"]:?} select-layout ${OVE_TMUX_LAYOUT}
 		done
