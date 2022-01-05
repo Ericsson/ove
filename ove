@@ -4044,7 +4044,7 @@ function ove_list_scripts_directories {
 		return
 	fi
 
-	${ove_cmd2pathname["find"]:?} -L ${d} -maxdepth 1 -perm -u=x -not -name '*.help' -type f -print0 | \
+	${ove_cmd2pathname["find"]:?} -L ${d} -perm -u=x -not -name '*.help' -type f -print0 | \
 		${ove_cmd2pathname["xargs"]:?} -0 dirname | \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u
 }
@@ -9686,7 +9686,7 @@ function ove_scripts_init {
 	if [ -d "${OVE_OWEL_DIR}/scripts" ]; then
 		s_list=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
 		for s in ${s_list}; do
-			ove_add_script_func ${OVE_OWEL_DIR}/scripts ${s##*/}
+			ove_add_script_func ${s%/*} ${s##*/}
 			OVE_SCRIPTS_LIST+="${s##*/} "
 		done
 	fi
@@ -9695,7 +9695,7 @@ function ove_scripts_init {
 	if [ -d "${OVE_DIR}/scripts" ]; then
 		s_list=$(${ove_cmd2pathname["find"]:?} ${OVE_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
 		for s in ${s_list}; do
-			ove_add_script_func ${OVE_DIR}/scripts ${s##*/}
+			ove_add_script_func ${s%/*} ${s##*/}
 			OVE_SCRIPTS_LIST+="${s##*/} "
 		done
 	fi
@@ -9705,7 +9705,7 @@ function ove_scripts_init {
 		! [ -d "${repo}/.ove/scripts" ] && continue
 		s_list=$(${ove_cmd2pathname["find"]:?} -L ${repo}/.ove/scripts -perm -u=x -not -name '*.help' -type f)
 		for s in ${s_list}; do
-			ove_add_script_func ${repo}/.ove/scripts ${s##*/}
+			ove_add_script_func ${s%/*} ${s##*/}
 			OVE_SCRIPTS_LIST+="${s##*/} "
 		done
 	done
