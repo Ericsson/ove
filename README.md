@@ -359,13 +359,17 @@ Here's a list (not complete) of a few utility commands:
 | unsource                 | clean up all OVE vars/funcs from this shell                |
 | vi                       | open all modified files in 'vi'                            |
 
-### OVE command reference
+### Command reference
 
 Please find the full command reference [here](ove-cmd-list.md)
 
 ### Configuration
 
 Configurable OVE commands can be found [here](ove-config-list.md)
+
+### Environment variables
+
+A list of OVE environment variables that will remain stable across OVE versions can be found [here](ove-variables-list.md).
 
 ## Supported Linux distributions
 

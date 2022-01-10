@@ -358,6 +358,8 @@ function ove_main {
 		return 1
 	fi
 
+	# OVE_USER:the user that runs OVE commands
+	OVE_USER=
 	if [ "x${USER}" != "x" ]; then
 		OVE_USER="${USER}"
 	elif [ "x${LOGNAME}" != "x" ]; then
@@ -369,6 +371,7 @@ function ove_main {
 	fi
 	export OVE_USER
 
+	# OVE_TMP:temporary directory for all OVE workspaces (per user)
 	OVE_TMP=/tmp/${OVE_USER}/ove
 	export OVE_TMP
 	if ! [ -d "${OVE_TMP}" ]; then
@@ -2294,6 +2297,7 @@ function ove_projects_init {
 		return 1
 	fi
 
+	# OVE_BUILD_ORDER:project build order
 	OVE_BUILD_ORDER="$(ove-build-order)"
 }
 
@@ -2601,6 +2605,7 @@ function ove_revtab_init {
 		true > "${OVE_OWEL_TMP_DIR}/.owel.lock"
 	fi
 
+	# OVE_REPO_LIST:space separated list of all git repositories for one OVE workspace
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
 	OVE_REPO_LIST_WIDTH=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | ${ove_cmd2pathname["wc"]:?} -L)
 	((OVE_REPO_LIST_WIDTH+=2))
@@ -9630,6 +9635,7 @@ function ove_update_tab_complete {
 	array=(${OVE_ALL_COMMANDS})
 	oldIFS=${IFS}
 	IFS=$'\n' OVE_ALL_COMMANDS=$(printf '%s ' $(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"${array[*]}"))
+	# OVE_ALL_COMMANDS:space separated list of all OVE commands
 	OVE_ALL_COMMANDS=${OVE_ALL_COMMANDS::-1}
 	IFS=${oldIFS}
 
@@ -9832,7 +9838,8 @@ function ove_dirs_init {
 	OVE_STATE_LINK_NAME="${OVE_BASE_DIR}/.ove.state"
 	OVE_TMP_LINK_NAME="${OVE_BASE_DIR}/.ove.tmp"
 
-	# global state
+	# OVE_GLOBAL_STATE_DIR:shared directory for all OVE workspaces (per user)
+	OVE_GLOBAL_STATE_DIR=
 	if [ -d /var/tmp ]; then
 		OVE_GLOBAL_STATE_DIR=/var${OVE_TMP}
 	else
@@ -9840,7 +9847,8 @@ function ove_dirs_init {
 	fi
 	export OVE_GLOBAL_STATE_DIR
 
-	# project state
+	# OVE_OWEL_STATE_DIR:state directory for one OVE workspace
+	OVE_OWEL_STATE_DIR=
 	if ! [ -h ${OVE_STATE_LINK_NAME} ] || [ "$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_STATE_LINK_NAME})" == "" ]; then
 		[ -h ${OVE_STATE_LINK_NAME} ] && ${ove_cmd2pathname["rm"]:?} ${OVE_STATE_LINK_NAME}
 		OVE_OWEL_STATE_DIR=$(${ove_cmd2pathname["mktemp"]:?} -u -d -p ${OVE_GLOBAL_STATE_DIR}/${OVE_OWEL_NAME} state-XXXXXXXXXX)
@@ -9856,7 +9864,8 @@ function ove_dirs_init {
 	fi
 	export OVE_OWEL_STATE_DIR
 
-	# project tmp
+	# OVE_OWEL_TMP_DIR:temporary directory for one OVE workspace
+	OVE_OWEL_TMP_DIR=
 	if ! [ -h ${OVE_TMP_LINK_NAME} ] || [ "$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_TMP_LINK_NAME})" == "" ]; then
 		[ -h ${OVE_TMP_LINK_NAME} ] && ${ove_cmd2pathname["rm"]:?} ${OVE_TMP_LINK_NAME}
 		# re-use last 10 characters from OVE_OWEL_STATE_DIR
@@ -10127,12 +10136,22 @@ function ove_init {
 	if ! dir=$(ove_get_base_dir); then
 		return 1
 	fi
+
+	# OVE_BASE_DIR:OVE workspace base directory
 	OVE_BASE_DIR="${dir}"
 
+	# OVE_OWEL_DIR:OWEL base dir. This directory contains 'projs', 'revtab', projects/... files.
 	OVE_OWEL_DIR=$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_BASE_DIR}/.owel)
+
+	# OVE_OWEL_NAME:OWEL name
 	OVE_OWEL_NAME=${OVE_OWEL_DIR##*/}
+
+	# OVE_PROJECT_LIST:space separated list of OVE projects defined in 'projs'
 	OVE_PROJECT_LIST=$(ove_list_projects)
+
+	# OVE_PROJECT_COMMANDS:space separated list of project commands
 	OVE_PROJECT_COMMANDS=$(ove_project_commands_list)
+
 	resolved="$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_BASE_DIR}/ove)"
 	if ! OVE_DIR="$(cd "$(${ove_cmd2pathname["dirname"]:?} "${resolved}")" || exit 1; pwd -P)"; then
 		return 1
@@ -10200,8 +10219,11 @@ function ove_init {
 	export OVE_LOG_DIR
 	! [ -d "${OVE_LOG_DIR}" ] && ${ove_cmd2pathname["mkdir"]:?} -p "${OVE_LOG_DIR}"
 
+	# OVE_STAGE_DIR:directory where intermediate build files can be shared
 	OVE_STAGE_DIR=${OVE_BASE_DIR}/stage
 	export OVE_STAGE_DIR
+
+	# OVE_ARCHIVE_DIR:directory to share build archive files
 	OVE_ARCHIVE_DIR=${OVE_BASE_DIR}/archives
 	export OVE_ARCHIVE_DIR
 	: "${OVE_PREFIX:=/usr}"
@@ -10219,8 +10241,12 @@ function ove_init {
 	export OVE_LDFLAGS
 	OVE_CPPFLAGS=" -I${OVE_STAGE_DIR}${OVE_PREFIX}/include"
 	export OVE_CPPFLAGS
+
+	# OVE_SHA:OVE version in use
 	OVE_SHA=$(ove_repo_cmd ${OVE_DIR} rev-parse --short HEAD)
 	export OVE_SHA
+
+	# OVE_LAST_COMMAND:file of the last OVE command executed
 	OVE_LAST_COMMAND=
 	export OVE_LAST_COMMAND
 	OVE_PAGER="less -R"
@@ -10945,6 +10971,13 @@ function ove_packages_not_installed {
 }
 
 function ove_determine_dist_version_and_pack_manager {
+	# OVE_OS:Linux distribution NAME
+	OVE_OS=
+	# OVE_OS_ID:Linux distribution ID
+	OVE_OS_ID=
+	# OVE_OS_VER:Linux distribution VERSION_ID
+	OVE_OS_VER=
+	# OVE_OS_ID_LIKE:Linux distribution ID_LIKE
 	OVE_OS_ID_LIKE=
 	if [ -e /etc/os-release ]; then
 		OVE_OS=$(source /etc/os-release; echo ${NAME})
@@ -10961,6 +10994,10 @@ function ove_determine_dist_version_and_pack_manager {
 		OVE_OS_VER=$(${ove_cmd2pathname["uname"]:?} -r)
 	fi
 
+	# OVE_OS_PACKAGE_MANAGER:package manager
+	OVE_OS_PACKAGE_MANAGER=
+	# OVE_OS_PACKAGE_MANAGER_ARGS:package manager arguments
+	OVE_OS_PACKAGE_MANAGER_ARGS=
 	if [[ ${OVE_OS} == *"Alpine"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="apk"
 		OVE_OS_PACKAGE_MANAGER_ARGS="add"
@@ -11988,10 +12025,12 @@ function ove-generate-doc {
 	local a
 	local b
 	local c
+	local d
 	local header
 	local sorted
 	local str
 
+	# ove-cmd-list.md (command list)
 	a=$(${ove_cmd2pathname["grep"]:?} -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
 		${ove_cmd2pathname["grep"]:?} '\#' | \
 		${ove_cmd2pathname["cut"]:?} -b3-)
@@ -12016,7 +12055,7 @@ function ove-generate-doc {
 		${ove_cmd2pathname["column"]:?} -s: -t \
 		> ${OVE_DIR}/ove-cmd-list.md
 
-
+	# ove-config-list.md (configuration list)
 	for c in $(type ove_config_builtins_init | ${ove_cmd2pathname["grep"]:?} -o 'OVE_[A-Z_]\+'| LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u); do
 		str+="$(${ove_cmd2pathname["grep"]:?} -o "# ${c}:.*:.*" ${OVE_SELF} | ${ove_cmd2pathname["cut"]:?} -b3-):$(type ove_config_builtins_init | \
 			${ove_cmd2pathname["grep"]:?} "export ${c}=" | \
@@ -12038,7 +12077,24 @@ function ove-generate-doc {
 		${ove_cmd2pathname["column"]:?} -s: -t \
 		> ${OVE_DIR}/ove-config-list.md
 
+	# ove.bash
 	${ove_cmd2pathname["sed"]:?} -i "s/^ove_built_ins=.*/ove_built_ins=\"$(ove_get_built_ins)\"/g" ${OVE_DIR}/ove.bash
+
+	# ove-variables-list.md (variables with descriptions)
+	a=$(ove-env | ${ove_cmd2pathname["awk"]:?} '{print $1}')
+	# shellcheck disable=SC2016
+	b=$(${ove_cmd2pathname["grep"]:?} OVE_ ${OVE_DIR}/ove-config-list.md | ${ove_cmd2pathname["awk"]:?} '{print $2}')
+	str=
+	header="| Variable:| Description:"
+	for c in $(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -3 <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <(printf "%s" "$a")) <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <(printf "%s" "$b"))); do
+		d=$(${ove_cmd2pathname["grep"]:?} "# $c:" $OVE_SELF | ${ove_cmd2pathname["cut"]:?} -d':' -f2-)
+		if [ "$d" != "" ]; then
+			str+="| $c:| $d:|\n"
+		fi
+	done
+
+	# shellcheck disable=SC2059
+	printf "$header\n|-|-|\n$str" | ${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-variables-list.md
 
 	return 0
 }
