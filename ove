@@ -6338,7 +6338,7 @@ function ove-install-pkg {
 	fi
 }
 
-# buildme:[project|tag...]:build project(s) from scratch (=bootstrap, configure, build, install)
+# buildme:[project...|tag...]:build project(s) from scratch (=bootstrap, configure, build, install)
 function ove-buildme {
 	ove_entry || return
 
@@ -9047,7 +9047,7 @@ function ove-lastlog-replay {
 			d=${d:0:22}
 		fi
 		ove_echo_cyan_noprefix "$d"
-		${ove_cmd2pathname["script"]:?}replay --divisor $divisor --timing ${ff/.log}.timing $ff 2> /dev/null
+		${ove_cmd2pathname["scriptreplay"]:?} -m 3 --divisor $divisor --timing ${ff/.log}.timing $ff 2> /dev/null
 	done
 
 	if [ -e "$OVE_TMP/ove-${self}" ]; then
