@@ -6131,26 +6131,85 @@ function ove-import {
 	return ${ret}
 }
 
-function ove_tags2projects {
+function ove_set_proj_mask {
 	local a
 	local b
-	declare -a p
-
-	if [ ${#ove_projects_tags[*]} -eq 0 ]; then
-		echo "$@"
-		return 0
-	fi
 
 	for a in "$@"; do
-		if [[ -v ove_projects_tags[$a] ]]; then
-			for b in ${ove_projects_tags[$a]}; do
+		b=${a:1}
+		if [[ $a == +* ]] && [[ -v ove_projects_name2index[${b}] ]]; then
+			unset proj_mask[${b}]
+		elif [[ $a == -* ]] && [[ -v ove_projects_name2index[${b}] ]]; then
+			proj_mask[${b}]=1
+		fi
+	done
+}
+
+function ove_parse_project_args {
+	local a
+	local b
+	local delete
+	local merge
+	local c
+	declare -a p
+
+	for a in "$@"; do
+		merge=0
+		delete=0
+		if [[ $a == +* ]]; then
+			c=${a:1}
+			merge=1
+		elif [[ $a == -* ]]; then
+			c=${a:1}
+			delete=1
+		else
+			c=$a
+			merge=0
+		fi
+
+		if [ $delete -eq 1 ]; then
+			if [ ${#p[*]} -eq 0 ]; then
+				continue
+			fi
+			# is 'c' a tag?
+			if [[ -v ove_projects_tags[$c] ]]; then
+				mapfile -t p <<<$(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -1 -3 \
+					<(printf "%s\n" ${ove_projects_tags[$c]} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}) \
+					<(printf "%s\n" ${p[*]} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}))
+			else
+				mapfile -t p <<<$(printf "%s\n" ${p[*]} | ${ove_cmd2pathname["grep"]:?} -v ^$c$)
+			fi
+			continue
+		fi
+
+		# just append if 'c' is NOT a tag
+		if [[ ! -v ove_projects_tags[$c] ]]; then
+			p+=("$c")
+			continue
+		fi
+
+		# if 'c' is a tag, we want to merge and we have some previous projects to merge with
+		if [ $merge -eq 1 ] && [ ${#p[*]} -ge 1 ]; then
+			# keep projects that are common between previous results ('p') and projects pointed by the new tag ('c')
+			mapfile -t p <<<$(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -1 -2 \
+				<(printf "%s\n" ${ove_projects_tags[$c]} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}) \
+				<(printf "%s\n" ${p[*]} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}))
+
+			if [ ${#p[*]} -eq 0 ] || [ "x${p[0]}" = "x" ]; then
+				ove_echo_error_noprefix "no projects found"
+				return 1
+			fi
+		else
+			for b in ${ove_projects_tags[$c]}; do
 				p+=("$b")
 			done
-		else
-			p+=("$a")
 		fi
 	done
 
+	if [ ${#p[*]} -eq 0 ] || [ "x${p[0]}" = "x" ]; then
+		ove_echo_error_noprefix "no projects found"
+		return 1
+	fi
 	echo "${p[*]}"
 
 	return 0
@@ -6160,7 +6219,10 @@ function ove_validate_project_list {
 	local a
 	declare -a p
 
-	p=("$(ove_tags2projects "$@")")
+	if ! p=("$(ove_parse_project_args "$@")"); then
+		return 1
+	fi
+
 	for a in ${p[*]}; do
 		if ! [[ -v ove_projects_name2index[${a}] ]]; then
 			ove_echo_error_noprefix "unknown project '${a}'"
@@ -6290,6 +6352,7 @@ function ove-list-needs {
 	local pack_list
 	local proj_list
 	local re
+	declare -A proj_mask
 
 	if [ $# -ge 1 ]; then
 		if ! proj_list=$(ove_validate_project_list "$@"); then
@@ -6297,12 +6360,15 @@ function ove-list-needs {
 		fi
 
 		build_list="$(ove_get_build_list ${proj_list})"
+		ove_set_proj_mask "$@"
 	fi
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${build_list}" =~ ${re} ]]; then
+			if [[ -v proj_mask[${b}] ]]; then
+				continue
+			elif ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
@@ -6347,6 +6413,7 @@ function ove-buildme {
 	local p
 	local proj_list
 	local re
+	declare -A proj_mask
 
 	if ! ove_build_pre "$@"; then
 		return 1
@@ -6364,13 +6431,16 @@ function ove-buildme {
 		fi
 
 		build_list="$(ove_get_build_list ${proj_list})"
+		ove_set_proj_mask "$@"
 	fi
 
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
 		for b in ${OVE_BUILD_ORDER}; do
 			if [ $# -ge 1 ]; then
 				re=\\b${b}\\b
-				if ! [[ "${build_list}" =~ ${re} ]]; then
+				if [[ -v proj_mask[${b}] ]]; then
+					continue
+				elif ! [[ "${build_list}" =~ ${re} ]]; then
 					continue
 				fi
 			fi
@@ -6388,7 +6458,9 @@ function ove-buildme {
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${build_list}" =~ ${re} ]]; then
+			if [[ -v proj_mask[${b}] ]]; then
+				continue
+			elif ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
@@ -6416,6 +6488,7 @@ function ove_buildme_parallel_shell {
 	local pids
 	local re
 	local wait_for_deps
+	declare -A proj_mask
 
 	if [ ! -e /proc ]; then
 		ove_echo_error_noprefix "procfs mount point '/proc' is missing"
@@ -6428,13 +6501,16 @@ function ove_buildme_parallel_shell {
 		fi
 
 		build_list="$(ove_get_build_list ${proj_list})"
+		ove_set_proj_mask "$@"
 	fi
 
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
 		for b in ${OVE_BUILD_ORDER}; do
 			if [ $# -ge 1 ]; then
 				re=\\b${b}\\b
-				if ! [[ "${build_list}" =~ ${re} ]]; then
+				if [[ -v proj_mask[${b}] ]]; then
+					continue
+				elif ! [[ "${build_list}" =~ ${re} ]]; then
 					continue
 				fi
 			fi
@@ -6466,14 +6542,18 @@ function ove_buildme_parallel_shell {
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${build_list}" =~ ${re} ]]; then
+			if [[ -v proj_mask[${b}] ]]; then
+				continue
+			elif ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
 
 		wait_for_deps=""
 		for dep in $(ove_get_deps_recursive ${b}); do
-			if ! [ -e /proc/${pids_db[${dep}]} ]; then
+			if [[ -v proj_mask[${dep}] ]]; then
+				continue
+			elif ! [ -e /proc/${pids_db[${dep}]} ]; then
 				pids_db[${dep}]=""
 				continue
 			fi
@@ -6516,6 +6596,7 @@ function ove_buildme_parallel_shell {
 function ove_buildme_parallel_make {
 	local b
 	local build_list
+	local dep
 	local deps
 	local makefile
 	local p
@@ -6524,6 +6605,8 @@ function ove_buildme_parallel_make {
 	local pre_steps
 	local re
 	declare -A pre_steps_projects
+	# shellcheck disable=SC2034
+	declare -A proj_mask
 
 	makefile="${OVE_OWEL_TMP_DIR:?}/Makefile"
 	${ove_cmd2pathname["cat"]:?} > "${makefile}" << EOF
@@ -6546,13 +6629,16 @@ EOF
 		fi
 
 		build_list="$(ove_get_build_list ${proj_list})"
+		ove_set_proj_mask "$@"
 	fi
 
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
 		for b in ${OVE_BUILD_ORDER}; do
 			if [ $# -ge 1 ]; then
 				re=\\b${b}\\b
-				if ! [[ "${build_list}" =~ ${re} ]]; then
+				if [[ -v proj_mask[${b}] ]]; then
+					continue
+				elif ! [[ "${build_list}" =~ ${re} ]]; then
 					continue
 				fi
 			fi
@@ -6570,12 +6656,20 @@ EOF
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
 			re=\\b${b}\\b
-			if ! [[ "${build_list}" =~ ${re} ]]; then
+			if [[ -v proj_mask[${b}] ]]; then
+				continue
+			elif ! [[ "${build_list}" =~ ${re} ]]; then
 				continue
 			fi
 		fi
 
-		deps="$(ove_get_deps_recursive ${b})"
+		deps=
+		for dep in $(ove_get_deps_recursive ${b}); do
+			if [[ -v proj_mask[${dep}] ]]; then
+				continue
+			fi
+			deps+=" $dep"
+		done
 		if [ "x${deps}" != "x" ]; then
 			deps="$(ove_uniq ${deps})"
 			deps="$(printf "%s " ${deps})"
@@ -9271,9 +9365,17 @@ function ove_bash_complete {
 		[ "${subcommand}" == "list-needs" ] ||
 		[ "${subcommand}" == "list-missing-projects" ] ||
 		[ "${subcommand}" == "list-projects" ]; then
-		wordlist=${OVE_PROJECT_LIST}
-		if [ ${#ove_projects_tags[*]} -ne 0 ]; then
-			wordlist+=" ${!ove_projects_tags[*]}"
+		if [[ $cur == +* ]] || [[ $cur == -* ]]; then
+			wordlist=$(printf "\${cur:0:1}%s " $OVE_PROJECT_LIST)
+			if [ ${#ove_projects_tags[*]} -ne 0 ]; then
+				a="${!ove_projects_tags[*]}"
+				wordlist+=" $(printf "\${cur:0:1}%s " ${a})"
+			fi
+		else
+			wordlist=${OVE_PROJECT_LIST}
+			if [ ${#ove_projects_tags[*]} -ne 0 ]; then
+				wordlist+=" ${!ove_projects_tags[*]}"
+			fi
 		fi
 	elif [ "${subcommand}" == "proj2path" ]; then
 		wordlist=${OVE_PROJECT_LIST}
