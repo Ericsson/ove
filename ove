@@ -1856,8 +1856,10 @@ function ove {
 		[ "${cmd}" == "lastlog" ] || \
 		[ "${cmd}" == "lastlog-replay" ] || \
 		[ "${cmd}" == "lastlog-summary" ] || \
+		[ "${cmd}" == "less-lastlog" ] || \
 		[ "${cmd}" == "loglevel" ] || \
 		[ "${cmd}" == "revtab-check" ] || \
+		[ "${cmd}" == "tail-lastlog" ] || \
 		[ "${cmd}" == "unsource" ] || \
 		[ "${cmd}" == "update-revtab" ] || \
 		[ "${cmd}" == "vi" ]; then
@@ -11786,9 +11788,9 @@ function ove_watch_logs {
 
 	cmd=$1
 	if [ "${cmd}" == "tail" ]; then
-		cmd="${ove_cmd2pathname["tail"]:?} -f"
+		_cmd="${ove_cmd2pathname["tail"]:?}"
 	elif [ "${cmd}" == "less" ]; then
-		cmd="${ove_cmd2pathname["less"]:?}"
+		_cmd="${ove_cmd2pathname["less"]:?}"
 	else
 		return 1
 	fi
@@ -11833,13 +11835,15 @@ function ove_watch_logs {
 				continue
 			fi
 
-			if [ "${cmd}" == "${ove_cmd2pathname["less"]:?}" ] && [ "${OVE_LESS_MORE_OPTIONS}" -eq 1 ]; then
-				_cmd="${ove_cmd2pathname["less"]:?} -Ps\"${log//./\\.}\""
+			if [ "${cmd}" == "less" ] && [ "${OVE_LESS_MORE_OPTIONS}" -eq 1 ]; then
+				_cmd="${_cmd} -R -Ps\"${log//./\\.}\""
+			elif [ "${cmd}" == "less" ]; then
+				_cmd="${_cmd} -R"
 			else
 				if [ -h "${d}/${u}/ove/logs/ongo" ]; then
 					log="${d}/${u}/ove/logs/ongo"
 				fi
-				_cmd="${cmd} -s 0.1 -q -F"
+				_cmd="${_cmd} -f -s 0.1 -q -F"
 			fi
 
 			${ove_cmd2pathname["tmux"]:?} split-window -h "${_cmd} ${log} 2> /dev/null"
@@ -11880,7 +11884,19 @@ function ove_watch_logs {
 		ove_echo_error_noprefix "no logs found for user: ${u}"
 		return 1
 	fi
-	eval ${cmd} ${log}
+
+	if [ "${cmd}" == "less" ] && [ "${OVE_LESS_MORE_OPTIONS}" -eq 1 ]; then
+		_cmd="${_cmd} -R -Ps\"${log//./\\.}\""
+	elif [ "${cmd}" == "less" ]; then
+		_cmd="${_cmd} -R"
+	else
+		if [ -h "${d}/${u}/ove/logs/ongo" ]; then
+			log="${d}/${u}/ove/logs/ongo"
+		fi
+		_cmd="${_cmd} -f -s 0.1 -q -F"
+	fi
+
+	eval ${_cmd} ${log} 2> /dev/null
 }
 
 # add-repo:url|url name|url name rev:add a new repo to this OVE workspace
@@ -12183,6 +12199,7 @@ function ove-generate-doc {
 	${ove_cmd2pathname["sed"]:?} -i "s/^ove_built_ins=.*/ove_built_ins=\"$(ove_get_built_ins)\"/g" ${OVE_DIR}/ove.bash
 
 	# ove-variables-list.md (variables with descriptions)
+	# shellcheck disable=SC2016
 	a=$(ove-env | ${ove_cmd2pathname["awk"]:?} '{print $1}')
 	# shellcheck disable=SC2016
 	b=$(${ove_cmd2pathname["grep"]:?} OVE_ ${OVE_DIR}/ove-config-list.md | ${ove_cmd2pathname["awk"]:?} '{print $2}')
