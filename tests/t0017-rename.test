@@ -8,7 +8,7 @@ bash -c "OVE_TEST_STRING; ove rename stage"
 >>>= 1
 bash -c "OVE_TEST_STRING; ove rename archives"
 >>>= 1
-bash -c "OVE_TEST_STRING; ove rename git-1"
+bash -c "OVE_TEST_STRING; [ nbr_of_repos -eq 1 ] && exit 1; ove rename git-1"
 >>>= 1
 bash -c "OVE_TEST_STRING; ove rename @"
 >>>= 1

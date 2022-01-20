@@ -1,2 +1,0 @@
-: config: set; bash -c "OVE_TEST_STRING; { time ove cd; } |& grep '0m0.00[0-5]s'"
->>>= 0

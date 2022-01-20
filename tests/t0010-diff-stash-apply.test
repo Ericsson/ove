@@ -1,2 +1,2 @@
-bash -c "OVE_TEST_STRING; source OVE_DIR/tests/t0010*.sh"
+bash -c "OVE_TEST_STRING; [ nbr_of_repos -lt 5 ] && exit 0; source OVE_DIR/tests/t0010*.sh"
 >>>= 0

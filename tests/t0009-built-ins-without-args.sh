@@ -11,5 +11,8 @@ ignore+=" unsource"
 
 for a in ${OVE_BUILT_INS_WITHOUT_ARGS}; do
 	[[ $ignore == *$a* ]] && continue
-	ove "$a" || exit 1
+	if ! ove "$a"; then
+		echo "$a failed"
+		exit 1
+	fi
 done

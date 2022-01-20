@@ -1,8 +1,8 @@
-bash -c "OVE_TEST_STRING; ove systest ok1"
+bash -c "OVE_TEST_STRING; [ nbr_of_systests -eq 0 ] && exit 0; ove systest ok1"
 >>>= 0
-bash -c "OVE_TEST_STRING; ove systest nok1"
+bash -c "OVE_TEST_STRING; [ nbr_of_systests -eq 0 ] && exit 1; ove systest nok1"
 >>>= 1
-bash -c "OVE_TEST_STRING; ove systest all"
+bash -c "OVE_TEST_STRING; [ nbr_of_systests -eq 0 ] && exit 1; ove systest all"
 >>>= 1
 bash -c "OVE_TEST_STRING; ove list-systests | wc -l"
 >>>

@@ -11547,14 +11547,15 @@ function ove-replicate {
 function ove_unittest_preparations {
 	local a
 	local b
+	local f_all
 	local i
-	local nbr_of_files
+	local nbr_of_files_per_repo
 	local nbr_of_projs
 	local nbr_of_repos
 	local nbr_of_systests
 	local unittest_dir
 
-	nbr_of_files=$1
+	nbr_of_files_per_repo=$1
 	nbr_of_projs=$2
 	nbr_of_repos=$3
 	nbr_of_systests=$4
@@ -11602,17 +11603,23 @@ function ove_unittest_preparations {
 			cd ${unittest_dir}/git-${a} || return 1
 		fi
 
-		for i in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_files}); do
+		f_all=
+		for i in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_files_per_repo}); do
 			filename=$(${ove_cmd2pathname["head"]:?} /dev/urandom | ${ove_cmd2pathname["tr"]:?} -dc A-Za-z0-9 | ${ove_cmd2pathname["head"]:?} -c 13 ; echo '')
-			${ove_cmd2pathname["tr"]:?} -dc "\t\n [:alnum:]" < /dev/urandom | ${ove_cmd2pathname["head"]:?} -c1000 > ${filename}
-			${ove_cmd2pathname["git"]:?} add ${filename}
-			${ove_cmd2pathname["git"]:?} commit -q -m "${filename}"
-			[ $i -eq 1 ] && ${ove_cmd2pathname["git"]:?} checkout -q -b ${OVE_DEFAULT_BRANCH_NAME} 2> /dev/null
-			${ove_cmd2pathname["git"]:?} tag 0.0.${i}
-			${ove_cmd2pathname["git"]:?} push -q origin ${OVE_DEFAULT_BRANCH_NAME}
-			[ $i -eq 1 ] && ${ove_cmd2pathname["git"]:?} branch -q --set-upstream-to=origin/${OVE_DEFAULT_BRANCH_NAME}
-			${ove_cmd2pathname["git"]:?} push -q --tags
+			${ove_cmd2pathname["tr"]:?} -dc "\t\n [:alnum:]" < /dev/urandom | ${ove_cmd2pathname["head"]:?} -c10 > ${filename}
+			f_all+=" $filename"
 		done
+		if [ ${nbr_of_files_per_repo} -ne 0 ]; then
+			${ove_cmd2pathname["git"]:?} add $f_all
+			${ove_cmd2pathname["git"]:?} commit -q -m "asdf"
+			${ove_cmd2pathname["git"]:?} checkout -q -b ${OVE_DEFAULT_BRANCH_NAME} 2> /dev/null
+			${ove_cmd2pathname["git"]:?} tag 0.0.1
+			${ove_cmd2pathname["git"]:?} tag 0.0.2
+			${ove_cmd2pathname["git"]:?} tag 0.0.3
+			${ove_cmd2pathname["git"]:?} push -q origin ${OVE_DEFAULT_BRANCH_NAME}
+			${ove_cmd2pathname["git"]:?} push -q --tags
+			${ove_cmd2pathname["git"]:?} branch -q --set-upstream-to=origin/${OVE_DEFAULT_BRANCH_NAME}
+		fi
 	done
 
 	# create revtab
@@ -11625,32 +11632,39 @@ function ove_unittest_preparations {
 	done
 
 	# create projs
-	for a in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_projs}); do
-		echo "p${a}:" >> ${unittest_dir}/git-top/projs
-		echo "  path: .owel" >> ${unittest_dir}/git-top/projs
-		if [ ${a} -lt ${nbr_of_projs} ]; then
-			echo "  deps: p$((a+1))" >> ${unittest_dir}/git-top/projs
-		fi
-		echo >> ${unittest_dir}/git-top/projs
-		${ove_cmd2pathname["mkdir"]:?} -p ${unittest_dir}/git-top/projects/p${a}
-		for b in bootstrap configure build install; do
-			echo "#!/bin/bash" > ${unittest_dir}/git-top/projects/p${a}/${b}
-			echo "echo ${b} p${a}" >> ${unittest_dir}/git-top/projects/p${a}/${b}
-			chmod +x ${unittest_dir}/git-top/projects/p${a}/${b}
+	if [ $nbr_of_projs -eq 0 ]; then
+		echo "---" > ${unittest_dir}/git-top/projs
+	else
+		for a in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_projs}); do
+			echo "p${a}:" >> ${unittest_dir}/git-top/projs
+			echo "  path: .owel" >> ${unittest_dir}/git-top/projs
+			if [ ${a} -lt ${nbr_of_projs} ]; then
+				echo "  deps: p$((a+1))" >> ${unittest_dir}/git-top/projs
+			fi
+			echo >> ${unittest_dir}/git-top/projs
+			${ove_cmd2pathname["mkdir"]:?} -p ${unittest_dir}/git-top/projects/p${a}
+			for b in bootstrap configure build install; do
+				echo "#!/bin/bash" > ${unittest_dir}/git-top/projects/p${a}/${b}
+				echo "echo ${b} p${a}" >> ${unittest_dir}/git-top/projects/p${a}/${b}
+				chmod +x ${unittest_dir}/git-top/projects/p${a}/${b}
+			done
 		done
-	done
+	fi
 
 	# create systests
 	for a in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_systests}); do
 		echo "ok${a} 10 0 . true" >> ${unittest_dir}/git-top/systests
 		echo "nok${a} 10 0 / false" >> ${unittest_dir}/git-top/systests
 	done
-	# create systests-groups
-	echo "all:" >> ${unittest_dir}/git-top/systests-groups
-	for a in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_systests}); do
-		echo "- ok${a}" >> ${unittest_dir}/git-top/systests-groups
-		echo "- nok${a}" >> ${unittest_dir}/git-top/systests-groups
-	done
+
+	if [ ${nbr_of_systests} -ne 0 ]; then
+		# create systests-groups
+		echo "all:" >> ${unittest_dir}/git-top/systests-groups
+		for a in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_systests}); do
+			echo "- ok${a}" >> ${unittest_dir}/git-top/systests-groups
+			echo "- nok${a}" >> ${unittest_dir}/git-top/systests-groups
+		done
+	fi
 
 	# commit and push
 	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/git-top add .
@@ -11670,7 +11684,68 @@ function ove_unittest_exit {
 }
 
 function ove_unittest_cleanup {
-	${ove_cmd2pathname["git"]:?} -C ${OVE_OWEL_DIR} checkout projs revtab &> /dev/null
+	${ove_cmd2pathname["git"]:?} -C ${OVE_OWEL_DIR} checkout projs revtab &> /dev/null || true
+}
+
+function ove_unittest {
+	local nbr_of_files_per_repo
+	local nbr_of_projs
+	local nbr_of_repos
+	local nbr_of_systests
+	local shelltest_opts
+	local tot_files
+	local unittest_dir
+
+	nbr_of_files_per_repo=$1
+	nbr_of_projs=$2
+	nbr_of_repos=$3
+	nbr_of_systests=$4
+
+	echo "nbr_of_files_per_repo: ${nbr_of_files_per_repo} nbr_of_projs: ${nbr_of_projs} nbr_of_repos: ${nbr_of_repos} nbr_of_systests: ${nbr_of_systests}"
+
+	if ! ove_unittest_preparations ${nbr_of_files_per_repo} ${nbr_of_projs} ${nbr_of_repos} ${nbr_of_systests}; then
+		return 1
+	fi
+
+	tot_files=$((nbr_of_files_per_repo * nbr_of_repos + (4 * nbr_of_projs)))
+
+	# projs is always there
+	((tot_files++))
+
+	# revtab?
+	if [ $nbr_of_repos -ne 0 ]; then
+		((tot_files++))
+	fi
+
+	# systests?
+	if [ $nbr_of_systests -ne 0 ]; then
+		# systests and systests-groups
+		((tot_files+=2))
+	fi
+
+	tot_tests=$((nbr_of_systests * 2))
+	if [ $nbr_of_systests -ne 0 ]; then
+		((tot_tests+=1))
+	fi
+
+	# launch shelltestrunner
+	cd ${OVE_OWEL_TMP_DIR}/unittest || return 1
+	shelltest_opts=" --debug "
+
+	${ove_cmd2pathname["env"]:?} -i - HOME=${HOME} USER=${OVE_USER} \
+		${shelltest} ${tests} \
+		${shelltest_opts} \
+		--color \
+		--diff \
+		-a \
+		-DOVE_TEST_STRING="set -m; source ove > /dev/null; ove_init > /dev/null; export TIMEFORMAT=\"%3lR\"; ove-loglevel 0 > /dev/null; trap ove_unittest_cleanup EXIT" \
+		-DOVE_DEFAULT_BRANCH_NAME=${OVE_DEFAULT_BRANCH_NAME} \
+		-Dnbr_of_systests=${tot_tests} \
+		-Dnbr_of_projs=${nbr_of_projs} \
+		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
+		-Dnbr_of_files=${tot_files} \
+		-DOVE_DIR=${OVE_DIR} \
+		-DOVE_TEST_BASE="$(${ove_cmd2pathname["sed"]:?} -e 's|/|\\/|g' <<<${OVE_OWEL_TMP_DIR}/unittest)" | ${ove_cmd2pathname["sed"]:?} -e 's|\\n|\n|g'
 }
 
 # unittest:[test...]:run all/specific unit tests
@@ -11678,14 +11753,6 @@ function ove-unittest {
 	ove_entry || return
 
 	local a
-	local b
-	local do_preparations
-	local i
-	local nbr_of_files
-	local nbr_of_projs
-	local nbr_of_repos
-	local nbr_of_systests
-	local shelltest_opts
 	local tests
 
 	if command -v shelltest > /dev/null; then
@@ -11722,43 +11789,15 @@ function ove-unittest {
 		fi
 	fi
 
-	nbr_of_files=3
-	nbr_of_projs=10
-	nbr_of_repos=10
-	nbr_of_systests=3
-
-	do_preparations=1
-	if [ -t 1 ] && [ -d ${OVE_OWEL_TMP_DIR}/unittest ]; then
-		do_preparations=0
-		read -p "reuse '${OVE_OWEL_TMP_DIR}/unittest'? (Y/n) " -r
-		if [[ ${REPLY} =~ ^[Nn]$ ]]; then
-			do_preparations="1"
-		fi
-	fi
-
-	if [ ${do_preparations} -eq 1 ]; then
-		if ! ove_unittest_preparations ${nbr_of_files} ${nbr_of_projs} ${nbr_of_repos} ${nbr_of_systests}; then
-			return 1
-		fi
-	fi
-
-	# launch shelltestrunner
-	cd ${OVE_OWEL_TMP_DIR}/unittest || return 1
-	shelltest_opts=" --debug "
-
-	${ove_cmd2pathname["env"]:?} -i - HOME=${HOME} USER=${OVE_USER} \
-		${shelltest} ${tests} \
-		${shelltest_opts} \
-		--color \
-		--diff \
-		-a \
-		-DOVE_TEST_STRING="set -m; source ove > /dev/null; ove_init > /dev/null; export TIMEFORMAT=\"%3lR\"; ove-loglevel 0 > /dev/null; trap ove_unittest_cleanup EXIT" \
-		-DOVE_DEFAULT_BRANCH_NAME=${OVE_DEFAULT_BRANCH_NAME} \
-		-Dnbr_of_systests=$(((nbr_of_systests * 2) + 1)) \
-		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
-		-Dnbr_of_files=$((nbr_of_files * nbr_of_repos + (4 * nbr_of_projs) + 4)) \
-		-DOVE_DIR=${OVE_DIR} \
-		-DOVE_TEST_BASE="$(${ove_cmd2pathname["sed"]:?} -e 's|/|\\/|g' <<<${OVE_OWEL_TMP_DIR}/unittest)" | ${ove_cmd2pathname["sed"]:?} -e 's|\\n|\n|g'
+	#            files_per_repo | projs | repos | systest
+	ove_unittest       0            0       0        0
+	ove_unittest       0            1       0        0
+	ove_unittest       1            0       1        0
+	ove_unittest       0            0       0        1
+	ove_unittest       1            1       1        1
+	ove_unittest       2            2       2        2
+	ove_unittest       3            3       3        3
+	ove_unittest       3           10      10        3
 }
 
 # less-lastlog:[user...]:peek into user(s) last OVE log using less
