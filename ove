@@ -11777,7 +11777,8 @@ function ove-tail-lastlog {
 # ${@:2}: users
 function ove_watch_logs {
 	local cmd
-	local _cmd
+	local cmdline
+	local cmdpathname
 	local d
 	local e
 	local i
@@ -11788,9 +11789,9 @@ function ove_watch_logs {
 
 	cmd=$1
 	if [ "${cmd}" == "tail" ]; then
-		_cmd="${ove_cmd2pathname["tail"]:?}"
+		cmdpathname="${ove_cmd2pathname["tail"]:?}"
 	elif [ "${cmd}" == "less" ]; then
-		_cmd="${ove_cmd2pathname["less"]:?}"
+		cmdpathname="${ove_cmd2pathname["less"]:?}"
 	else
 		return 1
 	fi
@@ -11835,18 +11836,19 @@ function ove_watch_logs {
 				continue
 			fi
 
+			cmdline=
 			if [ "${cmd}" == "less" ] && [ "${OVE_LESS_MORE_OPTIONS}" -eq 1 ]; then
-				_cmd="${_cmd} -R -Ps\"${log//./\\.}\""
+				cmdline="${cmdpathname} -R -Ps\"${log//./\\.}\""
 			elif [ "${cmd}" == "less" ]; then
-				_cmd="${_cmd} -R"
+				cmdline="${cmdpathname} -R"
 			else
 				if [ -h "${d}/${u}/ove/logs/ongo" ]; then
 					log="${d}/${u}/ove/logs/ongo"
 				fi
-				_cmd="${_cmd} -f -s 0.1 -q -F"
+				cmdline="${cmdpathname} -f -s 0.1 -q -F"
 			fi
 
-			${ove_cmd2pathname["tmux"]:?} split-window -h "${_cmd} ${log} 2> /dev/null"
+			${ove_cmd2pathname["tmux"]:?} split-window -h "${cmdline} ${log} 2> /dev/null"
 			[ $# -eq 1 ] && return
 			${ove_cmd2pathname["tmux"]:?} select-layout ${OVE_TMUX_LAYOUT}
 		done
@@ -11886,17 +11888,17 @@ function ove_watch_logs {
 	fi
 
 	if [ "${cmd}" == "less" ] && [ "${OVE_LESS_MORE_OPTIONS}" -eq 1 ]; then
-		_cmd="${_cmd} -R -Ps\"${log//./\\.}\""
+		cmdline="${cmdpathname} -R -Ps\"${log//./\\.}\""
 	elif [ "${cmd}" == "less" ]; then
-		_cmd="${_cmd} -R"
+		cmdline="${cmdpathname} -R"
 	else
 		if [ -h "${d}/${u}/ove/logs/ongo" ]; then
 			log="${d}/${u}/ove/logs/ongo"
 		fi
-		_cmd="${_cmd} -f -s 0.1 -q -F"
+		cmdline="${cmdpathname} -f -s 0.1 -q -F"
 	fi
 
-	eval ${_cmd} ${log} 2> /dev/null
+	eval ${cmdline} ${log} 2> /dev/null
 }
 
 # add-repo:url|url name|url name rev:add a new repo to this OVE workspace
