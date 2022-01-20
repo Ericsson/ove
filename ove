@@ -2561,9 +2561,14 @@ function ove_revtab_init {
 	unset ove_revtab_name2index
 	ove_revtab_num_repositories=0
 
-	[ ! -e "${OVE_OWEL_DIR}/revtab" ] && return
+	if [ ! -e "${OVE_OWEL_DIR}/revtab" ]; then
+		OVE_REPO_LIST="${OVE_OWEL_DIR}"
+		OVE_REPO_LIST_WIDTH="${#OVE_OWEL_DIR}"
+		((OVE_REPO_LIST_WIDTH+=2))
+		return
+	fi
 
-	if ! ove_validate_revtab; then
+	if ! ove_revtab_validate; then
 		return 1
 	fi
 
@@ -2868,33 +2873,10 @@ function ove_revtab_status_parse {
 	set -m
 }
 
-function ove_revtab_list {
-	local i
-	local str
-	local url
-
-	i=0
-
-	if [ "${ove_revtab_num_repositories}" == 0 ]; then
-		echo "run 'ove fetch' first!"
+function ove_revtab_sanity {
+	if [ "${ove_revtab_num_repositories}" -eq 0 ]; then
 		return 1
 	fi
-
-	while ((i < ove_revtab_num_repositories)); do
-		str+="${ove_revtab_git_name[${i}]} ${ove_revtab_fetch_url[${i}]} ${ove_revtab_push_url[${i}]} ${ove_revtab_rev[${i}]}\n"
-		(( i+=1 ))
-	done
-
-	url=$(ove_repo_cmd "${OVE_OWEL_DIR}" "config" --get remote.origin.url)
-	if [ "${url}" != "" ]; then
-		str+="${OVE_OWEL_NAME} ${url} ${url} $(ove_repo_cmd "${OVE_OWEL_DIR}" "rev-parse" --abbrev-ref HEAD 2> /dev/null)\n"
-	else
-		str+="${OVE_OWEL_NAME} noremote noremote $(ove_repo_cmd "${OVE_OWEL_DIR}" "rev-parse" --abbrev-ref HEAD 2> /dev/null)\n"
-	fi
-
-	printf "${str}" | \
-		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
-		${ove_cmd2pathname["column"]:?} -t
 }
 
 function ove_repos_fetched {
@@ -3142,6 +3124,7 @@ function ove_revtab_check_one {
 # revtab-sync:[git...]:sync all/specified git repositories with 'revtab' (ignore OVE_REVTAB_CHECK)
 function ove-revtab-sync {
 	ove_entry || return
+	ove_revtab_sanity || return
 
 	local i
 	local r
@@ -3172,11 +3155,12 @@ function ove-revtab-sync {
 }
 
 function ove_revtab_check {
+	ove_revtab_sanity || return
+
 	local i
 	local n=${FUNCNAME^^}
 
 	[ -n "${!n}" ] && [ "${!n}" -eq 0 ] && return
-	[ "${ove_revtab_num_repositories}" == 0 ] && return 1
 
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
@@ -3360,6 +3344,8 @@ function ove_revtab_clone_and_checkout_one {
 # $*: optional list of repositories
 function ove_revtab_clone_and_checkout {
 	(
+	ove_revtab_sanity || return
+
 	local i
 	local repo
 	local repos
@@ -5121,6 +5107,8 @@ function ove-update-revtab {
 		return 1
 	fi
 
+	ove_revtab_sanity || return
+
 	# validate repo
 	repo=$(ove_validate_repo_list ${1})
 	if [ "${repo}" == "" ]; then
@@ -5147,6 +5135,7 @@ function ove-update-revtab {
 # branch:[git...]|[git... name]:list branch(es) or create-and-checkout 'name' branch for 'git...' and update 'revtab' accordingly
 function ove-branch {
 	ove_entry || return
+	ove_revtab_sanity || return
 
 	local a
 	local args
@@ -5707,7 +5696,7 @@ function ove-proj2path {
 	echo "${ove_projects_path[${i}]}"
 }
 
-function ove_validate_revtab {
+function ove_revtab_validate {
 	local a
 	local foo
 	local d
@@ -6112,7 +6101,7 @@ function ove-import {
 
 	# remove revtab duplicates
 	# shellcheck disable=SC2016
-	if ! out=$(ove_validate_revtab 2> /dev/null); then
+	if ! out=$(ove_revtab_validate 2> /dev/null); then
 		lines=$(r_prev=; while read -r line; do
 			n=${line%%:*}
 			repo=${line##*:}
@@ -6737,7 +6726,27 @@ function ove-diff-check {
 function ove-list-repositories {
 	ove_entry || return
 
-	ove_revtab_list
+	local i
+	local str
+	local url
+
+	i=0
+
+	while ((i < ove_revtab_num_repositories)); do
+		str+="${ove_revtab_git_name[${i}]} ${ove_revtab_fetch_url[${i}]} ${ove_revtab_push_url[${i}]} ${ove_revtab_rev[${i}]}\n"
+		(( i+=1 ))
+	done
+
+	url=$(ove_repo_cmd "${OVE_OWEL_DIR}" "config" --get remote.origin.url)
+	if [ "${url}" != "" ]; then
+		str+="${OVE_OWEL_NAME} ${url} ${url} $(ove_repo_cmd "${OVE_OWEL_DIR}" "rev-parse" --abbrev-ref HEAD 2> /dev/null)\n"
+	else
+		str+="${OVE_OWEL_NAME} noremote noremote $(ove_repo_cmd "${OVE_OWEL_DIR}" "rev-parse" --abbrev-ref HEAD 2> /dev/null)\n"
+	fi
+
+	printf "${str}" | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
+		${ove_cmd2pathname["column"]:?} -t
 }
 
 # env:[pattern]:show OVE environment variables
@@ -6820,6 +6829,7 @@ function ove-status {
 # news:[git...]:list upstream changes for all/specified repositories
 function ove-news {
 	ove_entry || return
+
 	ove-behind "$@"
 }
 
@@ -7373,6 +7383,7 @@ function ove_submodule2revtab {
 # import-submodules:[git]:append submodule(s) to 'revtab' and run fetch for all/specified git repositories
 function ove-import-submodules {
 	ove_entry || return
+	ove_revtab_sanity || return
 
 	local imports
 	local out
@@ -7901,11 +7912,6 @@ function ove-blame {
 	[ $# -eq 0 ] && ove_echo_error_noprefix "no pattern, try again" && return 1
 
 	s="$*"
-
-	if [ "${OVE_REPO_LIST}" == "" ]; then
-		echo "run 'ove fetch' first!"
-		return 1
-	fi
 
 	for repo in ${OVE_REPO_LIST}; do
 		! [ -d "${repo}" ] && continue
@@ -8622,6 +8628,7 @@ function ove-ls-remote {
 # heads2revtab:[git...]:update 'revtab' with current SHA-1
 function ove-heads2revtab {
 	ove_entry || return
+	ove_revtab_sanity || return
 
 	local repo
 	local repos
@@ -9261,11 +9268,6 @@ function ove-authors {
 	local repo
 
 	declare -A urls
-
-	if [ "${OVE_REPO_LIST}" == "" ]; then
-		echo "run 'ove fetch' first!"
-		return 1
-	fi
 
 	for repo in ${OVE_REPO_LIST}; do
 		if [ ! -d "${repo}" ] || [ "${repo}" == "${OVE_DIR}" ]; then
@@ -10347,7 +10349,7 @@ function ove_init {
 	export OVE_CPPFLAGS
 
 	# OVE_SHA:OVE version in use
-	OVE_SHA=$(ove_repo_cmd ${OVE_DIR} rev-parse --short HEAD)
+	OVE_SHA=$(${ove_cmd2pathname["git"]:?} -C ${OVE_DIR} rev-parse --short HEAD)
 	export OVE_SHA
 
 	# OVE_LAST_COMMAND:file of the last OVE command executed
