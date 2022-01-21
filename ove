@@ -9585,7 +9585,8 @@ function ove_bash_complete {
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
 		fi
-	elif [ "${subcommand}" == "revtab-sync" ]; then
+	elif [ "${subcommand}" == "remove-repo" ] ||
+		[ "${subcommand}" == "revtab-sync" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
 			wordlist=${wordlist/${OVE_OWEL_NAME}/}
@@ -11940,6 +11941,34 @@ function ove_watch_logs {
 	fi
 
 	eval ${cmdline} ${log} 2> /dev/null
+}
+
+# remove-repo:name...:remove repo(s) from 'revtab'
+function ove-remove-repo {
+	ove_entry || return
+	ove_revtab_sanity || return
+
+	local r
+	local repos
+
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	repos=$(ove_validate_repo_list "$@")
+	repos=${repos/${OVE_OWEL_NAME}}
+	if [ "x${repos}" = "x" ]; then
+		ove_echo_error_noprefix "invalid repo name(s): ${*}"
+		return 1
+	fi
+
+	for r in ${repos}; do
+		if ! ${ove_cmd2pathname["sed"]:?} -i -e "/^${r} /d" "${OVE_OWEL_DIR}/revtab"; then
+			ove_echo_fatal_noprefix "removing '$r' from '${OVE_OWEL_DIR}/revtab' failed"
+			return 1
+		fi
+	done
 }
 
 # add-repo:url|url name|url name rev:add a new repo to this OVE workspace

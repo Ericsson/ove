@@ -4,3 +4,11 @@ nbr_of_repos
 >>>= 0
 bash -c "OVE_TEST_STRING; ove add-repo foo \${OVE_OWEL_NAME} bar"
 >>>= 1
+bash -c "OVE_TEST_STRING; ove remove-repo"
+>>>= 1
+bash -c "OVE_TEST_STRING; ove remove-repo \${OVE_OWEL_NAME}"
+>>>= 1
+bash -c "OVE_TEST_STRING; [ nbr_of_repos -eq 1 ] && exit 0; ove add-repo \$PWD/remotes/git-1 qwerty \${OVE_DEFAULT_BRANCH_NAME}"
+>>>= 0
+bash -c "OVE_TEST_STRING; [ nbr_of_repos -eq 1 ] && exit 0; ove add-repo \$PWD/remotes/git-1 qwerty \${OVE_DEFAULT_BRANCH_NAME}; ove remove-repo qwerty"
+>>>= 0
