@@ -7073,10 +7073,16 @@ function ove_any_repo {
 
 # $1: behind|ahead
 function ove_list_repos {
+	local repos
+
 	# shellcheck disable=SC2016
-	ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v | ${ove_cmd2pathname["sed"]:?} -e "s|^\*|${repo_basename}|g"' |
+	repos=$(ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v | ${ove_cmd2pathname["sed"]:?} -e "s|^\*|${repo_basename}|g"' |
 		${ove_cmd2pathname["grep"]:?} "${1}.*]" |
-		${ove_cmd2pathname["awk"]:?} '{print $1}'
+		${ove_cmd2pathname["cut"]:?} -d' ' -f1)
+
+	if [ "x${repos}" != "x" ]; then
+		printf "%s\n" ${repos}
+	fi
 }
 
 # pull:[git...]:git pull for all/specified repositories
@@ -9595,20 +9601,12 @@ function ove_bash_complete {
 		[ "${subcommand}" == "show-behind" ] ||
 		[ "${subcommand}" == "show-news" ] ||
 		[ "${subcommand}" == "pull" ]; then
-		if ove_any_repo behind; then
-			wordlist=$(ove_list_repos behind)
-		else
-			wordlist=$(ove_revtab_list_basename)
-		fi
+		wordlist=$(ove_list_repos behind)
 	elif [ "${subcommand}" == "ahead" ] ||
 		[ "${subcommand}" == "rebase-autosquash" ] ||
 		[ "${subcommand}" == "reset-ahead" ] ||
 		[ "${subcommand}" == "show-ahead" ]; then
-		if ove_any_repo ahead; then
-			wordlist=$(ove_list_repos ahead)
-		else
-			wordlist=$(ove_revtab_list_basename)
-		fi
+		wordlist=$(ove_list_repos ahead)
 	elif [ "${subcommand}" == "demo" ] ||
 		[ "${subcommand}" == "fetch" ] ||
 		[ "${subcommand}" == "list-heads" ] ||
