@@ -5724,6 +5724,23 @@ function ove_revtab_validate {
 	done <"${OVE_OWEL_DIR}/revtab"
 }
 
+function ove_set_built_ins {
+	local funcs
+
+	OVE_BUILT_INS=$(ove_get_built_ins)
+
+	funcs=$(${ove_cmd2pathname["grep"]:?} -B1 '^function ove-' ${OVE_SELF})
+
+	OVE_BUILT_INS_WITHOUT_ARGS=$(${ove_cmd2pathname["grep"]:?} ': :' <<< "${funcs}" | \
+		${ove_cmd2pathname["cut"]:?} -b3- | \
+		${ove_cmd2pathname["cut"]:?} -d: -f1 | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
+	OVE_BUILT_INS_WITHOUT_ARGS=${OVE_BUILT_INS_WITHOUT_ARGS//$'\n'/ }
+
+	export OVE_BUILT_INS_WITHOUT_ARGS
+	export OVE_BUILT_INS
+}
+
 function ove_validate_self {
 	local funcs
 
@@ -5753,14 +5770,6 @@ function ove_validate_self {
 		type ove-nop
 		return 1
 	fi
-
-	OVE_BUILT_INS_WITHOUT_ARGS=$(${ove_cmd2pathname["grep"]:?} ': :' <<< "${funcs}" | \
-		${ove_cmd2pathname["cut"]:?} -b3- | \
-		${ove_cmd2pathname["cut"]:?} -d: -f1 | \
-		LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
-	OVE_BUILT_INS_WITHOUT_ARGS=${OVE_BUILT_INS_WITHOUT_ARGS//$'\n'/ }
-
-	export OVE_BUILT_INS_WITHOUT_ARGS
 }
 
 function ove_validate_projs {
@@ -9718,13 +9727,11 @@ function ove_update_tab_complete {
 	local cmd
 	local oldIFS
 
-	OVE_BUILT_INS=$(ove_get_built_ins)
-
 	# project commands
 	OVE_ALL_COMMANDS=${OVE_PROJECT_COMMANDS}
 
 	# built-in functions
-	OVE_ALL_COMMANDS+=" ${OVE_BUILT_INS}"
+	OVE_ALL_COMMANDS+=" ${OVE_BUILT_INS:?}"
 
 	# scripts
 	if [ "${OVE_SCRIPTS_LIST}" != "" ]; then
@@ -10286,7 +10293,7 @@ function ove_init {
 		done
 	fi
 
-	if ! ove_validate_self; then
+	if ! ove_set_built_ins; then
 		return 1
 	fi
 
@@ -12548,7 +12555,13 @@ function ove-distrocheck {
 function ove-pre-push {
 	ove_entry || return
 
-	[ -d ${OVE_OWEL_TMP_DIR}/unittest ] && ${ove_cmd2pathname["rm"]:?} -rf ${OVE_OWEL_TMP_DIR}/unittest
+	if ! ove_validate_self; then
+		return 1
+	fi
+
+	if [ -d ${OVE_OWEL_TMP_DIR}/unittest ]; then
+		${ove_cmd2pathname["rm"]:?} -rf ${OVE_OWEL_TMP_DIR}/unittest
+	fi
 
 	if [ -n "${TMUX}" ]; then
 		ove-run-parallel 0 shell-check 0 unittest 0 generate-doc 0 "blame ${OVE_USER}"
