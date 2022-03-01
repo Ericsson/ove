@@ -10914,7 +10914,7 @@ foobar:
 EOF
 
 			# projects
-			${ove_cmd2pathname["mkdir"]:?} -v -p ${dir}/${owel_name}/projects/foobar
+			${ove_cmd2pathname["mkdir"]:?} -p ${dir}/${owel_name}/projects/foobar
 
 			for d in bootstrap configure build install test; do
 				${ove_cmd2pathname["cat"]:?} > "${dir}/${owel_name}/projects/foobar/$d" << EOF
