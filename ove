@@ -10713,6 +10713,7 @@ function ove-init {
 	local revision
 	local revtabs
 	local revtab_file
+	local skeleton
 	local str
 
 	if [ $# -eq 0 ]; then
@@ -10833,7 +10834,7 @@ function ove-init {
 		fi
 
 		((i++))
-		echo -en "scanning '${dir}'. #repos: ${i}\r"
+		echo -en "Scanning '${dir}'. #repos: ${i}\r"
 		str+="${name} ${fetch_url} ${push_url} ${revision}\n"
 	done < <(${ove_cmd2pathname["find"]:?} "${dir}" -type d -name .git 2>/dev/null)
 
@@ -10889,6 +10890,78 @@ function ove-init {
 		done | ${ove_cmd2pathname["column"]:?} -t
 	fi
 
+	skeleton=0
+	if [ -t 1 ]; then
+		read -r -p "Create example/skeleton files? (y/N) "
+		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+			skeleton=1
+			# projs
+			${ove_cmd2pathname["cat"]:?} > "${dir}/${owel_name}/projs" << EOF
+---
+base:
+  needs:
+    coreutils
+  path:
+    .
+
+foobar:
+  deps:
+    base
+  path:
+    foobar
+  version:
+    0.1.0
+EOF
+
+			# projects
+			${ove_cmd2pathname["mkdir"]:?} -v -p ${dir}/${owel_name}/projects/foobar
+
+			for d in bootstrap configure build install test; do
+				${ove_cmd2pathname["cat"]:?} > "${dir}/${owel_name}/projects/foobar/$d" << EOF
+#!/usr/bin/env bash
+
+echo "'$d' step for the OVE project named 'foobar'"
+echo "OVE_ACTIVE_PROJECT_NAME=\$OVE_ACTIVE_PROJECT_NAME"
+echo "OVE_ACTIVE_PROJECT_COMMAND=\$OVE_ACTIVE_PROJECT_COMMAND"
+echo "OVE_ACTIVE_PROJECT_VERSION=\$OVE_ACTIVE_PROJECT_VERSION"
+echo
+echo "This script is located here: \$OVE_OWEL_DIR/projects/foobar/$d"
+EOF
+				chmod +x ${dir}/${owel_name}/projects/foobar/$d
+			done
+
+			# scripts
+			${ove_cmd2pathname["mkdir"]:?} -p ${dir}/${owel_name}/scripts
+			${ove_cmd2pathname["cat"]:?} > "${dir}/${owel_name}/scripts/qwerty" << EOF
+#!/usr/bin/env bash
+
+echo "This is one OVE plugin named 'qwerty' and it is located here: \$OVE_OWEL_DIR/scripts/qwerty"
+EOF
+			chmod +x ${dir}/${owel_name}/scripts/qwerty
+
+			# SETUP
+			echo "# add your oneliner in this file and the 'ove setup' will display it" > ${dir}/${owel_name}/SETUP
+
+			# systests and systests-groups
+			${ove_cmd2pathname["cat"]:?} > "${dir}/${owel_name}/systests" << EOF
+# name       timeout (s)   type   path   command
+t1           2             0      .      sleep 1
+t2           1             0      .      sleep 2
+EOF
+			${ove_cmd2pathname["cat"]:?} > "${dir}/${owel_name}/systests-groups" << EOF
+---
+all:
+  - t1
+  - t2
+
+sanity:
+  - t1
+EOF
+		fi
+	fi
+
+	echo
+	echo "Summary:"
 	echo "* created/updated '${revtab_file}' and with ${i} repositories"
 	if [ "${ove_link}" != "" ]; then
 		echo "* created a symbolic link '${dir}/ove' -> '${ove_link}'"
@@ -10905,8 +10978,32 @@ function ove-init {
 		cd ${dir} || return 1
 		echo "* changed current working directory to ${dir}"
 	fi
+	if [ ${skeleton} -eq 1 ]; then
+		echo "* created these example/skeleton files:"
+		${ove_cmd2pathname["find"]:?} ${dir}/${owel_name}/{projects,scripts,projs,SETUP} -type f
+	fi
+	echo
+	echo "# now what?"
+	echo
+	echo "# check status"
 	echo "$ ove status"
-	ove status
+	echo
+	if [ ${skeleton} -eq 1 ]; then
+		echo "# try some OVE commands"
+		echo "$ ove buildme foobar"
+		echo "$ ove bootstrap foobar"
+		echo "$ ove list-needs foobar"
+		echo "$ ove qwerty"
+		echo "$ ove systest t1"
+		echo "$ ove systest all"
+		echo
+	fi
+	echo "# add new repos/projects"
+	echo "$ ove add-repo"
+	echo "$ ove add-project"
+	echo
+	echo "# need help? ask OVE"
+	echo "$ ove help"
 }
 
 function ove_debian_based {
