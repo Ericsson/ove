@@ -3323,6 +3323,11 @@ function ove_revtab_clone_and_checkout_one {
 		break
 	done |& ${ove_cmd2pathname["sed"]:?} "s|^|$(printf "%-${OVE_REPO_LIST_WIDTH}s" ${name})|g"
 
+	if [ ${PIPESTATUS[0]} -ne 0 ]; then
+		ove_echo_error_noprefix "'git clone ${fetch_url} ${OVE_BASE_DIR}/${name}' failed"
+		return 1
+	fi
+
 	ove_revtab_checkout "${name}"
 	ove_revtab_check_fetch_push "${name}" "${fetch_url}" "${push_url}"
 	ove_patch_repos ${name}
