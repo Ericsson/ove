@@ -2300,6 +2300,7 @@ function ove_projects_init {
 
 	# OVE_BUILD_ORDER:project build order
 	OVE_BUILD_ORDER="$(ove-build-order)"
+	export OVE_BUILD_ORDER
 }
 
 function ove_list_projects_without_deps {
@@ -2613,6 +2614,8 @@ function ove_revtab_init {
 
 	# OVE_REPO_LIST:space separated list of all git repositories for one OVE workspace
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
+	export OVE_REPO_LIST
+
 	OVE_REPO_LIST_WIDTH=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | ${ove_cmd2pathname["wc"]:?} -L)
 	((OVE_REPO_LIST_WIDTH+=2))
 }
@@ -4380,10 +4383,12 @@ function ove-systest {
 		printf "${FUNCNAME[0]}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
 
 		OVE_SYSTEST_ACTIVE_TEST_CASE=${test_name}
-		OVE_SYSTEST_ITERATION=${i}
-		OVE_SYSTEST_NBR_TESTS=${nbr_tests}
 		export OVE_SYSTEST_ACTIVE_TEST_CASE
+
+		OVE_SYSTEST_ITERATION=${i}
 		export OVE_SYSTEST_ITERATION
+
+		OVE_SYSTEST_NBR_TESTS=${nbr_tests}
 		export OVE_SYSTEST_NBR_TESTS
 
 		if [ "${OVE_DRY_RUN}" -eq 1 ]; then
@@ -5733,6 +5738,7 @@ function ove_set_built_ins {
 	local funcs
 
 	OVE_BUILT_INS=$(ove_get_built_ins)
+	export OVE_BUILT_INS
 
 	funcs=$(${ove_cmd2pathname["grep"]:?} -B1 '^function ove-' ${OVE_SELF})
 
@@ -5741,9 +5747,7 @@ function ove_set_built_ins {
 		${ove_cmd2pathname["cut"]:?} -d: -f1 | \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
 	OVE_BUILT_INS_WITHOUT_ARGS=${OVE_BUILT_INS_WITHOUT_ARGS//$'\n'/ }
-
 	export OVE_BUILT_INS_WITHOUT_ARGS
-	export OVE_BUILT_INS
 }
 
 function ove_validate_self {
@@ -9753,9 +9757,8 @@ function ove_update_tab_complete {
 	IFS=$'\n' OVE_ALL_COMMANDS=$(printf '%s ' $(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"${array[*]}"))
 	# OVE_ALL_COMMANDS:space separated list of all OVE commands
 	OVE_ALL_COMMANDS=${OVE_ALL_COMMANDS::-1}
-	IFS=${oldIFS}
-
 	export OVE_ALL_COMMANDS
+	IFS=${oldIFS}
 
 	complete -o bashdefault -o default -F ove_bash_complete ove
 	for cmd in ${OVE_PROJECT_COMMANDS}; do
@@ -9993,6 +9996,13 @@ function ove_dirs_init {
 		! [ -e "${OVE_TMP_LINK_NAME}" ] && ${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR}
 	fi
 	export OVE_OWEL_TMP_DIR
+
+	OVE_LOG_DIR="${OVE_GLOBAL_STATE_DIR}/logs"
+	export OVE_LOG_DIR
+
+	if ! [ -d "${OVE_LOG_DIR}" ]; then
+		${ove_cmd2pathname["mkdir"]:?} -p "${OVE_LOG_DIR}"
+	fi
 }
 
 function ove_config_init {
@@ -10255,25 +10265,46 @@ function ove_init {
 
 	# OVE_BASE_DIR:OVE workspace base directory
 	OVE_BASE_DIR="${dir}"
+	export OVE_BASE_DIR
 
 	# OVE_OWEL_DIR:OWEL base dir. This directory contains 'projs', 'revtab', projects/... files.
 	OVE_OWEL_DIR=$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_BASE_DIR}/.owel)
+	export OVE_OWEL_DIR
 
 	# OVE_OWEL_NAME:OWEL name
 	OVE_OWEL_NAME=${OVE_OWEL_DIR##*/}
+	export OVE_OWEL_NAME
 
 	# OVE_PROJECT_LIST:space separated list of OVE projects defined in 'projs'
 	OVE_PROJECT_LIST=$(ove_list_projects)
+	export OVE_PROJECT_LIST
 
 	# OVE_PROJECT_COMMANDS:space separated list of project commands
 	OVE_PROJECT_COMMANDS=$(ove_project_commands_list)
+	export OVE_PROJECT_COMMANDS
+
+	# OVE_STAGE_DIR:directory where intermediate build files can be shared
+	OVE_STAGE_DIR=${OVE_BASE_DIR}/stage
+	export OVE_STAGE_DIR
+
+	# OVE_ARCHIVE_DIR:directory to share build archive files
+	OVE_ARCHIVE_DIR=${OVE_BASE_DIR}/archives
+	export OVE_ARCHIVE_DIR
 
 	resolved="$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_BASE_DIR}/ove)"
 	if ! OVE_DIR="$(cd "$(${ove_cmd2pathname["dirname"]:?} "${resolved}")" || exit 1; pwd -P)"; then
 		return 1
 	fi
+	export OVE_DIR
+
 	OVE_BASENAME="${resolved##*/}"
+	export OVE_BASENAME
+
 	OVE_SELF="${OVE_DIR}/${OVE_BASENAME}"
+	export OVE_SELF
+
+	: "${OVE_PREFIX:=/usr}"
+	export OVE_PREFIX
 
 	ove_dirs_init
 	ove_config_init
@@ -10320,31 +10351,6 @@ function ove_init {
 
 	ove_config_builtins_init
 
-	export OVE_REPO_LIST
-	export OVE_BUILD_ORDER
-	export OVE_BASE_DIR
-	export OVE_OWEL_DIR
-	export OVE_PROJECT_LIST
-	export OVE_PROJECT_COMMANDS
-	export OVE_DIR
-	export OVE_BASENAME
-	export OVE_SELF
-	export OVE_OWEL_NAME
-
-	OVE_LOG_DIR="${OVE_GLOBAL_STATE_DIR}/logs"
-	export OVE_LOG_DIR
-	! [ -d "${OVE_LOG_DIR}" ] && ${ove_cmd2pathname["mkdir"]:?} -p "${OVE_LOG_DIR}"
-
-	# OVE_STAGE_DIR:directory where intermediate build files can be shared
-	OVE_STAGE_DIR=${OVE_BASE_DIR}/stage
-	export OVE_STAGE_DIR
-
-	# OVE_ARCHIVE_DIR:directory to share build archive files
-	OVE_ARCHIVE_DIR=${OVE_BASE_DIR}/archives
-	export OVE_ARCHIVE_DIR
-	: "${OVE_PREFIX:=/usr}"
-	export OVE_PREFIX
-
 	read -r -a OVE_LD_SEARCH_PATH < <(${ove_cmd2pathname["ld"]:?} --verbose | \
 		${ove_cmd2pathname["sed"]:?} -n -e '/^SEARCH_DIR/s,SEARCH_DIR("=\?,,g' -e 's,");,,gp')
 	OVE_LDFLAGS=""
@@ -10355,6 +10361,7 @@ function ove_init {
 		OVE_LDFLAGS+=" -Wl,-rpath-link=${OVE_STAGE_DIR}${dir}"
 	done
 	export OVE_LDFLAGS
+
 	OVE_CPPFLAGS=" -I${OVE_STAGE_DIR}${OVE_PREFIX}/include"
 	export OVE_CPPFLAGS
 
@@ -10365,6 +10372,7 @@ function ove_init {
 	# OVE_LAST_COMMAND:file of the last OVE command executed
 	OVE_LAST_COMMAND=
 	export OVE_LAST_COMMAND
+
 	OVE_PAGER="less -R"
 	export OVE_PAGER
 
@@ -10555,6 +10563,7 @@ function ove_update_terminal_stats {
 		fi
 
 	fi
+
 	if [ "x${COLUMNS}" != "x" ]; then
 		OVE_COLUMNS=$COLUMNS
 		OVE_LINES=$LINES
@@ -10562,7 +10571,6 @@ function ove_update_terminal_stats {
 		OVE_COLUMNS=
 		OVE_LINES=
 	fi
-
 	export OVE_COLUMNS
 	export OVE_LINES
 }
