@@ -1806,7 +1806,7 @@ function ove {
 	ove_update_terminal_stats
 
 	if [ $# -eq 0 ]; then
-		ove-fzf || ove-help
+		ove-help
 		return $?
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
 		re=\\b${cmd}
