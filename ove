@@ -5772,13 +5772,6 @@ function ove_validate_self {
 			${ove_cmd2pathname["xargs"]:?}
 		return 1
 	fi
-
-	# make sure all ove- functions starts the same
-	if [ $(($(${ove_cmd2pathname["grep"]:?} -c 'ove_entry' ${OVE_SELF}) - 6 - $(${ove_cmd2pathname["grep"]:?} -c '^function ove-' ${OVE_SELF}))) -ne 0 ]; then
-		ove_echo_error_noprefix "all ove- functions has to start with a 'ove_entry' hook. E.g.:"
-		type ove-nop
-		return 1
-	fi
 }
 
 function ove_validate_projs {
@@ -8757,8 +8750,6 @@ function ove-show {
 
 # cd:[pattern|@] :'cd ${OVE_BASE_DIR}' OR switch to a OVE workspace specified by pattern
 function ove-cd {
-	ove_entry || return
-
 	if [ $# -eq 0 ]; then
 		cd "${OVE_BASE_DIR}" || return 1
 	elif [ $# -eq 1 ] && [ "$1" == "@" ]; then
