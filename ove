@@ -8940,7 +8940,7 @@ function ove-lastlog-summary {
 
 	# ignore logs before October 1, 2021
 	${ove_cmd2pathname["touch"]:?} -t 202110010000 $OVE_TMP/ove-${self}-ref
-	${ove_cmd2pathname["find"]:?} /var/tmp/*/ove/logs -type f -name '2*' -newer $OVE_TMP/ove-${self}-ref -print  > $OVE_TMP/ove-${self}
+	${ove_cmd2pathname["find"]:?} /var/tmp/*/ove/logs -type f -name '2*.log' -newer $OVE_TMP/ove-${self}-ref -print  > $OVE_TMP/ove-${self}
 	${ove_cmd2pathname["rm"]:?} $OVE_TMP/ove-${self}-ref
 	if [ ! -s $OVE_TMP/ove-${self} ]; then
 		echo "error: no logs found"
@@ -8996,7 +8996,10 @@ function ove-lastlog-summary {
 			exit_code=${cmd//*# exit code: /}
 			cmd=${cmd/\# exit code:*/}
 		fi
-		if [[ $cmd != \$* ]]; then
+
+		if [ ${EUID} -eq 0 ] && [[ $cmd != \#* ]]; then
+			continue
+		elif [ ${EUID} -ne 0 ] && [[ $cmd != \$* ]]; then
 			continue
 		fi
 
