@@ -1140,6 +1140,7 @@ function ove_loop_command {
 	local read_args
 	local inotifywait_pid
 	local s
+	local sed_expr
 	local _timeout
 	local use_inotify
 
@@ -1331,6 +1332,44 @@ function ove_loop_command {
 		echo -
 		if [ ${use_inotify} -eq 1 ]; then
 			s=${SECONDS}
+
+			# sanity check that files exist
+			# filenames sent to inotifywait (--fromfile) that begin with @ are excluded
+			i=0
+			j=
+			s=
+			while read -r line; do
+				((i++))
+				if [[ "$line" == @* ]] && [ -e "${line:1}" ]; then
+					# masked and file exists => unmask
+					s+=" $i"
+				elif [[ "$line" == @* ]] && [ ! -e "${line:1}" ]; then
+					# masked and file still does not exit => do nothing
+					true
+				elif [ ! -e "${line}" ]; then
+					# not masked and file still does not exit => mask it
+					j+=" $i"
+				fi
+			done <${files_modified_by_command}.uniq
+
+			# mask files
+			if [ "x$j" != "x" ]; then
+				sed_expr=
+				for i in $j; do
+					sed_expr+=" -e '${i}s,^,@,'"
+				done
+				eval sed -i $sed_expr ${files_modified_by_command}.uniq
+			fi
+
+			# unmask files
+			if [ "x$s" != "x" ]; then
+				sed_expr=
+				for i in $s; do
+					sed_expr+=" -e '${i}s,^.,,'"
+				done
+				eval sed -i $sed_expr ${files_modified_by_command}.uniq
+			fi
+
 			if ! ove_inotifywait ${_timeout} ${files_modified_by_command}.uniq; then
 				ove_echo_error_noprefix "inotifywait failed"
 				echo
