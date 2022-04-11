@@ -2479,7 +2479,7 @@ function ove_projects_cmd {
 			${ove_cmd2pathname["flock"]:?} ${fd}
 			ove_projects_cmd_execute "$@"
 			exit $?
-		) {fd}>${OVE_OWEL_TMP_DIR}/.${proj_command}.lock
+		) ${fd}>${OVE_OWEL_TMP_DIR}/.${proj_command}.lock
 		ret=$?
 	else
 		ove_projects_cmd_execute "$@"
