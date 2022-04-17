@@ -1819,6 +1819,7 @@ function ove {
 	local candidates
 	local cmd
 	local cmd_and_args
+	local h
 	local log_cmd
 	local re
 	local ret
@@ -1934,6 +1935,20 @@ function ove {
 		cmd_and_args+=" ove ${cmd}"
 	fi
 
+	# pre hooks?
+	if [ -v ove_hooks_pre[${cmd}] ]; then
+		for h in ${ove_hooks_pre[${cmd}]}; do
+			if [ -s "$h" ] && [ -x "$h" ]; then
+				$h
+				ret=$?
+				if [ $ret -ne 0 ]; then
+					ove_echo_red_noprefix "error: pre hook '$h' failed with exit code $ret"
+					return $ret
+				fi
+			fi
+		done
+	fi
+
 	${ove_cmd2pathname["ln"]:?} -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/ongo
 	if [ "x${log_cmd}" = "xscript" ]; then
 		# trace hook
@@ -1989,6 +2004,21 @@ function ove {
 	if [ -n "${OVE_AUTO_RM_LOGS+x}" ] && [ ${OVE_AUTO_RM_LOGS} -gt 0 ] && [ "${cmd}" != "rm-logs" ]; then
 		ove-rm-logs ${OVE_AUTO_RM_LOGS} y
 	fi
+
+	# post hooks?
+	if [ -v ove_hooks_post[${cmd}] ]; then
+		for h in ${ove_hooks_post[${cmd}]}; do
+			if [ -s "$h" ] && [ -x "$h" ]; then
+				$h
+				ret=$?
+				if [ $ret -ne 0 ]; then
+					ove_echo_red_noprefix "error: post hook '$h' failed with exit code $ret"
+					return $ret
+				fi
+			fi
+		done
+	fi
+
 	return ${ret}
 }
 
@@ -3011,6 +3041,13 @@ function ove_verify_checksums {
 		return 1
 	fi
 
+	md5=$(ove-list-hooks | ${ove_cmd2pathname["md5sum"]:?})
+	md5=${md5%% *}
+	# got updated?
+	if [ -n "${OVE_HOOKS_NAMES_MD5+x}" ] && [ "${md5}" != "${OVE_HOOKS_NAMES_MD5}" ]; then
+		return 1
+	fi
+
 	if [ "${OVE_REPOS_FETCHED}" != "" ] && [ $(ove_repos_fetched) -ne ${OVE_REPOS_FETCHED} ]; then
 		return 1
 	fi
@@ -3066,6 +3103,10 @@ function ove_update_checksum {
 	OVE_SCRIPTS_NAMES_MD5=$(ove-list-scripts | ${ove_cmd2pathname["md5sum"]:?})
 	OVE_SCRIPTS_NAMES_MD5=${OVE_SCRIPTS_NAMES_MD5%% *}
 	export OVE_SCRIPTS_NAMES_MD5
+
+	OVE_HOOKS_NAMES_MD5=$(ove-list-hooks | ${ove_cmd2pathname["md5sum"]:?})
+	OVE_HOOKS_NAMES_MD5=${OVE_HOOKS_NAMES_MD5%% *}
+	export OVE_HOOKS_NAMES_MD5
 
 	OVE_REPOS_FETCHED=$(ove_repos_fetched)
 	export OVE_REPOS_FETCHED
@@ -4041,6 +4082,33 @@ function ove-list-systests-aliases {
 		${ove_cmd2pathname["grep"]:?} -v '#' | \
 		${ove_cmd2pathname["cut"]:?} -d: -f1 | \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
+}
+
+# list-hooks: :list available hooks
+function ove-list-hooks {
+	ove_entry || return
+
+	local p
+	local repo
+
+	# project hooks
+	if [ -d "${OVE_OWEL_DIR}/hooks" ]; then
+		p+="${OVE_OWEL_DIR}/hooks "
+	fi
+
+	# repo hooks
+	for repo in $(ove_revtab_list_fullpath); do
+		if ! [ -d "${repo}/.ove/hooks" ]; then
+			continue
+		fi
+		p+="${repo}/.ove/hooks "
+	done
+
+	if [ "${p}" != "" ]; then
+		${ove_cmd2pathname["find"]:?} -L ${p} -perm -u=x -type f -not -size 0 | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
+	fi
+
+	return 0
 }
 
 # list-scripts: :list available scripts
@@ -6856,6 +6924,10 @@ function ove_entry {
 
 	if ! [[ -v ove_scripts_paths[@] ]]; then
 		ove_scripts_init
+	fi
+
+	if ! [[ -v ove_hooks_post[@] ]]; then
+		ove_hooks_init
 	fi
 
 	ove_update_terminal_stats
@@ -9827,6 +9899,57 @@ function ove_add_script_func {
 	export -f ove-${s}
 }
 
+function ove_hooks_init {
+	local _find
+	local cmd
+	local h
+	local h_list
+	local repo
+
+	unset ove_hooks_post
+	unset ove_hooks_pre
+	declare -A -g ove_hooks_post
+	declare -A -g ove_hooks_pre
+
+	# project hooks
+	if [ -d "${OVE_OWEL_DIR}/hooks" ]; then
+		_find+="${OVE_OWEL_DIR}/hooks "
+	fi
+
+	# repo hooks
+	for repo in $(ove_revtab_list_fullpath); do
+		if ! [ -d "${repo}/.ove/hooks" ]; then
+			continue
+		fi
+
+		_find+="${repo}/.ove/hooks "
+	done
+
+	if [ "x${_find}" != "x" ]; then
+		# post hooks
+		h_list=$(${ove_cmd2pathname["find"]:?} -L ${_find} -name 'post-*' -perm -u=x -type f)
+		for h in ${h_list}; do
+			if ! [ -s "$h" ]; then
+				continue
+			fi
+			cmd="${h##*/}"
+			cmd=${cmd/post-/}
+			ove_hooks_post[$cmd]+="$h "
+		done
+
+		# pre hooks
+		h_list=$(${ove_cmd2pathname["find"]:?} -L ${_find} -name 'pre-*' -perm -u=x -type f)
+		for h in ${h_list}; do
+			if ! [ -s "$h" ]; then
+				continue
+			fi
+			cmd="${h##*/}"
+			cmd=${cmd/pre-/}
+			ove_hooks_pre[$cmd]+="$h "
+		done
+	fi
+}
+
 function ove_scripts_init {
 	local array
 	local oldIFS
@@ -10348,6 +10471,8 @@ function ove_init {
 		return 1
 	fi
 	ove_scripts_init
+
+	ove_hooks_init
 
 	ove_sanitise_vars
 
