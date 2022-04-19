@@ -11601,7 +11601,7 @@ function ove-replicate {
 	if [ $# -eq 1 ]; then
 		d=$(${ove_cmd2pathname["ssh"]:?} ${host} mktemp -d)
 	else
-		d=$2
+		d=$(${ove_cmd2pathname["ssh"]:?} ${host} readlink -f $2)
 		# sanity check
 		if ! ${ove_cmd2pathname["ssh"]:?} -q ${host} "[ -L ${d}/ove ] && [ -L ${d}/.owel ]"; then
 			ove_echo_error_noprefix "'${d}' is not a valid OVE workspace on '${host}'"
