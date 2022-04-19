@@ -11657,6 +11657,7 @@ function ove-replicate {
 			echo '${ps_remote} ove fetch'
 			ove-fetch
 		fi
+		md5=\$(md5sum \$OVE_OWEL_DIR/revtab)
 		if [ -e \"${q_remote}\" ]; then
 			echo '${ps_remote} ove am ${q_remote}'
 			ove-am ${q_remote}
@@ -11665,8 +11666,15 @@ function ove-replicate {
 			echo '${ps_remote} ove apply ${p_remote}'
 			ove-apply ${p_remote}
 		fi
-		echo '${ps_remote} ove status'
-		ove-status"; then
+
+		# one extra fetch if revtab was changed
+		if [ \"x\$md5\" != \"x\$(md5sum \$OVE_OWEL_DIR/revtab)\" ]; then
+			echo '${ps_remote} ove fetch'
+			ove-fetch
+		else
+			echo '${ps_remote} ove status'
+			ove-status
+		fi"; then
 		ove_echo_error_noprefix "trying to replicate OVE workspace on '${host}'"
 	else
 		echo
