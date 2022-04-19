@@ -113,6 +113,7 @@ function ove_read_config {
 	local re
 	local val
 	local var
+	declare -A c
 
 	[ -s "$1" ] || return 1
 
@@ -135,6 +136,15 @@ function ove_read_config {
 			continue
 		fi
 
+		# duplicates within one config file
+		if [ -v c[${var}] ]; then
+			ove_echo_yellow_noprefix "warning: found config '$var' duplicate in '$1'"
+			echo "$var=${p_arr[*]:1} (ignored)"
+			continue
+		fi
+		c[$var]=1
+
+		# duplicates across config files
 		re=\\b${var}\\b
 		if [[ "${OVE_CONFIG_DUPLICATES}" =~ ${re} ]]; then
 			continue
@@ -10742,9 +10752,6 @@ function ove_update_terminal_stats {
 function ove_post_checks {
 	local c
 	local doublets
-	local f
-	local res
-	local s
 
 	# check for systest doublets
 	if [ -e ${OVE_OWEL_DIR}/systests ]; then
@@ -10763,19 +10770,6 @@ function ove_post_checks {
 			done
 		fi
 	fi
-
-	# check for config doublets
-	for f in $(ove_list_oveconfig_files); do
-		# shellcheck disable=SC2016
-		mapfile -t doublets < <(${ove_cmd2pathname["grep"]:?} -E -v '#|^$' ${f} | ${ove_cmd2pathname["awk"]:?} '{print $1}' | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["uniq"]:?} -d)
-		if [ "${doublets[*]}" != "" ]; then
-			echo
-			ove_echo_yellow_noprefix "warning: found ${#doublets[*]} config duplicate(s):"
-			for c in ${doublets[*]}; do
-				${ove_cmd2pathname["grep"]:?} -H -E -n -v '#|^$' ${f} | ${ove_cmd2pathname["grep"]:?} -w ${c}
-			done
-		fi
-	done
 
 	# keep ${HOME}/.ove.bash up-to-date
 	if [ -e "${HOME}/.ove.bash" ] && ! ${ove_cmd2pathname["diff"]:?} -q "${OVE_DIR}/ove.bash" "${HOME}/.ove.bash" > /dev/null; then
