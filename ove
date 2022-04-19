@@ -9882,6 +9882,12 @@ function ove_add_script_func {
 	r_dir=${s_dir%\/*}
 	r_dir=${r_dir%\/*}
 
+	if [ -v ove_scripts_name2path[${s}] ]; then
+		ove_echo_yellow_noprefix "warning: found script duplicate:"
+		echo "$s_dir/$s (ignored)"
+		echo "${ove_scripts_name2path[${s}]}/$s"
+		return 1
+	fi
 	ove_scripts_name2path[${s}]=${s_dir}
 	ove_scripts_paths[${s_dir}]=
 	if [ -f ${s_dir}/${s}.help ]; then
@@ -10774,18 +10780,6 @@ function ove_post_checks {
 	# keep ${HOME}/.ove.bash up-to-date
 	if [ -e "${HOME}/.ove.bash" ] && ! ${ove_cmd2pathname["diff"]:?} -q "${OVE_DIR}/ove.bash" "${HOME}/.ove.bash" > /dev/null; then
 		${ove_cmd2pathname["cp"]:?} "${OVE_DIR}/ove.bash" "${HOME}/.ove.bash"
-	fi
-
-	# check for script doublets
-	mapfile -t doublets < <(for s in $(ove-list-scripts); do echo ${s##*/}; done | \
-		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
-		${ove_cmd2pathname["uniq"]:?} -d)
-	if [ "${doublets[*]}" != "" ]; then
-		echo
-		ove_echo_yellow_noprefix "warning: found ${#doublets[*]} script duplicate(s):"
-		for s in ${doublets[*]}; do
-			ove-list-scripts | ${ove_cmd2pathname["grep"]:?} "/${s}$"
-		done
 	fi
 
 	# inform user if logs etc. take too much space
