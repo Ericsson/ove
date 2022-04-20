@@ -2451,12 +2451,6 @@ function ove_projects_cmd_execute {
 		ret="$?"
 	fi
 
-	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
-		if ! popd &>/dev/null; then
-			ove_echo_warning_noprefix "${proj_name}: ${proj_command}: popd failed"
-		fi
-	fi
-
 	if [ "${ret}" -ne 0 ]; then
 		ove_echo_error "${proj_name}: ${proj_command}"
 	else
@@ -2484,7 +2478,9 @@ function ove_projects_cmd {
 	ret=0
 
 	# sanity check
-	! [ -e "${OVE_OWEL_DIR}/projects/${proj_name}/${proj_command}" ] && return
+	if ! [ -e "${OVE_OWEL_DIR}/projects/${proj_name}/${proj_command}" ]; then
+		return
+	fi
 
 	i=${ove_projects_name2index[${proj_name}]}
 	path="${ove_projects_path[${i}]}"
@@ -2524,6 +2520,12 @@ function ove_projects_cmd {
 	else
 		ove_projects_cmd_execute "$@"
 		ret=$?
+	fi
+
+	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
+		if ! popd &>/dev/null; then
+			ove_echo_warning_noprefix "${proj_name}: ${proj_command}: popd failed"
+		fi
 	fi
 
 	return "${ret}"
