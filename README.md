@@ -306,14 +306,21 @@ Done! As simple as that. Lets give a final example of what an OVE project file s
 Up until now we covered everything you need to know to get to the point where developers (or machines) can start working with your OVE project. Going through these steps, You might have noticed us mention OVE commands several times. It is time to have a closer look at how they work:
 
 ## Commands
-OVE will enhance your bash shell with commands to manage your OVE based project. We divide them into four categories:
+OVE will enhance your bash shell with commands to manage your OVE based project. We divide them into the following categories:
 
-* High level git commands
-* Build related commands
-* Utility commands
-* Plugins (covered by previous sections)
+| Category | Description                   | Example             |
+|----------|-------------------------------|---------------------|
+| BUILD    | Build commands                | buildme, mrproper   |
+| CORE     | High level git commands       | status, diff, fetch |
+| DEBUG    | Debug commands                | loglevel            |
+| INTERNAL | Internal commands             | unittest            |
+| LOG      | Show and manipulate logs      | l, lastlog          |
+| PLUGIN   | Plugins/scripts               |                     |
+| SEARCH   | Search repos                  | grep, ag, rg        |
+| TEST     | Test commands                 | systest             |
+| UTIL     | Utility commands              | vi
 
-### High level git commands
+### CORE
 OVE implements a subset of the standard git commands as "high level" git commands. These commands executes the corresponding git command on all (or selective) **revtab** repositories.
 
 * add
@@ -329,8 +336,10 @@ OVE implements a subset of the standard git commands as "high level" git command
 * pull
 * show
 * status
+* stash
+* worktree
 
-### Build related commands
+### BUILD
 This is a list of build related commands:
 
 * buildme / buildme-parallel
@@ -346,7 +355,7 @@ The above list will be dynamically populated with project commands found under t
 
 Note: For each project command there is a "<command>-parallel" version of that command.
 
-### Utility commands
+### UTIL
 Here's a list (not complete) of a few utility commands:
 
 | Command                  | Description                                                |
@@ -356,7 +365,6 @@ Here's a list (not complete) of a few utility commands:
 | locate                   | list OVE workspaces on this host                           |
 | news                     | view upstream news for each git repository                 |
 | cd                       | switch to another OVE workspace                            |
-| unsource                 | clean up all OVE vars/funcs from this shell                |
 | vi                       | open all modified files in 'vi'                            |
 
 ### Command reference
