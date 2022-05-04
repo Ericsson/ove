@@ -6084,12 +6084,17 @@ function ove_export {
 	for proj in ${projects}; do
 		echo $proj
 
-		true > "${wd}"/revtab
-		true > "${wd}"/projs
-
 		_start=$(${ove_cmd2pathname["grep"]:?} -n '^[a-zA-Z0-9_]\+:' ${OVE_OWEL_DIR}/projs |
 			${ove_cmd2pathname["grep"]:?} -A1 "^[0-9]\+:${proj}:" |
 			${ove_cmd2pathname["sed"]:?} -e 's,#.*$,,g')
+		if [ "x$_start" = "x" ]; then
+			ove_echo_warning_noprefix "project '$proj' not found in '$OVE_OWEL_DIR/projs'"
+			continue
+		fi
+
+		true > "${wd}"/revtab
+		true > "${wd}"/projs
+
 		if [ "$(printf "%s\n" $_start | ${ove_cmd2pathname["wc"]:?} -l)" -eq 1 ]; then
 			_end=$(${ove_cmd2pathname["wc"]:?} -l < "${OVE_OWEL_DIR}/projs")
 		else
