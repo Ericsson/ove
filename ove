@@ -2545,7 +2545,7 @@ function ove_projects_cmd {
 	return "${ret}"
 }
 
-function ove_git_command_options {
+function ove_git_command_options_init {
 	local k
 
 	unset ove_revtab_git_cmd_opts
@@ -6961,6 +6961,10 @@ function ove_entry {
 		ove_hooks_init
 	fi
 
+	if ! [[ -v ove_revtab_git_cmd_opts[@] ]]; then
+		ove_git_command_options_init
+	fi
+
 	ove_update_terminal_stats
 }
 
@@ -10748,7 +10752,7 @@ function ove_init {
 	done
 
 	# setup git command options
-	ove_git_command_options
+	ove_git_command_options_init
 
 	return 0
 }
