@@ -2046,6 +2046,24 @@ function ove {
 	return ${ret}
 }
 
+# task:[task args]:check task man pages, taskwarrior [duckduckgo.com/?q=taskwarrior]:UTIL
+function ove-task {
+	ove_entry || return
+
+	local ret
+
+	if ! command -v task > /dev/null; then
+		ove_command_not_found "task"
+		return 1
+	fi
+
+	if [ ! -s $OVE_OWEL_DIR/.taskrc ]; then
+		echo 'verbose=0' > $OVE_OWEL_DIR/.taskrc
+	fi
+
+	TASKDATA=$OVE_OWEL_DIR/.task TASKRC=$OVE_OWEL_DIR/.taskrc task "$@"
+}
+
 # fzf:[loop]:OVE fzf [duckduckgo.com/?q=fzf]:UTIL
 function ove-fzf {
 	ove_entry || return
@@ -7934,7 +7952,7 @@ $ ove gfv "int i = 0"
 $ ove clean projX && ove loop 0 1 0 build projX
 # now modify a file within projX in another tmux pane/terminal
 
-# open a few tmux panes that runs the following OVE commands: news, ahead, fetch and 'do . task'
+# open a few tmux panes that runs the following OVE commands: news, ahead, fetch
 $ ove ide
 
 $(ove_echo_cyan_noprefix "configuration")
