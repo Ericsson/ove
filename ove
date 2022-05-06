@@ -1839,12 +1839,68 @@ function ove_setup_trace_post {
 	fi
 }
 
+function ove_batch_helper {
+	local a
+	local f
+	local h
+	local id
+
+	id="$1"
+
+	# create a on finish script
+	f="${OVE_GLOBAL_STATE_DIR}/ove-ts-onfinish"
+	${ove_cmd2pathname["cat"]:?} > "${f}" << EOF
+#!/usr/bin/env bash
+
+# rename ts output to OVE_LAST_COMMAND
+if [ -s \$3 ]; then
+	\mv -v "\$3" \$OVE_LAST_COMMAND
+fi
+
+# cleanup onfinish files that contains an id
+if [ "\$TS_ONFINISH" != "${f}" ]; then
+	rm -v \$TS_ONFINISH
+fi
+EOF
+
+	a=0
+	# append any post hooks
+	if [ -v ove_hooks_post[${cmd}] ]; then
+		for h in ${ove_hooks_post[${cmd}]}; do
+			if [ -s "$h" ] && [ -x "$h" ]; then
+				if [ "${a}" -eq 0 ]; then
+					a="${OVE_GLOBAL_STATE_DIR}/${id}-ove-ts-onfinish"
+					if ! ${ove_cmd2pathname["cp"]:?} -a $f ${a}; then
+						return 1
+					fi
+					f="${a}"
+					a=1
+				fi
+
+				# append it
+				echo "$h |& tee -a \$OVE_LAST_COMMAND" >> ${f}
+			fi
+		done
+	fi
+
+	if [ ! -x "${f}" ]; then
+		# make the script executable
+		if ! ${ove_cmd2pathname["chmod"]:?} +x "${f}"; then
+			return 1
+		fi
+	fi
+
+	echo $f
+}
+
 function ove {
 	local candidates
 	local cmd
 	local cmd_and_args
 	local h
+	local id
 	local log_cmd
+	local on_finish
 	local re
 	local ret
 
@@ -1924,6 +1980,7 @@ function ove {
 		[ "${cmd}" == "loglevel" ] || \
 		[ "${cmd}" == "revtab-check" ] || \
 		[ "${cmd}" == "tail-lastlog" ] || \
+		[ "${cmd}" == "ts" ] || \
 		[ "${cmd}" == "unsource" ] || \
 		[ "${cmd}" == "update-revtab" ] || \
 		[ "${cmd}" == "vi" ]; then
@@ -1934,7 +1991,8 @@ function ove {
 	# setup log file
 	${ove_cmd2pathname["mkdir"]:?} -p ${OVE_LOG_DIR}/${OVE_SHA}
 	(cd ${OVE_LOG_DIR} && ${ove_cmd2pathname["ln"]:?} -sfn ${OVE_SHA} current)
-	OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S%N')-ove-${cmd}-${HOSTNAME}-${OVE_OWEL_NAME}.log"
+	id=$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S%N')
+	OVE_LAST_COMMAND="${OVE_LOG_DIR}/${OVE_SHA}/${id}-ove-${cmd}-${HOSTNAME}-${OVE_OWEL_NAME}.log"
 
 	# terminals and parallel project commands use 'script', everything else use 'tee'
 	log_cmd="tee"
@@ -1944,6 +2002,17 @@ function ove {
 		re=\\b${cmd/-parallel/}\\b
 		if [[ "${OVE_PROJECT_COMMANDS} buildme" =~ ${re} ]]; then
 			log_cmd="script"
+		fi
+	fi
+
+	# batch the command?
+	if [ "x$OVE_BATCH_IT" != "x0" ]; then
+		log_cmd="tsp"
+		if ! command -v $log_cmd > /dev/null; then
+			ove_command_not_found "$log_cmd"
+			return 1
+		elif ! on_finish=$(ove_batch_helper $id); then
+			return 1
 		fi
 	fi
 
@@ -2000,6 +2069,13 @@ function ove {
 
 		# turn on monitor mode
 		set -m
+	elif [ "x${log_cmd}" = "xtsp" ]; then
+		# run the command using Task Spooler
+		TS_SOCKET=$OVE_TMP/ts-socket.$EUID \
+			TS_ONFINISH="${on_finish}" \
+			${ove_cmd2pathname["tsp"]:?} \
+			${ove_cmd2pathname["bash"]:?} \
+			-c "source ${OVE_BASE_DIR}/ove; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")"
 	else
 		# none-terminal => use tee
 		{
@@ -2015,14 +2091,16 @@ function ove {
 		fi
 	fi
 
-	if [ -n "${OVE_ANONYMIZE_LOGS+x}" ] && [ "${OVE_ANONYMIZE_LOGS}" -eq 1 ]; then
-		${ove_cmd2pathname["sed"]:?} -i \
-			-e "s,$OVE_BASE_DIR,\$OVE_BASE_DIR,g" \
-			-e "s,$OVE_USER,\$OVE_USER,g" \
-			-e "s,$HOSTNAME,\$HOSTNAME,g" ${OVE_LAST_COMMAND}
-	fi
+	if [ "x${log_cmd}" != "xtsp" ]; then
+		if [ -n "${OVE_ANONYMIZE_LOGS+x}" ] && [ "${OVE_ANONYMIZE_LOGS}" -eq 1 ]; then
+			${ove_cmd2pathname["sed"]:?} -i \
+				-e "s,$OVE_BASE_DIR,\$OVE_BASE_DIR,g" \
+				-e "s,$OVE_USER,\$OVE_USER,g" \
+				-e "s,$HOSTNAME,\$HOSTNAME,g" ${OVE_LAST_COMMAND}
+		fi
 
-	${ove_cmd2pathname["ln"]:?} -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
+		${ove_cmd2pathname["ln"]:?} -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
+	fi
 
 	# auto remove old logs?
 	if [ -n "${OVE_AUTO_RM_LOGS+x}" ] && [ ${OVE_AUTO_RM_LOGS} -gt 0 ] && [ "${cmd}" != "rm-logs" ]; then
@@ -2030,9 +2108,10 @@ function ove {
 	fi
 
 	# post hooks?
-	if [ -v ove_hooks_post[${cmd}] ]; then
+	if [ "x${log_cmd}" != "xtsp" ] && [ -v ove_hooks_post[${cmd}] ]; then
 		for h in ${ove_hooks_post[${cmd}]}; do
 			if [ -s "$h" ] && [ -x "$h" ]; then
+				# run the hook
 				$h
 				ret=$?
 				if [ $ret -ne 0 ]; then
@@ -2062,6 +2141,30 @@ function ove-task {
 	fi
 
 	TASKDATA=$OVE_OWEL_DIR/.task TASKRC=$OVE_OWEL_DIR/.taskrc task "$@"
+}
+
+# ts:[ts/tsp args]:check ts/tsp man pages:CORE
+function ove-ts {
+	ove_entry || return
+
+	if ! command -v tsp > /dev/null; then
+		ove_command_not_found "tsp"
+		return 1
+	fi
+
+	if [ $# -eq 0 ]; then
+		TS_SOCKET=$OVE_TMP/ts-socket.$EUID ${ove_cmd2pathname["tsp"]:?} | \
+			${ove_cmd2pathname["sed"]:?} \
+			-e '/^ID/d' \
+			-e 's,/bin/bash.*OVE_LAST_COMMAND=,,g' \
+			-e 's,\([0-9]\+.*finished.*\)/tmp/ts-out\.[a-zA-Z0-9]\+.* \(/.*log\);,\1 \2,g' \
+			-e "s,\(.*\)\($OVE_LOG_DIR/${OVE_SHA}/2.*.log\)\(.*\),\1\3@\2,g" | \
+			${ove_cmd2pathname["column"]:?} -t -s@ | \
+			${ove_cmd2pathname["tac"]:?}
+	else
+		TS_SOCKET=$OVE_TMP/ts-socket.$EUID \
+			${ove_cmd2pathname["tsp"]:?} "$@"
+	fi
 }
 
 # fzf:[loop]:OVE fzf [duckduckgo.com/?q=fzf]:UTIL
@@ -10517,6 +10620,11 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_DEMO_DIVISOR+x}" ]; then
 		export OVE_DEMO_DIVISOR=20
 	fi
+
+	# OVE_BATCH_IT:int:0-1:all:run commands using ts/tsp batch system
+	if [ -z "${OVE_BATCH_IT+x}" ]; then
+		export OVE_BATCH_IT=0
+	fi
 }
 
 # re-initialize
@@ -12477,7 +12585,7 @@ function ove-add-project {
 				continue
 			fi
 			echo -e "${content}" > ${proj_dir}/${cmd}
-			if ! chmod +x ${proj_dir}/${cmd}; then
+			if ! ${ove_cmd2pathname["chmod"]:?} +x ${proj_dir}/${cmd}; then
 				ove_echo_fatal_noprefix "'chmod +x ${proj_dir}/${cmd}' failed"
 				return 1
 			fi
@@ -12528,7 +12636,7 @@ function ove-add-project {
 			fi
 
 			echo "$REPLY" > ${proj_dir}/${c}
-			if ! chmod +x ${proj_dir}/${c}; then
+			if ! ${ove_cmd2pathname["chmod"]:?} +x ${proj_dir}/${c}; then
 				ove_echo_fatal_noprefix "'chmod +x ${proj_dir}/${c}' failed"
 				return 1
 			fi
@@ -12734,6 +12842,7 @@ function ove_externals_init {
 	cmds+=('basename')
 	cmds+=('bash')
 	cmds+=('cat')
+	cmds+=('chmod')
 	cmds+=('column')
 	cmds+=('comm')
 	cmds+=('cp')
@@ -12788,6 +12897,7 @@ function ove_externals_init {
 	cmds+=('tmux')
 	cmds+=('tr')
 	cmds+=('tsort')
+	cmds+=('tsp')
 	cmds+=('touch')
 	cmds+=('uname')
 	cmds+=('uniq')
