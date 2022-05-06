@@ -9508,20 +9508,25 @@ function ove-lastlog {
 	ove_entry || return
 
 	local find_opt
+	local pattern
 	local self=${FUNCNAME[0]/ove-/}
 
 	${ove_cmd2pathname["find"]:?} ${OVE_LOG_DIR} -name '2*.log' -type f ${find_opt} -print > $OVE_TMP/ove-${self}
 	if [ ! -s $OVE_TMP/ove-${self} ]; then
 		echo "error: no logs found"
 		return 1
-	elif [ $# -ne 0 ]; then
-		${ove_cmd2pathname["grep"]:?} -E -i ".*$1.*" $OVE_TMP/ove-${self} > $OVE_TMP/ove-${self}.filter
-		if [ ! -s $OVE_TMP/ove-${self}.filter ]; then
-			echo "error: no logs found after filter"
-			return 1
-		fi
-		mv $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
+	elif [ $# -eq 0 ]; then
+		pattern=$(${ove_cmd2pathname["date"]:?} '+%Y%m%d')
+	else
+		pattern=$1
 	fi
+
+	${ove_cmd2pathname["grep"]:?} -E -i ".*$pattern.*" $OVE_TMP/ove-${self} > $OVE_TMP/ove-${self}.filter
+	if [ ! -s $OVE_TMP/ove-${self}.filter ]; then
+		echo "error: no logs found after filter"
+		return 1
+	fi
+	mv $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
 
 	${ove_cmd2pathname["xargs"]:?} stat --format '%Y:%n:%s' < $OVE_TMP/ove-${self}| \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -nr | \
