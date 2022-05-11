@@ -2014,6 +2014,8 @@ function ove {
 		elif ! on_finish=$(ove_batch_helper $id); then
 			return 1
 		fi
+
+		OVE_BATCH_IT=0
 	fi
 
 	if [ ${EUID} -eq 0 ]; then
