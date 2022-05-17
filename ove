@@ -2142,7 +2142,9 @@ function ove-task {
 		echo 'verbose=0' > $OVE_OWEL_DIR/.taskrc
 	fi
 
-	TASKDATA=$OVE_OWEL_DIR/.task TASKRC=$OVE_OWEL_DIR/.taskrc task "$@"
+	TASKDATA=$OVE_OWEL_DIR/.task \
+		TASKRC=$OVE_OWEL_DIR/.taskrc \
+		${ove_cmd2pathname["task"]:?} "$@"
 }
 
 # ts:[ts/tsp args]:check ts/tsp man pages:CORE
@@ -12899,6 +12901,7 @@ function ove_externals_init {
 	cmds+=('tac')
 	cmds+=('tail')
 	cmds+=('tar')
+	cmds+=('task')
 	cmds+=('tee')
 	cmds+=('timeout')
 	cmds+=('tmux')
