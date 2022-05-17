@@ -2158,7 +2158,7 @@ function ove-ts {
 		TS_SOCKET=$OVE_TMP/ts-socket.$EUID ${ove_cmd2pathname["tsp"]:?} | \
 			${ove_cmd2pathname["sed"]:?} \
 			-e '/^ID/d' \
-			-e 's,/bin/bash.*OVE_LAST_COMMAND=,,g' \
+			-e "s,${ove_cmd2pathname['bash']:?}.*OVE_LAST_COMMAND=,,g" \
 			-e 's,\([0-9]\+.*finished.*\)/tmp/ts-out\.[a-zA-Z0-9]\+.* \(/.*log\);,\1 \2,g' \
 			-e "s,\(.*\)\($OVE_LOG_DIR/${OVE_SHA}/2.*.log\)\(.*\),\1\3@\2,g" | \
 			${ove_cmd2pathname["column"]:?} -t -s@ | \
@@ -12135,7 +12135,7 @@ function ove_unittest_preparations {
 			echo >> ${unittest_dir}/git-top/projs
 			${ove_cmd2pathname["mkdir"]:?} -p ${unittest_dir}/git-top/projects/p${a}
 			for b in bootstrap configure build install; do
-				echo "#!/bin/bash" > ${unittest_dir}/git-top/projects/p${a}/${b}
+				echo "#!${ove_cmd2pathname["bash"]:?}" > ${unittest_dir}/git-top/projects/p${a}/${b}
 				echo "echo ${b} p${a}" >> ${unittest_dir}/git-top/projects/p${a}/${b}
 				chmod +x ${unittest_dir}/git-top/projects/p${a}/${b}
 			done
