@@ -1118,6 +1118,25 @@ function ove_strace_create_graph {
 	fi
 }
 
+# helper for tmux related commands
+function ove_sanity_check_tmux {
+	local tmux_socket
+
+	if [ -z "${TMUX}" ]; then
+		return 1
+	fi
+	tmux_socket=${TMUX%%,*}
+	if [ "x$tmux_socket" = "x" ]; then
+		ove_echo_fatal_noprefix "variable TMUX=$TMUX does not contain a valid socket"
+		return 1
+	elif [ ! -w "$tmux_socket" ]; then
+		ove_echo_error_noprefix "TMUX socket '$tmux_socket' is not writable by '$OVE_USER'"
+		return 1
+	fi
+
+	return 0
+}
+
 # $1: timeout in seconds
 # $2: files to watch. Passed on to inotifywait --fromfile
 function ove_inotifywait {
@@ -1219,7 +1238,9 @@ function ove_loop_command {
 				echo
 				[ ${EUID} != 0 ] && prefix="sudo"
 				echo "$ ${prefix} ${ove_cmd2pathname["bash"]:?} -c 'echo $(${ove_cmd2pathname["wc"]:?} -l < ${all_files}) > /proc/sys/fs/inotify/max_user_watches'"
-				[ -n "${TMUX}" ] && read -r -p ""
+				if ove_sanity_check_tmux 2> /dev/null; then
+					read -r -p ""
+				fi
 				return 1
 			fi
 
@@ -1238,7 +1259,9 @@ function ove_loop_command {
 					echo "$ ove head-tail ${f_early_all}"
 					${ove_cmd2pathname["sort"]:?} -u -o ${f_early_all} ${f_early_all}
 					ove-head-tail ${f_early_all}
-					[ -n "${TMUX}" ] && read -r -p "" -t 3
+					if ove_sanity_check_tmux 2> /dev/null; then
+						read -r -p "" -t 3
+					fi
 					# release the lock and try again
 					${ove_cmd2pathname["flock"]:?} -u ${fd}
 					i=0
@@ -1268,7 +1291,9 @@ function ove_loop_command {
 			if [ ${PIPESTATUS[0]} -eq 124 ]; then
 				[ -s "${f_stderr}" ] && ${ove_cmd2pathname["cat"]:?} ${f_stderr}
 				ove_echo_error_noprefix "inotifywait did not established watches within 30 sec"
-				[ -n "${TMUX}" ] && read -r -p ""
+				if ove_sanity_check_tmux 2> /dev/null; then
+					read -r -p ""
+				fi
 				${ove_cmd2pathname["flock"]:?} -u ${fd}
 				return 1
 			fi
@@ -1276,7 +1301,9 @@ function ove_loop_command {
 			if ${ove_cmd2pathname["grep"]:?} -q "Failed to watch" ${f_stderr}; then
 				[ -s "${f_stderr}" ] && ${ove_cmd2pathname["cat"]:?} ${f_stderr}
 				ove_echo_error_noprefix "inotifywait did not established watches"
-				[ -n "${TMUX}" ] && read -r -p ""
+				if ove_sanity_check_tmux 2> /dev/null; then
+					read -r -p ""
+				fi
 				${ove_cmd2pathname["flock"]:?} -u ${fd}
 				return 1
 			fi
@@ -1344,7 +1371,9 @@ function ove_loop_command {
 						echo
 						ove_echo_error_noprefix "no files to watch, disable inotify"
 						use_inotify=0
-						[ -n "${TMUX}" ] && read -r -p ""
+						if ove_sanity_check_tmux 2> /dev/null; then
+							read -r -p ""
+						fi
 						continue
 					fi
 				fi
@@ -1422,7 +1451,7 @@ function ove-ide {
 	local line
 	local loop_args
 
-	if [ $# -gt 1 ] || [ -z "${TMUX}" ]; then
+	if [ $# -gt 1 ] || ! ove_sanity_check_tmux; then
 		ove_command_usage
 		return 1
 	fi
@@ -1462,7 +1491,7 @@ function ove-run-parallel {
 	local n=$#
 	local t
 
-	if [ $# -eq 0 ] || [ $((n%2)) -ne 0 ] || [ -z "${TMUX}" ]; then
+	if [ $# -eq 0 ] || [ $((n%2)) -ne 0 ] || ! ove_sanity_check_tmux; then
 		ove_command_usage
 		return 1
 	fi
@@ -1532,7 +1561,7 @@ function ove-run {
 	set +m
 	[ "${_timeout}" == "0" ] || read_args="-t ${_timeout}"
 
-	if [ -n "${TMUX}" ]; then
+	if ove_sanity_check_tmux 2> /dev/null; then
 		if [ "${OVE_TMUX_PANE_HEADER}" == "wide" ]; then
 			header="ove_echo_cyan_error ${OVE_OWEL_NAME}:ove-${cmd} [t:${_timeout}]"
 		elif [ "${OVE_TMUX_PANE_HEADER}" == "short" ]; then
@@ -1600,7 +1629,7 @@ function ove_kill_procs {
 function ove-loop-close {
 	ove_entry || return
 
-	if [ $# -gt 0 ] || [ -z "${TMUX}" ]; then
+	if [ $# -gt 0 ] || ! ove_sanity_check_tmux; then
 		ove_command_usage
 		return 1
 	fi
@@ -1690,7 +1719,7 @@ function ove-loop {
 		return 1
 	fi
 
-	if [ -n "${TMUX}" ]; then
+	if ove_sanity_check_tmux 2> /dev/null; then
 		${ove_cmd2pathname["tmux"]:?} split-window -h "\
 			source ${OVE_BASE_DIR}/ove; \
 			ove_init; \
@@ -12359,7 +12388,7 @@ function ove_watch_logs {
 	fi
 
 	ignore="tail-lastlog|less-lastlog"
-	if [ -n "${TMUX}" ]; then
+	if ove_sanity_check_tmux 2> /dev/null; then
 		for u in ${users[*]}; do
 			log=$(${ove_cmd2pathname["find"]:?} ${d}/${u}/ove/logs/current/ -type f -name "*-ove-*.log" 2> /dev/null | \
 				${ove_cmd2pathname["grep"]:?} -v -E "${ignore}" | \
@@ -13054,7 +13083,7 @@ function ove-pre-push {
 		${ove_cmd2pathname["rm"]:?} -rf ${OVE_OWEL_TMP_DIR}/unittest
 	fi
 
-	if [ -n "${TMUX}" ]; then
+	if ove_sanity_check_tmux 2> /dev/null; then
 		ove-run-parallel 0 shell-check 0 unittest 0 generate-doc 0 "blame ${OVE_USER}"
 		${ove_cmd2pathname["sleep"]:?} 1
 		${ove_cmd2pathname["tail"]:?} -f /dev/null --pid=$(${ove_cmd2pathname["pgrep"]:?} -f ove-unittest | ${ove_cmd2pathname["head"]:?} -1)
@@ -13081,7 +13110,7 @@ function ove-post-push {
 	args=$(${ove_cmd2pathname["sed"]:?} -e '/^#/d' -e 's,^,^,g' -e 's,$,$|,g' "${OVE_DIR}/tests/distro-check.list")
 	args=${args//$'\n'/}
 	args=${args::-1}
-	if [ -n "${TMUX}" ]; then
+	if ove_sanity_check_tmux 2> /dev/null; then
 		ove run 0 "do . ${ove_cmd2pathname["tail"]:?} -f ${OVE_LAST_COMMAND} | ${ove_cmd2pathname["grep"]:?} -A3 '^ Passed'"
 	fi
 	${OVE_DIR}/tests/distro-check.sh "unittest" "${args}"
