@@ -10025,6 +10025,13 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" == "task" ]; then
+		if [ ${size} -eq 2 ]; then
+			# shellcheck disable=SC2016
+			wordlist=$(${ove_cmd2pathname["task"]:?} reports | \
+				${ove_cmd2pathname["grep"]:?} -v -E '^Report|^---|^[0-9]+ reports|^$' | \
+				${ove_cmd2pathname["awk"]:?} '{print $1}')
+		fi
 	elif [ "${subcommand}" == "unittest" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(${ove_cmd2pathname["find"]:?} ${OVE_DIR}/tests -maxdepth 1 -mindepth 1 -name "t*.test" -type f -exec basename {} .test \;)
