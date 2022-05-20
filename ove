@@ -2818,7 +2818,7 @@ function ove_revtab_init {
 
 	if [ ! -e "${OVE_OWEL_DIR}/revtab" ]; then
 		OVE_REPO_LIST="${OVE_OWEL_DIR}"
-		OVE_REPO_LIST_WIDTH="${#OVE_OWEL_DIR}"
+		OVE_REPO_LIST_WIDTH="${#OVE_OWEL_NAME}"
 		((OVE_REPO_LIST_WIDTH+=2))
 		return
 	fi
@@ -2833,6 +2833,7 @@ function ove_revtab_init {
 	declare -a -g ove_revtab_git_name
 	declare -A -g ove_revtab_name2index
 
+	OVE_REPO_LIST_WIDTH="${#OVE_OWEL_NAME}"
 	while read -r line; do
 		(( lineno+=1 ))
 		# skip comments and blank lines
@@ -2860,8 +2861,12 @@ function ove_revtab_init {
 			true > "${OVE_OWEL_TMP_DIR}/.${ove_revtab_num_repositories}.lock"
 		fi
 
+		if [ $OVE_REPO_LIST_WIDTH -lt ${#ove_revtab_git_name[${ove_revtab_num_repositories}]} ]; then
+			OVE_REPO_LIST_WIDTH=${#ove_revtab_git_name[${ove_revtab_num_repositories}]}
+		fi
 		(( ove_revtab_num_repositories+=1 ))
 	done < "${OVE_OWEL_DIR}/revtab"
+	((OVE_REPO_LIST_WIDTH+=2))
 
 	if ! [ -e "${OVE_OWEL_TMP_DIR}/.owel.lock" ]; then
 		true > "${OVE_OWEL_TMP_DIR}/.owel.lock"
@@ -2870,9 +2875,6 @@ function ove_revtab_init {
 	# OVE_REPO_LIST:space separated list of all git repositories for one OVE workspace
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
 	export OVE_REPO_LIST
-
-	OVE_REPO_LIST_WIDTH=$(printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | ${ove_cmd2pathname["wc"]:?} -L)
-	((OVE_REPO_LIST_WIDTH+=2))
 }
 
 # $1: repo name (either 'name' or '${OVE_BASE_DIR}/'name')
