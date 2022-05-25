@@ -2117,9 +2117,18 @@ function ove {
 			-c "source ${OVE_BASE_DIR}/ove; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")"
 	else
 		# none-terminal => use tee
-		{
-			ove-${cmd} "${@:2}"
-		} 2>&1 | ${ove_cmd2pathname["tee"]:?} -i ${OVE_LAST_COMMAND}
+
+		if command -v setsid > /dev/null && [ "$OVE_COMMAND_SETSID" -eq 1 ]; then
+			# we have 'setsid' AND we want to run the command in a separate session
+			${ove_cmd2pathname['setsid']:?} \
+				-w \
+				${ove_cmd2pathname['bash']:?} \
+				-c "ove-${cmd} ${*:2}" 2>&1 | ${ove_cmd2pathname["tee"]:?} -i ${OVE_LAST_COMMAND}
+		else
+			{
+				ove-${cmd} "${@:2}"
+			} 2>&1 | ${ove_cmd2pathname["tee"]:?} -i ${OVE_LAST_COMMAND}
+		fi
 		ret=${PIPESTATUS[0]}
 
 		# remove NULL bytes AND insert command, args and exit code at line 1
@@ -10691,6 +10700,11 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_BATCH_IT+x}" ]; then
 		export OVE_BATCH_IT=0
 	fi
+
+	# OVE_COMMAND_SETSID:int:0-1:all:run non-terminal commands in a separate session (SID)
+	if [ -z "${OVE_COMMAND_SETSID+x}" ]; then
+		export OVE_COMMAND_SETSID=0
+	fi
 }
 
 # re-initialize
@@ -12950,6 +12964,7 @@ function ove_externals_init {
 	cmds+=('scriptreplay')
 	cmds+=('sed')
 	cmds+=('seq')
+	cmds+=('setsid')
 	cmds+=('sleep')
 	cmds+=('sort')
 	cmds+=('ssh')
