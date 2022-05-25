@@ -1621,7 +1621,9 @@ function ove_kill_procs {
 	pids="$*"
 
 	for pid in "$@"; do
-		if ${prefix} kill -0 ${pid} > /dev/null 2>&1; then
+		if [ $pid -eq $BASHPID ]; then
+			continue
+		elif ${prefix} kill -0 ${pid} > /dev/null 2>&1; then
 			for sig in SIGTERM SIGINT SIGKILL; do
 				${prefix} kill -${sig} ${pid} 2> /dev/null
 				${ove_cmd2pathname["sleep"]:?} ${n}
@@ -4735,6 +4737,15 @@ function ove-systest {
 					fi
 					break
 				fi
+			fi
+
+			if [ $OVE_SYSTEST_CLEANUP -eq 1 ] && command -v ps > /dev/null; then
+				${ove_cmd2pathname["ps"]:?} -o pid= -s $$ | \
+					${ove_cmd2pathname["grep"]:?} -v "$$" > $OVE_TMP/systest-pids
+				if [ -s $OVE_TMP/systest-pids ]; then
+					ove_kill_procs 1 0.1 $(${ove_cmd2pathname["cat"]:?} $OVE_TMP/systest-pids)
+				fi
+				rm $OVE_TMP/systest-pids
 			fi
 		fi
 
@@ -10575,6 +10586,11 @@ function ove_config_builtins_init {
 	# OVE_SYSTEST_SKIP:int|string::systest:skip every nth test or specific tests
 	if [ -z "${OVE_SYSTEST_SKIP+x}" ]; then
 		export OVE_SYSTEST_SKIP=1
+	fi
+
+	# OVE_SYSTEST_CLEANUP:int:0|1:systest:cleanup child procs after each systest
+	if [ -z "${OVE_SYSTEST_CLEANUP+x}" ]; then
+		export OVE_SYSTEST_CLEANUP=0
 	fi
 
 	# OVE_FORCE_SERIALIZE_COMMANDS:string::all-parallel-build-commands:force OVE to serialize one or more project steps
