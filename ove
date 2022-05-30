@@ -1260,7 +1260,7 @@ function ove_loop_command {
 			f_early_all="${files_modified_by_command}-early-check-all"
 			while true; do
 				if [ ${j} -eq 10 ]; then
-					ove_echo_error_noprefix "some other process is accessing the file watch list, if possible stop that and try again"
+					ove_echo_cyan_noprefix "some other process is accessing the file watch list, if possible stop that and try again"
 					echo "File(s):"
 					echo "$ ove head-tail ${f_early_all}"
 					${ove_cmd2pathname["sort"]:?} -u -o ${f_early_all} ${f_early_all}
