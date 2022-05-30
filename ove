@@ -2081,7 +2081,11 @@ function ove {
 		done
 	fi
 
-	${ove_cmd2pathname["ln"]:?} -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/ongo
+	# do not create the 'ongo' symlink for tsp
+	if [ "x${log_cmd}" != "xtsp" ]; then
+		${ove_cmd2pathname["ln"]:?} -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/ongo
+	fi
+
 	if [ "x${log_cmd}" = "xscript" ]; then
 		# trace hook
 		if ! ove_setup_trace; then
