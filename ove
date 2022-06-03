@@ -13131,7 +13131,7 @@ function ove-pre-push {
 	fi
 
 	if ove_sanity_check_tmux 2> /dev/null; then
-		ove-run-parallel 0 shell-check 0 unittest 0 generate-doc 0 "blame ${OVE_USER}"
+		ove-run-parallel 0 shell-check 0 unittest 0 generate-doc 0 "blame ${OVE_USER}" 0 "tail-lastlog ${OVE_USER}"
 		${ove_cmd2pathname["sleep"]:?} 1
 		${ove_cmd2pathname["tail"]:?} -f /dev/null --pid=$(${ove_cmd2pathname["pgrep"]:?} -f ove-unittest | ${ove_cmd2pathname["head"]:?} -1)
 	else
