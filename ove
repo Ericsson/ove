@@ -9974,14 +9974,26 @@ function ove_bash_complete {
 				${ove_cmd2pathname["grep"]:?} -o 'OVE_[A-Z_]\+')"
 		fi
 	elif [ "${subcommand}" == "config" ]; then
-		cmd="ove-config"
-		if [ "$(ove_list_oveconfig_files)" != "" ]; then
-			if [ ${size} -eq 3 ] && eval ove_config_validate_file ${COMP_WORDS[2]}; then
-				cmd+=" ${COMP_WORDS[2]}"
+		# do we have a config file in the first place?
+		if [ "x$(ove_list_oveconfig_files)" != "x" ]; then
+			cmd="ove-config"
+			if [ ${size} -eq 3 ]; then
+				# is 2 a config file?
+				if eval ove_config_validate_file ${COMP_WORDS[2]}; then
+					# add the config file as argument to ove-config
+					cmd+=" ${COMP_WORDS[2]}"
+				else
+					wordlist=$(ove_config_get_allowed ${COMP_WORDS[2]})
+				fi
+			elif [ ${size} -eq 4 ]; then
+				wordlist=$(ove_config_get_allowed ${COMP_WORDS[3]})
 			fi
-			if [ ${size} -ge 2 ]; then
+
+			if [ "x$wordlist" = "x" ]; then
 				# shellcheck disable=SC2016
-				wordlist=$(${cmd} | ${ove_cmd2pathname["sed"]:?}  -e "s/\x1B\[[0-9;]*[mK]//g" -e "s|^/.*/\.oveconfig||g" -e "s|^:||" | ${ove_cmd2pathname["awk"]:?} '{print $1}')
+				wordlist=$(eval ${cmd} | \
+					${ove_cmd2pathname["sed"]:?} -e "s/\x1B\[[0-9;]*[mK]//g" -e "s|^/.*/\.oveconfig||g" -e "s|^:||" | \
+					${ove_cmd2pathname["awk"]:?} '{print $1}')
 			fi
 		fi
 	elif [ "${subcommand}" == "reset-hard" ]; then
