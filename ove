@@ -4690,7 +4690,24 @@ function ove-systest {
 		fi
 
 		shift
-		printf "${FUNCNAME[0]}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
+		if [ "x${OVE_SYSTEST_HEADER}" = "xshort" ]; then
+			printf "${FUNCNAME[0]}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
+		elif [ "x${OVE_SYSTEST_HEADER}" = "xdetailed" ]; then
+			printf "%s:[%03d/%03d    ]:name: %s timeout: %s type: %s path: %s cmd: %s\n" \
+				"${FUNCNAME[0]}" \
+				"${i}" \
+				"${nbr_tests}" \
+				"${test_name}" \
+				"${systest_timeout}" \
+				"${systest_type}" \
+				"${systest_path}" \
+				"${systest_cmd}"
+		elif [ "x${OVE_SYSTEST_HEADER}" = "xoff" ]; then
+			true
+		else
+			ove_echo_error_noprefix "invalid value for OVE_SYSTEST_HEADER, try: $(ove_config_get_allowed OVE_SYSTEST_HEADER)"
+			return 1
+		fi
 
 		OVE_SYSTEST_ACTIVE_TEST_CASE=${test_name}
 		export OVE_SYSTEST_ACTIVE_TEST_CASE
@@ -10606,6 +10623,11 @@ function ove_config_builtins_init {
 		export OVE_SYSTEST_CLEANUP=0
 	fi
 
+	# OVE_SYSTEST_HEADER:string:detailed|short|off:systest:systest text detail level
+	if [ -z "${OVE_SYSTEST_HEADER+x}" ]; then
+		export OVE_SYSTEST_HEADER="short"
+	fi
+
 	# OVE_FORCE_SERIALIZE_COMMANDS:string::all-parallel-build-commands:force OVE to serialize one or more project steps
 	if [ -z "${OVE_FORCE_SERIALIZE_COMMANDS+x}" ]; then
 		export OVE_FORCE_SERIALIZE_COMMANDS=""
@@ -10709,6 +10731,22 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_COMMAND_SETSID+x}" ]; then
 		export OVE_COMMAND_SETSID=0
 	fi
+}
+
+# $1: a built in OVE config
+function ove_config_get_allowed {
+	if [ $# -ne 1 ]; then
+		return
+	elif [ ! -s ${OVE_DIR}/ove-config-list.md ]; then
+		return
+	elif ! ${ove_cmd2pathname["grep"]:?} -q "^| $1 " ${OVE_DIR}/ove-config-list.md; then
+		return
+	fi
+
+	# shellcheck disable=SC2016
+	${ove_cmd2pathname["grep"]:?} "^| $1 " ${OVE_DIR}/ove-config-list.md | \
+		${ove_cmd2pathname["awk"]:?} '{print $6}' | \
+		${ove_cmd2pathname["sed"]:?} -e 's,\\|, ,g' -e 's,|,,g'
 }
 
 # re-initialize
