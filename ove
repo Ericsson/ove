@@ -10570,7 +10570,7 @@ function ove_config_builtins_init {
 		export OVE_REDIRECT_OUTPUT=""
 	fi
 
-	# OVE_AUTO_CORRECT:int:0|1:all:auto correct commands
+	# OVE_AUTO_CORRECT:int:0|1:all:automatically correct commands
 	if [ -z "${OVE_AUTO_CORRECT+x}" ]; then
 		export OVE_AUTO_CORRECT=0
 	fi
