@@ -6616,11 +6616,17 @@ function ove_build_pre {
 							fi
 						done
 					done
-					if [ "${repos}" != "" ]; then
+					if [ "x${repos}" != "x" ]; then
 						repos=$(printf "%s\n" ${repos} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u | ${ove_cmd2pathname["xargs"]:?})
-						ove_echo_error_noprefix "'$a' is not a buildable project. Try: 'ove fetch ${repos}'"
+						if [ "x${OVE_AUTO_CLONE}" = "x1" ]; then
+							if ! ove-fetch $repos; then
+								return 1
+							fi
+						else
+							ove_echo_error_noprefix "'$a' is not a buildable project. Try: 'ove fetch ${repos}'"
+							return 1
+						fi
 					fi
-					return 1
 				fi
 			fi
 		done
@@ -10530,6 +10536,11 @@ function ove_config_builtins_init {
 	# OVE_FETCH_SUBMODULES:int:0-1:add-repo,fetch:automatically run 'ove import-submodules' on inital clone
 	if [ -z "${OVE_FETCH_SUBMODULES+x}" ]; then
 		export OVE_FETCH_SUBMODULES=1
+	fi
+
+	# OVE_AUTO_CLONE:int:0|1:all-build-commands:automatically clone repos
+	if [ -z "${OVE_AUTO_CLONE+x}" ]; then
+		export OVE_AUTO_CLONE=0
 	fi
 
 	# OVE_CLONE_MAX_PARALLEL:int:[0-9]+:fetch:max number of 'git clone' to run in parallel
