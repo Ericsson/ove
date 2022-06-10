@@ -1974,7 +1974,7 @@ function ove {
 
 		candidates=$(ove-list-commands ^${cmd})
 		if [ "${candidates}" != "" ] && \
-			[ ${OVE_AUTOCORRECT} -eq 1 ] && \
+			[ ${OVE_AUTO_CORRECT} -eq 1 ] && \
 			[ $(echo "${candidates}" | ${ove_cmd2pathname["wc"]:?} -l) -eq 1 ]; then
 			# shellcheck disable=SC2016
 			cmd=$(echo "${candidates}" | ${ove_cmd2pathname["awk"]:?} '{print $1}')
@@ -10570,9 +10570,9 @@ function ove_config_builtins_init {
 		export OVE_REDIRECT_OUTPUT=""
 	fi
 
-	# OVE_AUTOCORRECT:int:0|1:all:auto correct commands
-	if [ -z "${OVE_AUTOCORRECT+x}" ]; then
-		export OVE_AUTOCORRECT=0
+	# OVE_AUTO_CORRECT:int:0|1:all:auto correct commands
+	if [ -z "${OVE_AUTO_CORRECT+x}" ]; then
+		export OVE_AUTO_CORRECT=0
 	fi
 
 	# OVE_LOCAL_ECHO:int:0|1:all:print command-to-be-executed on stderr
