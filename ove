@@ -3851,8 +3851,12 @@ function ove_is_base_dir {
 function ove_get_base_dir {
 	local s
 
-	pushd . &> /dev/null
-	s=$(pwd -P)
+	if ! pushd . > /dev/null; then
+		return 1
+	elif ! s=$(pwd -P); then
+		return 1
+	fi
+
 	while [ "${s}" != "" ]; do
 		if ove_is_base_dir "${s}"; then
 			echo "${s}"
