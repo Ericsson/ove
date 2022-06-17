@@ -2124,9 +2124,9 @@ function ove {
 
 		if command -v setsid > /dev/null && [ "$OVE_COMMAND_SETSID" -eq 1 ]; then
 			# we have 'setsid' AND we want to run the command in a separate session
-			${ove_cmd2pathname['setsid']:?} \
+			${ove_cmd2pathname["setsid"]:?} \
 				-w \
-				${ove_cmd2pathname['bash']:?} \
+				${ove_cmd2pathname["bash"]:?} \
 				-c "ove-${cmd} ${*:2}" 2>&1 | ${ove_cmd2pathname["tee"]:?} -i ${OVE_LAST_COMMAND}
 		else
 			{
@@ -2210,7 +2210,7 @@ function ove-ts {
 		TS_SOCKET=$OVE_TMP/ts-socket.$EUID ${ove_cmd2pathname["tsp"]:?} | \
 			${ove_cmd2pathname["sed"]:?} \
 			-e '/^ID/d' \
-			-e "s,${ove_cmd2pathname['bash']:?}.*OVE_LAST_COMMAND=,,g" \
+			-e "s,${ove_cmd2pathname["bash"]:?}.*OVE_LAST_COMMAND=,,g" \
 			-e 's,\([0-9]\+.*finished.*\)/tmp/ts-out\.[a-zA-Z0-9]\+.* \(/.*log\);,\1 \2,g' \
 			-e "s,\(.*\)\($OVE_LOG_DIR/${OVE_SHA}/2.*.log\)\(.*\),\1\3@\2,g" | \
 			${ove_cmd2pathname["column"]:?} -t -s@ | \
@@ -6661,7 +6661,7 @@ function ove_build_post {
 	fi
 
 	if [ "x${f}" != "x" ]; then
-		if ! ${ove_cmd2pathname["rm"]:?}dir ${f}; then
+		if ! ${ove_cmd2pathname["rmdir"]:?} ${f}; then
 			ove_echo_fatal_noprefix "'rmdir ${f}' failed"
 		fi
 	fi
@@ -11632,7 +11632,6 @@ function ove_deps {
 	deps+=('pgrep')
 	deps+=('script')
 	deps+=('tsort')
-	deps+=('which')
 
 	for dep in "${deps[@]}"; do
 		if ! command -v ${dep} > /dev/null; then
@@ -11927,7 +11926,7 @@ function ove_worktree_remove {
 
 		ove-forall "git worktree remove ${worktree}/\$repo_basename 2> /dev/null"
 		${ove_cmd2pathname["rm"]:?} -rf ${worktree:?}/
-		${ove_cmd2pathname["rm"]:?}dir $(${ove_cmd2pathname["readlink"]:?} -f -- ${worktree})
+		${ove_cmd2pathname["rmdir"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${worktree})
 	done
 
 	return ${ret}
@@ -13053,7 +13052,6 @@ function ove_externals_init {
 	cmds+=('uname')
 	cmds+=('uniq')
 	cmds+=('wc')
-	cmds+=('which')
 	cmds+=('whoami')
 	cmds+=('xargs')
 	cmds+=('yamllint')
