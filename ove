@@ -11849,6 +11849,9 @@ function ove_worktree_add {
 	elif [ ! -w "${worktree_dir}" ]; then
 		ove_echo_error_noprefix "'${worktree_dir}' is not writable"
 		return 1
+	elif [ -f "${worktree}" ]; then
+		ove_echo_error_noprefix "'${worktree}' is a regular file"
+		return 1
 	fi
 
 	if [ $# -eq 2 ]; then
