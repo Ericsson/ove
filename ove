@@ -12005,7 +12005,7 @@ function ove_worktree_list {
 	return 0
 }
 
-# worktree:[add <worktree> [rev]]|list [worktree...]|prune|remove worktree...|status [worktree...]]:replicate OVE workspace on this host using 'git worktree':CORE
+# worktree:[add <path> [rev]]|list [worktree...]|prune|remove worktree...|status [worktree...]]:replicate OVE workspace on this host using 'git worktree':CORE
 function ove-worktree {
 	ove_entry || return
 	local name
