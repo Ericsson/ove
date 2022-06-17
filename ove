@@ -13086,7 +13086,7 @@ function ove-list-externals {
 
 	for cmd in "${!ove_cmd2pathname[@]}"; do
 		md5="$(${ove_cmd2pathname["md5sum"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${ove_cmd2pathname[$cmd]}))"
-		echo "$cmd ${ove_cmd2pathname[$cmd]} $md5"
+		echo "$cmd ${ove_cmd2pathname[$cmd]} $md5 $(${ove_cmd2pathname["grep"]:?} -c "\${ove_cmd2pathname\[\"$cmd\"\]" ${OVE_SELF})"
 	done | ${ove_cmd2pathname["column"]:?} -t | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 }
 
