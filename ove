@@ -1973,17 +1973,17 @@ function ove {
 		fi
 
 		candidates=$(ove-list-commands ^${cmd})
-		if [ "${candidates}" != "" ] && \
+		if [ "x${candidates}" != "x" ] && \
 			[ ${OVE_AUTO_CORRECT} -eq 1 ] && \
-			[ $(echo "${candidates}" | ${ove_cmd2pathname["wc"]:?} -l) -eq 1 ]; then
-			# shellcheck disable=SC2016
-			cmd=$(echo "${candidates}" | ${ove_cmd2pathname["awk"]:?} '{print $1}')
+			[ $(${ove_cmd2pathname["wc"]:?} -l <<<"${candidates}") -eq 3 ]; then
+			cmd=$(${ove_cmd2pathname["tail"]:?} -1 <<<"${candidates}")
+			cmd=${cmd%% *}
 			ove ${cmd} "${@:2}"
 			return $?
 		fi
 
 		ove_echo_red_noprefix "error: '${cmd}' unknown command"
-		if [ "${candidates}" != "" ]; then
+		if [ "x${candidates}" != "x" ]; then
 			echo
 			echo "Did you mean?"
 			echo "${candidates}"
