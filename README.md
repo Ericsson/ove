@@ -240,7 +240,7 @@ Doing this, OVE will check that you have the required programs installed on your
 * script
 * tsort
 
-OVE is also dependent on 'sed/grep/tail/awk/...' but they are not checked for since it is quite uncommon to lack these.
+OVE is also dependent on 'sed/grep/tail/awk/...' but they are not checked for since it is quite uncommon to lack these. Run 'ove list-externals' or check [this page](ove-externals-list.md) for a complete list of commands that OVE is dependent on.
 
 After successfully sourcing OVE, further instructions are given to enter the OVE workspace and fetch the rest of the repos. When the fetch is completed, everything is ready in order for man or machine to start working with the project! For the sake of clarity, lets look at an example:
 

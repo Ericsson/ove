@@ -292,7 +292,8 @@ function ove_welcome_msg {
 	fi
 
 	# shellcheck disable=SC2016
-	script_ver=$(${ove_cmd2pathname["script"]:?} --version | ${ove_cmd2pathname["awk"]:?} '{print $NF}')
+	script_ver=$(${ove_cmd2pathname["script"]:?} --version | \
+		${ove_cmd2pathname["awk"]:?} '{print $NF}')
 	if [[ ${script_ver} =~ ^2.3[12] ]]; then
 		echo
 		ove_echo_note_noprefix "due to a bug in ${ove_cmd2pathname["script"]:?} 2.31/2.32 (you have ${script_ver}), it's not possible to Ctrl-C any OVE command. Upgrade package: '$(ove_command_to_package script)'."
@@ -454,7 +455,9 @@ function ove_strace_execve_one_pid {
 			[[ "${line}" == *"ENOENT"* ]] && continue
 			# for slow string substitution in bash
 			if [ ${#line} -gt 1000 ]; then
-				cmd=$(echo $line | ${ove_cmd2pathname["cut"]:?} -d'[' -f2 | ${ove_cmd2pathname["cut"]:?} -d']' -f1 | ${ove_cmd2pathname["sed"]:?} -e 's,"\, ", ,g' )
+				cmd=$(echo $line | ${ove_cmd2pathname["cut"]:?} -d'[' -f2 | \
+					${ove_cmd2pathname["cut"]:?} -d']' -f1 | \
+					${ove_cmd2pathname["sed"]:?} -e 's,"\, ", ,g' )
 				cmd=${cmd:1:-1}
 			else
 				cmd=${line##* [\"}
@@ -841,7 +844,10 @@ function ove_strace_get_execve {
 		[[ "${line}" == *"ENOENT"* ]] && continue
 		# for slow string substitution in bash
 		if [ ${#line} -gt 1000 ]; then
-			cmd=$(echo $line | ${ove_cmd2pathname["cut"]:?} -d'[' -f2 | ${ove_cmd2pathname["cut"]:?} -d']' -f1 | ${ove_cmd2pathname["sed"]:?} -e 's,"\, ", ,g' )
+			cmd=$(echo $line | \
+				${ove_cmd2pathname["cut"]:?} -d'[' -f2 | \
+				${ove_cmd2pathname["cut"]:?} -d']' -f1 | \
+				${ove_cmd2pathname["sed"]:?} -e 's,"\, ", ,g' )
 			cmd=${cmd:1:-1}
 		else
 			cmd=${line##* [\"}
@@ -923,7 +929,10 @@ function ove_strace_one_pid {
 			[[ "${line}" == *"ENOENT"* ]] && continue
 			# for slow string substitution in bash
 			if [ ${#line} -gt 1000 ]; then
-				cmd=$(echo $line | ${ove_cmd2pathname["cut"]:?} -d'[' -f2 | ${ove_cmd2pathname["cut"]:?} -d']' -f1 | ${ove_cmd2pathname["sed"]:?} -e 's,"\, ", ,g' )
+				cmd=$(echo $line | \
+					${ove_cmd2pathname["cut"]:?} -d'[' -f2 | \
+					${ove_cmd2pathname["cut"]:?} -d']' -f1 | \
+					${ove_cmd2pathname["sed"]:?} -e 's,"\, ", ,g' )
 				cmd=${cmd:1:-1}
 			else
 				cmd=${line##* [\"}
@@ -969,7 +978,9 @@ function ove_strace_one_pid {
 				ip_org=${ove_ip2org_db["${ip}"]}
 				port_service=${ove_port2service_db["${port}"]}
 
-				org=$(${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l\\n/g' <<<"${ip_org}" | ${ove_cmd2pathname["tr"]:?} '\n' ' ' | ${ove_cmd2pathname["tr"]:?} \" \')
+				org=$(${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l\\n/g' <<<"${ip_org}" | \
+					${ove_cmd2pathname["tr"]:?} '\n' ' ' | \
+					${ove_cmd2pathname["tr"]:?} \" \')
 
 				out_2+="    \"${ip}\" [label=\"t: ${t}\l\nIP: ${ip}\l\n${ip_lookup}\l\n${org}\l\n\" shape=box3d,fontsize=20,style=filled, fillcolor=\"yellow\"];"
 				out_2+="    ${pid} -> \"${ip}\" [label=\"${syscall} ${port} ${port_service["${port}"]}\"];"
@@ -999,7 +1010,11 @@ function ove_strace_one_pid {
 	fi
 
 	[ "${cmd}" != "" ] && \
-		out_1+="x: $(echo -e ${cmd} | ${ove_cmd2pathname["fold"]:?} -w 80 -s | ${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l\\n/g' | ${ove_cmd2pathname["tr"]:?} '\n' ' ' | ${ove_cmd2pathname["tr"]:?} \" \')"
+		out_1+="x: $(echo -e ${cmd} | \
+		${ove_cmd2pathname["fold"]:?} -w 80 -s | \
+		${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l\\n/g' | \
+		${ove_cmd2pathname["tr"]:?} '\n' ' ' | \
+		${ove_cmd2pathname["tr"]:?} \" \')"
 
 	# label END
 	out_1+="\",color=${border_color},penwidth=${penwidth},fontsize=14,fontcolor=black];"
@@ -1014,7 +1029,8 @@ function ove_command_usage {
 	local cmd=${FUNCNAME[1]/ove-/}
 	local opt
 
-	a=$(${ove_cmd2pathname["grep"]:?} -B1 "^function ove-${cmd} " ${OVE_SELF} | ${ove_cmd2pathname["head"]:?} -1)
+	a=$(${ove_cmd2pathname["grep"]:?} -B1 "^function ove-${cmd} " ${OVE_SELF} | \
+		${ove_cmd2pathname["head"]:?} -1)
 	opt=$(${ove_cmd2pathname["cut"]:?} -d: -f2 <<<"${a}")
 	description=$(${ove_cmd2pathname["cut"]:?} -d: -f3- <<<"${a}")
 	echo -e "usage: ove ${cmd} ${opt}\t# ${description}"
@@ -1088,13 +1104,15 @@ function ove_strace_create_graph {
 	o_svg=${o_base}.svg
 	o_timing=${o_base}.timing
 
-	echo "strict digraph $(${ove_cmd2pathname["tr"]:?} '-' '_' <<<"${OVE_OWEL_NAME}" | ${ove_cmd2pathname["tr"]:?} -d '.') {" > ${o_dot}
+	echo "strict digraph $(${ove_cmd2pathname["tr"]:?} '-' '_' <<<"${OVE_OWEL_NAME}" | \
+		${ove_cmd2pathname["tr"]:?} -d '.') {" > ${o_dot}
 	echo "    nodesep=2" >> ${o_dot}
 	echo "    ranksep=5" >> ${o_dot}
 	echo "    node [margin=1,shape=octagon,nodesep=10];" >> ${o_dot}
 
 	# remove leftovers
-	${ove_cmd2pathname["find"]:?} ${OVE_OWEL_TMP_DIR} -name "strace-${2}.dot.*" -print0 | ${ove_cmd2pathname["xargs"]:?} -0 rm &> /dev/null
+	${ove_cmd2pathname["find"]:?} ${OVE_OWEL_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \
+		${ove_cmd2pathname["xargs"]:?} -0 rm &> /dev/null
 
 	declare -A all_files
 	true > ${OVE_OWEL_TMP_DIR}/timing
@@ -1107,8 +1125,10 @@ function ove_strace_create_graph {
 	wait
 
 	# merge all files into one
-	${ove_cmd2pathname["find"]:?} ${OVE_OWEL_TMP_DIR} -name "strace-${2}.dot.*" -print0 | ${ove_cmd2pathname["xargs"]:?} -0 cat >> ${o_dot}
-	${ove_cmd2pathname["find"]:?} ${OVE_OWEL_TMP_DIR} -name "strace-${2}.dot.*" -print0 | ${ove_cmd2pathname["xargs"]:?} -0 rm
+	${ove_cmd2pathname["find"]:?} ${OVE_OWEL_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \
+		${ove_cmd2pathname["xargs"]:?} -0 cat >> ${o_dot}
+	${ove_cmd2pathname["find"]:?} ${OVE_OWEL_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \
+		${ove_cmd2pathname["xargs"]:?} -0 rm
 
 	echo "}" >> ${o_dot}
 
@@ -1293,7 +1313,9 @@ function ove_loop_command {
 
 			# wait for inotifywait
 			# shellcheck disable=SC2002
-			${ove_cmd2pathname["timeout"]:?} 30 tail -f ${f_stderr} | ${ove_cmd2pathname["grep"]:?} -E -q "Watches established.|Failed to watch" | { ${ove_cmd2pathname["cat"]:?}; echo >> ${f_stderr}; }
+			${ove_cmd2pathname["timeout"]:?} 30 tail -f ${f_stderr} | \
+				${ove_cmd2pathname["grep"]:?} -E -q "Watches established.|Failed to watch" | \
+				{ ${ove_cmd2pathname["cat"]:?}; echo >> ${f_stderr}; }
 			if [ ${PIPESTATUS[0]} -eq 124 ]; then
 				[ -s "${f_stderr}" ] && ${ove_cmd2pathname["cat"]:?} ${f_stderr}
 				ove_echo_error_noprefix "inotifywait did not established watches within 30 sec"
@@ -2255,7 +2277,8 @@ function ove-fzf {
 		)
 		[ "${cmd}" == "" ] && break
 
-		if ${ove_cmd2pathname["tr"]:?} ' ' '\n' <<<"${OVE_BUILT_INS_WITHOUT_ARGS}" | ${ove_cmd2pathname["grep"]:?} -q ^${cmd}$; then
+		if ${ove_cmd2pathname["tr"]:?} ' ' '\n' <<<"${OVE_BUILT_INS_WITHOUT_ARGS}" | \
+			${ove_cmd2pathname["grep"]:?} -q ^${cmd}$; then
 			if [ "$1" == "loop" ]; then
 				echo "$ ove-loop x x x ${cmd}"
 				ove-loop x x x ${cmd}
@@ -2305,7 +2328,8 @@ function ove_parse_yaml {
 	# shellcheck disable=SC2016
 	while IFS=: read -r line; do
 		${ove_cmd2pathname["sed"]:?} -e 's/: /:/g' -e "s/\([a-zA-Z0-9_]\+\):/\" ove_${line%%:*}_\1=\"/g" -e "s/$/\"/g" -e "s/^\" //g" -e "s/ \"/\"/g" <<<"${line#*: }" &
-	done < <(${ove_cmd2pathname["sed"]:?} -e '1{/^---$/d;}' -e 's/^\([a-zA-Z0-9_]\+:$\)/\n\1/g' -e 's/#.*//g' -e 's,^//.*,,g' -e '/^$/d' $1 | ${ove_cmd2pathname["awk"]:?} NF=NF RS= OFS=' ')
+	done < <(${ove_cmd2pathname["sed"]:?} -e '1{/^---$/d;}' -e 's/^\([a-zA-Z0-9_]\+:$\)/\n\1/g' -e 's/#.*//g' -e 's,^//.*,,g' -e '/^$/d' $1 | \
+		${ove_cmd2pathname["awk"]:?} NF=NF RS= OFS=' ')
 	wait
 }
 
@@ -2816,7 +2840,8 @@ function ove-list-git-command-options {
 			s="o"
 		fi
 		echo "${s}:${k}:${ove_revtab_git_cmd_opts[$k]}"
-	done | ${ove_cmd2pathname["column"]:?} -t -s: | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
+	done | ${ove_cmd2pathname["column"]:?} -t -s: | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 }
 
 function ove_revtab_init {
@@ -3744,7 +3769,8 @@ function ove_revtab_pull_one {
 		:
 	else
 		if [ "$(ove_revtab_status_parse_one ahead ${repo})" != "" ]; then
-			if [ "$(${ove_cmd2pathname["git"]:?} config --global user.email)" == "" ] || [ "$(${ove_cmd2pathname["git"]:?} config --global user.name)" == "" ]; then
+			if [ "x$(${ove_cmd2pathname["git"]:?} config --global user.email)" = "x" ] || \
+				[ "x$(${ove_cmd2pathname["git"]:?} config --global user.name)" = "x" ]; then
 				ove_echo_error_noprefix "not possible to 'git pull' '${repo}' as git user.email/user.name is not set"
 				return 1
 			fi
@@ -4750,7 +4776,8 @@ function ove-systest {
 					exit_status="SIG$(kill -l ${systest_exit_code})"
 				elif [ -e /usr/include/sysexits.h ] && \
 					${ove_cmd2pathname["grep"]:?} -q "#define EX_[A-Z]\+.*\b${systest_exit_code}" /usr/include/sysexits.h; then
-					exit_status=$(${ove_cmd2pathname["grep"]:?} "#define EX_[A-Z]\+.*\b${systest_exit_code}" /usr/include/sysexits.h | ${ove_cmd2pathname["grep"]:?} -o 'EX_[A-Z]\+')
+					exit_status=$(${ove_cmd2pathname["grep"]:?} "#define EX_[A-Z]\+.*\b${systest_exit_code}" /usr/include/sysexits.h | \
+						${ove_cmd2pathname["grep"]:?} -o 'EX_[A-Z]\+')
 				elif [ -e ${OVE_OWEL_DIR}/${OVE_OWEL_NAME}-sysexits.h ] && \
 					${ove_cmd2pathname["grep"]:?} -q "#define [A-Z0-9_]\+.*\b${systest_exit_code}$" ${OVE_OWEL_DIR}/${OVE_OWEL_NAME}-sysexits.h; then
 					exit_status=$(${ove_cmd2pathname["grep"]:?} "#define [A-Z0-9_]\+.*\b${systest_exit_code}$" ${OVE_OWEL_DIR}/${OVE_OWEL_NAME}-sysexits.h | \
@@ -6095,9 +6122,11 @@ function ove_set_built_ins {
 function ove_validate_self {
 	local funcs
 
-	if ${ove_cmd2pathname["grep"]:?} ^function ${OVE_SELF} | ${ove_cmd2pathname["grep"]:?} -q -v 'function ove'; then
+	if ${ove_cmd2pathname["grep"]:?} ^function ${OVE_SELF} | \
+		${ove_cmd2pathname["grep"]:?} -q -v 'function ove'; then
 		ove_echo_error_noprefix "functions need to start with 'ove-' or 'ove_'"
-		${ove_cmd2pathname["grep"]:?} ^function ${OVE_SELF} | ${ove_cmd2pathname["grep"]:?} -v 'function ove'
+		${ove_cmd2pathname["grep"]:?} ^function ${OVE_SELF} | \
+			${ove_cmd2pathname["grep"]:?} -v 'function ove'
 		return 1
 	fi
 
@@ -7121,9 +7150,12 @@ function ove-env {
 	local v
 
 	if [ $# -eq 0 ]; then
-		v=$(compgen -A variable | ${ove_cmd2pathname["grep"]:?} OVE_)
+		v=$(compgen -A variable | \
+			${ove_cmd2pathname["grep"]:?} OVE_)
 	else
-		v=$(compgen -A variable | ${ove_cmd2pathname["grep"]:?} OVE_ | ${ove_cmd2pathname["grep"]:?} -i $1)
+		v=$(compgen -A variable | \
+			${ove_cmd2pathname["grep"]:?} OVE_ | \
+			${ove_cmd2pathname["grep"]:?} -i $1)
 	fi
 
 	for e in ${v}; do
@@ -7436,7 +7468,8 @@ function ove-am {
 # $1: behind|ahead
 function ove_any_repo {
 	# shellcheck disable=SC2016
-	if ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v | ${ove_cmd2pathname["grep"]:?} ^\*' | ${ove_cmd2pathname["grep"]:?} -q "${1}.*]"; then
+	if ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v | ${ove_cmd2pathname["grep"]:?} ^\*' | \
+		${ove_cmd2pathname["grep"]:?} -q "${1}.*]"; then
 		return 0
 	else
 		return 1
@@ -8930,7 +8963,9 @@ function ove-wipe-base-dir {
 	read -a reserved -r <<<"$(echo $(ove_revtab_list_fullpath) ${OVE_OWEL_DIR} ${OVE_STAGE_DIR} ${OVE_ARCHIVE_DIR} ${OVE_BASE_DIR}/{.owel,ove,.ove*,README*})"
 
 	# compare candidates vs. reserved
-	mapfile -t remove <<<"$(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -2 -3 <(printf "%s\n" "${candidates[@]}" | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}) <(printf "%s\n" "${reserved[@]}" | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}))"
+	mapfile -t remove <<<"$(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -2 -3 \
+		<(printf "%s\n" "${candidates[@]}" | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}) \
+		<(printf "%s\n" "${reserved[@]}" | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}))"
 
 	# return early?
 	if [ "x${remove[0]}" = "x" ]; then
@@ -8976,10 +9011,18 @@ function ove-describe {
 
 	func=ove_revtab_forall_parallel
 
-	[ $# -gt 0 ] && func=ove_revtab_forsome
+	if [ $# -gt 0 ]; then
+		func=ove_revtab_forsome
+	fi
 
-	# shellcheck disable=SC2016
-	${func} 'echo $(echo ${repo} | ${ove_cmd2pathname["sed"]:?} -e "s|${OVE_BASE_DIR}/||g")@$(ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} describe)@"$(${ove_cmd2pathname["git"]:?} log --format="%<(20,trunc)%s" -1)"@"$(${ove_cmd2pathname["git"]:?} -c color.status=never status -s -uno | ${ove_cmd2pathname["tr"]:?} "\n" " ")"' "$@" |\
+	# yes, this is ugly
+	# shellcheck disable=SC1004,SC2016
+	${func} 'echo $(\
+		echo ${repo} | ${ove_cmd2pathname["sed"]:?} -e "s|${OVE_BASE_DIR}/||g")@$(ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} describe)@"$(\
+		${ove_cmd2pathname["git"]:?} log --format="%<(20,trunc)%s" -1\
+		)"@"$(\
+		${ove_cmd2pathname["git"]:?} -c color.status=never status -s -uno | \
+		${ove_cmd2pathname["tr"]:?} "\n" " ")"' "$@" |\
 		${ove_cmd2pathname["column"]:?} -t -s'@' | \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 }
@@ -9741,7 +9784,12 @@ function ove-authors {
 function ove-domains {
 	ove_entry || return
 
-	ove-authors | ${ove_cmd2pathname["grep"]:?} '@' | ${ove_cmd2pathname["cut"]:?} -d@ -f2 | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["uniq"]:?} -c | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -nr
+	ove-authors | \
+		${ove_cmd2pathname["grep"]:?} '@' | \
+		${ove_cmd2pathname["cut"]:?} -d@ -f2 | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
+		${ove_cmd2pathname["uniq"]:?} -c | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -nr
 }
 
 function ove_bash_complete {
@@ -10142,7 +10190,10 @@ function ove_bash_complete {
 			fi
 
 			# shellcheck disable=SC2015
-			wordlist=$(${ove_cmd2pathname["find"]:?} ${a}/*/ove/logs -maxdepth 0 -type d | ${ove_cmd2pathname["rev"]:?} | ${ove_cmd2pathname["cut"]:?} -d'/' -f3 | ${ove_cmd2pathname["rev"]:?})
+			wordlist=$(${ove_cmd2pathname["find"]:?} ${a}/*/ove/logs -maxdepth 0 -type d | \
+				${ove_cmd2pathname["rev"]:?} | \
+				${ove_cmd2pathname["cut"]:?} -d'/' -f3 | \
+				${ove_cmd2pathname["rev"]:?})
 		else
 			return
 		fi
@@ -11696,7 +11747,13 @@ function ove_packages_not_installed {
 		# shellcheck disable=SC2016
 		LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -2 -3 \
 			<(printf "%s\n" ${p_sort}) \
-			<(\xbps-query --list-pkgs | ${ove_cmd2pathname["awk"]:?} '{print $2}' | ${ove_cmd2pathname["rev"]:?} | ${ove_cmd2pathname["cut"]:?} -d- -f2- | ${ove_cmd2pathname["rev"]:?} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["xargs"]:?} -n1)
+			<(\xbps-query --list-pkgs | \
+			${ove_cmd2pathname["awk"]:?} '{print $2}' | \
+			${ove_cmd2pathname["rev"]:?} | \
+			${ove_cmd2pathname["cut"]:?} -d- -f2- | \
+			${ove_cmd2pathname["rev"]:?} | \
+			LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
+			${ove_cmd2pathname["xargs"]:?} -n1)
 	else
 		ove_echo_error_noprefix "function '${FUNCNAME[0]}' is not implemented for ${OVE_OS}"
 	fi
@@ -11889,7 +11946,9 @@ function ove_worktree_add {
 	else
 		ove-forall "ove_repo_cmd \$repo worktree add -B ove-worktree-${worktree_base} -f ${worktree}/\$repo_basename &> /dev/null"
 	fi
-	( cd ${worktree} || return 1; [ -h ove ] || ${ove_cmd2pathname["ln"]:?} -s ${OVE_SELF/$OVE_BASE_DIR\/} ove; [ -h .owel ] || ${ove_cmd2pathname["ln"]:?} -s $OVE_OWEL_NAME .owel)
+
+	(cd ${worktree} || return 1; [ -h ove ]   || ${ove_cmd2pathname["ln"]:?} -s ${OVE_SELF/$OVE_BASE_DIR\/} ove)
+	(cd ${worktree} || return 1; [ -h .owel ] || ${ove_cmd2pathname["ln"]:?} -s $OVE_OWEL_NAME .owel)
 
 	${ove_cmd2pathname["mkdir"]:?} -p $OVE_OWEL_STATE_DIR/worktree
 	(cd $OVE_OWEL_STATE_DIR/worktree || return 1; ${ove_cmd2pathname["ln"]:?} -s ${worktree} ${worktree_base})
@@ -12242,7 +12301,9 @@ function ove_unittest_preparations {
 
 		f_all=
 		for i in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_files_per_repo}); do
-			filename=$(${ove_cmd2pathname["head"]:?} /dev/urandom | ${ove_cmd2pathname["tr"]:?} -dc A-Za-z0-9 | ${ove_cmd2pathname["head"]:?} -c 13 ; echo '')
+			filename=$(${ove_cmd2pathname["head"]:?} /dev/urandom | \
+				${ove_cmd2pathname["tr"]:?} -dc A-Za-z0-9 | \
+				${ove_cmd2pathname["head"]:?} -c 13 ; echo '')
 			${ove_cmd2pathname["tr"]:?} -dc "\t\n [:alnum:]" < /dev/urandom | ${ove_cmd2pathname["head"]:?} -c10 > ${filename}
 			f_all+=" $filename"
 		done
@@ -12382,7 +12443,8 @@ function ove_unittest {
 		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
 		-Dnbr_of_files=${tot_files} \
 		-DOVE_DIR=${OVE_DIR} \
-		-DOVE_TEST_BASE="$(${ove_cmd2pathname["sed"]:?} -e 's|/|\\/|g' <<<"${OVE_OWEL_TMP_DIR}/unittest")" | ${ove_cmd2pathname["sed"]:?} -e 's|\\n|\n|g'
+		-DOVE_TEST_BASE="$(${ove_cmd2pathname["sed"]:?} -e 's|/|\\/|g' <<<"${OVE_OWEL_TMP_DIR}/unittest")" | \
+		${ove_cmd2pathname["sed"]:?} -e 's|\\n|\n|g'
 }
 
 # unittest:[test...]:run all/specific unit tests:INTERNAL
@@ -12913,7 +12975,9 @@ function ove-generate-doc {
 	b=$(${ove_cmd2pathname["grep"]:?} OVE_ ${OVE_DIR}/ove-config-list.md | ${ove_cmd2pathname["awk"]:?} '{print $2}')
 	str=
 	header="| Variable:| Description:"
-	for c in $(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -3 <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <(printf "%s" "$a")) <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <(printf "%s" "$b"))); do
+	for c in $(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -3 \
+		<(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} \
+		<(printf "%s" "$a")) <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <(printf "%s" "$b"))); do
 		d=$(${ove_cmd2pathname["grep"]:?} "# $c:" $OVE_SELF | ${ove_cmd2pathname["cut"]:?} -d':' -f2-)
 		if [ "$d" != "" ]; then
 			str+="| $c:| $d:|\n"
@@ -12921,7 +12985,19 @@ function ove-generate-doc {
 	done
 
 	# shellcheck disable=SC2059
-	printf "$header\n|-|-|\n$str" | ${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-variables-list.md
+	printf "$header\n|-|-|\n$str" | \
+		${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-variables-list.md
+
+	# ove-externals-list.md (external commands and usage)
+	header="| Command:| Usage:"
+	str=
+	# shellcheck disable=SC2016
+	while read -r a b; do
+		str+="| $a:| $b:|\n"
+	done <<<"$(ove-list-externals | \
+		${ove_cmd2pathname["awk"]:?} '{print $1,$NF}')"
+	printf "$header\n|-|-|\n$str" | \
+		${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-externals-list.md
 
 	return 0
 }
@@ -12965,7 +13041,10 @@ function ove-shell-check {
 
 	(cd "${OVE_DIR}" && \shellcheck -x -e ${exclude} "${OVE_SELF}" > "${OVE_TMP}/shell-check")
 	${ove_cmd2pathname["grep"]:?} -c -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" > "${OVE_TMP}/shellcheck.summary"
-	${ove_cmd2pathname["grep"]:?} -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["uniq"]:?} -c | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -nr >> "${OVE_TMP}/shellcheck.summary"
+	${ove_cmd2pathname["grep"]:?} -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
+		${ove_cmd2pathname["uniq"]:?} -c | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -nr >> "${OVE_TMP}/shellcheck.summary"
 	${ove_cmd2pathname["cp"]:?} -a "${OVE_TMP}/shellcheck.summary" "${OVE_DIR}/tests/.shellcheck"
 	${ove_cmd2pathname["git"]:?} --no-pager -C "${OVE_DIR}" diff -- tests/.shellcheck
 
@@ -12973,7 +13052,9 @@ function ove-shell-check {
 		return 0
 	else
 		echo "\${OVE_TMP}/shell-check"
-		for sc in $(${ove_cmd2pathname["git"]:?} -C "${OVE_DIR}" diff -U0 ${OVE_DIR}/tests/.shellcheck | ${ove_cmd2pathname["grep"]:?} '^+\s' | ${ove_cmd2pathname["grep"]:?} -o 'SC[0-9]\+'); do
+		for sc in $(${ove_cmd2pathname["git"]:?} -C "${OVE_DIR}" diff -U0 ${OVE_DIR}/tests/.shellcheck | \
+			${ove_cmd2pathname["grep"]:?} '^+\s' | \
+			${ove_cmd2pathname["grep"]:?} -o 'SC[0-9]\+'); do
 			${ove_cmd2pathname["grep"]:?} --color=always -B5 ${sc} ${OVE_TMP}/shell-check
 		done
 		return 1

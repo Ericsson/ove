@@ -1,5 +1,5 @@
-46
-     21  SC2059: Don't use variables in the printf format string. Use printf "..%s.." "$foo".
+47
+     22  SC2059: Don't use variables in the printf format string. Use printf "..%s.." "$foo".
       7  SC2031: all_files was modified in a subshell. That change might be lost.
       5  SC2206: Quote to prevent word splitting/globbing, or split robustly with mapfile or read -a.
       3  SC2207: Prefer mapfile or read -a to split command output (or quote to avoid splitting).
