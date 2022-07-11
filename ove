@@ -11444,7 +11444,7 @@ function ove-init {
 
 	if ! [ -L ${dir}/ove ]; then
 		# clone myself
-		if ! ${ove_cmd2pathname["git"]:?} -C "${dir}" clone -q "${ove_url}" .ove; then
+		if [ ! -d "$dir/.ove" ] && ! ${ove_cmd2pathname["git"]:?} -C "${dir}" clone -q "${ove_url}" .ove; then
 			ove_echo_error_noprefix "'git -C ${dir} clone -q ${ove_url}' failed"
 			return 1
 		# get default branch name
@@ -11462,7 +11462,7 @@ function ove-init {
 	revtab_file="${dir}/${owel_name}/revtab"
 	printf "${str}" | \
 		${ove_cmd2pathname["column"]:?} -t | \
-		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} > ${revtab_file}
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u > ${revtab_file}
 
 	# inform user on repos with same fetch url
 	# shellcheck disable=SC2016
@@ -11546,7 +11546,7 @@ EOF
 
 	echo
 	echo "Summary:"
-	echo "* created/updated '${revtab_file}' and with ${i} repositories"
+	echo "* created/updated '${revtab_file}' with ${i} repositories"
 	if [ "${ove_link}" != "" ]; then
 		echo "* created a symbolic link '${dir}/ove' -> '${ove_link}'"
 	fi
