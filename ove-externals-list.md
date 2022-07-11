@@ -22,7 +22,7 @@
 | fold          | 2      |
 | fzf           | 5      |
 | getconf       | 2      |
-| git           | 65     |
+| git           | 64     |
 | grep          | 174    |
 | head          | 18     |
 | inotifywait   | 3      |
@@ -38,7 +38,7 @@
 | mv            | 4      |
 | pgrep         | 4      |
 | ps            | 1      |
-| readlink      | 26     |
+| readlink      | 25     |
 | rev           | 4      |
 | rm            | 40     |
 | rmdir         | 2      |

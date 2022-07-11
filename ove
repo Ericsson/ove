@@ -3778,7 +3778,7 @@ function ove_revtab_pull_one {
 
 		ove_echo_yellow_noprefix "${repo}"
 		if ! ALLOW_OVERRIDE=1 ove_repo_cmd ${repo_fullpath} pull; then
-			ove_echo_error_noprefix "${ove_cmd2pathname["git"]:?} -C ${repo_fullpath} pull failed"
+			ove_echo_error_noprefix "git -C ${repo_fullpath} pull failed"
 		fi
 	fi
 }
@@ -5745,7 +5745,7 @@ function ove_stash_forsome {
 				[ "${s}" == "" ] && break
 
 				if ! ove_repo_cmd ${repo} stash $1 -q ${s}; then
-					ove_echo_error_noprefix "${ove_cmd2pathname["git"]:?} -C ${repo} stash $1 -q ${s} failed"
+					ove_echo_error_noprefix "git -C ${repo} stash $1 -q ${s} failed"
 					return 1
 				fi
 			done
@@ -11282,6 +11282,8 @@ function ove-init {
 	local init_opt
 	local name
 	local ove_link
+	local ove_default_branch
+	local ove_url="https://github.com/Ericsson/ove.git"
 	local owel_default
 	local owel_name
 	local push_url
@@ -11432,7 +11434,7 @@ function ove-init {
 		fi
 
 		if ! ${ove_cmd2pathname["git"]:?} -C ${dir}/${owel_name} init ${init_opt}; then
-			ove_echo_error_noprefix "'${ove_cmd2pathname["git"]:?} -C ${dir}/${owel_name} init ${init_opt}' failed"
+			ove_echo_error_noprefix "'git -C ${dir}/${owel_name} init ${init_opt}' failed"
 			return 1
 		fi
 	fi
@@ -11440,13 +11442,19 @@ function ove-init {
 	# owel symlink
 	(cd ${dir} && ${ove_cmd2pathname["ln"]:?} -s ${owel_name} .owel)
 
-	# symlink self
 	if ! [ -L ${dir}/ove ]; then
-		if [ "${OVE_SELF}" == "" ]; then
-			ove_link=$(${ove_cmd2pathname["readlink"]:?} -f -- ${BASH_SOURCE[0]})
-		else
-			ove_link=${OVE_SELF}
+		# clone myself
+		if ! ${ove_cmd2pathname["git"]:?} -C "${dir}" clone -q "${ove_url}" .ove; then
+			ove_echo_error_noprefix "'git -C ${dir} clone -q ${ove_url}' failed"
+			return 1
+		# get default branch name
+		elif ! ove_default_branch=$(${ove_cmd2pathname["git"]:?} -C "${dir}/.ove" symbolic-ref refs/remotes/origin/HEAD); then
+			ove_echo_error_noprefix "'git -C ${dir}/.ove symbolic-ref refs/remotes/origin/HEAD' failed"
+			return 1
 		fi
+		ove_default_branch=${ove_default_branch##*/}
+		str+=".ove ${ove_url} ${ove_url} ${ove_default_branch}\n"
+		ove_link=".ove/ove"
 		(cd ${dir} && ${ove_cmd2pathname["ln"]:?} -s ${ove_link} ove)
 	fi
 
@@ -11545,7 +11553,7 @@ EOF
 	echo "* created a symbolic link '${dir}/.owel' -> '${dir}/${owel_name}'"
 
 	if [ ${do_init_git} -eq 1 ]; then
-		echo "* created a empty git repository here: '${dir}/${owel_name}'"
+		echo "* created an empty git repository here: '${dir}/${owel_name}'"
 	fi
 	if [ ${#doublets[*]} -ne 0 ]; then
 		echo "* found that a few repos are mentioned more than one time in '${revtab_file}', details above"
