@@ -11354,7 +11354,7 @@ function ove-init {
 
 	if [ $# -eq 0 ] || [ $# -eq 1 ]; then
 		while true; do
-			read -r -p "Top level repo name? Leave blank to name it '${owel_default}': "
+			read -r -p "OWEL name? Leave blank to name it '${owel_default}': "
 			if [ "${REPLY}" == "" ]; then
 				owel_name="${owel_default}"
 			else

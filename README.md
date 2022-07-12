@@ -14,9 +14,6 @@ OVE is built with the developer in focus. We embrace the fact that while compute
 ## Tutorial
 Eager to get going? We have a tutorial [here](https://github.com/Ericsson/ove-tutorial). Try OVE out with a pre-made tutorial project and get up to speed on OVE in just a few minutes.
 
-## Install
-    $ git clone https://github.com/Ericsson/ove.git .ove && source .ove/ove
-
 ## Overview
 OVE provides a top project, and on this top level OVE therefore needs to handle four major functionality areas:
 
@@ -212,7 +209,7 @@ If you are using a plugin that reads from stdin AND you need this plugin within 
 
 We now covered the four main functionality areas of OVE. Next we will go through how to make life easy for developers or CI/CD machines when it comes to setting up an OVE project:
 
-## Setup
+## Setup an existing OVE project
 An existing OVE project is typically setup (or downloaded if you will) by the developer or CI/CD machine using the following oneliner:
 
     $ curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s <name> <OWEL>
@@ -225,7 +222,7 @@ The setup script will do two things:
 * create the 'name' directory at your current location
 * clone the OVE (ove itself) and OWEL (top repo) git repos
 
-The 'setup' script will then urge the developer to enter the OWEL directory and run
+The 'setup' script will then urge the developer to enter the OVE workspace directory and run
 
     $ source ove
 
@@ -302,6 +299,28 @@ Done! As simple as that. Lets give a final example of what an OVE project file s
         ├── revtab
         ├── systests
         └── systests-groups
+
+## Setup OVE to track a few repos
+Oneliner:
+
+    $ git clone https://github.com/Ericsson/ove.git .ove && source .ove/ove
+
+Example:
+
+    # '$HOME/src' has four git repositories
+    $ cd $HOME/src
+    $ git clone https://github.com/Ericsson/ove.git .ove && source .ove/ove
+    ...
+    Directory to scan for git repositories? Leave blank to search in '$HOME/src': [ENTER]
+    OWEL name? Leave blank to name it 'top': [ENTER]
+    Scanning '$HOME/src'. #repos: 5
+    Initialized empty Git repository in $HOME/src/top/.git/
+    Create example/skeleton files? (y/N) [ENTER]
+    ...
+    # you now have a OVE workspace in '$HOME/src' that contains six repos: four repos + OVE + OWEL
+    # try 'ove status'
+    $ ove status
+    ...
 
 Up until now we covered everything you need to know to get to the point where developers (or machines) can start working with your OVE project. Going through these steps, You might have noticed us mention OVE commands several times. It is time to have a closer look at how they work:
 
