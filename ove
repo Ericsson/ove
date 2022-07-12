@@ -3161,7 +3161,7 @@ function ove_revtab_status_parse {
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list "$@")
 	elif ove_any_repo ${tense}; then
-		repos=$(ove_list_repos ${tense})
+		repos=$(ove_list_repositories ${tense})
 	else
 		return 0
 	fi
@@ -7114,13 +7114,26 @@ function ove-diff-check {
 	ove_revtab_forall "${cmd}"
 }
 
-# list-repositories: :list all git repositories:CORE
+# list-repositories:[ahead|behind]:list all git repositories or list repositories that are ahead/behind:CORE
 function ove-list-repositories {
 	ove_entry || return
 
 	local i
 	local str
 	local url
+
+	if [ $# -eq 0 ]; then
+		:
+	elif [ $# -eq 1 ] && [ "x$1" == "xbehind" ]; then
+		ove_list_repositories "behind"
+		return 0
+	elif [ $# -eq 1 ] && [ "x$1" == "xahead" ]; then
+		ove_list_repositories "ahead"
+		return 0
+	else
+		ove_command_usage
+		return 1
+	fi
 
 	i=0
 
@@ -7477,7 +7490,7 @@ function ove_any_repo {
 }
 
 # $1: behind|ahead
-function ove_list_repos {
+function ove_list_repositories {
 	local repos
 
 	# shellcheck disable=SC2016
@@ -7510,7 +7523,7 @@ function ove-pull {
 		done
 	else
 		if ove_any_repo behind; then
-			for repo in $(ove_list_repos behind); do
+			for repo in $(ove_list_repositories "behind"); do
 				if ove_repo_is_dirty ${OVE_BASE_DIR}/${repo}; then
 					ove_echo_error_noprefix "cannot pull '${repo}' as it is dirty"
 					continue
@@ -10093,17 +10106,21 @@ function ove_bash_complete {
 			wordlist=$(ove_revtab_list_basename)
 			wordlist=${wordlist/${OVE_OWEL_NAME}/}
 		fi
+	elif [ "${subcommand}" == "list-repositories" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist="behind ahead"
+		fi
 	elif [ "${subcommand}" == "news" ] ||
 		[ "${subcommand}" == "behind" ] ||
 		[ "${subcommand}" == "show-behind" ] ||
 		[ "${subcommand}" == "show-news" ] ||
 		[ "${subcommand}" == "pull" ]; then
-		wordlist=$(ove_list_repos behind)
+		wordlist=$(ove_list_repositories "behind")
 	elif [ "${subcommand}" == "ahead" ] ||
 		[ "${subcommand}" == "rebase-autosquash" ] ||
 		[ "${subcommand}" == "reset-ahead" ] ||
 		[ "${subcommand}" == "show-ahead" ]; then
-		wordlist=$(ove_list_repos ahead)
+		wordlist=$(ove_list_repositories "ahead")
 	elif [ "${subcommand}" == "demo" ] ||
 		[ "${subcommand}" == "fetch" ] ||
 		[ "${subcommand}" == "list-heads" ] ||
