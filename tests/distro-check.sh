@@ -273,7 +273,7 @@ function main {
 			fi
 
 			if [[ ${distro} == *alpine* ]]; then
-				lxc_exec "${package_manager} alpine-sdk cabal ghc"
+				lxc_exec "${package_manager} alpine-sdk cabal ghc libffi-dev"
 			elif [[ ${distro} == *voidlinux* ]]; then
 				lxc_exec "${package_manager} cabal-install ghc"
 			else
