@@ -10334,6 +10334,11 @@ function ove_hooks_init {
 		_find+="${repo}/.ove/hooks "
 	done
 
+	# global hooks
+	if [ -d "${OVE_GLOBAL_STATE_DIR}/hooks" ]; then
+		_find+="${OVE_GLOBAL_STATE_DIR}/hooks "
+	fi
+
 	if [ "x${_find}" != "x" ]; then
 		# post hooks
 		h_list=$(${ove_cmd2pathname["find"]:?} -L ${_find} -name 'post-*' -perm -u=x -type f)
