@@ -3736,6 +3736,16 @@ function ove_revtab_checkout {
 	)
 }
 
+# helper that will return 1 if git config email or name is not set
+function ove_git_config_check {
+	if [ "x$(${ove_cmd2pathname["git"]:?} config --global user.email)" = "x" ] || \
+		[ "x$(${ove_cmd2pathname["git"]:?} config --global user.name)" = "x" ]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 function ove_revtab_pull_one {
 	local base
 	local loc
@@ -3768,12 +3778,9 @@ function ove_revtab_pull_one {
 		# need to push
 		:
 	else
-		if [ "$(ove_revtab_status_parse_one ahead ${repo})" != "" ]; then
-			if [ "x$(${ove_cmd2pathname["git"]:?} config --global user.email)" = "x" ] || \
-				[ "x$(${ove_cmd2pathname["git"]:?} config --global user.name)" = "x" ]; then
-				ove_echo_error_noprefix "not possible to 'git pull' '${repo}' as git user.email/user.name is not set"
-				return 1
-			fi
+		if [ "x$(ove_revtab_status_parse_one ahead ${repo})" != "x" ] && ! ove_git_config_check; then
+			ove_echo_error_noprefix "not possible to 'git pull ${repo}' as git config user.email/user.name is not set"
+			return 1
 		fi
 
 		ove_echo_yellow_noprefix "${repo}"
@@ -7732,6 +7739,11 @@ function ove_patch_repos {
 		if [ "x${find_search_dirs}" = "x" ]; then
 			return 1
 		fi
+	fi
+
+	if [ "${OVE_PATCH_REPOS_METHOD:?}" = "am" ] && ! ove_git_config_check; then
+		ove_echo_warning_noprefix "not possible to patch repo(s) using 'git am' as git config user.email/user.name is not set"
+		return 1
 	fi
 
 	while read -r p; do
