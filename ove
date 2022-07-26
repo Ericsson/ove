@@ -243,8 +243,10 @@ function ove_unsource {
 	ove_unsource_user_env
 
 	# clean config variables
-	for f in ${OVE_CONFIG_FILES}; do
-		[ -e "${f}" ] && ove_read_config ${f} clean
+	for f in ${OVE_CONFIG_FILES_ALL}; do
+		if [ -e "${f}" ]; then
+			ove_read_config ${f} clean
+		fi
 	done
 
 	# unset old ove[-_] functions
@@ -3248,7 +3250,7 @@ function ove_verify_checksums {
 		return 1
 	fi
 
-	read -r -a cfgs < <(ove_list_oveconfig_files)
+	read -r -a cfgs < <(ove_list_oveconfig_files_all)
 	if [ "${#cfgs[@]}" -ne 0 ]; then
 		md5=$(ove_file_fingerprint "${cfgs[@]}")
 		# got updated?
@@ -3294,7 +3296,7 @@ function ove_verify_checksums {
 function ove_update_checksum_config {
 	local cfgs
 
-	read -r -a cfgs < <(ove_list_oveconfig_files)
+	read -r -a cfgs < <(ove_list_oveconfig_files_all)
 	if [ ${#cfgs[@]} -ne 0 ]; then
 		OVE_CONFIG_MD5=$(ove_file_fingerprint "${cfgs[@]}")
 		export OVE_CONFIG_MD5
@@ -8225,9 +8227,9 @@ $ ove add-config \${OVE_OWEL_STATE_DIR}/.oveconfig OVE_REVTAB_CHECK 0
 $ ove add-config \${OVE_GLOBAL_STATE_DIR}/.oveconfig OVE_REVTAB_CHECK 0
 $ ove add-config \${HOME}/.oveconfig OVE_REVTAB_CHECK 0
 
-# NOTE: oveconfig files are read in this order:
+# NOTE: OVE config files are read in this order:
 \${OVE_OWEL_DIR}/.oveconfig -> \${OVE_OWEL_STATE_DIR}/.oveconfig -> \${OVE_GLOBAL_STATE_DIR}/.oveconfig -> \${HOME}/.oveconfig
-# I.e. oveconfig files in \${HOME} has the highest precedence.
+# I.e. '\${HOME}/.oveconfig' has the highest precedence.
 EOF
 
 	f=$(ove_revtab_list_fullpath)
@@ -8440,7 +8442,7 @@ function ove-blame {
 	done
 }
 
-# $1: oveconfig file
+# $1: file
 # $2: config
 # $3: value
 function ove_config_one {
@@ -8469,38 +8471,51 @@ function ove_config_one {
 	fi
 }
 
-# add-config:file config value:add config/value pair to one oveconfig file:CORE
+# helper function that updates/creates one OVE config file
+function ove_update_config {
+	local config
+	local file
+	local value
+
+	file="$1"
+	config="$2"
+	value="$3"
+
+	if ${ove_cmd2pathname["grep"]:?} -q "^${config} " ${file} &> /dev/null; then
+		${ove_cmd2pathname["sed"]:?} -i "s|^${config}.*|${config} ${value}|g" ${file}
+	else
+		echo "${config} ${value}" >> ${file}
+	fi
+}
+
+# add-config:file config value:add config/value pair to one OVE config file:CORE
 function ove-add-config {
 	ove_entry || return
 
-	local cfg
-	local val
-	local var
+	local config
+	local file
+	local value
 
 	if [ $# -lt 3 ]; then
 		ove_command_usage
 		return 1
 	fi
 
-	cfg=$(${ove_cmd2pathname["readlink"]:?} -f -- $1)
-	if ! ove_config_validate_filename ${cfg}; then
-		ove_echo_error_noprefix "file '${cfg}' is not a valid oveconfig file, select one of:"
-		printf "%s\n" ${OVE_CONFIG_FILES} 1>&2
+	file=$(${ove_cmd2pathname["readlink"]:?} -f -- $1)
+	if ! ove_config_validate_filename ${file}; then
+		ove_echo_error_noprefix "file '${file}' is not a valid OVE config file, select one of:"
+		printf "%s\n" ${OVE_CONFIG_FILES_USER} 1>&2
 		return 1
 	fi
-	var=$2
-	if ! ove_read_config_validate_name ${var}; then
-		ove_echo_error_noprefix "config name '${var}' is not allowed"
+	config=$2
+	if ! ove_read_config_validate_name ${config}; then
+		ove_echo_error_noprefix "config name '${config}' is not allowed"
 		return 1
 	fi
-	val="${*:3}"
+	value="${*:3}"
 
-	if [ -w "${cfg%/*}" ]; then
-		if ${ove_cmd2pathname["grep"]:?} -q "^${var} " ${cfg} &> /dev/null; then
-			${ove_cmd2pathname["sed"]:?} -i "s|^${var}.*|${var} ${val}|g" ${cfg}
-		else
-			echo "${var} ${val}" >> ${cfg}
-		fi
+	if [ -w "${file%/*}" ]; then
+		ove_update_config "${file}" "${config}" "${value}"
 		ove_reinit
 	fi
 
@@ -8510,8 +8525,10 @@ function ove-add-config {
 function ove_config_validate_filename {
 	local f
 
-	for f in ${OVE_CONFIG_FILES}; do
-		[ "$1" == "${f}" ] && return 0
+	for f in ${OVE_CONFIG_FILES_ALL}; do
+		if [ "$1" == "${f}" ]; then
+			return 0
+		fi
 	done
 
 	return 1
@@ -8529,24 +8546,44 @@ function ove_config_validate_file {
 
 function ove_config2file {
 	${ove_cmd2pathname["grep"]:?} -H "^${1} " \
-		${OVE_CONFIG_FILES} 2> /dev/null | \
+		${OVE_CONFIG_FILES_ALL} 2> /dev/null | \
 		${ove_cmd2pathname["tail"]:?} -1 | \
 		${ove_cmd2pathname["cut"]:?} -d: -f1
 }
 
-function ove_list_oveconfig_files {
+function ove_list_oveconfig_files_user {
 	local f
 	local files
 
-	for f in ${OVE_CONFIG_FILES}; do
-		[ -e "${f}" ] && files+=("${f}")
+	for f in ${OVE_CONFIG_FILES_USER}; do
+		if [ -e "${f}" ]; then
+			files+=("${f}")
+		fi
 	done
 
-	[ ${#files[@]} -eq 0 ] && return
+	if [ ${#files[@]} -eq 0 ]; then
+		return
+	fi
 	echo "${files[@]}"
 }
 
-# config:[file[config[[value]]]]|[config[[value]]]:show/modify .oveconfig files, configs are read in order so last config takes precedence:CORE
+function ove_list_oveconfig_files_all {
+	local f
+	local files
+
+	for f in ${OVE_CONFIG_FILES_ALL}; do
+		if [ -e "${f}" ]; then
+			files+=("${f}")
+		fi
+	done
+
+	if [ ${#files[@]} -eq 0 ]; then
+		return
+	fi
+	echo "${files[@]}"
+}
+
+# config:[file[config[[value]]]]|[config[[value]]]:show/modify OVE config files, configs are read in order so last config takes precedence:CORE
 function ove-config {
 	ove_entry || return
 
@@ -8561,11 +8598,11 @@ function ove-config {
 		cfgs=("${1}")
 		shift
 	else
-		read -r -a cfgs < <(ove_list_oveconfig_files)
+		read -r -a cfgs < <(ove_list_oveconfig_files_user)
 	fi
 
 	if [ ${#cfgs[@]} -eq 0 ]; then
-		ove_echo_error_noprefix "no oveconfig found"
+		ove_echo_cyan_noprefix "no '.oveconfig' file(s) found"
 		return 1
 	elif [ ${#cfgs[@]} -gt 1 ]; then
 		grep_prefix="-H"
@@ -10059,14 +10096,14 @@ function ove_bash_complete {
 		wordlist="$(${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_TMP_DIR}/ls-mod-files-base ${OVE_OWEL_TMP_DIR}/ls-files)"
 	elif [ "${subcommand}" == "add-config" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist=${OVE_CONFIG_FILES}
+			wordlist=${OVE_CONFIG_FILES_USER}
 		elif [ ${size} -eq 3 ]; then
 			wordlist="$(type ove_config_builtins_init | \
 				${ove_cmd2pathname["grep"]:?} -o 'OVE_[A-Z_]\+')"
 		fi
 	elif [ "${subcommand}" == "config" ]; then
 		# do we have a config file in the first place?
-		if [ "x$(ove_list_oveconfig_files)" != "x" ]; then
+		if [ "x$(ove_list_oveconfig_files_user)" != "x" ]; then
 			cmd="ove-config"
 			if [ ${size} -eq 3 ]; then
 				# is 2 a config file?
@@ -10591,6 +10628,10 @@ function ove_dirs_init {
 	if ! [ -d "${OVE_LOG_DIR}" ]; then
 		${ove_cmd2pathname["mkdir"]:?} -p "${OVE_LOG_DIR}"
 	fi
+
+	if ! [ -d "${OVE_GLOBAL_STATE_DIR}/.ove" ]; then
+		${ove_cmd2pathname["mkdir"]:?} -p "${OVE_GLOBAL_STATE_DIR}/.ove"
+	fi
 }
 
 function ove_config_init {
@@ -10602,17 +10643,24 @@ function ove_config_init {
 	fi
 
 	# keep the order
-	OVE_CONFIG_FILES="${OVE_OWEL_DIR}/.oveconfig"
-	OVE_CONFIG_FILES+=" ${OVE_OWEL_STATE_DIR}/.oveconfig"
-	OVE_CONFIG_FILES+=" ${OVE_GLOBAL_STATE_DIR}/.oveconfig"
-	OVE_CONFIG_FILES+=" ${HOME}/.oveconfig"
-	export OVE_CONFIG_FILES
+	OVE_CONFIG_FILES_USER="${OVE_OWEL_DIR}/.oveconfig"
+	OVE_CONFIG_FILES_USER+=" ${OVE_OWEL_STATE_DIR}/.oveconfig"
+	OVE_CONFIG_FILES_USER+=" ${OVE_GLOBAL_STATE_DIR}/.oveconfig"
+	OVE_CONFIG_FILES_USER+=" ${HOME}/.oveconfig"
+	export OVE_CONFIG_FILES_USER
+
+	OVE_CONFIG_FILE_INTERNAL="${OVE_GLOBAL_STATE_DIR}/.ove/.oveconfig"
+	export OVE_CONFIG_FILE_INTERNAL
+
+	OVE_CONFIG_FILES_ALL="${OVE_CONFIG_FILES_USER}"
+	OVE_CONFIG_FILES_ALL+=" ${OVE_CONFIG_FILE_INTERNAL}"
+	export OVE_CONFIG_FILES_ALL
 
 	# first set any duplicates
-	ove_read_config_pre $OVE_CONFIG_FILES
+	ove_read_config_pre $OVE_CONFIG_FILES_ALL
 
 	# ...then read configs in order
-	for f in ${OVE_CONFIG_FILES}; do
+	for f in ${OVE_CONFIG_FILES_ALL}; do
 		if [ -e "${f}" ]; then
 			ove_read_config ${f}
 		fi
@@ -10880,6 +10928,50 @@ function ove_reinit {
 	return 0
 }
 
+# probe a few external programs and their capabilities
+function ove_externals_probe {
+	if [ -z "${OVE_COLUMN_WRAP_BUG}" ]; then
+		if ! ( for i in {1..205} ; do echo -n 123456789, ; done ; echo ) | ${ove_cmd2pathname["column"]:?} -t -s "," &> /dev/null; then
+			OVE_COLUMN_WRAP_BUG=1
+		else
+			OVE_COLUMN_WRAP_BUG=0
+		fi
+		ove_update_config ${OVE_CONFIG_FILE_INTERNAL:?} OVE_COLUMN_WRAP_BUG $OVE_COLUMN_WRAP_BUG
+	fi
+	export OVE_COLUMN_WRAP_BUG
+
+	if [ -z "${OVE_LESS_MORE_OPTIONS}" ]; then
+		if ${ove_cmd2pathname["less"]:?} --version |& ${ove_cmd2pathname["head"]:?} -1 | ${ove_cmd2pathname["grep"]:?} -q '^less [0-9]\+'; then
+			OVE_LESS_MORE_OPTIONS=1
+		else
+			OVE_LESS_MORE_OPTIONS=0
+		fi
+		ove_update_config ${OVE_CONFIG_FILE_INTERNAL:?} OVE_LESS_MORE_OPTIONS $OVE_LESS_MORE_OPTIONS
+	fi
+	export OVE_LESS_MORE_OPTIONS
+
+	if [ -z "${OVE_SCRIPT_OPTIONS}" ]; then
+		OVE_SCRIPT_OPTIONS="-q "
+		script_help=$(2>&1 ${ove_cmd2pathname["script"]:?} --help)
+		if [[ "${script_help}" != *"invalid option"* ]]; then
+			[[ "${script_help}" == *"-a"* ]] && OVE_SCRIPT_OPTIONS+="-a "
+			[[ "${script_help}" == *"-e"* ]] && OVE_SCRIPT_OPTIONS+="-e "
+			[[ "${script_help}" == *"-f"* ]] && OVE_SCRIPT_OPTIONS+="-f "
+		fi
+		OVE_SCRIPT_OPTIONS="${OVE_SCRIPT_OPTIONS% *}"
+		ove_update_config ${OVE_CONFIG_FILE_INTERNAL:?} OVE_SCRIPT_OPTIONS $OVE_SCRIPT_OPTIONS
+	fi
+	export OVE_SCRIPT_OPTIONS
+
+	if [ -z "${OVE_FLOCK_OPTIONS}" ]; then
+		if ${ove_cmd2pathname["flock"]:?} --help |& ${ove_cmd2pathname["grep"]:?} -q '\-\-no\-fork'; then
+			OVE_FLOCK_OPTIONS="--no-fork"
+		fi
+		ove_update_config ${OVE_CONFIG_FILE_INTERNAL:?} OVE_FLOCK_OPTIONS $OVE_FLOCK_OPTIONS
+	fi
+	export OVE_FLOCK_OPTIONS
+}
+
 # init:initialize OVE workspace
 function ove_init {
 	local broken_link
@@ -11076,34 +11168,7 @@ function ove_init {
 		ove_unsource_user_env
 	fi
 
-	if ! ( for i in {1..205} ; do echo -n 123456789, ; done ; echo ) | ${ove_cmd2pathname["column"]:?} -t -s "," &> /dev/null; then
-		OVE_COLUMN_WRAP_BUG=1
-	else
-		OVE_COLUMN_WRAP_BUG=0
-	fi
-	export OVE_COLUMN_WRAP_BUG
-
-	if ${ove_cmd2pathname["less"]:?} --version |& ${ove_cmd2pathname["head"]:?} -1 | ${ove_cmd2pathname["grep"]:?} -q '^less [0-9]\+'; then
-		OVE_LESS_MORE_OPTIONS=1
-	else
-		OVE_LESS_MORE_OPTIONS=0
-	fi
-	export OVE_LESS_MORE_OPTIONS
-
-	OVE_SCRIPT_OPTIONS="-q "
-	script_help=$(2>&1 ${ove_cmd2pathname["script"]:?} --help)
-	if [[ "${script_help}" != *"invalid option"* ]]; then
-		[[ "${script_help}" == *"-a"* ]] && OVE_SCRIPT_OPTIONS+="-a "
-		[[ "${script_help}" == *"-e"* ]] && OVE_SCRIPT_OPTIONS+="-e "
-		[[ "${script_help}" == *"-f"* ]] && OVE_SCRIPT_OPTIONS+="-f "
-	fi
-	OVE_SCRIPT_OPTIONS="${OVE_SCRIPT_OPTIONS% *}"
-	export OVE_SCRIPT_OPTIONS
-
-	if ${ove_cmd2pathname["flock"]:?} --help |& ${ove_cmd2pathname["grep"]:?} -q '\-\-no\-fork'; then
-		OVE_FLOCK_OPTIONS="--no-fork"
-		export OVE_FLOCK_OPTIONS
-	fi
+	ove_externals_probe
 
 	if [ $(ove_repos_fetched) -eq $(${ove_cmd2pathname["wc"]:?} -w <<<"${OVE_REPO_LIST}") ]; then
 		unset OVE_PROJECT_LIST_BUILDABLE

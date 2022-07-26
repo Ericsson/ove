@@ -33,7 +33,7 @@
 | lsb_release   | 2      |
 | md5deep       | 1      |
 | md5sum        | 12     |
-| mkdir         | 29     |
+| mkdir         | 30     |
 | mktemp        | 5      |
 | mv            | 4      |
 | pgrep         | 4      |
