@@ -1146,6 +1146,7 @@ function ove_strace_create_graph {
 
 # helper for tmux related commands
 function ove_sanity_check_tmux {
+	local tmux_default_shell
 	local tmux_socket
 
 	if [ -z "${TMUX}" ]; then
@@ -1156,7 +1157,12 @@ function ove_sanity_check_tmux {
 		ove_echo_fatal_noprefix "variable TMUX=$TMUX does not contain a valid socket"
 		return 1
 	elif [ ! -w "$tmux_socket" ]; then
-		ove_echo_error_noprefix "TMUX socket '$tmux_socket' is not writable by '$OVE_USER'"
+		ove_echo_error_noprefix "tmux socket '$tmux_socket' is not writable by '$OVE_USER'"
+		return 1
+	elif ! tmux_default_shell=$(${ove_cmd2pathname["tmux"]:?} show-options -gv default-shell); then
+		return 1
+	elif ! [[ "${tmux_default_shell}" == *bash* ]]; then
+		ove_echo_error_noprefix "tmux default shell '${tmux_default_shell}' is not bash"
 		return 1
 	fi
 

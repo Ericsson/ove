@@ -59,7 +59,7 @@
 | task          | 2      |
 | tee           | 8      |
 | timeout       | 2      |
-| tmux          | 8      |
+| tmux          | 9      |
 | touch         | 2      |
 | tr            | 23     |
 | tsort         | 2      |
