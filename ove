@@ -3818,12 +3818,12 @@ function ove_repo_cmd {
 			name=${ove_revtab_git_name[${i}]}
 		fi
 
-		if [[ -v ove_revtab_git_cmd_opts[@] ]] && \
-			[ "x${ove_revtab_git_cmd_opts["${name}:${git_cmd}"]}" != "x" ]; then
-			git_cmd_opt="${ove_revtab_git_cmd_opts["${name}:${git_cmd}"]}"
-		elif [[ -v ove_revtab_git_cmd_opts[@] ]] && \
-			[ "x${ove_revtab_git_cmd_opts["*:${git_cmd}"]}" != "x" ]; then
-			git_cmd_opt="${ove_revtab_git_cmd_opts["*:${git_cmd}"]}"
+		if declare -p ove_revtab_git_cmd_opts &>/dev/null; then
+			if [ "x${ove_revtab_git_cmd_opts["${name}:${git_cmd}"]}" != "x" ]; then
+				git_cmd_opt="${ove_revtab_git_cmd_opts["${name}:${git_cmd}"]}"
+			elif [ "x${ove_revtab_git_cmd_opts["*:${git_cmd}"]}" != "x" ]; then
+				git_cmd_opt="${ove_revtab_git_cmd_opts["*:${git_cmd}"]}"
+			fi
 		fi
 	fi
 
@@ -7208,7 +7208,7 @@ function ove_entry {
 	done
 
 	# keep this early
-	if ! [[ -v ove_cmd2pathname[@] ]]; then
+	if ! declare -p ove_cmd2pathname &> /dev/null; then
 		ove_externals_init
 	fi
 
@@ -7220,15 +7220,15 @@ function ove_entry {
 		ove_projects_init
 	fi
 
-	if ! [[ -v ove_scripts_paths[@] ]]; then
+	if ! declare -p ove_scripts_paths &> /dev/null; then
 		ove_scripts_init
 	fi
 
-	if ! [[ -v ove_hooks_post[@] ]]; then
+	if ! declare -p ove_hooks_post &> /dev/null; then
 		ove_hooks_init
 	fi
 
-	if ! [[ -v ove_revtab_git_cmd_opts[@] ]]; then
+	if ! declare -p ove_revtab_git_cmd_opts &> /dev/null; then
 		ove_git_command_options_init
 	fi
 
@@ -13109,7 +13109,7 @@ function ove_externals_init {
 	local pathname
 	local restore
 
-	if [[ -v ove_cmd2pathname[@] ]]; then
+	if declare -p ove_cmd2pathname &> /dev/null; then
 		return
 	fi
 
