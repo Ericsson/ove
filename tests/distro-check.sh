@@ -247,6 +247,7 @@ function main {
 		prefix="cd ${ws_name}; source ove hush"
 		lxc_exec "bash -c ${bash_opt} 'cd ${ws_name}; source ove'"
 		lxc_exec "bash -c ${bash_opt} '${prefix}; ove env'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove list-externals'"
 		lxc_exec "bash -c ${bash_opt} '${prefix}; ove status'"
 
 		package_manager_noconfirm
