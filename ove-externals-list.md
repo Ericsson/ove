@@ -66,7 +66,7 @@
 | tsp           | 3      |
 | uname         | 3      |
 | uniq          | 7      |
-| wc            | 20     |
+| wc            | 21     |
 | whoami        | 1      |
 | xargs         | 36     |
 | yamllint      | 1      |

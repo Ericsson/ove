@@ -407,7 +407,9 @@ OVE has been tested ([distro-check.sh](tests/distro-check.sh)) for the following
 | Alpine Linux        | 3.14, 3.15, 3.16           |
 | Arch Linux          | N/A                        |
 | Debian              | Buster, Bullseye, Bookworm |
+| Devuan              | Beowulf, Chimaera          |
 | Fedora              | 33, 34, 35, 36             |
+| Kali                | N/A                        |
 | Linux Mint          | Uma, Una                   |
 | openSUSE Tumbleweed | N/A                        |
 | Ubuntu              | 18.04, 20.04, 21.04, 22.04 |

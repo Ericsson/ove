@@ -13419,7 +13419,7 @@ function ove-post-push {
 	args=$(${ove_cmd2pathname["sed"]:?} -e '/^#/d' -e 's,^,^,g' -e 's,$,$|,g' "${OVE_DIR}/tests/distro-check.list")
 	args=${args//$'\n'/}
 	args=${args::-1}
-	if ove_sanity_check_tmux 2> /dev/null; then
+	if [ $(${ove_cmd2pathname["wc"]:?} -l <"${OVE_DIR}/tests/distro-check.list") -gt 1 ] && ove_sanity_check_tmux 2> /dev/null; then
 		ove run 0 "do . ${ove_cmd2pathname["tail"]:?} -f ${OVE_LAST_COMMAND} | ${ove_cmd2pathname["grep"]:?} -A3 '^ Passed'"
 	fi
 	${OVE_DIR}/tests/distro-check.sh "unittest" "${args}"
