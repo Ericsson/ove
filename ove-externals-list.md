@@ -24,7 +24,7 @@
 | getconf       | 2      |
 | git           | 64     |
 | grep          | 174    |
-| head          | 18     |
+| head          | 19     |
 | inotifywait   | 3      |
 | ld            | 1      |
 | less          | 2      |
@@ -58,7 +58,7 @@
 | tar           | 4      |
 | task          | 2      |
 | tee           | 8      |
-| timeout       | 2      |
+| timeout       | 3      |
 | tmux          | 9      |
 | touch         | 2      |
 | tr            | 23     |

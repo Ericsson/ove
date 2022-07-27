@@ -13108,7 +13108,7 @@ function ove-generate-doc {
 	while read -r a b; do
 		str+="| $a:| $b:|\n"
 	done <<<"$(ove-list-externals | \
-		${ove_cmd2pathname["awk"]:?} '{print $1,$NF}')"
+		${ove_cmd2pathname["awk"]:?} '{print $1,$5}')"
 	printf "$header\n|-|-|\n$str" | \
 		${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-externals-list.md
 
@@ -13281,12 +13281,16 @@ function ove-list-externals {
 	ove_entry || return
 
 	local cmd
+	local cnt
 	local md5
+	local ver
 
 	for cmd in "${!ove_cmd2pathname[@]}"; do
 		md5="$(${ove_cmd2pathname["md5sum"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${ove_cmd2pathname[$cmd]}))"
-		echo "$cmd ${ove_cmd2pathname[$cmd]} $md5 $(${ove_cmd2pathname["grep"]:?} -c "\${ove_cmd2pathname\[\"$cmd\"\]" ${OVE_SELF})"
-	done | ${ove_cmd2pathname["column"]:?} -t | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
+		ver="$(${ove_cmd2pathname["timeout"]:?} 1 ${ove_cmd2pathname[$cmd]:?} --version 2> /dev/null | ${ove_cmd2pathname["head"]:?} -1)"
+		cnt="$(${ove_cmd2pathname["grep"]:?} -c "\${ove_cmd2pathname\[\"$cmd\"\]" ${OVE_SELF})"
+		echo "${cmd}@${ove_cmd2pathname[$cmd]}@${md5}@${cnt}@${ver}"
+	done | ${ove_cmd2pathname["column"]:?} -t -s@ | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 }
 
 # nop: :do nothing:DEBUG
