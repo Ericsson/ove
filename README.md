@@ -412,7 +412,7 @@ OVE has been tested ([distro-check.sh](tests/distro-check.sh)) for the following
 | Kali                | N/A                        |
 | Linux Mint          | Uma, Una                   |
 | openSUSE Tumbleweed | N/A                        |
-| Ubuntu              | 18.04, 20.04, 21.04, 22.04 |
+| Ubuntu              | 16.04, 18.04, 20.04, 22.04 |
 | Void Linux          | N/A                        |
 
 Want to know more about OVE? Please check out the OVE [tutorial](https://github.com/Ericsson/ove-tutorial) or ask OVE:
