@@ -4562,19 +4562,20 @@ function ove-systest {
 	local groups
 	local i
 	local match
-	local nbr_tests
-	local new_test_list
+	local nbr_of_systests
 	local q
 	local result
 	local summary
+	local systest_alias
 	local systest_cmd
 	local systest_exit_code
+	local systest_list
+	local systest_list_tmp
+	local systest_name
 	local systest_path
 	local systest_row
 	local systest_timeout
 	local systest_type
-	local test_list
-	local test_name
 	local timeout_cmd
 
 	[ -e ${OVE_OWEL_DIR}/systests ] || return 1
@@ -4585,27 +4586,27 @@ function ove-systest {
 	fi
 
 	if ! [ -e ${OVE_OWEL_DIR}/systests-groups ]; then
-		test_list="$*"
+		systest_list="$*"
 	else
 		groups=$(ove_list_systests_groups | LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
 
 		if [ "${groups}" == "" ]; then
-			test_list="$*"
+			systest_list="$*"
 		elif ! command -v python3 > /dev/null; then
 			ove_echo_yellow_noprefix "python3 not found, not possible to launch 'yex'"
-			test_list="$*"
+			systest_list="$*"
 		else
-			for test_name in "$@"; do
-				if ${ove_cmd2pathname["grep"]:?} -w -q ${test_name} <<<"${groups}"; then
-					test_list+=" $(${OVE_DIR}/yex ${OVE_OWEL_DIR}/systests-groups -s -r --groups "${test_name}")"
+			for systest_name in "$@"; do
+				if ${ove_cmd2pathname["grep"]:?} -w -q ${systest_name} <<<"${groups}"; then
+					systest_list+=" $(${OVE_DIR}/yex ${OVE_OWEL_DIR}/systests-groups -s -r --groups "${systest_name}")"
 				else
-					test_list+=" ${test_name}"
+					systest_list+=" ${systest_name}"
 				fi
 			done
 		fi
 	fi
 
-	if [ "x${test_list}" = "x" ]; then
+	if [ "x${systest_list}" = "x" ]; then
 		echo "error: no tests found"
 		return 1
 	fi
@@ -4614,13 +4615,13 @@ function ove-systest {
 	if [ -n "${OVE_SYSTEST_REPEAT+x}" ] && \
 		[ "${OVE_SYSTEST_REPEAT}" -gt 1 ]; then
 
-		for test_name in ${test_list}; do
+		for systest_name in ${systest_list}; do
 			for q in $(${ove_cmd2pathname["seq"]:?} 1 ${OVE_SYSTEST_REPEAT}); do
-				new_test_list+=" ${test_name}"
+				systest_list_tmp+=" ${systest_name}"
 			done
 		done
 
-		test_list=${new_test_list}
+		systest_list=${systest_list_tmp}
 	fi
 
 	# skip tests
@@ -4629,33 +4630,33 @@ function ove-systest {
 		if [[ "${OVE_SYSTEST_SKIP}" =~ ^[0-9]+$ ]]; then
 			if [ "${OVE_SYSTEST_SKIP}" -gt 1 ]; then
 				i=0
-				for test_name in ${test_list}; do
+				for systest_name in ${systest_list}; do
 					if (( i % OVE_SYSTEST_SKIP == 0 )); then
-						new_test_list+=" ${test_name}"
+						systest_list_tmp+=" ${systest_name}"
 					fi
 					(( i=i+1 ))
 				done
 
-				test_list=${new_test_list}
+				systest_list=${systest_list_tmp}
 			fi
 		else
 			# skip specific tests
-			test_list=$(printf "%s\n" ${test_list} | \
+			systest_list=$(printf "%s\n" ${systest_list} | \
 				${ove_cmd2pathname["grep"]:?} -v -f <(printf "%s\n" $OVE_SYSTEST_SKIP))
-			if [ "x${test_list}" = "x" ]; then
+			if [ "x${systest_list}" = "x" ]; then
 				echo "error: everything skipped, check config 'OVE_SYSTEST_SKIP'"
 				return 1
 			fi
 		fi
 	fi
 
-	nbr_tests=$(${ove_cmd2pathname["wc"]:?} -w <<<"${test_list}")
-	if [ ${nbr_tests} -gt 1 ]; then
-		echo "${FUNCNAME[0]}:Will run ${nbr_tests} test cases:"
+	nbr_of_systests=$(${ove_cmd2pathname["wc"]:?} -w <<<"${systest_list}")
+	if [ ${nbr_of_systests} -gt 1 ]; then
+		echo "${FUNCNAME[0]}:Will run ${nbr_of_systests} test cases:"
 		i=0
-		for test_name in ${test_list}; do
+		for systest_name in ${systest_list}; do
 			(( i=i+1 ))
-			printf "${FUNCNAME[0]}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
+			printf "${FUNCNAME[0]}:[%03d/%03d    ]:${systest_name}\n" ${i} ${nbr_of_systests}
 		done
 		echo
 	fi
@@ -4664,42 +4665,51 @@ function ove-systest {
 	trap true SIGINT
 
 	i=0
-	for test_name in ${test_list}; do
+	for systest_name in ${systest_list}; do
 		(( i=i+1 ))
 
 		# alias?
-		match=$(${ove_cmd2pathname["grep"]:?} -c ^${test_name}: "${OVE_OWEL_DIR}"/systests)
+		match=$(${ove_cmd2pathname["grep"]:?} -c ^${systest_name}: "${OVE_OWEL_DIR}"/systests)
 		if [ ${match} -eq 1 ]; then
-			test_name=$(${ove_cmd2pathname["grep"]:?} ^${test_name}: "${OVE_OWEL_DIR}"/systests | \
+			systest_alias="${systest_name}"
+			systest_name=$(${ove_cmd2pathname["grep"]:?} ^${systest_name}: "${OVE_OWEL_DIR}"/systests | \
 				${ove_cmd2pathname["cut"]:?} -d: -f2)
-		else
-			match=$(${ove_cmd2pathname["grep"]:?} -c -w ^${test_name} "${OVE_OWEL_DIR}"/systests)
-			if [ ${match} -eq 0 ]; then
-				ove_echo_error_noprefix "${FUNCNAME[0]}:can not find '${test_name}'"
-				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
+
+			if [ "x${systest_name}" = "x" ]; then
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${systest_alias}" ${i} ${nbr_of_systests})"
 				summary+="${result}\n"
 				echo -e ${summary}
-				continue
-			elif [ ${match} -gt 1 ]; then
-				ove_echo_error_noprefix "${FUNCNAME[0]}:${match} match(es) for '${test_name}'"
-				${ove_cmd2pathname["grep"]:?} ^${test_name} "${OVE_OWEL_DIR}"/systests
-				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
-				summary+="${result}\n"
-				echo -e ${summary}
+				ove_echo_error_noprefix "${FUNCNAME[0]}:alias '${systest_alias}' points to an empty systest"
 				continue
 			fi
 		fi
 
-		read -r -a systest_row <<<"$(${ove_cmd2pathname["grep"]:?} -w ^${test_name} "${OVE_OWEL_DIR}"/systests)"
-		test_name=${systest_row[0]}
+		match=$(${ove_cmd2pathname["grep"]:?} -c -w ^${systest_name} "${OVE_OWEL_DIR}"/systests)
+		if [ ${match} -eq 0 ]; then
+			ove_echo_error_noprefix "${FUNCNAME[0]}:can not find systest '${systest_name}'"
+			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${systest_name}" ${i} ${nbr_of_systests})"
+			summary+="${result}\n"
+			echo -e ${summary}
+			continue
+		elif [ ${match} -gt 1 ]; then
+			ove_echo_error_noprefix "${FUNCNAME[0]}:${match} match(es) for '${systest_name}'"
+			${ove_cmd2pathname["grep"]:?} ^${systest_name} "${OVE_OWEL_DIR}"/systests
+			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${systest_name}" ${i} ${nbr_of_systests})"
+			summary+="${result}\n"
+			echo -e ${summary}
+			continue
+		fi
+
+		read -r -a systest_row <<<"$(${ove_cmd2pathname["grep"]:?} -w ^${systest_name} "${OVE_OWEL_DIR}"/systests)"
+		systest_name=${systest_row[0]}
 		systest_timeout=${systest_row[1]}
 		systest_type=${systest_row[2]}
 
 		systest_path=${systest_row[3]//\"}
 		systest_path=$(eval echo ${systest_path})
 		if [ "x${systest_path}" = "x" ]; then
-			ove_echo_error_noprefix "none valid path for systest '${test_name}'"
-			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
+			ove_echo_error_noprefix "none valid path for systest '${systest_name}'"
+			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${systest_name}" ${i} ${nbr_of_systests})"
 			summary+="${result}\n"
 			echo -e ${summary}
 			continue
@@ -4708,8 +4718,8 @@ function ove-systest {
 		if [ "${systest_path:0:1}" = "/" ]; then
 			# abs path
 			if ! [ -d "${systest_path}" ]; then
-				ove_echo_error_noprefix "path '${systest_path}' not found for systest '${test_name}'"
-				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
+				ove_echo_error_noprefix "path '${systest_path}' not found for systest '${systest_name}'"
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${systest_name}" ${i} ${nbr_of_systests})"
 				summary+="${result}\n"
 				echo -e ${summary}
 				continue
@@ -4717,8 +4727,8 @@ function ove-systest {
 		else
 			# rel path
 			if ! [ -d "${OVE_BASE_DIR}/${systest_path}" ]; then
-				ove_echo_error_noprefix "path '${OVE_BASE_DIR}/${systest_path}' not found for systest '${test_name}'"
-				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
+				ove_echo_error_noprefix "path '${OVE_BASE_DIR}/${systest_path}' not found for systest '${systest_name}'"
+				result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${systest_name}" ${i} ${nbr_of_systests})"
 				summary+="${result}\n"
 				echo -e ${summary}
 				continue
@@ -4729,8 +4739,8 @@ function ove-systest {
 		systest_cmd=${systest_cmd//\"}
 
 		if ! pushd "${systest_path}" &> /dev/null; then
-			ove_echo_error_noprefix "'pushd ${systest_path}' failed for systest '${test_name}'"
-			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${test_name}" ${i} ${nbr_tests})"
+			ove_echo_error_noprefix "'pushd ${systest_path}' failed for systest '${systest_name}'"
+			result="$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${systest_name}" ${i} ${nbr_of_systests})"
 			summary+="${result}\n"
 			echo -e ${summary}
 			continue
@@ -4738,13 +4748,13 @@ function ove-systest {
 
 		shift
 		if [ "x${OVE_SYSTEST_HEADER}" = "xshort" ]; then
-			printf "${FUNCNAME[0]}:[%03d/%03d    ]:${test_name}\n" ${i} ${nbr_tests}
+			printf "${FUNCNAME[0]}:[%03d/%03d    ]:${systest_name}\n" ${i} ${nbr_of_systests}
 		elif [ "x${OVE_SYSTEST_HEADER}" = "xdetailed" ]; then
 			printf "%s:[%03d/%03d    ]:name: %s timeout: %s type: %s path: %s cmd: %s\n" \
 				"${FUNCNAME[0]}" \
 				"${i}" \
-				"${nbr_tests}" \
-				"${test_name}" \
+				"${nbr_of_systests}" \
+				"${systest_name}" \
 				"${systest_timeout}" \
 				"${systest_type}" \
 				"${systest_path}" \
@@ -4756,18 +4766,18 @@ function ove-systest {
 			return 1
 		fi
 
-		OVE_SYSTEST_ACTIVE_TEST_CASE=${test_name}
+		OVE_SYSTEST_ACTIVE_TEST_CASE=${systest_name}
 		export OVE_SYSTEST_ACTIVE_TEST_CASE
 
 		OVE_SYSTEST_ITERATION=${i}
 		export OVE_SYSTEST_ITERATION
 
-		OVE_SYSTEST_NBR_TESTS=${nbr_tests}
+		OVE_SYSTEST_NBR_TESTS=${nbr_of_systests}
 		export OVE_SYSTEST_NBR_TESTS
 
 		if [ "${OVE_DRY_RUN}" -eq 1 ]; then
 			# dry run
-			result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_GREEN}OK${OVE_COLOR_BLANK}]:${test_name}" ${i} ${nbr_tests})
+			result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_GREEN}OK${OVE_COLOR_BLANK}]:${systest_name}" ${i} ${nbr_of_systests})
 		else
 			if [ ${systest_timeout} -eq 0 ]; then
 				timeout_cmd=""
@@ -4777,7 +4787,7 @@ function ove-systest {
 
 			if ${timeout_cmd} ${ove_cmd2pathname["bash"]:?} -c "{ ${systest_cmd}; }"; then
 				# test passed
-				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_GREEN}OK${OVE_COLOR_BLANK}]:${test_name}" ${i} ${nbr_tests})
+				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_GREEN}OK${OVE_COLOR_BLANK}]:${systest_name}" ${i} ${nbr_of_systests})
 			else
 				systest_exit_code=$?
 
@@ -4803,7 +4813,7 @@ function ove-systest {
 				fi
 
 				# test failed
-				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ${exit_status}]:${test_name}" ${i} ${nbr_tests})
+				result=$(printf "${FUNCNAME[0]}:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ${exit_status}]:${systest_name}" ${i} ${nbr_of_systests})
 
 				# type 1 systest or SIGINT => stop loop
 				if [ ${systest_type} -eq 1 ] || [ ${exit_status} == "SIGINT" ]; then
@@ -4835,7 +4845,7 @@ function ove-systest {
 		fi
 	done
 	echo
-	if [ ${nbr_tests} -gt 1 ]; then
+	if [ ${nbr_of_systests} -gt 1 ]; then
 		echo ${FUNCNAME[0]}:Summary:
 		echo -e ${summary}
 	fi
