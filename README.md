@@ -156,9 +156,13 @@ We have already covered how OVE keeps track of repos, how sub-project build meth
 
 'systests' is a text file that contains a list of tests. One row is one test:
 
-* name: Unique identifier for the test
+* name: unique identifier for the test
 * timeout: time in seconds when the test should finish. 0 = no timeout.
-* type: 0 = normal. 1 = will break execution on failures if this test is part of a test suite.
+* type:
+    * 0 = 00b = run in fg
+    * 1 = 01b = run in fg and abort test suite on errors
+    * 2 = 10b = run in bg
+    * 3 = 11b = run in bg and abort test suite on errors
 * path: where to execute the test (either relative to OVE_BASE_DIR or an absolute path)
 * command: command(s) to execute
 

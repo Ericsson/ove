@@ -3,7 +3,7 @@
 | ag            | 3      |
 | awk           | 56     |
 | basename      | 2      |
-| bash          | 15     |
+| bash          | 16     |
 | cat           | 38     |
 | chmod         | 3      |
 | column        | 27     |
@@ -48,8 +48,8 @@
 | sed           | 89     |
 | seq           | 9      |
 | setsid        | 1      |
-| sleep         | 11     |
-| sort          | 107    |
+| sleep         | 12     |
+| sort          | 108    |
 | ssh           | 7      |
 | stat          | 8      |
 | sync          | 1      |
