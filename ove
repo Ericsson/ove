@@ -1520,7 +1520,7 @@ function ove-ide {
 	done
 }
 
-# run-parallel:t0 c0 t1 c1 t2 c2...:run OVE commands in parallel (tmux only):UTIL
+# run-parallel:t0 c0 [t1 c1 t2 c2...]:run OVE commands in parallel (tmux only):UTIL
 function ove-run-parallel {
 	ove_entry || return
 
