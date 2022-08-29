@@ -3267,7 +3267,8 @@ function ove_verify_checksums {
 		return 1
 	fi
 
-	md5=$(ove_file_fingerprint $(ove_list_scripts_directories))
+	# ignore large files laying around in the scripts directories
+	md5=$(HASH_SIZE_THRESHOLD=$OVE_HASH_SIZE_THRESHOLD_IN_BYTES ove_file_fingerprint $(ove_list_scripts_directories))
 	# got updated?
 	if [ -n "${OVE_SCRIPTS_CONTENT_MD5+x}" ] && [ "${md5}" != "${OVE_SCRIPTS_CONTENT_MD5}" ]; then
 		return 1
@@ -3336,7 +3337,8 @@ function ove_update_checksum {
 		export OVE_REPOS_MD5
 	fi
 
-	OVE_SCRIPTS_CONTENT_MD5=$(ove_file_fingerprint "${!ove_scripts_paths[@]}")
+	# ignore large files laying around in the scripts directories
+	OVE_SCRIPTS_CONTENT_MD5=$(HASH_SIZE_THRESHOLD=$OVE_HASH_SIZE_THRESHOLD_IN_BYTES ove_file_fingerprint "${!ove_scripts_paths[@]}")
 	export OVE_SCRIPTS_CONTENT_MD5
 
 	OVE_SCRIPTS_NAMES_MD5=$(ove-list-scripts | ${ove_cmd2pathname["md5sum"]:?})
@@ -3946,12 +3948,22 @@ function ove_list_projects {
 
 # $*: file(s)
 function ove_file_md5sum {
-	[ $# -eq 0 ] && return 1
+	local args
 
-	if command -v md5deep > /dev/null; then
-		${ove_cmd2pathname["md5deep"]:?} -s -o f -r "${@}"
+	if [ $# -eq 0 ]; then
+		return 1
+	elif command -v md5deep > /dev/null; then
+		if [ "x${HASH_SIZE_THRESHOLD}" != "x" ]; then
+			args="-i ${HASH_SIZE_THRESHOLD}b"
+		fi
+
+		${ove_cmd2pathname["md5deep"]:?} ${args} -s -o f -r "${@}"
 	else
-		${ove_cmd2pathname["find"]:?} "${@}" -type f -print0 | ${ove_cmd2pathname["xargs"]:?} -0 ${ove_cmd2pathname["md5sum"]:?}
+		if [ "x${HASH_SIZE_THRESHOLD}" != "x" ]; then
+			args="-size ${HASH_SIZE_THRESHOLD}c"
+		fi
+
+		${ove_cmd2pathname["find"]:?} "${@}" ${args} -type f -print0 | ${ove_cmd2pathname["xargs"]:?} -0 ${ove_cmd2pathname["md5sum"]:?}
 	fi
 }
 
@@ -10980,6 +10992,11 @@ function ove_config_builtins_init {
 	# OVE_COMMAND_SETSID:int:0-1:all:run non-terminal commands in a separate session (SID)
 	if [ -z "${OVE_COMMAND_SETSID+x}" ]; then
 		export OVE_COMMAND_SETSID=0
+	fi
+
+	# OVE_HASH_SIZE_THRESHOLD_IN_BYTES:int::all:do not run md5sum on large files
+	if [ -z "${OVE_HASH_SIZE_THRESHOLD_IN_BYTES+x}" ]; then
+		export OVE_HASH_SIZE_THRESHOLD_IN_BYTES="104857600"
 	fi
 }
 
