@@ -4581,14 +4581,15 @@ function ove_systest_get_exit_status {
 	elif [ ${1} -gt 128 ] && [ ${1} -lt 166 ]; then
 		e="SIG$(kill -l ${1})"
 	elif [ -e /usr/include/sysexits.h ] && \
-		${ove_cmd2pathname["grep"]:?} -q "#define EX_[A-Z]\+.*\b${1}" /usr/include/sysexits.h; then
-		e=$(${ove_cmd2pathname["grep"]:?} "#define EX_[A-Z]\+.*\b${1}" /usr/include/sysexits.h | \
+		${ove_cmd2pathname["grep"]:?} -q "#define EX_[A-Z]\+.*\b${1}\b" /usr/include/sysexits.h; then
+		e=$(${ove_cmd2pathname["grep"]:?} "#define EX_[A-Z]\+.*\b${1}\b" /usr/include/sysexits.h | \
 			${ove_cmd2pathname["grep"]:?} -o 'EX_[A-Z]\+')
 	elif [ -e ${OVE_OWEL_DIR}/${OVE_OWEL_NAME}-sysexits.h ] && \
 		${ove_cmd2pathname["grep"]:?} -q "#define [A-Z0-9_]\+.*\b${1}$" ${OVE_OWEL_DIR}/${OVE_OWEL_NAME}-sysexits.h; then
 		e=$(${ove_cmd2pathname["grep"]:?} "#define [A-Z0-9_]\+.*\b${1}$" ${OVE_OWEL_DIR}/${OVE_OWEL_NAME}-sysexits.h | \
 			${ove_cmd2pathname["cut"]:?} -f1 | \
 			${ove_cmd2pathname["cut"]:?} -d' ' -f2)
+
 	else
 		e="${1}"
 	fi
