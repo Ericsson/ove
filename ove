@@ -3194,7 +3194,7 @@ function ove_repos_fetched {
 	local repo
 
 	for repo in ${OVE_REPO_LIST}; do
-		[ -d ${repo}/.git ] && (( f+=1 ))
+		[ -e ${repo}/.git ] && (( f+=1 ))
 	done
 
 	echo ${f}
@@ -3362,7 +3362,7 @@ function ove_revtab_check_fetch_push {
 	local revtab_url
 
 	name=$1
-	[ -d "${OVE_BASE_DIR}/${name}/.git" ] || return
+	[ -e "${OVE_BASE_DIR}/${name}/.git" ] || return
 
 	# fetch URL
 	if ! remote_url=$(${ove_cmd2pathname["git"]:?} -C "${OVE_BASE_DIR}/${name}" "remote" get-url origin 2> /dev/null); then
@@ -3398,7 +3398,7 @@ function ove_revtab_check_one {
 	local sha_b
 
 	name=$1
-	[ -d "${OVE_BASE_DIR}/${name}/.git" ] || return
+	[ -e "${OVE_BASE_DIR}/${name}/.git" ] || return
 
 	revision=$4
 	sha_a=$(${ove_cmd2pathname["git"]:?} -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
@@ -3870,7 +3870,7 @@ function ove_revtab_fetch {
 
 	i=0
 	while ((i < ove_revtab_num_repositories)); do
-		if [ ! -d "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}/.git" ]; then
+		if [ ! -e "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}/.git" ]; then
 			co_list+="${ove_revtab_git_name[${i}]} "
 		fi
 		(( i+=1 ))
@@ -5061,7 +5061,7 @@ function ove_extract_only_a {
 	repo=$(${ove_cmd2pathname["awk"]:?} '{print $2}' <<<"${line}")
 	# shellcheck disable=SC2016
 	sha_1=$(${ove_cmd2pathname["awk"]:?} '{print $3}' <<<"${line}")
-	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -d ${OVE_BASE_DIR}/${repo}/.git ]; then
+	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -e ${OVE_BASE_DIR}/${repo}/.git ]; then
 		only_a+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
 	else
 		only_a+="${line:1}\n"
@@ -5078,7 +5078,7 @@ function ove_extract_only_b {
 	repo=$(${ove_cmd2pathname["awk"]:?} '{print $2}' <<<"${line}")
 	# shellcheck disable=SC2016
 	sha_1=$(${ove_cmd2pathname["awk"]:?} '{print $3}' <<<"${line}")
-	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -d ${OVE_BASE_DIR}/${repo}/.git ]; then
+	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -e ${OVE_BASE_DIR}/${repo}/.git ]; then
 		only_b+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
 	else
 		only_b+="${line:1}\n"
@@ -7747,7 +7747,7 @@ function ove-apply {
 		q="${OVE_OWEL_TMP_DIR}/ove-apply-${repo_basename////-}.patch"
 		${ove_cmd2pathname["mv"]:?} ${p} ${q}
 		if [ -d "${repo_fullpath}" ] && \
-			[ -d ${repo_fullpath}/.git ]; then
+			[ -e ${repo_fullpath}/.git ]; then
 			# Run 'git apply --check' and if ok, apply the patch
 			if ! ove_repo_cmd "${repo_fullpath}" apply --check ${q} 2> /dev/null; then
 				ove_echo_yellow_noprefix "${repo_basename}: patch '${q}' does not apply"
