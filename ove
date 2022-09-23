@@ -10254,7 +10254,6 @@ function ove_bash_complete {
 		[ "${subcommand}" == "revtab-sync" ]; then
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(ove_revtab_list_basename)
-			wordlist=${wordlist/${OVE_OWEL_NAME}/}
 		fi
 	elif [ "${subcommand}" == "list-repositories" ]; then
 		if [ ${size} -eq 2 ]; then
@@ -12857,6 +12856,7 @@ function ove-remove-repo {
 	ove_entry || return
 	ove_revtab_sanity || return
 
+	local e=0
 	local r
 	local repos
 
@@ -12866,18 +12866,24 @@ function ove-remove-repo {
 	fi
 
 	repos=$(ove_validate_repo_list "$@")
-	repos=${repos/${OVE_OWEL_NAME}}
 	if [ "x${repos}" = "x" ]; then
 		ove_echo_error_noprefix "invalid repo name(s): ${*}"
 		return 1
 	fi
 
 	for r in ${repos}; do
-		if ! ${ove_cmd2pathname["sed"]:?} -i -e "/^${r} /d" "${OVE_OWEL_DIR}/revtab"; then
+		if [ "${r}" == "${OVE_OWEL_NAME}" ]; then
+			ove_echo_error_noprefix "not possible to remove '${OVE_OWEL_NAME}'"
+			((e++))
+			continue
+		elif ! ${ove_cmd2pathname["sed"]:?} -i -e "\,^${r} ,d" "${OVE_OWEL_DIR}/revtab"; then
 			ove_echo_fatal_noprefix "removing '$r' from '${OVE_OWEL_DIR}/revtab' failed"
-			return 1
+			((e++))
+			return $e
 		fi
 	done
+
+	return $e
 }
 
 # add-repo:url|url name|url name rev:add a new repo to this OVE workspace:CORE
