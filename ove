@@ -3358,28 +3358,36 @@ function ove_update_checksum {
 # $3: push url
 function ove_revtab_check_fetch_push {
 	local name
+	local remote
 	local remote_url
 	local revtab_url
 
 	name=$1
 	[ -e "${OVE_BASE_DIR}/${name}/.git" ] || return
 
+	# skip multiple remotes (for now)
+	if [ $(ove_get_nbr_of_remotes "${OVE_BASE_DIR}/${name}") -gt 1 ]; then
+		return
+	elif ! remote=$(${ove_cmd2pathname["git"]:?} -C "${OVE_BASE_DIR}/${name}" remote 2> /dev/null); then
+		return
+	fi
+
 	# fetch URL
-	if ! remote_url=$(${ove_cmd2pathname["git"]:?} -C "${OVE_BASE_DIR}/${name}" "remote" get-url origin 2> /dev/null); then
+	if ! remote_url=$(${ove_cmd2pathname["git"]:?} -C "${OVE_BASE_DIR}/${name}" "remote" get-url "${remote}" 2> /dev/null); then
 		return
 	fi
 	revtab_url="$2"
 	if [ "${remote_url}" != "${revtab_url}" ]; then
-		ove_repo_cmd "${OVE_BASE_DIR}/${name}" "remote" set-url origin "${revtab_url}"
+		ove_repo_cmd "${OVE_BASE_DIR}/${name}" "remote" set-url "${remote}" "${revtab_url}"
 	fi
 
 	# push URL
-	if ! remote_url=$(${ove_cmd2pathname["git"]:?} -C "${OVE_BASE_DIR}/${name}" "remote" get-url --push origin 2> /dev/null); then
+	if ! remote_url=$(${ove_cmd2pathname["git"]:?} -C "${OVE_BASE_DIR}/${name}" "remote" get-url --push "${remote}" 2> /dev/null); then
 		return
 	fi
 	revtab_url="$3"
 	if [ "${remote_url}" != "${revtab_url}" ]; then
-		ove_repo_cmd "${OVE_BASE_DIR}/${name}" "remote" set-url --push origin "${revtab_url}"
+		ove_repo_cmd "${OVE_BASE_DIR}/${name}" "remote" set-url --push "${remote}" "${revtab_url}"
 	fi
 }
 
@@ -11473,6 +11481,72 @@ function ove_buildable_projects {
 	export OVE_PROJECT_LIST_BUILDABLE
 }
 
+# $1: dir
+function ove_get_revision {
+	local revision
+
+	if [ ! -d "${1}" ]; then
+		return 1
+	fi
+
+	# detached?
+	if ! ${ove_cmd2pathname["git"]:?} -C "${1}" symbolic-ref -q HEAD > /dev/null; then
+		revision=$(${ove_cmd2pathname["git"]:?} -C "${1}" rev-parse --short HEAD)
+	else
+		revision=$(${ove_cmd2pathname["git"]:?} -C "${1}" branch | \
+			${ove_cmd2pathname["cut"]:?} -d' ' -f2 | \
+			${ove_cmd2pathname["tr"]:?} -d '\n')
+	fi
+
+	echo "${revision}"
+}
+
+function ove_get_nbr_of_remotes {
+	local array
+
+	if [ ! -d "${1}" ]; then
+		return 1
+	elif ! mapfile -t array < <(${ove_cmd2pathname["git"]:?} -C "${1}" remote 2> /dev/null); then
+		return 1
+	fi
+
+	echo "${#array[*]}"
+}
+
+# $1: dir
+# $2: remote
+function ove_get_fetch_url {
+	local fetch_url
+
+	if [ ! -d "${1}" ]; then
+		return 1
+	fi
+
+	fetch_url=$(${ove_cmd2pathname["git"]:?} -C "${1}" remote get-url $2 2> /dev/null)
+	if [ "x${fetch_url}" = "x" ]; then
+		fetch_url="noremote"
+	fi
+
+	echo "${fetch_url}"
+}
+
+# $1: dir
+# $2: remote
+function ove_get_push_url {
+	local push_url
+
+	if [ ! -d "${1}" ]; then
+		return 1
+	fi
+
+	push_url=$(${ove_cmd2pathname["git"]:?} -C "${1}" remote get-url --push $2 2> /dev/null)
+	if [ "x${push_url}" = "x" ]; then
+		push_url="noremote"
+	fi
+
+	echo "${push_url}"
+}
+
 # init:|[dir]|[dir name]:scan directories and look for git repositories, if found create/update a OVE workspace:CORE
 function ove-init {
 	ove_entry || return
@@ -11577,14 +11651,12 @@ function ove-init {
 	# updating an existing git repo?
 	# shellcheck disable=SC2016
 	if [ -d ${dir}/${owel_name}/.git ]; then
-		owel_remote=$(${ove_cmd2pathname["git"]:?} -C "${dir}/${owel_name}" remote -v | \
-			${ove_cmd2pathname["grep"]:?} fetch | \
-			${ove_cmd2pathname["awk"]:?} '{print $2}')
+		owel_remote=$(ove_get_fetch_url "${dir}/${owel_name}" origin)
 	else
 		do_init_git=1
 	fi
 
-	while read -r repo; do
+	for repo in $(${ove_cmd2pathname["find"]:?} "${dir}" -type d -name .git 2>/dev/null); do
 		if ! ${ove_cmd2pathname["git"]:?} -C ${repo} log -1 --oneline &> /dev/null; then
 			continue
 		fi
@@ -11592,33 +11664,32 @@ function ove-init {
 		name=$(${ove_cmd2pathname["dirname"]:?} "${repo}")
 		name=${name/${dir}\//}
 
-		# shellcheck disable=SC2016
-		fetch_url=$(${ove_cmd2pathname["git"]:?} -C "${repo}" remote -v | \
-			${ove_cmd2pathname["grep"]:?} fetch | \
-			${ove_cmd2pathname["awk"]:?} '{print $2}')
-		[ "${fetch_url}" == "" ] && fetch_url="noremote"
-		# ignore OWEL remote
-		[ "${fetch_url}" == "${owel_remote}" ] && continue
-
-		# shellcheck disable=SC2016
-		push_url=$(${ove_cmd2pathname["git"]:?} -C "${repo}" remote -v | \
-			${ove_cmd2pathname["grep"]:?} push | \
-			${ove_cmd2pathname["awk"]:?} '{print $2}')
-		[ "${push_url}" == "" ] && push_url="noremote"
-
-		# detached?
-		if ! ${ove_cmd2pathname["git"]:?} -C "${repo}" symbolic-ref -q HEAD > /dev/null; then
-			revision=$(${ove_cmd2pathname["git"]:?} -C "${repo}" rev-parse --short HEAD)
+		if [ $(ove_get_nbr_of_remotes "${repo}") -gt 1 ]; then
+			ove_echo_cyan_noprefix "select one remote for '${name}'"
+			${ove_cmd2pathname["git"]:?} -C "${repo}" remote -v
+			while true; do
+				read -r -p "remote: "
+				remote="${REPLY}"
+				if ${ove_cmd2pathname["git"]:?} -C "${repo}" remote | ${ove_cmd2pathname["grep"]:?} -q ^${remote}$; then
+					break;
+				fi
+			done
 		else
-			revision=$(${ove_cmd2pathname["git"]:?} -C "${repo}" branch | \
-				${ove_cmd2pathname["cut"]:?} -d' ' -f2 | \
-				${ove_cmd2pathname["tr"]:?} -d '\n')
+			remote=$(${ove_cmd2pathname["git"]:?} -C "${repo}" remote)
 		fi
+
+		fetch_url=$(ove_get_fetch_url "${repo}" "${remote}")
+		# ignore OWEL remote
+		if [ "${fetch_url}" == "${owel_remote}" ]; then
+			continue
+		fi
+		push_url=$(ove_get_push_url "${repo}" "${remote}")
+		revision=$(ove_get_revision "${repo}")
 
 		((i++))
 		echo -en "Scanning '${dir}'. #repos: ${i}\r"
 		str+="${name} ${fetch_url} ${push_url} ${revision}\n"
-	done < <(${ove_cmd2pathname["find"]:?} "${dir}" -type d -name .git 2>/dev/null)
+	done
 
 	if [ ${i} -eq 0 ]; then
 		ove_echo_error_noprefix "no git repositories found here: '${dir}'"
@@ -12886,49 +12957,90 @@ function ove-remove-repo {
 	return $e
 }
 
-# add-repo:url|url name|url name rev:add a new repo to this OVE workspace:CORE
+# add-repo:dir|url|url name|url name rev:add a new repo to this OVE workspace:CORE
 function ove-add-repo {
 	ove_entry || return
 
+	local fetch_url
 	local name
-	local revision=${OVE_DEFAULT_BRANCH_NAME}
-	local url
+	local push_url
+	local remote
+	local revision
 
 	if [ $# -eq 0 ] || [ $# -gt 3 ]; then
 		ove_command_usage
 		return 1
-	fi
+	elif [ $# -eq 1 ] && [ -d "${1}" ] && [ -e "${1}"/.git ]; then
+		name=${1}
 
-	url="${1}"
-	if [ $# -eq 1 ]; then
-		name="${1##*/}"
-		name="${name%%.*}"
+		# remove any trailing slash
+		if [ ${#name} -ne 1 ]; then
+			name="${name%/}"
+		fi
 
-		read -r -p "name? (leave empty to name it '${name}'): "
-		[ "${REPLY}" != "" ] && name="${REPLY}"
-	elif [ $# -eq 2 ]; then
-		name="${2}"
-	elif [ $# -eq 3 ]; then
-		name="${2}"
-		revision="${3}"
-	fi
+		# sanity check
+		if [ "x$(ove_validate_repo_list "$name")" != "x" ]; then
+			ove_echo_error_noprefix "'$name' is already added"
+			return 1
+		fi
 
-	if [ $# -eq 1 ] || [ $# -eq 2 ]; then
-		read -r -p "revision? (leave empty to use '${revision}'): "
-		[ "${REPLY}" != "" ] && revision="${REPLY}"
+		# multiple remotes?
+		if [ $(ove_get_nbr_of_remotes "${name}") -gt 1 ]; then
+			ove_echo_cyan_noprefix "select one remote for '${name}'"
+			${ove_cmd2pathname["git"]:?} -C "${name}" remote -v
+			while true; do
+				read -r -p "remote: "
+				remote="${REPLY}"
+				if ${ove_cmd2pathname["git"]:?} -C "${name}" remote | ${ove_cmd2pathname["grep"]:?} -q ^${remote}$; then
+					break;
+				fi
+			done
+		else
+			remote=$(${ove_cmd2pathname["git"]:?} -C "${1}" remote)
+		fi
+
+		fetch_url=$(ove_get_fetch_url "${name}" ${remote})
+		push_url=$(ove_get_push_url "${name}" ${remote})
+		revision=$(ove_get_revision "${name}")
+	else
+		fetch_url="${1}"
+		push_url="${fetch_url}"
+		revision="${OVE_DEFAULT_BRANCH_NAME}"
+
+		if [ $# -eq 1 ]; then
+			name="${1##*/}"
+			name="${name%%.*}"
+
+			read -r -p "name? (leave empty to name it '${name}'): "
+			[ "${REPLY}" != "" ] && name="${REPLY}"
+		elif [ $# -eq 2 ]; then
+			name="${2}"
+		elif [ $# -eq 3 ]; then
+			name="${2}"
+			revision="${3}"
+		fi
+
+		# sanity check
+		if [ "x$(ove_validate_repo_list "$name")" != "x" ]; then
+			ove_echo_error_noprefix "'$name' is already added"
+			return 1
+		fi
+
+		if [ $# -eq 1 ] || [ $# -eq 2 ]; then
+			read -r -p "revision? (leave empty to use '${revision}'): "
+			[ "${REPLY}" != "" ] && revision="${REPLY}"
+		fi
 	fi
 
 	# update revtab
-	echo "${name} ${url} ${url} ${revision}" | ${ove_cmd2pathname["tee"]:?} -a "${OVE_OWEL_DIR}/revtab"
+	echo "${name} ${fetch_url} ${push_url} ${revision}" >> "${OVE_OWEL_DIR}/revtab"
 
 	# parse revtab
 	if ! ove_revtab_init; then
 		# remove last line
 		${ove_cmd2pathname["sed"]:?} -i '$ d' "${OVE_OWEL_DIR}/revtab"
 		return 1
-	fi
-
-	if ! ove-fetch "${name}"; then
+	elif [ ! -d "${name}" ] && ! ove-fetch "${name}"; then
 		return 1
 	fi
 

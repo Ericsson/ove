@@ -1,7 +1,7 @@
 | Command       | Usage
 |-|-|
 | ag            | 3      |
-| awk           | 56     |
+| awk           | 53     |
 | basename      | 2      |
 | bash          | 16     |
 | cat           | 38     |
@@ -22,8 +22,8 @@
 | fold          | 2      |
 | fzf           | 5      |
 | getconf       | 2      |
-| git           | 64     |
-| grep          | 174    |
+| git           | 71     |
+| grep          | 173    |
 | head          | 19     |
 | inotifywait   | 3      |
 | ld            | 1      |
@@ -57,7 +57,7 @@
 | tail          | 13     |
 | tar           | 4      |
 | task          | 2      |
-| tee           | 8      |
+| tee           | 7      |
 | timeout       | 3      |
 | tmux          | 9      |
 | touch         | 2      |
