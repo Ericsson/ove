@@ -2135,8 +2135,8 @@ function ove {
 		# trace post hook
 		ove_setup_trace_post
 
-		# remove any NULL bytes AND insert command and args at line 2
-		${ove_cmd2pathname["sed"]:?} -i -e 's/\x0//' -e "2i${cmd_and_args}" ${OVE_LAST_COMMAND}
+		# remove CR, NULL bytes and insert command+args at line 2
+		${ove_cmd2pathname["sed"]:?} -i -e 's/\r$//' -e 's/\x0//' -e "2i${cmd_and_args}" ${OVE_LAST_COMMAND}
 
 		# compensate timing file for command, args and linefeed
 		${ove_cmd2pathname["sed"]:?} -i -e "1i0 $((${#cmd_and_args}+1))" ${OVE_LAST_COMMAND/.log}.timing
