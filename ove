@@ -361,12 +361,12 @@ function ove_main {
 	ove_externals_init
 
 	# some error messages use colors. I.e. keep this early
-	export OVE_COLOR_GREEN="\033[1;32;7m"
-	export OVE_COLOR_CYAN="\033[1;36;7m"
-	export OVE_COLOR_BLUE="\033[1;34;7m"
-	export OVE_COLOR_YELLOW_X="1;33;7m"
+	export OVE_COLOR_GREEN="\033[0;32;7m"
+	export OVE_COLOR_CYAN="\033[0;36;7m"
+	export OVE_COLOR_BLUE="\033[0;34;7m"
+	export OVE_COLOR_YELLOW_X="0;33;7m"
 	export OVE_COLOR_YELLOW="\033[${OVE_COLOR_YELLOW_X}"
-	export OVE_COLOR_RED="\033[1;31;7m"
+	export OVE_COLOR_RED="\033[0;31;7m"
 	export OVE_COLOR_BLANK="\033[0m"
 
 	# set OVE_OS_* variables ('ove_deps' need them)
@@ -4496,6 +4496,30 @@ function ove-echo {
 	fi
 }
 
+# list-colors: :list OVE colors:CORE
+function ove-list-colors {
+	local c
+	local j
+	local s
+	local v
+
+	for c in green yellow red cyan blue; do
+		v="OVE_COLOR_${c^^}"
+		echo "$c ${!v}"
+		s=
+		for j in $(seq 1 $((OVE_COLUMNS/2))); do
+			if [ $((j%3)) -eq 0 ]; then
+				s+="E "
+			elif [ $((j%3)) -eq 1 ]; then
+				s+="O "
+			elif [ $((j%3)) -eq 2 ]; then
+				s+="V "
+			fi
+		done
+		ove_echo_${c}_noprefix "$s"
+	done
+}
+
 function ove_echo_cyan {
 	ove_echo "${OVE_COLOR_CYAN}""$*""${OVE_COLOR_BLANK}"
 }
@@ -4510,6 +4534,10 @@ function ove_echo_cyan_error_noprefix {
 
 function ove_echo_yellow {
 	ove_echo "${OVE_COLOR_YELLOW}""$*""${OVE_COLOR_BLANK}"
+}
+
+function ove_echo_blue {
+	ove_echo "${OVE_COLOR_BLUE}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_green {
@@ -4530,6 +4558,10 @@ function ove_echo_red_noprefix {
 
 function ove_echo_yellow_noprefix {
 	echo -e "${OVE_COLOR_YELLOW}""$*""${OVE_COLOR_BLANK}"
+}
+
+function ove_echo_blue_noprefix {
+	echo -e "${OVE_COLOR_BLUE}""$*""${OVE_COLOR_BLANK}"
 }
 
 function ove_echo_warning {
@@ -7403,7 +7435,7 @@ function ove-show-news {
 	# remove color codes
 	${ove_cmd2pathname["sed"]:?} -i \
 		-r \
-		-e "s/\x1b\[1;3[0-9];7m//g" \
+		-e "s/\x1b\[0;3[0-9];7m//g" \
 		-e "s/\x1b\[[0-9]+m//g" \
 		-e "s/\x1b\[m//g" ${OVE_OWEL_STATE_DIR}/revtab-news
 
@@ -7457,7 +7489,7 @@ function ove-reset-ahead {
 
 	ove-ahead "$@" | \
 		${ove_cmd2pathname["sed"]:?} -r \
-		-e "s/\x1b\[1;3[0-9];7m//g" \
+		-e "s/\x1b\[0;3[0-9];7m//g" \
 		-e "s/\x1b\[[0-9]+m//g" \
 		-e "s/\x1b\[m//g" | \
 		${ove_cmd2pathname["grep"]:?} --color=never ': [0-9]\+ new commit' | \
@@ -7481,7 +7513,7 @@ function ove-rebase-autosquash {
 	ove-ahead "$@"
 	ove-ahead "$@" | \
 		${ove_cmd2pathname["sed"]:?} -r \
-		-e "s/\x1b\[1;3[0-9];7m//g" \
+		-e "s/\x1b\[0;3[0-9];7m//g" \
 		-e "s/\x1b\[[0-9]+m//g" \
 		-e "s/\x1b\[m//g" | \
 		${ove_cmd2pathname["grep"]:?} --color=never ': [0-9]\+ new commit' | \
@@ -7510,7 +7542,7 @@ function ove-format-patch {
 
 	ove-ahead | \
 		${ove_cmd2pathname["sed"]:?} -r \
-		-e "s/\x1b\[1;3[0-9];7m//g" \
+		-e "s/\x1b\[0;3[0-9];7m//g" \
 		-e "s/\x1b\[[0-9]+m//g" \
 		-e "s/\x1b\[m//g" | \
 		${ove_cmd2pathname["grep"]:?} --color=never ': [0-9]\+ new commit' | \
@@ -7718,7 +7750,7 @@ function ove-apply {
 	# remove color codes
 	${ove_cmd2pathname["sed"]:?} -i \
 		-r \
-		-e "s/\x1b\[1;3[0-9];7m//g" \
+		-e "s/\x1b\[[0-1];3[0-9];7m//g" \
 		-e "s/\x1b\[[0-9]+m//g" \
 		-e "s/\x1b\[m//g" ${p}
 
