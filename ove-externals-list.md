@@ -4,7 +4,7 @@
 | awk           | 53     |
 | basename      | 2      |
 | bash          | 17     |
-| cat           | 38     |
+| cat           | 39     |
 | chmod         | 3      |
 | column        | 28     |
 | comm          | 14     |
@@ -24,7 +24,7 @@
 | getconf       | 2      |
 | git           | 71     |
 | grep          | 174    |
-| head          | 19     |
+| head          | 18     |
 | inotifywait   | 3      |
 | ld            | 1      |
 | less          | 3      |
@@ -36,7 +36,7 @@
 | mkdir         | 31     |
 | mktemp        | 5      |
 | mv            | 6      |
-| pgrep         | 4      |
+| pgrep         | 3      |
 | ps            | 1      |
 | readlink      | 25     |
 | rev           | 4      |
@@ -48,13 +48,13 @@
 | sed           | 91     |
 | seq           | 11     |
 | setsid        | 1      |
-| sleep         | 12     |
+| sleep         | 11     |
 | sort          | 108    |
 | ssh           | 7      |
 | stat          | 8      |
 | sync          | 1      |
 | tac           | 3      |
-| tail          | 13     |
+| tail          | 12     |
 | tar           | 4      |
 | task          | 2      |
 | tee           | 9      |
