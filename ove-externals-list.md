@@ -3,7 +3,7 @@
 | ag            | 3      |
 | awk           | 53     |
 | basename      | 2      |
-| bash          | 16     |
+| bash          | 17     |
 | cat           | 38     |
 | chmod         | 3      |
 | column        | 28     |
@@ -33,7 +33,7 @@
 | lsb_release   | 2      |
 | md5deep       | 1      |
 | md5sum        | 12     |
-| mkdir         | 30     |
+| mkdir         | 31     |
 | mktemp        | 5      |
 | mv            | 6      |
 | pgrep         | 4      |

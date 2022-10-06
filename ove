@@ -1975,7 +1975,10 @@ function ove {
 	cmd="$1"
 
 	# keep this as early as possible
-	if [ "${cmd}" == "cd" ] || [ "${cmd}" == "init" ] || [ "${cmd}" == "l" ] ; then
+	if [ "${cmd}" == "cd" ] \
+		|| [ "${cmd}" == "init" ] \
+		|| [ "${cmd}" == "l" ] \
+		|| [ "${cmd}" == "setup" ]; then
 		ove-${cmd} "${@:2}"
 		return $?
 	fi
@@ -5344,11 +5347,38 @@ function ove_locate_print {
 	echo
 }
 
-# setup: :print how to set this project up:CORE
+# setup:[dir]:print or execute ${OVE_OWEL_DIR}/SETUP:CORE
 function ove-setup {
-	ove_entry || return
+	local p
 
-	[ -e "${OVE_OWEL_DIR}/SETUP" ] && ${ove_cmd2pathname["cat"]:?} "${OVE_OWEL_DIR}/SETUP"
+	if [ ! -s "${OVE_OWEL_DIR}/SETUP" ]; then
+		return 0
+	elif [ ! -x "${OVE_OWEL_DIR}/SETUP" ]; then
+		${ove_cmd2pathname["cat"]:?} "${OVE_OWEL_DIR}/SETUP"
+		return 0
+	fi
+
+	if [ $# -eq 1 ]; then
+		if [ ${EUID} -eq 0 ]; then
+			p="#"
+		else
+			p="$"
+		fi
+
+		if ! echo "$p mkdir -p $1"; then
+			return 1
+		elif ! ${ove_cmd2pathname["mkdir"]:?} -p "$1"; then
+			return 1
+		elif ! echo "$p cd $1"; then
+			return 1
+		elif ! cd "$1"; then
+			return 1
+		fi
+	fi
+
+	if ! ${ove_cmd2pathname["bash"]:?} "${OVE_OWEL_DIR}/SETUP"; then
+		return 1
+	fi
 
 	return 0
 }
@@ -12439,9 +12469,13 @@ function ove-replicate {
 	fi
 
 	if [ $# -eq 1 ]; then
-		s="$(ove-setup)"
-		if [ "${s}" == "" ]; then
-			ove_echo_error_noprefix "'${OVE_OWEL_DIR}/SETUP' file not found"
+		if [ ! -e "${OVE_OWEL_DIR}/SETUP" ]; then
+			ove_echo_error_noprefix "'${OVE_OWEL_DIR}/SETUP' not found"
+			return 1
+		elif [ ! -s "${OVE_OWEL_DIR}/SETUP" ]; then
+			ove_echo_error_noprefix "'${OVE_OWEL_DIR}/SETUP' is empty"
+			return 1
+		elif ! s="$(${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_DIR}/SETUP)"; then
 			return 1
 		fi
 	fi
