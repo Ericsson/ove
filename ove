@@ -1353,7 +1353,7 @@ function ove_loop_command {
 		fi
 
 		# run the command
-		OVE_PAGER='tee /dev/null' ove-${1} ${*:2}
+		OVE_PAGER="${ove_cmd2pathname["tee"]:?} /dev/null" ove-${1} ${*:2}
 
 		if [ ${use_inotify} -eq 1 ]; then
 			# first iteration?
@@ -1448,7 +1448,7 @@ function ove_loop_command {
 				for i in $j; do
 					sed_expr+=" -e '${i}s,^,@,'"
 				done
-				eval sed -i $sed_expr ${files_modified_by_command}.uniq
+				eval ${ove_cmd2pathname["sed"]:?} -i $sed_expr ${files_modified_by_command}.uniq
 			fi
 
 			# unmask files
@@ -1457,7 +1457,7 @@ function ove_loop_command {
 				for i in $s; do
 					sed_expr+=" -e '${i}s,^.,,'"
 				done
-				eval sed -i $sed_expr ${files_modified_by_command}.uniq
+				eval ${ove_cmd2pathname["sed"]:?} -i $sed_expr ${files_modified_by_command}.uniq
 			fi
 
 			if ! ove_inotifywait ${_timeout} ${files_modified_by_command}.uniq; then
@@ -1611,7 +1611,7 @@ function ove-run {
 			source ${OVE_BASE_DIR}/ove; \
 			ove_init; \
 			${header}; \
-			OVE_PAGER='tee /dev/null' ove-${cmd}; \
+			OVE_PAGER='${ove_cmd2pathname[tee]:?} /dev/null' ove-${cmd}; \
 			echo -; \
 			read -n 1 -s -r -p '' ${read_args}"
 
@@ -1619,7 +1619,7 @@ function ove-run {
 		${ove_cmd2pathname["tmux"]:?} select-pane -t 0
 	else
 		ove_echo_cyan_error "ove-${cmd}"
-		OVE_PAGER='tee /dev/null' ove-${cmd}
+		OVE_PAGER="${ove_cmd2pathname[tee]:?} /dev/null" ove-${cmd}
 		echo -
 		# shellcheck disable=SC2229
 		read -n 1 -s -r -p '' ${read_args}
@@ -1946,7 +1946,7 @@ EOF
 				fi
 
 				# append it
-				echo "$h |& tee -a \$OVE_LAST_COMMAND" >> ${f}
+				echo "$h |& ${ove_cmd2pathname["tee"]:?} -a \$OVE_LAST_COMMAND" >> ${f}
 			fi
 		done
 	fi
@@ -4507,7 +4507,7 @@ function ove-list-colors {
 		v="OVE_COLOR_${c^^}"
 		echo "$c ${!v}"
 		s=
-		for j in $(seq 1 $((OVE_COLUMNS/2))); do
+		for j in $(${ove_cmd2pathname["seq"]:?} 1 $((OVE_COLUMNS/2))); do
 			if [ $((j%3)) -eq 0 ]; then
 				s+="E "
 			elif [ $((j%3)) -eq 1 ]; then
@@ -4643,7 +4643,7 @@ function ove_systest_cleanup {
 	if [ -s $OVE_TMP/systest-pids ]; then
 		ove_kill_procs 1 0.1 $(${ove_cmd2pathname["cat"]:?} $OVE_TMP/systest-pids)
 	fi
-	rm $OVE_TMP/systest-pids
+	${ove_cmd2pathname["rm"]:?} $OVE_TMP/systest-pids
 }
 
 function ove_systest_print_summary {
@@ -5366,7 +5366,7 @@ function ove-refresh {
 
 	mapfile -t projs < <(ove_list_workspaces_full)
 	if [ $# -eq 0 ]; then
-		proj_list="$(seq 0 $((${#projs[@]} - 1)))"
+		proj_list="$(${ove_cmd2pathname["seq"]:?} 0 $((${#projs[@]} - 1)))"
 	else
 		i=0
 		while ((i < ${#projs[@]})); do
@@ -8186,7 +8186,7 @@ function ove-list-commands {
 				r=${r/\/.ove*}
 				echo "$_help:$r"
 			done
-		} | column -t -s':'
+		} | ${ove_cmd2pathname["column"]:?} -t -s':'
 		return 0
 	fi
 
@@ -8241,7 +8241,7 @@ function ove-list-commands-by-category {
 		if [ "x$c" = "xPLUGIN" ]; then
 			continue
 		fi
-		ove-list-commands | grep -E "$c|^cmd|^---"
+		ove-list-commands | ${ove_cmd2pathname["grep"]:?} -E "$c|^cmd|^---"
 		echo
 		echo
 		echo
@@ -9623,7 +9623,7 @@ function ove-lastlog-summary {
 			fi
 			return 1
 		fi
-		mv $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
+		${ove_cmd2pathname["mv"]:?} $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
 	fi
 
 	printf "%-24s %-4s %s\n" "date" "exit" "command"
@@ -9866,7 +9866,7 @@ function ove-lastlog {
 		echo "error: no logs found after filter"
 		return 1
 	fi
-	mv $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
+	${ove_cmd2pathname["mv"]:?} $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
 
 	${ove_cmd2pathname["xargs"]:?} stat --format '%Y:%n:%s' < $OVE_TMP/ove-${self}| \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -nr | \
@@ -10482,7 +10482,7 @@ function ove_add_script_func {
 	if [ -f ${s_dir}/${s}.help ]; then
 		htext=$(<${s_dir}/${s}.help)
 		if [[ "$htext" != *:PLUGIN ]]; then
-			htext="$s:$(<${s_dir}/${s}.help cut -d: -f2-):PLUGIN"
+			htext="$s:$(${ove_cmd2pathname["cut"]:?} -d: -f2- ${s_dir}/${s}.help):PLUGIN"
 		fi
 	else
 		htext="${s}: :run '${s_dir}/${s}':PLUGIN"
@@ -11235,7 +11235,7 @@ function ove_init {
 	OVE_LAST_COMMAND=
 	export OVE_LAST_COMMAND
 
-	OVE_PAGER="less -R"
+	OVE_PAGER="${ove_cmd2pathname["less"]:?} -R"
 	export OVE_PAGER
 
 	OVE_PKG_CONFIG_PATH="${OVE_STAGE_DIR}${OVE_PREFIX}/lib/pkgconfig:"
