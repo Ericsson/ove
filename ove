@@ -11016,7 +11016,7 @@ function ove_config_builtins_init {
 
 	# OVE_ALIAS_LIST:string:::semi-colon separated list of shell aliases
 	if [ -z "${OVE_ALIAS_LIST+x}" ]; then
-		export OVE_ALIAS_LIST="a=ove-ahead;b=ove-behind;d=ove-diff;f=ove-fetch;h=ove-list-aliases;n=ove-news;s=ove-status;sa=ove-show-ahead;sb=ove-show-behind;sn=ove-show-news"
+		export OVE_ALIAS_LIST="a=ove-ahead;b=ove-behind;d=ove-diff;f=ove-fetch;ff=ove-fetch-fetched;h=ove-list-aliases;n=ove-news;s=ove-status;sa=ove-show-ahead;sb=ove-show-behind;sn=ove-show-news"
 	fi
 
 	# OVE_DEMO_DIVISOR:int::demo:divisor sent to 'lastlog-replay' and later to 'scriptreplay'
