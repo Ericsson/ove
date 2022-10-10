@@ -414,7 +414,7 @@ OVE has been tested ([distro-check.sh](tests/distro-check.sh)) for the following
 | Devuan              | Beowulf, Chimaera          |
 | Fedora              | 33, 34, 35, 36             |
 | Kali                | N/A                        |
-| Linux Mint          | Uma, Una                   |
+| Linux Mint          | Uma, Una, Vanessa          |
 | openSUSE Tumbleweed | N/A                        |
 | Ubuntu              | 16.04, 18.04, 20.04, 22.04 |
 | Void Linux          | N/A                        |
