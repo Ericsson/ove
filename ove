@@ -4337,7 +4337,7 @@ function ove-list-systests {
 	! [ -e ${OVE_OWEL_DIR}/systests ] && return
 	(
 	# shellcheck disable=SC2016
-	${ove_cmd2pathname["grep"]:?} -E -v '^$|^\s*\#|.*:|^#.*' "${OVE_OWEL_DIR}"/systests | \
+	${ove_cmd2pathname["grep"]:?} -E -v '^$|^\s*#|.*:|^#.*' "${OVE_OWEL_DIR}"/systests | \
 		${ove_cmd2pathname["awk"]:?} '{print $1}'
 	ove-list-systests-aliases
 	ove_list_systests_groups
@@ -8221,7 +8221,7 @@ function ove-list-commands {
 	fi
 
 	a=$(${ove_cmd2pathname["grep"]:?} -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
-		${ove_cmd2pathname["grep"]:?} '\#' | \
+		${ove_cmd2pathname["grep"]:?} '#' | \
 		${ove_cmd2pathname["cut"]:?} -b3-| \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
 	b=$(set | \
@@ -11133,7 +11133,7 @@ function ove_externals_probe {
 	export OVE_SCRIPT_OPTIONS
 
 	if [ -z "${OVE_FLOCK_OPTIONS}" ]; then
-		if ${ove_cmd2pathname["flock"]:?} --help |& ${ove_cmd2pathname["grep"]:?} -q '\-\-no\-fork'; then
+		if ${ove_cmd2pathname["flock"]:?} --help |& ${ove_cmd2pathname["grep"]:?} -q '\--no-fork'; then
 			OVE_FLOCK_OPTIONS="--no-fork"
 		fi
 		ove_update_config "${OVE_CONFIG_FILE_INTERNAL:?}" "OVE_FLOCK_OPTIONS" "$OVE_FLOCK_OPTIONS"
@@ -13315,7 +13315,7 @@ function ove-generate-doc {
 
 	# ove-cmd-list.md (command list)
 	a=$(${ove_cmd2pathname["grep"]:?} -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
-		${ove_cmd2pathname["grep"]:?} '\#' | \
+		${ove_cmd2pathname["grep"]:?} '#' | \
 		${ove_cmd2pathname["cut"]:?} -b3-)
 	b=$(set | \
 		${ove_cmd2pathname["grep"]:?} ove_plugin_helptext | \
