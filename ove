@@ -2010,7 +2010,7 @@ function ove {
 			${ove_cmd2pathname["grep"]:?} -E -v "^cmd|^---")
 		if [ "x${candidates}" != "x" ] && \
 			[ ${OVE_AUTO_CORRECT} -eq 1 ] && \
-			[ $(${ove_cmd2pathname["wc"]:?} -l <<<"${candidates}") -eq 3 ]; then
+			[ $(${ove_cmd2pathname["wc"]:?} -l <<<"${candidates}") -eq 1 ]; then
 			cmd=$(${ove_cmd2pathname["tail"]:?} -1 <<<"${candidates}")
 			cmd=${cmd%% *}
 			ove ${cmd} "${@:2}"
