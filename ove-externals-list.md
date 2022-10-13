@@ -23,7 +23,7 @@
 | fzf           | 5      |
 | getconf       | 2      |
 | git           | 71     |
-| grep          | 174    |
+| grep          | 175    |
 | head          | 18     |
 | inotifywait   | 3      |
 | ld            | 1      |

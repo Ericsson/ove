@@ -2006,7 +2006,8 @@ function ove {
 			return 1
 		fi
 
-		candidates=$(ove-list-commands ^${cmd})
+		candidates=$(ove-list-commands ^${cmd} | \
+			${ove_cmd2pathname["grep"]:?} -E -v "^cmd|^---")
 		if [ "x${candidates}" != "x" ] && \
 			[ ${OVE_AUTO_CORRECT} -eq 1 ] && \
 			[ $(${ove_cmd2pathname["wc"]:?} -l <<<"${candidates}") -eq 3 ]; then
