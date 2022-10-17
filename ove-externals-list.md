@@ -5,7 +5,7 @@
 | basename      | 2      |
 | bash          | 17     |
 | cat           | 39     |
-| chmod         | 3      |
+| chmod         | 6      |
 | column        | 28     |
 | comm          | 14     |
 | cp            | 5      |

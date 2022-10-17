@@ -11879,7 +11879,7 @@ echo "OVE_ACTIVE_PROJECT_VERSION=\$OVE_ACTIVE_PROJECT_VERSION"
 echo
 echo "This script is located here: \$OVE_OWEL_DIR/projects/foobar/$d"
 EOF
-				chmod +x ${dir}/${owel_name}/projects/foobar/$d
+				${ove_cmd2pathname["chmod"]:?} +x ${dir}/${owel_name}/projects/foobar/$d
 			done
 
 			# scripts
@@ -11889,7 +11889,7 @@ EOF
 
 echo "This is one OVE plugin named 'qwerty' and it is located here: \$OVE_OWEL_DIR/scripts/qwerty"
 EOF
-			chmod +x ${dir}/${owel_name}/scripts/qwerty
+			${ove_cmd2pathname["chmod"]:?} +x ${dir}/${owel_name}/scripts/qwerty
 
 			# SETUP
 			echo "# add your oneliner in this file and the 'ove setup' will display it" > ${dir}/${owel_name}/SETUP
@@ -12724,7 +12724,7 @@ function ove_unittest_preparations {
 			for b in bootstrap configure build install; do
 				echo "#!${ove_cmd2pathname["bash"]:?}" > ${unittest_dir}/git-top/projects/p${a}/${b}
 				echo "echo ${b} p${a}" >> ${unittest_dir}/git-top/projects/p${a}/${b}
-				chmod +x ${unittest_dir}/git-top/projects/p${a}/${b}
+				${ove_cmd2pathname["chmod"]:?} +x ${unittest_dir}/git-top/projects/p${a}/${b}
 			done
 
 			if [ $a -eq 1 ]; then
