@@ -6457,17 +6457,39 @@ function ove_export_create_proj_patch {
 	local proj
 	local wd
 
-	proj="$1"
 	wd="$2"
 
+	# symlink to another project?
+	if [ -h ${OVE_OWEL_DIR}/projects/$1 ]; then
+		if ! proj="$(${ove_cmd2pathname["readlink"]} ${OVE_OWEL_DIR}/projects/$1)"; then
+			return 1
+		fi
+		echo "$proj"
+		if ! ${ove_cmd2pathname["mkdir"]:?} -p "${wd}"/projects/${proj}; then
+			return 1
+		elif ! (cd "${wd}"/projects || exit 1; ${ove_cmd2pathname["ln"]:?} -s ${proj} ${1}); then
+			return 1
+		elif ! (cd "${wd}" || exit 1; ${ove_cmd2pathname["git"]:?} add projects/${1}
+			${ove_cmd2pathname["git"]:?} diff --cached >> "${wd}"/${1}.patch); then
+			return 1
+		fi
+	else
+		proj="$1"
+	fi
+
 	if ${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects/${proj} -mindepth 1 -print -quit 2> /dev/null | ${ove_cmd2pathname["grep"]:?} -q .; then
-		${ove_cmd2pathname["mkdir"]:?} -p "${wd}"/projects/${proj}
-		${ove_cmd2pathname["cp"]:?} -ar ${OVE_OWEL_DIR}/projects/${proj}/* "${wd}"/projects/${proj}
+		if ! ${ove_cmd2pathname["mkdir"]:?} -p "${wd}"/projects/${proj}; then
+			return 1
+		elif ! ${ove_cmd2pathname["cp"]:?} -ar ${OVE_OWEL_DIR}/projects/${proj}/* "${wd}"/projects/${proj}; then
+			return 1
+		fi
 		for f in "${wd}"/projects/"${proj}"/*; do
 			(cd "${wd}" || exit 1
 			${ove_cmd2pathname["git"]:?} diff /dev/null ${f/${OVE_OWEL_TMP_DIR}\/export\/} >> "${wd}"/${proj}.patch)
 		done
 	fi
+
+	return 0
 }
 
 function ove_export {
@@ -6528,7 +6550,9 @@ function ove_export {
 		# shellcheck disable=SC2016
 		${ove_cmd2pathname["sed"]:?} -i -e '${/^$/d;}' "${wd}"/projs
 
-		ove_export_create_proj_patch "${proj}" "${wd}"
+		if ! ove_export_create_proj_patch "${proj}" "${wd}"; then
+			return 1
+		fi
 		(cd "${wd}" || exit 1
 			${ove_cmd2pathname["git"]:?} diff -U0 projs >> "${wd}"/${proj}.patch)
 		ove_modify_patch "${wd}"/${proj}.patch "projs"
@@ -6558,7 +6582,9 @@ function ove_export {
 	done
 
 	# common
-	ove_export_create_proj_patch "common" "${wd}"
+	if ! ove_export_create_proj_patch "common" "${wd}"; then
+		return 1
+	fi
 
 	${ove_cmd2pathname["rm"]:?} -rf "${wd}"/{projs,revtab,projects,.git}
 }
@@ -6572,14 +6598,18 @@ function ove-export {
 	local proj_list
 
 	if [ $# -eq 0 ]; then
-		ove_export
+		if ! ove_export; then
+			return 1
+		fi
 	else
 		if ! proj_list=$(ove_validate_project_list "$@"); then
 			return 1
 		fi
 
 		proj_list="$(ove_get_deps_recursive $proj_list) $proj_list"
-		ove_export $(printf "%s\n" "$(ove_uniq $proj_list)" | LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
+		if ! ove_export $(printf "%s\n" "$(ove_uniq $proj_list)" | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}); then
+			return 1
+		fi
 	fi
 
 	if [ "x$(${ove_cmd2pathname["find"]:?} "${OVE_OWEL_TMP_DIR}/export" -maxdepth 1 -name '*.patch' -print -quit)" == "x" ]; then
@@ -12696,6 +12726,15 @@ function ove_unittest_preparations {
 				echo "echo ${b} p${a}" >> ${unittest_dir}/git-top/projects/p${a}/${b}
 				chmod +x ${unittest_dir}/git-top/projects/p${a}/${b}
 			done
+
+			if [ $a -eq 1 ]; then
+				# create a 'l1 -> p1' symlink
+				if ! (cd ${unittest_dir}/git-top/projects || exit 1; ${ove_cmd2pathname["ln"]:?} -s p1 l1); then
+					return 1
+				fi
+				# add l1 to 'projs'
+				echo -e "l${a}:\n  path: .owel\n\n" >> ${unittest_dir}/git-top/projs
+			fi
 		done
 	fi
 
@@ -12754,6 +12793,11 @@ function ove_unittest {
 	fi
 
 	tot_files=$((nbr_of_files_per_repo * nbr_of_repos + (4 * nbr_of_projs)))
+
+	# one symlink
+	if [ $nbr_of_projs -ne 0 ]; then
+		((tot_files++))
+	fi
 
 	# projs is always there
 	((tot_files++))

@@ -2,7 +2,7 @@ bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove buildme"
 >>>= 0
 bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove buildme-parallel"
 >>>= 0
-bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove buildme p1"
+bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove buildme p1 l1"
 >>>= 0
-bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove buildme-parallel p1"
+bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove buildme-parallel p1 l1"
 >>>= 0
