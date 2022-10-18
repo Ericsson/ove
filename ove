@@ -3652,6 +3652,10 @@ function ove_revtab_clone_and_checkout_one {
 	push_url="${ove_revtab_push_url[${i}]}"
 	name="${ove_revtab_git_name[${i}]}"
 
+	if [ "$fetch_url" = "noremote" ]; then
+		return
+	fi
+
 	while true; do
 		if ! ALLOW_OVERRIDE=1 ove_repo_cmd "${OVE_BASE_DIR}/${name}" clone "${fetch_url}" "${OVE_BASE_DIR}/${name}"; then
 			return 1
@@ -3867,34 +3871,49 @@ function ove_repo_cmd {
 	return $?
 }
 
+function ove_revtab_fetch_helper {
+	ove_revtab_forsome_parallel "ALLOW_OVERRIDE=1 ove_repo_cmd \${repo} fetch |& ${ove_cmd2pathname["sed"]:?} -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${OVE_REPO_LIST_WIDTH} - \${#i}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL} "$@"
+	return $?
+}
+
 # $*: optional list of repositories
 function ove_revtab_fetch {
-	local co_list
+	local cc_list
+	local err
+	local f_list
 	local i
-	local m
 
+	err=0
 	if [ $# -ge 1 ]; then
 		ove_revtab_clone_and_checkout "$@"
-		m=${OVE_REPO_LIST_WIDTH}
-		ove_revtab_forsome_parallel "ALLOW_OVERRIDE=1 ove_repo_cmd \${repo} fetch |& ${ove_cmd2pathname["sed"]:?} -e \"s|^|\${i}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} - \${#i}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL} "$@"
+		ove_revtab_fetch_helper "$@"
 		return $?
 	fi
 
 	i=0
 	while ((i < ove_revtab_num_repositories)); do
-		if [ ! -e "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}/.git" ]; then
-			co_list+="${ove_revtab_git_name[${i}]} "
+		if [ "${ove_revtab_fetch_url[${i}]}" == "noremote" ]; then
+			:
+		elif [ ! -e "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}/.git" ]; then
+			cc_list+="${ove_revtab_git_name[${i}]} "
+		else
+			f_list+="${ove_revtab_git_name[${i}]} "
 		fi
 		(( i+=1 ))
 	done
 
-	if [ "x${co_list}" != "x" ]; then
-		ove_revtab_clone_and_checkout ${co_list}
+	if [ "x${cc_list}" != "x" ]; then
+		ove_revtab_clone_and_checkout ${cc_list} &
 	fi
 
-	m=${OVE_REPO_LIST_WIDTH}
-	ove_revtab_forall_parallel "ALLOW_OVERRIDE=1 ove_repo_cmd \${repo} fetch |& ${ove_cmd2pathname["sed"]:?} -e \"s|^|\${repo_basename}\$(printf \"%0.s \" \$(eval echo {1..\$((${m} - \${#repo_basename}))}))|g\"" ${OVE_FETCH_MAX_PARALLEL}
-	return $?
+	if [ "x${f_list}" != "x" ]; then
+		ove_revtab_fetch_helper "${f_list}"
+		err=$?
+	fi
+
+	wait
+
+	return $err
 }
 
 # $1: dir
