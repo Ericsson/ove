@@ -45,7 +45,7 @@
 | scp           | 2      |
 | script        | 4      |
 | scriptreplay  | 1      |
-| sed           | 91     |
+| sed           | 90     |
 | seq           | 11     |
 | setsid        | 1      |
 | sleep         | 11     |

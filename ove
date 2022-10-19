@@ -2027,13 +2027,22 @@ function ove {
 		return 1
 	fi
 
-	if [ -n "${OVE_LOCAL_ECHO+x}" ] && [ "${OVE_LOCAL_ECHO}" -eq 1 ]; then
-		if [ ${EUID} -eq 0 ]; then
-			echo -n "# " 1>&2
-		else
-			echo -n "$ " 1>&2
+	if [ ${EUID} -eq 0 ]; then
+		cmd_and_args="# ove ${cmd}"
+	else
+		cmd_and_args="$ ove ${cmd}"
+	fi
+
+	if [ $# -gt 1 ]; then
+		cmd_and_args+=" ${*:2}"
+	fi
+
+	if [ -n "${OVE_LOCAL_ECHO+x}" ]; then
+		if [ "${OVE_LOCAL_ECHO}" -eq 1 ]; then
+			echo "${cmd_and_args}" 1>&2
+		elif [ "${OVE_LOCAL_ECHO}" -eq 2 ]; then
+			ove_echo_cyan_noprefix "${cmd_and_args}" 1>&2
 		fi
-		echo "ove ${cmd} ${*:2}" 1>&2
 	fi
 
 	# do not log commands that:
@@ -2088,18 +2097,6 @@ function ove {
 		fi
 
 		OVE_BATCH_IT=0
-	fi
-
-	if [ ${EUID} -eq 0 ]; then
-		cmd_and_args="#"
-	else
-		cmd_and_args="$"
-	fi
-
-	if [ $# -gt 1 ]; then
-		cmd_and_args+=" ove ${cmd} ${*:2}"
-	else
-		cmd_and_args+=" ove ${cmd}"
 	fi
 
 	# pre hooks?
@@ -3456,7 +3453,7 @@ function ove_revtab_check_one {
 	ove_revtab_check_fetch_push "$1" "$2" "$3"
 }
 
-# revtab-sync:[git...]:sync all/specified git repositories with 'revtab' (ignore OVE_REVTAB_CHECK):CORE
+# revtab-sync:[git...]:sync all/specified git repositories with 'revtab' (override OVE_REVTAB_CHECK):CORE
 function ove-revtab-sync {
 	ove_entry || return
 	ove_revtab_sanity || return
@@ -7982,7 +7979,7 @@ function ove_patch_repos {
 	return ${ret}
 }
 
-# patch-repo:[git...]:patch all/specified repositories (ignore OVE_PATCH_REPO) with $OVE_OWEL_DIR/patches/[<git>/]{*.diff,*.patch}:CORE
+# patch-repo:[git...]:patch all/specified repositories with $OVE_OWEL_DIR/patches/[<git>/]{*.diff,*.patch} (override OVE_PATCH_REPOS):CORE
 function ove-patch-repo {
 	ove_entry || return
 
@@ -10934,7 +10931,7 @@ function ove_config_builtins_init {
 		export OVE_AUTO_CORRECT=0
 	fi
 
-	# OVE_LOCAL_ECHO:int:0|1:all:print command-to-be-executed on stderr
+	# OVE_LOCAL_ECHO:int:0-2:all:print command-to-be-executed on stderr, no echo (=0), echo (=1) or colored echo (=2)
 	if [ -z "${OVE_LOCAL_ECHO+x}" ]; then
 		export OVE_LOCAL_ECHO=0
 	fi
