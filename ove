@@ -2136,11 +2136,11 @@ function ove {
 		# trace post hook
 		ove_setup_trace_post
 
-		# remove CR, NULL bytes and insert command+args at line 2
-		${ove_cmd2pathname["sed"]:?} -i -e 's/\r$//' -e 's/\x0//' -e "2i${cmd_and_args}" ${OVE_LAST_COMMAND}
+		# remove NULL bytes and insert command+args at line 2
+		${ove_cmd2pathname["sed"]:?} -i -e 's/\x0//' -e "2i${cmd_and_args}\r" ${OVE_LAST_COMMAND}
 
 		# compensate timing file for command, args and linefeed
-		${ove_cmd2pathname["sed"]:?} -i -e "1i0 $((${#cmd_and_args}+1))" ${OVE_LAST_COMMAND/.log}.timing
+		${ove_cmd2pathname["sed"]:?} -i -e "1i0.1 $((${#cmd_and_args}+1))" ${OVE_LAST_COMMAND/.log}.timing
 
 		# turn on monitor mode
 		set -m
@@ -9910,7 +9910,9 @@ function ove-lastlog-replay {
 			d=${d:0:22}
 		fi
 		ove_echo_cyan_noprefix "$d"
-		${ove_cmd2pathname["scriptreplay"]:?} -m 3 --divisor $divisor --timing ${ff/.log}.timing $ff 2> /dev/null
+		if ! ${ove_cmd2pathname["scriptreplay"]:?} -m 3 --divisor $divisor --timing ${ff/.log}.timing $ff 2> /dev/null; then
+			ove_echo_error_noprefix "scriptreplay failed"
+		fi
 	done
 
 	if [ -e "$OVE_TMP/ove-${self}" ]; then
