@@ -1978,6 +1978,7 @@ function ove {
 	if [ "${cmd}" == "cd" ] \
 		|| [ "${cmd}" == "init" ] \
 		|| [ "${cmd}" == "l" ] \
+		|| [ "${cmd}" == "lr" ] \
 		|| [ "${cmd}" == "setup" ]; then
 		ove-${cmd} "${@:2}"
 		return $?
@@ -9281,6 +9282,16 @@ function ove-l {
 		echo ${OVE_LAST_COMMAND}
 		${ove_cmd2pathname["grep"]:?} -i "$@" ${OVE_LAST_COMMAND}
 	fi
+}
+
+# lr:[divisor]:short for 'ove-lastlog-replay $OVE_LAST_COMMAND':LOG
+function ove-lr {
+	if [ "x$OVE_LAST_COMMAND" != "x" ]; then
+		ove-lastlog-replay $OVE_LAST_COMMAND $1
+		return $?
+	fi
+
+	return 0
 }
 
 # describe:[git...]:git describe+log+status combo for all/specified git repositories:CORE
