@@ -1,0 +1,4 @@
+bash -c "OVE_TEST_STRING; ove fetch | grep -c 'Fetching'"
+>>>
+nbr_of_repos
+>>>= 0
