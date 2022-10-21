@@ -3899,15 +3899,14 @@ function ove_revtab_fetch {
 		fi
 		(( i+=1 ))
 	done
+	f_list+=" ${OVE_OWEL_NAME}"
 
 	if [ "x${cc_list}" != "x" ]; then
 		ove_revtab_clone_and_checkout ${cc_list} &
 	fi
 
-	if [ "x${f_list}" != "x" ]; then
-		ove_revtab_fetch_helper "${f_list}"
-		err=$?
-	fi
+	ove_revtab_fetch_helper "${f_list}"
+	err=$?
 
 	wait
 
