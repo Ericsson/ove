@@ -1,4 +1,4 @@
-bash -c "OVE_TEST_STRING; ove-fetch > /dev/null; ove-forall 'date +%s -r .git/FETCH_HEAD' > before; sleep 2; ove-fetch > /dev/null; ove-forall 'date +%s -r .git/FETCH_HEAD' > after; diff -y --suppress-common-lines before after | wc -l"
+bash -c "OVE_TEST_STRING; [ nbr_of_repos -eq 0 ] && exit 0; source OVE_DIR/tests/t0019*.sh"
 >>>
 nbr_of_repos
 >>>= 0
