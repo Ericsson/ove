@@ -701,7 +701,7 @@ function ove_update_connect_db {
 		if [ "x${ip}" = "x" ]; then
 			continue
 		fi
-		port=$(${ove_cmd2pathname["cut"]:?} -d'(' -f2- <<<"${line} |" \
+		port=$(${ove_cmd2pathname["cut"]:?} -d'(' -f2- <<<"${line}" | \
 			${ove_cmd2pathname["cut"]:?} -d')' -f1)
 		if [ "x${port}" = "x" ]; then
 			continue
