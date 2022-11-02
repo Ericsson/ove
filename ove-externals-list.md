@@ -31,6 +31,7 @@
 | ln            | 20     |
 | locate        | 2      |
 | lsb_release   | 2      |
+| make          | 1      |
 | md5deep       | 1      |
 | md5sum        | 12     |
 | mkdir         | 32     |

@@ -7306,7 +7306,7 @@ EOF
 		echo ".DEFAULT_GOAL := all"; \
 		echo "all:$phony"; } >> "${makefile}"
 
-	eval make -f "${makefile}" "${OVE_MAKEFLAGS}"
+	eval ${ove_cmd2pathname["make"]:?} -f "${makefile}" "${OVE_MAKEFLAGS}"
 	return $?
 }
 
@@ -13570,6 +13570,7 @@ function ove_externals_init {
 	cmds+=('ln')
 	cmds+=('locate')
 	cmds+=('lsb_release')
+	cmds+=('make')
 	cmds+=('md5deep')
 	cmds+=('md5sum')
 	cmds+=('mkdir')
