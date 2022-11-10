@@ -233,10 +233,13 @@ The 'setup' script will then urge the developer to enter the OVE workspace direc
 Doing this, OVE will check that you have the required programs installed on your machine and prompt for installation otherwise. This is the current list:
 
 * bash (>=4.3)
+* bzip2
 * column
 * file
 * flock
 * git (>=1.8.5)
+* ld
+* less
 * pgrep
 * script
 * tsort

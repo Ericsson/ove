@@ -12067,6 +12067,7 @@ function ove_deps {
 	local dep
 	local deps
 	local pack
+	local optional
 	local str_cmds
 	local str_packs
 
@@ -12085,6 +12086,22 @@ function ove_deps {
 	deps+=('pgrep')
 	deps+=('script')
 	deps+=('tsort')
+
+	optional=()
+	optional+=('ag')
+	optional+=('dig')
+	optional+=('dot')
+	optional+=('fzf')
+	optional+=('inotifywait')
+	optional+=('locate')
+	optional+=('md5deep')
+	optional+=('rg')
+	optional+=('strace')
+	optional+=('task')
+	optional+=('tmux')
+	optional+=('tsp')
+	optional+=('whois')
+	optional+=('yamllint')
 
 	for dep in "${deps[@]}"; do
 		if ! command -v ${dep} > /dev/null; then
@@ -12107,6 +12124,21 @@ function ove_deps {
 		echo
 		echo -e "\t${OVE_OS_PACKAGE_MANAGER} ${OVE_OS_PACKAGE_MANAGER_ARGS} $(printf "%s " $(ove_uniq ${str_packs}))"
 		echo
+
+		str_cmds=""
+		for dep in "${optional[@]}"; do
+			if ! command -v ${dep} > /dev/null; then
+				str_cmds+="${dep} "
+			fi
+		done
+
+		if [ "${str_cmds}" != "" ]; then
+			echo "[optional]: command(s) needed to unlock all OVE features:"
+			echo
+			for dep in ${str_cmds}; do
+				echo -e "\t${dep}"
+			done | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
+		fi
 		return 1
 	fi
 
