@@ -8478,7 +8478,7 @@ function ove-rg {
 		return 1
 	fi
 
-	cmd="\rg --no-ignore --hidden -S -n --color=always $* -- | "
+	cmd="${ove_cmd2pathname["rg"]:?} --no-ignore --hidden -S -n --color=always $* -- | "
 	# shellcheck disable=SC2016
 	cmd+='${ove_cmd2pathname["sed"]:?} -e "s,^,${PWD}/,g"'
 	if ! (cd $OVE_BASE_DIR || exit; eval $cmd; ); then
@@ -13576,6 +13576,7 @@ function ove_externals_init {
 	cmds+=('ps')
 	cmds+=('readlink')
 	cmds+=('rev')
+	cmds+=('rg')
 	cmds+=('rm')
 	cmds+=('rmdir')
 	cmds+=('scp')
