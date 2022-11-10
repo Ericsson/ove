@@ -7900,16 +7900,13 @@ function ove_patch_one_repo {
 		printf "%-${OVE_REPO_LIST_WIDTH}sApplying patch '%s'\n" ${repo_s} ${p}
 		if [ "${OVE_PATCH_REPOS_METHOD:?}" = "apply" ]; then
 			if ! ove_repo_cmd ${repo} apply "${p}" 2> /dev/null; then
-				ove_echo_error_noprefix "${repo_s}: patch does not apply: ${p}"
 				ret=1
 			fi
 		elif [ "${OVE_PATCH_REPOS_METHOD:?}" = "am" ] || [ "${OVE_PATCH_REPOS_METHOD:?}" = "auto" ]; then
 			if ! ove_repo_cmd ${repo} am "${p}" 2> /dev/null; then
 				if [ "${OVE_PATCH_REPOS_METHOD:?}" = "am" ]; then
-					ove_echo_error_noprefix "${repo_s}: patch does not apply: ${p}"
 					ret=1
 				elif ! ove_repo_cmd ${repo} apply "${p}" 2> /dev/null; then
-					ove_echo_error_noprefix "${repo_s}: patch does not apply: ${p}"
 					ret=1
 				fi
 			fi
@@ -7918,7 +7915,6 @@ function ove_patch_one_repo {
 			ret=1
 		fi
 	else
-		ove_echo_error_noprefix "${repo_s}: patch does not apply: ${p}"
 		ret=1
 	fi
 
