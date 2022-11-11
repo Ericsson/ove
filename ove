@@ -13668,6 +13668,30 @@ function ove_externals_init {
 	fi
 }
 
+# $1: cmd
+function ove_external_version {
+	local v
+	local ver
+
+	# special treatment
+	if [[ "$1" == *tmux ]] || [[ "$1" == *ssh ]]; then
+		ver=$(${ove_cmd2pathname["timeout"]:?} 1 $1 -V 2>&1 | ${ove_cmd2pathname["head"]:?} -1)
+		echo "$ver"
+		return
+	fi
+
+	for v in --version -v -V; do
+		ver=$(${ove_cmd2pathname["timeout"]:?} 1 $1 $v 2> /dev/null | ${ove_cmd2pathname["head"]:?} -1)
+		if [ "x$ver" = "x" ]; then
+			continue
+		fi
+		echo "$ver"
+		return
+	done
+
+	return 1
+}
+
 # list-externals: :list all external commands that OVE is dependent on:CORE
 function ove-list-externals {
 	ove_entry || return
@@ -13679,7 +13703,7 @@ function ove-list-externals {
 
 	for cmd in "${!ove_cmd2pathname[@]}"; do
 		md5="$(${ove_cmd2pathname["md5sum"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${ove_cmd2pathname[$cmd]}))"
-		ver="$(${ove_cmd2pathname["timeout"]:?} 1 ${ove_cmd2pathname[$cmd]:?} --version 2> /dev/null | ${ove_cmd2pathname["head"]:?} -1)"
+		ver="$(ove_external_version ${ove_cmd2pathname[$cmd]:?})"
 		cnt="$(${ove_cmd2pathname["grep"]:?} -c "\${ove_cmd2pathname\[\"$cmd\"\]" ${OVE_SELF})"
 		echo "${cmd}@${ove_cmd2pathname[$cmd]}@${md5}@${cnt}@${ver}"
 	done | ${ove_cmd2pathname["column"]:?} -t -s@ | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}

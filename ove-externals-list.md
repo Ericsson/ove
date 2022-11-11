@@ -1,7 +1,7 @@
 | Command       | Usage
 |-|-|
 | ag            | 3      |
-| awk           | 53     |
+| awk           | 54     |
 | basename      | 2      |
 | bash          | 17     |
 | cat           | 39     |
@@ -11,7 +11,7 @@
 | cp            | 5      |
 | csplit        | 1      |
 | cut           | 64     |
-| date          | 15     |
+| date          | 16     |
 | diff          | 1      |
 | dirname       | 5      |
 | du            | 3      |
@@ -23,8 +23,8 @@
 | fzf           | 5      |
 | getconf       | 2      |
 | git           | 73     |
-| grep          | 175    |
-| head          | 18     |
+| grep          | 176    |
+| head          | 19     |
 | inotifywait   | 3      |
 | ld            | 1      |
 | less          | 3      |
@@ -50,7 +50,7 @@
 | seq           | 11     |
 | setsid        | 1      |
 | sleep         | 11     |
-| sort          | 108    |
+| sort          | 109    |
 | ssh           | 7      |
 | stat          | 8      |
 | sync          | 1      |
@@ -59,7 +59,7 @@
 | tar           | 4      |
 | task          | 2      |
 | tee           | 9      |
-| timeout       | 3      |
+| timeout       | 4      |
 | tmux          | 9      |
 | touch         | 2      |
 | tr            | 23     |
