@@ -10488,6 +10488,13 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" == "lastlog-replay" ]; then
+		if [ ${size} -ge 2 ]; then
+			a=$(${ove_cmd2pathname["date"]:?} '+%Y%m%d')
+			b=${a:0:4}
+			# shellcheck disable=SC2016
+			wordlist=$(ove-lastlog $a | ${ove_cmd2pathname["grep"]:?} -o "$b.*" | ${ove_cmd2pathname["awk"]:?} '{print $1}')
+		fi
 	fi
 
 	if [ "${wordlist}" != "" ]; then
