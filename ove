@@ -10453,12 +10453,6 @@ function ove_bash_complete {
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(${ove_cmd2pathname["find"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type f -exec basename {} \;)
 		fi
-	elif [ "${subcommand}" == "select-configuration" ]; then
-		if [ ${size} -eq 2 ]; then
-			wordlist="default $(${ove_cmd2pathname["find"]:?} "${OVE_OWEL_DIR}/projects" -name "configure-*" -type l -exec basename {} \; | ${ove_cmd2pathname["sed"]:?} 's/configure-//g')"
-		else
-			return
-		fi
 	elif [ "${subcommand}" == "replicate" ]; then
 		if [ ${size} -eq 2 ]; then
 			if [ "$(type -t _known_hosts_real)" == "function" ]; then
@@ -10701,104 +10695,6 @@ function ove_scripts_init {
 	IFS=$'\n' OVE_SCRIPTS_LIST=$(printf '%s ' $(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"${array[*]}"))
 	OVE_SCRIPTS_LIST=${OVE_SCRIPTS_LIST::-1}
 	IFS=${oldIFS}
-}
-
-# show-configuration: :show current build configuration for each project:BUILD
-function ove-show-configuration {
-	ove_entry || return
-
-	if [ -d "${OVE_OWEL_DIR}/projects" ]; then
-		${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects -type f -name 'configure' -print -or -type l -name 'configure' -exec file {} \; | \
-			LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
-			${ove_cmd2pathname["sed"]:?} -e "s,^${OVE_OWEL_DIR}/projects/,,g" | \
-			${ove_cmd2pathname["column"]:?} -t -s/ | \
-			${ove_cmd2pathname["sed"]:?} -e "s,: symbolic link to, ->,g"
-	fi
-}
-
-# select-configuration:[pattern|default]:select build configuration for each project:BUILD
-function ove-select-configuration {
-	ove_entry || return
-
-	local c
-	local configs
-	local iter
-	local nbr_of_configs
-	local p
-	local projects
-
-	# list of projects
-	projects=${OVE_PROJECT_LIST}
-	iter=1
-	for p in ${projects}; do
-		# ignore projects without a project directory
-		[ ! -d "${OVE_OWEL_DIR}/projects/${p}" ] && continue
-
-		# multiple configurations, ask which one to select
-		configs=$(${ove_cmd2pathname["find"]:?} "${OVE_OWEL_DIR}/projects/${p}" -name "configure-*" -type l)
-		nbr_of_configs=$(${ove_cmd2pathname["find"]:?} "${OVE_OWEL_DIR}/projects/${p}" -name "configure-*" -type l | ${ove_cmd2pathname["wc"]:?} -l)
-		if [ "${nbr_of_configs}" -gt 1 ]; then
-			# pattern, select config
-			if [ $# -eq 1 ]; then
-				# use the default configuration
-				if [ $1 == "default" ]; then
-					ove_repo_cmd ${OVE_OWEL_DIR} checkout ${OVE_OWEL_DIR}/projects/${p}/configure
-					continue
-				fi
-
-				for c in ${configs}; do
-					if ${ove_cmd2pathname["grep"]:?} -w -q configure-$1 <<< "${c##*/}"; then
-						ove_echo_green_noprefix ${p}:
-						if ! pushd ${OVE_OWEL_DIR}/projects/${p} &>/dev/null; then
-							ove_echo_fatal_noprefix "'pushd ${OVE_OWEL_DIR}/projects/${p}' failed"
-							return 1
-						elif ! ${ove_cmd2pathname["ln"]:?} -sfv configure-$1 configure; then
-							ove_echo_fatal_noprefix "'ln' failed"
-							return 1
-						elif ! popd &>/dev/null; then
-							ove_echo_fatal_noprefix "'popd' failed"
-							return 1
-						fi
-						break
-					fi
-				done
-				continue
-			fi
-
-			# no pattern, ask user
-			ove_echo_green_noprefix ${p}:
-			echo "0: default"
-			(( iter=1 ))
-			for c in ${configs}; do
-				echo -n "${iter}: "
-				${ove_cmd2pathname["basename"]:?} $(echo ${c} | ${ove_cmd2pathname["sed"]:?} 's/configure-//g')
-				(( iter+=1 ))
-			done
-			echo
-			read -p "Select configuration? " -r
-			echo
-			if [[ ${REPLY} =~ ^[0-9]+$ ]] && [[ ${REPLY} -le ${nbr_of_configs} ]]; then
-				if [[ ${REPLY} == 0 ]]; then
-					ove_repo_cmd ${OVE_OWEL_DIR} checkout ${OVE_OWEL_DIR}/projects/${p}/configure
-				else
-					cfg=$(echo ${configs} | ${ove_cmd2pathname["cut"]:?} -d' ' -f${REPLY})
-					cfg_basename=${cfg##*/}
-					if ! pushd ${OVE_OWEL_DIR}/projects/${p} &>/dev/null; then
-						ove_echo_fatal_noprefix "'pushd ${OVE_OWEL_DIR}/projects/${p}' failed"
-						return 1
-					elif ! ${ove_cmd2pathname["ln"]:?} -sfv ${cfg_basename} configure; then
-						ove_echo_fatal_noprefix "'ln' failed"
-						return 1
-					elif ! popd &>/dev/null; then
-						ove_echo_fatal_noprefix "'popd' failed"
-						return 1
-					fi
-				fi
-			fi
-		fi
-	done
-
-	ove-show-configuration
 }
 
 function ove_dirs_init {
