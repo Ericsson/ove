@@ -2104,7 +2104,7 @@ function ove {
 	if [ -v ove_hooks_pre[${cmd}] ]; then
 		for h in ${ove_hooks_pre[${cmd}]}; do
 			if [ -s "$h" ] && [ -x "$h" ]; then
-				$h
+				$h "${@:2}"
 				ret=$?
 				if [ $ret -ne 0 ]; then
 					ove_echo_red_noprefix "error: pre hook '$h' failed with exit code $ret"
@@ -2196,8 +2196,7 @@ function ove {
 	if [ "x${log_cmd}" != "xtsp" ] && [ -v ove_hooks_post[${cmd}] ]; then
 		for h in ${ove_hooks_post[${cmd}]}; do
 			if [ -s "$h" ] && [ -x "$h" ]; then
-				# run the hook
-				$h
+				$h "${@:2}"
 				ret=$?
 				if [ $ret -ne 0 ]; then
 					ove_echo_red_noprefix "error: post hook '$h' failed with exit code $ret"
