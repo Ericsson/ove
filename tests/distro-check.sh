@@ -169,20 +169,18 @@ function main {
 
 	init "$@"
 
-	# re-use date+time (ignore micro/nano) from OVE_LAST_COMMAND
 	if [ "x${OVE_LAST_COMMAND}" != "x" ]; then
+		# re-use date+time (ignore micro/nano) from OVE_LAST_COMMAND
 		tag="${OVE_LAST_COMMAND##*/}"
 		tag="${tag:0:18}"
+	else
+		tag="$(date '+%Y%m%d-%H%M%S%N')"
 	fi
 
 	for distro in "${distro_list[@]}"; do
 		start_sec=${SECONDS}
 
-		if [ "x${tag}" != "x" ]; then
-			lxc_name="ove-${tag}-${distro}"
-		else
-			lxc_name="ove-${distro}"
-		fi
+		lxc_name="ove-${tag}-${distro}"
 
 		# replace slashes and dots
 		lxc_name="${lxc_name//\//-}"
