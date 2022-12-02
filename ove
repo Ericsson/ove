@@ -1521,7 +1521,7 @@ function ove-ide {
 	done
 }
 
-# run-parallel:t0 c0 [t1 c1 t2 c2...]:run OVE commands in parallel (tmux only):UTIL
+# run-parallel:t0 c0 [t1 c1 t2 c2...]:run commands in parallel (tmux only):UTIL
 function ove-run-parallel {
 	ove_entry || return
 
@@ -1554,7 +1554,7 @@ function ove_validate_int_float {
 	return 0
 }
 
-# run:|t c:run one OVE command 'c' in terminal/tmux with timeout 't' (0=no timeout):UTIL
+# run:|t c:run one command 'c' in terminal/tmux with timeout 't' (0=no timeout):UTIL
 function ove-run {
 	ove_entry || return
 
@@ -1586,23 +1586,15 @@ function ove-run {
 		return 1
 	fi
 
-	cmd=${cmd#ove }
-	cmd=${cmd#ove-}
-	_cmd=$(${ove_cmd2pathname["cut"]:?} -d' ' -f1 <<<"${cmd}")
-	if [ "$(type -t ove-"${_cmd}")" != "function" ]; then
-		ove_echo_red_noprefix "error: '${_cmd}' unknown command"
-		return 1
-	fi
-
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
 	[ "${_timeout}" == "0" ] || read_args="-t ${_timeout}"
 
 	if ove_sanity_check_tmux 2> /dev/null; then
 		if [ "${OVE_TMUX_PANE_HEADER}" == "wide" ]; then
-			header="ove_echo_cyan_error ${OVE_OWEL_NAME}:ove-${cmd} [t:${_timeout}]"
+			header="ove_echo_cyan_error ${OVE_OWEL_NAME}:${cmd} [t:${_timeout}]"
 		elif [ "${OVE_TMUX_PANE_HEADER}" == "short" ]; then
-			header="ove_echo_cyan_error_noprefix $(${ove_cmd2pathname["date"]:?} '+%Y-%m-%d %H:%M:%S'):ove-${cmd}"
+			header="ove_echo_cyan_error_noprefix $(${ove_cmd2pathname["date"]:?} '+%Y-%m-%d %H:%M:%S'):${cmd}"
 		elif [ "${OVE_TMUX_PANE_HEADER}" == "off" ]; then
 			header="true"
 		fi
@@ -1611,15 +1603,15 @@ function ove-run {
 			source ${OVE_BASE_DIR}/ove; \
 			ove_init; \
 			${header}; \
-			OVE_PAGER='${ove_cmd2pathname[tee]:?} /dev/null' ove-${cmd}; \
+			OVE_PAGER='${ove_cmd2pathname[tee]:?} /dev/null' ${cmd}; \
 			echo -; \
 			read -n 1 -s -r -p '' ${read_args}"
 
 		${ove_cmd2pathname["tmux"]:?} select-layout ${OVE_TMUX_LAYOUT}
 		${ove_cmd2pathname["tmux"]:?} select-pane -t 0
 	else
-		ove_echo_cyan_error "ove-${cmd}"
-		OVE_PAGER="${ove_cmd2pathname[tee]:?} /dev/null" ove-${cmd}
+		ove_echo_cyan_error "${cmd}"
+		OVE_PAGER="${ove_cmd2pathname[tee]:?} /dev/null" ${cmd}
 		echo -
 		# shellcheck disable=SC2229
 		read -n 1 -s -r -p '' ${read_args}
@@ -2294,7 +2286,7 @@ function ove-fzf {
 				ove-loop x x x ${cmd}
 				echo -
 			else
-				ove-run 0 ${cmd}
+				ove-run 0 "ove ${cmd}"
 			fi
 			continue
 		fi
@@ -2310,7 +2302,7 @@ function ove-fzf {
 				ove-loop x x x ${cmd}
 				echo -
 			else
-				ove-run 0 ${cmd}
+				ove-run 0 "ove ${cmd}"
 			fi
 		else
 			args=$(printf '%s\n' "${COMPREPLY[@]}" | \
@@ -2325,7 +2317,7 @@ function ove-fzf {
 				ove-loop x x x ${cmd} ${args}
 				echo -
 			else
-				ove-run 0 ${cmd} ${args}
+				ove-run 0 "ove ${cmd} ${args}"
 			fi
 		fi
 	done
@@ -13708,7 +13700,7 @@ function ove-pre-push {
 	fi
 
 	if ove_sanity_check_tmux 2> /dev/null; then
-		ove-run-parallel 0 shell-check 0 generate-doc 0 "blame ${OVE_USER}" 0 "tail-lastlog ${OVE_USER}"
+		ove-run-parallel 0 "ove shell-check" 0 "ove generate-doc" 0 "ove blame ${OVE_USER}" 0 "ove tail-lastlog ${OVE_USER}"
 		ove-unittest
 	else
 		ove-shell-check
@@ -13734,7 +13726,7 @@ function ove-post-push {
 	args=${args//$'\n'/}
 	args=${args::-1}
 	if [ $(${ove_cmd2pathname["wc"]:?} -l <"${OVE_DIR}/tests/distro-check.list") -gt 1 ] && ove_sanity_check_tmux 2> /dev/null; then
-		ove run 0 "do . ${ove_cmd2pathname["tail"]:?} -f ${OVE_LAST_COMMAND} | ${ove_cmd2pathname["grep"]:?} -A3 '^ Passed'"
+		ove run 0 "ove do . ${ove_cmd2pathname["tail"]:?} -f ${OVE_LAST_COMMAND} | ${ove_cmd2pathname["grep"]:?} -A3 '^ Passed'"
 	fi
 	${OVE_DIR}/tests/distro-check.sh "unittest" "${args}"
 }
