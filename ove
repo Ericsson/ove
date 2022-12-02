@@ -13731,4 +13731,25 @@ function ove-post-push {
 	${OVE_DIR}/tests/distro-check.sh "unittest" "${args}"
 }
 
+# post-push-parallel: :post-push in parallel (tmux only):INTERNAL
+function ove-post-push-parallel {
+	ove_entry || return
+
+	local args
+	local d
+
+	if [ ! -s "${OVE_DIR}/tests/distro-check.list" ]; then
+		return 1
+	elif ! ove_sanity_check_tmux; then
+		ove_command_usage
+		return 1
+	fi
+
+	while read -r d; do
+		args+=" 0 '${OVE_DIR}/tests/distro-check.sh unittest $d'"
+	done <"${OVE_DIR}/tests/distro-check.list"
+
+	eval ove-run-parallel $args
+}
+
 ove_main "$@"

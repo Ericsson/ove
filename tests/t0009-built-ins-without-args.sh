@@ -4,6 +4,7 @@ set -e
 
 ignore+=" loop-close"
 ignore+=" post-push"
+ignore+=" post-push-parallel"
 ignore+=" pre-push"
 ignore+=" refresh"
 ignore+=" shell-check"

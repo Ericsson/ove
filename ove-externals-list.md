@@ -10,7 +10,7 @@
 | comm          | 14     |
 | cp            | 5      |
 | csplit        | 1      |
-| cut           | 63     |
+| cut           | 62     |
 | date          | 16     |
 | diff          | 1      |
 | dirname       | 5      |
