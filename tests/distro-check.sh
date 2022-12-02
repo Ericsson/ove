@@ -213,6 +213,7 @@ function main {
 			if [ -s "/etc/apt/apt.conf" ]; then
 				run "lxc file push --uid 0 --gid 0 /etc/apt/apt.conf ${lxc_name}/etc/apt/apt.conf"
 			fi
+			lxc_exec "apt-get update"
 		elif lxc_command "xbps-install"; then
 			package_manager="xbps-install -y"
 		elif lxc_command "dnf"; then
