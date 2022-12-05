@@ -10162,6 +10162,10 @@ function ove_bash_complete {
 			fi
 		elif [ ${size} -eq 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
 			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distro-check.images")
+		elif [ ${size} -eq 3 ]; then
+			if ove-image-refresh &> /dev/null; then
+				wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distro-check.images")
+			fi
 		else
 			return
 		fi
@@ -11988,6 +11992,7 @@ function ove_deps {
 	optional+=('fzf')
 	optional+=('inotifywait')
 	optional+=('locate')
+	optional+=('lxc')
 	optional+=('md5deep')
 	optional+=('rg')
 	optional+=('strace')
@@ -13492,6 +13497,7 @@ function ove_externals_init {
 	cmds+=('ln')
 	cmds+=('locate')
 	cmds+=('lsb_release')
+	cmds+=('lxc')
 	cmds+=('make')
 	cmds+=('md5deep')
 	cmds+=('md5sum')
@@ -13663,7 +13669,7 @@ function ove-rename {
 	done
 }
 
-# distrocheck:project [pattern]:verify a project (using LXC/LXD) within multiple Linux distributions:UTIL
+# distrocheck:project [pattern]:verify a project within multiple Linux distributions (LXD only):UTIL
 function ove-distrocheck {
 	ove_entry || return
 
@@ -13671,6 +13677,8 @@ function ove-distrocheck {
 
 	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
 		ove_command_usage
+		return 1
+	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/distro-check.images ] && ! ove-image-refresh; then
 		return 1
 	fi
 
@@ -13712,7 +13720,38 @@ function ove-pre-push {
 	ove-status .ove
 }
 
-# post-push: :run OVE unittests (using LXC/LXD) within Linux distributions specified by ${OVE_DIR}/tests/distro-check.list:INTERNAL
+# image-refresh: :refresh list of available Linux distributions (LXD only):UTIL
+function ove-image-refresh {
+	ove_entry || return
+
+	local arch
+
+	if ! command -v lxc > /dev/null; then
+		ove_command_not_found "lxc"
+		return 1
+	fi
+
+	arch=$(${ove_cmd2pathname["uname"]:?} -m)
+	if [ "${arch}" = "x86_64" ]; then
+		arch="amd64"
+	fi
+
+	if ! ${ove_cmd2pathname["lxc"]:?} image list --format csv -cL images: arch=${arch} | \
+		${ove_cmd2pathname["sed"]:?} -e 's,",,g' -e '/^$/d' > "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images"; then
+		ove_echo_error_noprefix "'lxc image list images:' failed"
+		return 1
+	elif [ ! -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
+		ove_echo_error_noprefix "weird - empty image list"
+		return 1
+	fi
+
+	LC_ALL="C" ${ove_cmd2pathname["sort"]:?} \
+		-u \
+		-o "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images" \
+		"${OVE_GLOBAL_STATE_DIR:?}/distro-check.images"
+}
+
+# post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/distro-check.list (LXD only):INTERNAL
 function ove-post-push {
 	ove_entry || return
 
@@ -13720,18 +13759,18 @@ function ove-post-push {
 
 	if [ ! -s "${OVE_DIR}/tests/distro-check.list" ]; then
 		return 1
+	elif ! ove-image-refresh; then
+		return 1
 	fi
 
 	args=$(${ove_cmd2pathname["sed"]:?} -e '/^#/d' -e 's,^,^,g' -e 's,$,$|,g' "${OVE_DIR}/tests/distro-check.list")
 	args=${args//$'\n'/}
 	args=${args::-1}
-	if [ $(${ove_cmd2pathname["wc"]:?} -l <"${OVE_DIR}/tests/distro-check.list") -gt 1 ] && ove_sanity_check_tmux 2> /dev/null; then
-		ove run 0 "ove do . ${ove_cmd2pathname["tail"]:?} -f ${OVE_LAST_COMMAND} | ${ove_cmd2pathname["grep"]:?} -A3 '^ Passed'"
-	fi
+
 	${OVE_DIR}/tests/distro-check.sh "unittest" "${args}"
 }
 
-# post-push-parallel: :post-push in parallel (tmux only):INTERNAL
+# post-push-parallel: :post-push in parallel (tmux+LXD only):INTERNAL
 function ove-post-push-parallel {
 	ove_entry || return
 
@@ -13742,6 +13781,8 @@ function ove-post-push-parallel {
 		return 1
 	elif ! ove_sanity_check_tmux; then
 		ove_command_usage
+		return 1
+	elif ! ove-image-refresh; then
 		return 1
 	fi
 

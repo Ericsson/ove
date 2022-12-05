@@ -44,25 +44,11 @@ function init {
 			exit 1
 		fi
 	fi
-	arch=$(\uname -m)
-	if [ "${arch}" = "x86_64" ]; then
-		arch="amd64"
-	fi
 
 	if [ -t 1 ]; then
 		bash_opt="-i"
 		lxc_opt="-t"
 	fi
-
-	if ! \lxc image list --format csv -cL images: arch=${arch} | \sed -e 's,",,g' -e '/^$/d' > "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images"; then
-		echo "error: 'lxc image list images:' failed"
-		exit 1
-	elif [ ! -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
-		echo "error: no images found"
-		exit 1
-	fi
-
-	\sort -u -o "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images" "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images"
 
 	mapfile -t distro_list <<<"$(\grep -E "$2" "${OVE_GLOBAL_STATE_DIR}/distro-check.images")"
 	if [[ ( ${#distro_list[@]} -eq 0 ) || ( ${#distro_list[@]} -eq 1 && "x${distro_list[*]}" = "x" ) ]]; then
