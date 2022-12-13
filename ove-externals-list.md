@@ -4,7 +4,7 @@
 | awk           | 54     |
 | basename      | 1      |
 | bash          | 17     |
-| cat           | 39     |
+| cat           | 40     |
 | chmod         | 6      |
 | column        | 27     |
 | comm          | 14     |

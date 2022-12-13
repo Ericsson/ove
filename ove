@@ -9397,8 +9397,17 @@ function ove-heads2revtab {
 	fi
 
 	for repo in ${repos}; do
-		[ -d "${OVE_BASE_DIR}"/${repo} ] || continue
+		if [ ! -d "${OVE_BASE_DIR}"/${repo} ]; then
+			continue
+		elif [ ! -e "${OVE_BASE_DIR}/${repo}/.git" ]; then
+			ove_echo_warning_noprefix "${repo}/.git missing"
+			continue
+		fi
 		sha_1=$(ove_repo_cmd "${OVE_BASE_DIR}"/${repo} rev-parse HEAD)
+		if [ "x${sha_1}" = "x" ]; then
+			ove_echo_fatal_noprefix "empty SHA-1 for '${repo}'"
+			continue
+		fi
 		${ove_cmd2pathname["sed"]:?} -i -e 's|^'${repo}'\(\s\+.*\s\+.*\s\+\)\(.*\)$|'${repo}'\1'${sha_1}'|g' "${OVE_OWEL_DIR}"/revtab
 	done
 
