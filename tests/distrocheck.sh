@@ -161,7 +161,7 @@ function main {
 
 	start_sec=${SECONDS}
 
-	lxc_name="ove-${tag}-${distro}"
+	lxc_name="${OVE_USER}-${tag}-${distro}"
 
 	# replace slashes and dots
 	lxc_name="${lxc_name//\//-}"
