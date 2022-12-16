@@ -177,9 +177,9 @@ function main {
 	fi
 
 	if [[ ${distro} == *archlinux* ]] || [[ ${distro} == *fedora* ]]; then
-		run "lxc launch images:${distro} -c security.nesting=true ${lxc_name} $OVE_LXC_LAUNCH_EXTRA_ARGS > /dev/null"
+		run "lxc launch images:${distro} -c security.nesting=true ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
 	else
-		run "lxc launch images:${distro} ${lxc_name} $OVE_LXC_LAUNCH_EXTRA_ARGS > /dev/null"
+		run "lxc launch images:${distro} ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
 	fi
 	run "sleep 1"
 

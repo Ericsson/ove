@@ -13769,7 +13769,11 @@ function ove-distrocheck-parallel {
 	fi
 
 	if [ -v OVE_DISTROCHECK_STEPS ]; then
-		env="OVE_DISTROCHECK_STEPS=${OVE_DISTROCHECK_STEPS// /:}"
+		env+=" OVE_DISTROCHECK_STEPS=${OVE_DISTROCHECK_STEPS// /:}"
+	fi
+
+	if [ -v OVE_LXC_LAUNCH_EXTRA_ARGS ]; then
+		env+=" OVE_LXC_LAUNCH_EXTRA_ARGS=${OVE_LXC_LAUNCH_EXTRA_ARGS// /\#}"
 	fi
 
 	for d in "${distro_list[@]}"; do
