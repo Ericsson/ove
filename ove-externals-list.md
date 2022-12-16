@@ -4,7 +4,7 @@
 | awk           | 54     |
 | basename      | 1      |
 | bash          | 17     |
-| cat           | 40     |
+| cat           | 41     |
 | chmod         | 6      |
 | column        | 27     |
 | comm          | 14     |
@@ -23,7 +23,7 @@
 | fzf           | 5      |
 | getconf       | 2      |
 | git           | 73     |
-| grep          | 174    |
+| grep          | 175    |
 | head          | 19     |
 | inotifywait   | 3      |
 | ld            | 1      |
@@ -47,10 +47,10 @@
 | scp           | 2      |
 | script        | 4      |
 | scriptreplay  | 1      |
-| sed           | 87     |
+| sed           | 86     |
 | seq           | 11     |
 | setsid        | 1      |
-| sleep         | 11     |
+| sleep         | 13     |
 | sort          | 109    |
 | ssh           | 7      |
 | stat          | 8      |

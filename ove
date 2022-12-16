@@ -10161,7 +10161,8 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "proj2path" ]; then
 		wordlist=${OVE_PROJECT_LIST}
-	elif [ "${subcommand}" == "distrocheck" ]; then
+	elif [ "${subcommand}" == "distrocheck" ] ||
+		[ "${subcommand}" == "distrocheck-parallel" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects/*/ -name 'distcheck' -exec dirname {} \;)
 			if [ "x${wordlist}" != "x" ]; then
@@ -10169,7 +10170,7 @@ function ove_bash_complete {
 			else
 				wordlist=${OVE_PROJECT_LIST}
 			fi
-		elif [ ${size} -eq 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
+		elif [ ${size} -ge 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
 			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distro-check.images")
 		elif [ ${size} -eq 3 ]; then
 			if ove-image-refresh &> /dev/null; then
@@ -13678,14 +13679,12 @@ function ove-rename {
 	done
 }
 
-# distrocheck:project [pattern]:verify a project within multiple Linux distributions (LXD only):UTIL
-function ove-distrocheck {
-	ove_entry || return
-
+function ove_distrocheck_helper {
+	local d
+	local pattern
 	local proj
 
-	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
-		ove_command_usage
+	if [ $# -lt 2 ]; then
 		return 1
 	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/distro-check.images ] && ! ove-image-refresh; then
 		return 1
@@ -13695,13 +13694,79 @@ function ove-distrocheck {
 	if ! [[ -v ove_projects_name2index[${proj}] ]]; then
 		ove_echo_error_noprefix "unknown project '${proj}'"
 		return 1
-	fi
-
-	if [ ! -s "${OVE_OWEL_DIR}/projects/${proj}/distcheck" ]; then
+	elif [ ! -s "${OVE_OWEL_DIR}/projects/${proj}/distcheck" ]; then
 		ove_echo_error_noprefix "file '${OVE_OWEL_DIR}/projects/${proj}/distcheck' not found"
 		return 1
 	fi
-	${OVE_DIR}/tests/distro-check.sh "${OVE_OWEL_DIR}/projects/${proj}/distcheck" "$2"
+
+	if [ $# -eq 2 ]; then
+		pattern="$2"
+	else
+		shift
+		pattern="'"
+		while true; do
+			pattern+="$1|"
+			shift
+			if [ $# -eq 0 ]; then
+				break
+			fi
+		done
+		pattern="${pattern::-1}'"
+	fi
+
+	mapfile -t distro_list <<<"$(eval ${ove_cmd2pathname["grep"]:?} -E "$pattern" "${OVE_GLOBAL_STATE_DIR}/distro-check.images")"
+	if [[ ( ${#distro_list[@]} -eq 0 ) || ( ${#distro_list[@]} -eq 1 && "x${distro_list[*]}" = "x" ) ]]; then
+		ove_echo_error_noprefix "try another filter, choose from:"
+		${ove_cmd2pathname["sleep"]:?} 1
+		${ove_cmd2pathname["cat"]:?} -n ${OVE_GLOBAL_STATE_DIR:?}/distro-check.images
+		return 1
+	fi
+
+	for d in "${distro_list[@]}"; do
+		echo "$d"
+	done
+
+	${ove_cmd2pathname["sleep"]:?} 2
+}
+
+# distrocheck:project pattern...:verify a project within multiple Linux distributions (LXD only):UTIL
+function ove-distrocheck {
+	ove_entry || return
+
+	local d
+	local distro_list
+
+	if ! ove_distrocheck_helper "$@"; then
+		ove_command_usage
+		return 1
+	fi
+
+	for d in "${distro_list[@]}"; do
+		${OVE_DIR}/tests/distro-check.sh "${OVE_OWEL_DIR}/projects/${1}/distcheck" "$d"
+	done
+}
+
+# distrocheck-parallel:project pattern...:distrocheck in parallel (tmux+LXD only):UTIL
+function ove-distrocheck-parallel {
+	ove_entry || return
+
+	local args
+	local d
+	local distro_list
+
+	if ! ove_sanity_check_tmux; then
+		ove_command_usage
+		return 1
+	elif ! ove_distrocheck_helper "$@"; then
+		ove_command_usage
+		return 1
+	fi
+
+	for d in "${distro_list[@]}"; do
+		args+=" 0 '${OVE_DIR}/tests/distro-check.sh ${OVE_OWEL_DIR}/projects/${1}/distcheck $d'"
+	done
+
+	eval ove-run-parallel $args
 }
 
 # pre-push: :shell-check+unittest+generate-doc combo:INTERNAL
@@ -13764,7 +13829,8 @@ function ove-image-refresh {
 function ove-post-push {
 	ove_entry || return
 
-	local args
+	local d
+	local distro_list
 
 	if [ ! -s "${OVE_DIR}/tests/distro-check.list" ]; then
 		return 1
@@ -13772,11 +13838,10 @@ function ove-post-push {
 		return 1
 	fi
 
-	args=$(${ove_cmd2pathname["sed"]:?} -e '/^#/d' -e 's,^,^,g' -e 's,$,$|,g' "${OVE_DIR}/tests/distro-check.list")
-	args=${args//$'\n'/}
-	args=${args::-1}
-
-	${OVE_DIR}/tests/distro-check.sh "unittest" "${args}"
+	mapfile -t distro_list <"${OVE_DIR}/tests/distro-check.list"
+	for d in "${distro_list[@]}"; do
+		${OVE_DIR}/tests/distro-check.sh "unittest" "${d}"
+	done
 }
 
 # post-push-parallel: :post-push in parallel (tmux+LXD only):INTERNAL
