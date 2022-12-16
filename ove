@@ -10170,11 +10170,11 @@ function ove_bash_complete {
 			else
 				wordlist=${OVE_PROJECT_LIST}
 			fi
-		elif [ ${size} -ge 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
-			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distro-check.images")
+		elif [ ${size} -ge 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
+			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 		elif [ ${size} -eq 3 ]; then
 			if ove-image-refresh &> /dev/null; then
-				wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distro-check.images")
+				wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 			fi
 		else
 			return
@@ -11030,6 +11030,11 @@ function ove_config_builtins_init {
 	# OVE_HASH_SIZE_THRESHOLD_IN_BYTES:int::all:do not run md5sum on large files
 	if [ -z "${OVE_HASH_SIZE_THRESHOLD_IN_BYTES+x}" ]; then
 		export OVE_HASH_SIZE_THRESHOLD_IN_BYTES="104857600"
+	fi
+
+	# OVE_DISTROCHECK_STEPS:string::distrocheck:list of steps to perform for distrocheck
+	if [ -z "${OVE_DISTROCHECK_STEPS+x}" ]; then
+		export OVE_DISTROCHECK_STEPS="sleep ove"
 	fi
 }
 
@@ -13686,7 +13691,7 @@ function ove_distrocheck_helper {
 
 	if [ $# -lt 2 ]; then
 		return 1
-	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/distro-check.images ] && ! ove-image-refresh; then
+	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images ] && ! ove-image-refresh; then
 		return 1
 	fi
 
@@ -13714,11 +13719,11 @@ function ove_distrocheck_helper {
 		pattern="${pattern::-1}'"
 	fi
 
-	mapfile -t distro_list <<<"$(eval ${ove_cmd2pathname["grep"]:?} -E "$pattern" "${OVE_GLOBAL_STATE_DIR}/distro-check.images")"
+	mapfile -t distro_list <<<"$(eval ${ove_cmd2pathname["grep"]:?} -E "$pattern" "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")"
 	if [[ ( ${#distro_list[@]} -eq 0 ) || ( ${#distro_list[@]} -eq 1 && "x${distro_list[*]}" = "x" ) ]]; then
 		ove_echo_error_noprefix "try another filter, choose from:"
 		${ove_cmd2pathname["sleep"]:?} 1
-		${ove_cmd2pathname["cat"]:?} -n ${OVE_GLOBAL_STATE_DIR:?}/distro-check.images
+		${ove_cmd2pathname["cat"]:?} -n ${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images
 		return 1
 	fi
 
@@ -13742,7 +13747,7 @@ function ove-distrocheck {
 	fi
 
 	for d in "${distro_list[@]}"; do
-		${OVE_DIR}/tests/distro-check.sh "${OVE_OWEL_DIR}/projects/${1}/distcheck" "$d"
+		${OVE_DIR}/tests/distrocheck.sh "${OVE_OWEL_DIR}/projects/${1}/distcheck" "$d"
 	done
 }
 
@@ -13753,6 +13758,7 @@ function ove-distrocheck-parallel {
 	local args
 	local d
 	local distro_list
+	local env
 
 	if ! ove_sanity_check_tmux; then
 		ove_command_usage
@@ -13762,8 +13768,12 @@ function ove-distrocheck-parallel {
 		return 1
 	fi
 
+	if [ -v OVE_DISTROCHECK_STEPS ]; then
+		env="OVE_DISTROCHECK_STEPS=${OVE_DISTROCHECK_STEPS// /:}"
+	fi
+
 	for d in "${distro_list[@]}"; do
-		args+=" 0 '${OVE_DIR}/tests/distro-check.sh ${OVE_OWEL_DIR}/projects/${1}/distcheck $d'"
+		args+=" 0 '$env ${OVE_DIR}/tests/distrocheck.sh ${OVE_OWEL_DIR}/projects/${1}/distcheck $d'"
 	done
 
 	eval ove-run-parallel $args
@@ -13811,36 +13821,36 @@ function ove-image-refresh {
 	fi
 
 	if ! ${ove_cmd2pathname["lxc"]:?} image list --format csv -cL images: arch=${arch} | \
-		${ove_cmd2pathname["sed"]:?} -e 's,",,g' -e '/^$/d' > "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images"; then
+		${ove_cmd2pathname["sed"]:?} -e 's,",,g' -e '/^$/d' > "${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images"; then
 		ove_echo_error_noprefix "'lxc image list images:' failed"
 		return 1
-	elif [ ! -s "${OVE_GLOBAL_STATE_DIR}/distro-check.images" ]; then
+	elif [ ! -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
 		ove_echo_error_noprefix "weird - empty image list"
 		return 1
 	fi
 
 	LC_ALL="C" ${ove_cmd2pathname["sort"]:?} \
 		-u \
-		-o "${OVE_GLOBAL_STATE_DIR:?}/distro-check.images" \
-		"${OVE_GLOBAL_STATE_DIR:?}/distro-check.images"
+		-o "${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images" \
+		"${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images"
 }
 
-# post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/distro-check.list (LXD only):INTERNAL
+# post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/distrocheck.list (LXD only):INTERNAL
 function ove-post-push {
 	ove_entry || return
 
 	local d
 	local distro_list
 
-	if [ ! -s "${OVE_DIR}/tests/distro-check.list" ]; then
+	if [ ! -s "${OVE_DIR}/tests/distrocheck.list" ]; then
 		return 1
 	elif ! ove-image-refresh; then
 		return 1
 	fi
 
-	mapfile -t distro_list <"${OVE_DIR}/tests/distro-check.list"
+	mapfile -t distro_list <"${OVE_DIR}/tests/distrocheck.list"
 	for d in "${distro_list[@]}"; do
-		${OVE_DIR}/tests/distro-check.sh "unittest" "${d}"
+		${OVE_DIR}/tests/distrocheck.sh "unittest" "${d}"
 	done
 }
 
@@ -13851,7 +13861,7 @@ function ove-post-push-parallel {
 	local args
 	local d
 
-	if [ ! -s "${OVE_DIR}/tests/distro-check.list" ]; then
+	if [ ! -s "${OVE_DIR}/tests/distrocheck.list" ]; then
 		return 1
 	elif ! ove_sanity_check_tmux; then
 		ove_command_usage
@@ -13861,8 +13871,8 @@ function ove-post-push-parallel {
 	fi
 
 	while read -r d; do
-		args+=" 0 '${OVE_DIR}/tests/distro-check.sh unittest $d'"
-	done <"${OVE_DIR}/tests/distro-check.list"
+		args+=" 0 '${OVE_DIR}/tests/distrocheck.sh unittest $d'"
+	done <"${OVE_DIR}/tests/distrocheck.list"
 
 	eval ove-run-parallel $args
 }

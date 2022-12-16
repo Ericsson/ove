@@ -51,6 +51,10 @@ function init {
 	fi
 
 	distro="$2"
+
+	if [ ! -v OVE_DISTROCHECK_STEPS ]; then
+		OVE_DISTROCHECK_STEPS="sleep:ove"
+	fi
 }
 
 function run {
@@ -169,65 +173,75 @@ function main {
 	else
 		run "lxc launch images:${distro} ${lxc_name} $OVE_LXC_LAUNCH_EXTRA_ARGS"
 	fi
-	run "sleep 10"
 
-	ove_packs="bash bzip2 git curl file binutils util-linux coreutils"
-	if lxc_command "apk"; then
-		package_manager="apk add --no-progress -q"
-	elif lxc_command "pacman"; then
-		package_manager="pacman -S --noconfirm -q --noprogressbar"
-	elif lxc_command "apt-get"; then
-		ove_packs+=" bsdmainutils procps"
-		package_manager="apt-get -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install"
-		if [ -s "/etc/apt/apt.conf" ]; then
-			run "lxc file push --uid 0 --gid 0 /etc/apt/apt.conf ${lxc_name}/etc/apt/apt.conf"
-		fi
-		lxc_exec "apt-get update"
-	elif lxc_command "xbps-install"; then
-		package_manager="xbps-install -y"
-	elif lxc_command "dnf"; then
-		package_manager="dnf install -y"
-	elif lxc_command "zypper"; then
-		package_manager="zypper install -y"
-	else
-		echo "error: unknown package manager for '${distro}'"
-		cleanup
-		exit 1
+	if [[ $OVE_DISTROCHECK_STEPS == *sleep* ]]; then
+		run "sleep 10"
 	fi
 
-	if [ -s "${HOME}"/.gitconfig ]; then
-		run "lxc file push --uid 0 --gid 0 ${HOME}/.gitconfig ${lxc_name}/root/.gitconfig"
-	fi
-
-	lxc_exec "${package_manager} ${ove_packs}"
-	if [ "${OVE_OWEL_DIR}" != "x" ] && [ -s "${OVE_OWEL_DIR}/SETUP" ]; then
-		lxc_exec "bash -c '$(cat "${OVE_OWEL_DIR}"/SETUP)'"
-		ws_name=$(lxc exec "${lxc_name}" -- bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2)
-		if [ "x${ws_name}" = "x" ]; then
-			echo "error: workspace name not found"
+	if [[ $OVE_DISTROCHECK_STEPS == *ove* ]]; then
+		ove_packs="bash bzip2 git curl file binutils util-linux coreutils"
+		if lxc_command "apk"; then
+			package_manager="apk add --no-progress -q"
+		elif lxc_command "pacman"; then
+			package_manager="pacman -S --noconfirm -q --noprogressbar"
+		elif lxc_command "apt-get"; then
+			ove_packs+=" bsdmainutils procps"
+			package_manager="apt-get -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install"
+			if [ -s "/etc/apt/apt.conf" ]; then
+				run "lxc file push --uid 0 --gid 0 /etc/apt/apt.conf ${lxc_name}/etc/apt/apt.conf"
+			fi
+			lxc_exec "apt-get update"
+		elif lxc_command "xbps-install"; then
+			package_manager="xbps-install -y"
+		elif lxc_command "dnf"; then
+			package_manager="dnf install -y"
+		elif lxc_command "zypper"; then
+			package_manager="zypper install -y"
+		else
+			echo "error: unknown package manager for '${distro}'"
 			cleanup
 			exit 1
 		fi
+
+		if [ -s "${HOME}"/.gitconfig ]; then
+			run "lxc file push --uid 0 --gid 0 ${HOME}/.gitconfig ${lxc_name}/root/.gitconfig"
+		fi
+
+		lxc_exec "${package_manager} ${ove_packs}"
+		if [ "${OVE_OWEL_DIR}" != "x" ] && [ -s "${OVE_OWEL_DIR}/SETUP" ]; then
+			lxc_exec "bash -c '$(cat "${OVE_OWEL_DIR}"/SETUP)'"
+			ws_name=$(lxc exec "${lxc_name}" -- bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2)
+			if [ "x${ws_name}" = "x" ]; then
+				echo "error: workspace name not found"
+				cleanup
+				exit 1
+			fi
+		else
+			ws_name="distrocheck"
+			lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/ove-tutorial'"
+		fi
+		prefix="cd ${ws_name}; source ove hush"
 	else
-		ws_name="distro-check"
-		lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/ove-tutorial'"
-	fi
-	prefix="cd ${ws_name}; source ove hush"
-	if [ ${unittest} -eq 1 ]; then
-		lxc_exec "bash -c ${bash_opt} 'cd ${ws_name}; source ove'"
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove env'"
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove list-externals'"
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove status'"
+		prefix="true"
 	fi
 
-	package_manager_noconfirm
-	if [[ ${distro} == *archlinux* ]]; then
-		lxc_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
-		lxc_exec "locale-gen"
-	fi
+	if [[ $OVE_DISTROCHECK_STEPS == *ove* ]]; then
+		if [ ${unittest} -eq 1 ]; then
+			lxc_exec "bash -c ${bash_opt} 'cd ${ws_name}; source ove'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; ove env'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; ove list-externals'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; ove status'"
+		fi
 
-	if [[ ${distro} == *opensuse* ]]; then
-		lxc_exec "zypper install -y -t pattern devel_basis"
+		package_manager_noconfirm
+		if [[ ${distro} == *archlinux* ]]; then
+			lxc_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
+			lxc_exec "locale-gen"
+		fi
+
+		if [[ ${distro} == *opensuse* ]]; then
+			lxc_exec "zypper install -y -t pattern devel_basis"
+		fi
 	fi
 
 	if [ ${unittest} -eq 1 ]; then
@@ -260,8 +274,14 @@ function main {
 
 	if [ "x${distcheck}" != "x" ]; then
 		run "lxc file push --uid 0 --gid 0 ${distcheck} ${lxc_name}/tmp/distcheck"
-		lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg $(basename "$(dirname "${distcheck}")")'"
-		lxc_exec "bash -c ${bash_opt} '${prefix}; source /tmp/distcheck'"
+		if [[ $OVE_DISTROCHECK_STEPS == *ove* ]]; then
+			lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg $(basename "$(dirname "${distcheck}")")'"
+		fi
+		if [[ $OVE_DISTROCHECK_STEPS == *ove* ]]; then
+			lxc_exec "bash -c ${bash_opt} '${prefix}; source /tmp/distcheck'"
+		else
+			lxc_exec "/tmp/distcheck"
+		fi
 	fi
 
 	cleanup
