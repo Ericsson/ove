@@ -23,6 +23,14 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+
+function _echo {
+	if [[ $OVE_DISTROCHECK_STEPS = *hush* ]]; then
+		return
+	fi
+	echo "$*"
+}
+
 function init {
 	if ! command -v lxc > /dev/null; then
 		echo "error: lxc missing"
@@ -61,15 +69,15 @@ function run {
 	local start_sec=${SECONDS}
 	local stop_sec
 
-	echo "[${distro}]$ $*"
+	_echo "[${distro}]$ $*"
 	if ! eval "$@"; then
-		echo "error: '$*' failed for distro '${distro}' exited after $((SECONDS - start_sec)) seconds"
+		_echo "error: '$*' failed for distro '${distro}' exited after $((SECONDS - start_sec)) seconds"
 		exit 1
 	fi
 
 	stop_sec=$((SECONDS - start_sec))
 	if [ ${stop_sec} -gt 0 ]; then
-		echo "[${distro}]$ # done in ${stop_sec} seconds"
+		_echo "[${distro}]$ # done in ${stop_sec} seconds"
 	fi
 }
 
@@ -77,13 +85,13 @@ function run_no_exit {
 	local start_sec=${SECONDS}
 	local stop_sec
 
-	echo "[${distro}]$ $*"
+	_echo "[${distro}]$ $*"
 	if ! eval "$@"; then
-		echo "warning: '$*' failed for distro ${distro}"
+		_echo "warning: '$*' failed for distro ${distro}"
 	fi
 	stop_sec=$((SECONDS - start_sec))
 	if [ ${stop_sec} -gt 0 ]; then
-		echo "[${distro}]$ # done in ${stop_sec} seconds"
+		_echo "[${distro}]$ # done in ${stop_sec} seconds"
 	fi
 }
 
@@ -160,7 +168,7 @@ function main {
 	lxc_name="${lxc_name//./-}"
 
 	if [ ${#lxc_name} -gt 63 ]; then
-		echo "info: lxc name '${lxc_name}' tuncated"
+		_echo "info: lxc name '${lxc_name}' tuncated"
 		lxc_name=${lxc_name:0:63}
 	fi
 
@@ -169,10 +177,11 @@ function main {
 	fi
 
 	if [[ ${distro} == *archlinux* ]] || [[ ${distro} == *fedora* ]]; then
-		run "lxc launch images:${distro} -c security.nesting=true ${lxc_name} $OVE_LXC_LAUNCH_EXTRA_ARGS"
+		run "lxc launch images:${distro} -c security.nesting=true ${lxc_name} $OVE_LXC_LAUNCH_EXTRA_ARGS > /dev/null"
 	else
-		run "lxc launch images:${distro} ${lxc_name} $OVE_LXC_LAUNCH_EXTRA_ARGS"
+		run "lxc launch images:${distro} ${lxc_name} $OVE_LXC_LAUNCH_EXTRA_ARGS > /dev/null"
 	fi
+	run "sleep 1"
 
 	if [[ $OVE_DISTROCHECK_STEPS == *sleep* ]]; then
 		run "sleep 10"

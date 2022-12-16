@@ -11034,7 +11034,7 @@ function ove_config_builtins_init {
 
 	# OVE_DISTROCHECK_STEPS:string::distrocheck:list of steps to perform for distrocheck
 	if [ -z "${OVE_DISTROCHECK_STEPS+x}" ]; then
-		export OVE_DISTROCHECK_STEPS="sleep ove"
+		export OVE_DISTROCHECK_STEPS="hush sleep ove"
 	fi
 }
 
