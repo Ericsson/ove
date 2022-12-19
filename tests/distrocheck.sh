@@ -25,7 +25,7 @@
 
 
 function _echo {
-	if [[ $OVE_DISTROCHECK_STEPS = *hush* ]]; then
+	if [[ ${OVE_DISTROCHECK_STEPS} = *hush* ]]; then
 		return
 	fi
 	echo "$*"
@@ -35,10 +35,8 @@ function init {
 	if ! command -v lxc > /dev/null; then
 		echo "error: lxc missing"
 		exit 1
-	fi
-
-	if [ $# -ne 2 ]; then
-		echo "usage: $(basename "$0") unittest|file distro"
+	elif [ $# -ne 2 ]; then
+		echo "usage: $(basename "$0") file|project|unittest distro"
 		exit 1
 	fi
 
@@ -47,10 +45,6 @@ function init {
 	else
 		unittest=0
 		distcheck="$1"
-		if [ ! -e "${distcheck}" ]; then
-			echo "error: '${distcheck}' not found"
-			exit 1
-		fi
 	fi
 
 	if [ -t 1 ]; then
@@ -61,7 +55,7 @@ function init {
 	distro="$2"
 
 	if [ ! -v OVE_DISTROCHECK_STEPS ]; then
-		OVE_DISTROCHECK_STEPS="sleep:ove"
+		OVE_DISTROCHECK_STEPS="hush:info:sleep"
 	fi
 }
 
@@ -138,7 +132,13 @@ function package_manager_noconfirm {
 }
 
 function cleanup {
+	if [[ ${OVE_DISTROCHECK_STEPS} == *running* ]]; then
+		return
+	fi
 	run_no_exit "lxc stop ${lxc_name} --force"
+	if [[ ${OVE_DISTROCHECK_STEPS} == *stopped* ]]; then
+		return
+	fi
 	run_no_exit "lxc delete ${lxc_name} --force"
 }
 
@@ -183,11 +183,16 @@ function main {
 	fi
 	run "sleep 1"
 
-	if [[ $OVE_DISTROCHECK_STEPS == *sleep* ]]; then
+	if [[ ${OVE_DISTROCHECK_STEPS} == *sleep* ]]; then
 		run "sleep 10"
 	fi
 
-	if [[ $OVE_DISTROCHECK_STEPS == *ove* ]]; then
+	if [[ ${OVE_DISTROCHECK_STEPS} == *info* ]]; then
+		lxc list | grep -E --color=never "NAME|${lxc_name}" > "${OVE_TMP}/${tag}.info"
+		run "lxc file push --uid 0 --gid 0 ${OVE_TMP}/${tag}.info ${lxc_name}/tmp/${tag}.info"
+	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 		ove_packs="bash bzip2 git curl file binutils util-linux coreutils"
 		if lxc_command "apk"; then
 			package_manager="apk add --no-progress -q"
@@ -234,7 +239,7 @@ function main {
 		prefix="true"
 	fi
 
-	if [[ $OVE_DISTROCHECK_STEPS == *ove* ]]; then
+	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 		if [ ${unittest} -eq 1 ]; then
 			lxc_exec "bash -c ${bash_opt} 'cd ${ws_name}; source ove'"
 			lxc_exec "bash -c ${bash_opt} '${prefix}; ove env'"
@@ -282,14 +287,18 @@ function main {
 	fi
 
 	if [ "x${distcheck}" != "x" ]; then
-		run "lxc file push --uid 0 --gid 0 ${distcheck} ${lxc_name}/tmp/distcheck"
-		if [[ $OVE_DISTROCHECK_STEPS == *ove* ]]; then
-			lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg $(basename "$(dirname "${distcheck}")")'"
-		fi
-		if [[ $OVE_DISTROCHECK_STEPS == *ove* ]]; then
-			lxc_exec "bash -c ${bash_opt} '${prefix}; source /tmp/distcheck'"
+		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
+			lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg $distcheck'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; OVE_AUTO_CLONE=1 ove distcheck $distcheck'"
 		else
-			lxc_exec "/tmp/distcheck"
+			if [ -s "${distcheck}" ]; then
+				cp -a "${distcheck}" "${OVE_TMP}/${tag}.cmd"
+			else
+				echo "$distcheck" > "${OVE_TMP}/${tag}.cmd"
+				chmod +x "${OVE_TMP}/${tag}.cmd"
+			fi
+			run "lxc file push --uid 0 --gid 0 ${OVE_TMP}/${tag}.cmd ${lxc_name}/tmp/${tag}.cmd"
+			lxc_exec "/tmp/${tag}.cmd"
 		fi
 	fi
 

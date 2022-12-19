@@ -11034,7 +11034,7 @@ function ove_config_builtins_init {
 
 	# OVE_DISTROCHECK_STEPS:string::distrocheck:list of steps to perform for distrocheck
 	if [ -z "${OVE_DISTROCHECK_STEPS+x}" ]; then
-		export OVE_DISTROCHECK_STEPS="hush sleep ove"
+		export OVE_DISTROCHECK_STEPS="hush info sleep"
 	fi
 }
 
@@ -13696,12 +13696,8 @@ function ove_distrocheck_helper {
 	fi
 
 	proj="$1"
-	if ! [[ -v ove_projects_name2index[${proj}] ]]; then
-		ove_echo_error_noprefix "unknown project '${proj}'"
-		return 1
-	elif [ ! -s "${OVE_OWEL_DIR}/projects/${proj}/distcheck" ]; then
-		ove_echo_error_noprefix "file '${OVE_OWEL_DIR}/projects/${proj}/distcheck' not found"
-		return 1
+	if [[ -v ove_projects_name2index[${proj}] ]] && [ -s "${OVE_OWEL_DIR}/projects/${proj}/distcheck" ]; then
+		OVE_DISTROCHECK_STEPS+=" ove"
 	fi
 
 	if [ $# -eq 2 ]; then
@@ -13734,7 +13730,7 @@ function ove_distrocheck_helper {
 	${ove_cmd2pathname["sleep"]:?} 2
 }
 
-# distrocheck:project pattern...:verify a project within multiple Linux distributions (LXD only):UTIL
+# distrocheck:file|project pattern...:verify a project within multiple Linux distributions (LXD only):UTIL
 function ove-distrocheck {
 	ove_entry || return
 
@@ -13747,11 +13743,11 @@ function ove-distrocheck {
 	fi
 
 	for d in "${distro_list[@]}"; do
-		${OVE_DIR}/tests/distrocheck.sh "${OVE_OWEL_DIR}/projects/${1}/distcheck" "$d"
+		${OVE_DIR}/tests/distrocheck.sh "${1}" "$d"
 	done
 }
 
-# distrocheck-parallel:project pattern...:distrocheck in parallel (tmux+LXD only):UTIL
+# distrocheck-parallel:file|project pattern...:distrocheck in parallel (tmux+LXD only):UTIL
 function ove-distrocheck-parallel {
 	ove_entry || return
 
@@ -13777,7 +13773,7 @@ function ove-distrocheck-parallel {
 	fi
 
 	for d in "${distro_list[@]}"; do
-		args+=" 0 '$env ${OVE_DIR}/tests/distrocheck.sh ${OVE_OWEL_DIR}/projects/${1}/distcheck $d'"
+		args+=" 0 '$env ${OVE_DIR}/tests/distrocheck.sh $1 $d'"
 	done
 
 	eval ove-run-parallel $args
