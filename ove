@@ -2096,8 +2096,8 @@ function ove {
 	if [ -v ove_hooks_pre[${cmd}] ]; then
 		for h in ${ove_hooks_pre[${cmd}]}; do
 			if [ -s "$h" ] && [ -x "$h" ]; then
-				$h "${@:2}"
-				ret=$?
+				$h "${@:2}" |& ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
+				ret=${PIPESTATUS[0]}
 				if [ $ret -ne 0 ]; then
 					ove_echo_red_noprefix "error: pre hook '$h' failed with exit code $ret"
 					return $ret
@@ -2152,11 +2152,11 @@ function ove {
 			${ove_cmd2pathname["setsid"]:?} \
 				-w \
 				${ove_cmd2pathname["bash"]:?} \
-				-c "ove-${cmd} ${*:2}" 2>&1 | ${ove_cmd2pathname["tee"]:?} -i ${OVE_LAST_COMMAND}
+				-c "ove-${cmd} ${*:2}" 2>&1 | ${ove_cmd2pathname["tee"]:?} -a -i ${OVE_LAST_COMMAND}
 		else
 			{
 				ove-${cmd} "${@:2}"
-			} 2>&1 | ${ove_cmd2pathname["tee"]:?} -i ${OVE_LAST_COMMAND}
+			} 2>&1 | ${ove_cmd2pathname["tee"]:?} -a -i ${OVE_LAST_COMMAND}
 		fi
 		ret=${PIPESTATUS[0]}
 
@@ -2188,8 +2188,8 @@ function ove {
 	if [ "x${log_cmd}" != "xtsp" ] && [ -v ove_hooks_post[${cmd}] ]; then
 		for h in ${ove_hooks_post[${cmd}]}; do
 			if [ -s "$h" ] && [ -x "$h" ]; then
-				$h "${@:2}"
-				ret=$?
+				$h "${@:2}" |& ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
+				ret=${PIPESTATUS[0]}
 				if [ $ret -ne 0 ]; then
 					ove_echo_red_noprefix "error: post hook '$h' failed with exit code $ret"
 					return $ret

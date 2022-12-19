@@ -59,7 +59,7 @@
 | tail          | 11     |
 | tar           | 4      |
 | task          | 2      |
-| tee           | 9      |
+| tee           | 11     |
 | timeout       | 4      |
 | tmux          | 9      |
 | touch         | 2      |
