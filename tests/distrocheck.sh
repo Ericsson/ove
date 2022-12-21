@@ -25,13 +25,16 @@
 
 
 function _echo {
-	if [[ ${OVE_DISTROCHECK_STEPS} = *hush* ]]; then
-		return
+	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+		ove-echo stderr "$*"
 	fi
-	echo "$*"
+
+	return 0
 }
 
 function init {
+	local s
+
 	if ! command -v lxc > /dev/null; then
 		echo "error: lxc missing"
 		exit 1
@@ -55,37 +58,30 @@ function init {
 	distro="$2"
 
 	if [ ! -v OVE_DISTROCHECK_STEPS ]; then
-		OVE_DISTROCHECK_STEPS="hush:info:sleep"
+		OVE_DISTROCHECK_STEPS="sleep"
 	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+		for s in ${OVE_DISTROCHECK_STEPS//:/ };do
+			echo $s
+		done
+	fi
+
+	trap cleanup EXIT
 }
 
 function run {
-	local start_sec=${SECONDS}
-	local stop_sec
-
 	_echo "[${distro}]$ $*"
 	if ! eval "$@"; then
-		_echo "error: '$*' failed for distro '${distro}' exited after $((SECONDS - start_sec)) seconds"
+		_echo "error: '$*' failed for distro '${distro}'"
 		exit 1
-	fi
-
-	stop_sec=$((SECONDS - start_sec))
-	if [ ${stop_sec} -gt 0 ]; then
-		_echo "[${distro}]$ # done in ${stop_sec} seconds"
 	fi
 }
 
 function run_no_exit {
-	local start_sec=${SECONDS}
-	local stop_sec
-
 	_echo "[${distro}]$ $*"
 	if ! eval "$@"; then
 		_echo "warning: '$*' failed for distro ${distro}"
-	fi
-	stop_sec=$((SECONDS - start_sec))
-	if [ ${stop_sec} -gt 0 ]; then
-		_echo "[${distro}]$ # done in ${stop_sec} seconds"
 	fi
 }
 
@@ -109,6 +105,10 @@ function lxc_exec {
 		lxc_exec_options+=" --env ${e}=${!e}"
 	done
 
+	if [ "x$LXC_EXEC_EXTRA" != "x" ]; then
+		lxc_exec_options+=" $LXC_EXEC_EXTRA"
+	fi
+
 	run "lxc exec ${lxc_exec_options} ${lxc_name} -- $*"
 }
 
@@ -131,6 +131,7 @@ function package_manager_noconfirm {
 	lxc_exec "bash -c ${bash_opt} '${prefix}; ove config'"
 }
 
+lxc_name=""
 function cleanup {
 	if [[ ${OVE_DISTROCHECK_STEPS} == *running* ]]; then
 		return
@@ -143,11 +144,12 @@ function cleanup {
 }
 
 function main {
-	local lxc_name
+	local _home="/root"
 	local ove_packs
 	local package_manager
-	local start_sec
+	local prefix="true"
 	local tag
+	local _uid=0
 
 	init "$@"
 
@@ -158,8 +160,6 @@ function main {
 	else
 		tag="$(date '+%Y%m%d-%H%M%S%N')"
 	fi
-
-	start_sec=${SECONDS}
 
 	lxc_name="${OVE_USER}-${tag}-${distro}"
 
@@ -172,10 +172,6 @@ function main {
 		lxc_name=${lxc_name:0:63}
 	fi
 
-	if lxc list --format csv | grep -q "^${lxc_name},"; then
-		run "lxc delete --force ${lxc_name}"
-	fi
-
 	if [[ ${distro} == *archlinux* ]] || [[ ${distro} == *fedora* ]]; then
 		run "lxc launch images:${distro} -c security.nesting=true ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
 	else
@@ -183,13 +179,25 @@ function main {
 	fi
 	run "sleep 1"
 
-	if [[ ${OVE_DISTROCHECK_STEPS} == *sleep* ]]; then
-		run "sleep 10"
+	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
+		lxc_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${OVE_USER:?}"
+		_uid=$(lxc_exec "id -u ${OVE_USER}")
+		_uid=${_uid/$'\r'/}
+		_home=$HOME
+
+		_echo "idmap"
+		printf "uid %s $_uid\ngid %s $_uid" "$(id -u)" "$(id -g)" | \
+			lxc config set "${lxc_name}" raw.idmap -
+
+		_echo "user and sudo"
+		echo "${OVE_USER} ALL=(ALL) NOPASSWD:ALL" > "$OVE_TMP/91-ove"
+		run "lxc file push --uid 0 --gid 0 $OVE_TMP/91-ove ${lxc_name}/etc/sudoers.d/91-ove"
+
+		run "lxc restart ${lxc_name}"
 	fi
 
-	if [[ ${OVE_DISTROCHECK_STEPS} == *info* ]]; then
-		lxc list | grep -E --color=never "NAME|${lxc_name}" > "${OVE_TMP}/${tag}.info"
-		run "lxc file push --uid 0 --gid 0 ${OVE_TMP}/${tag}.info ${lxc_name}/tmp/${tag}.info"
+	if [[ ${OVE_DISTROCHECK_STEPS} == *sleep* ]]; then
+		run "sleep 10"
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
@@ -213,30 +221,45 @@ function main {
 			package_manager="zypper install -y"
 		else
 			echo "error: unknown package manager for '${distro}'"
-			cleanup
 			exit 1
 		fi
 
-		if [ -s "${HOME}"/.gitconfig ]; then
-			run "lxc file push --uid 0 --gid 0 ${HOME}/.gitconfig ${lxc_name}/root/.gitconfig"
-		fi
-
+		# install OVE packages
 		lxc_exec "${package_manager} ${ove_packs}"
-		if [ "${OVE_OWEL_DIR}" != "x" ] && [ -s "${OVE_OWEL_DIR}/SETUP" ]; then
-			lxc_exec "bash -c '$(cat "${OVE_OWEL_DIR}"/SETUP)'"
-			ws_name=$(lxc exec "${lxc_name}" -- bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2)
-			if [ "x${ws_name}" = "x" ]; then
-				echo "error: workspace name not found"
-				cleanup
-				exit 1
-			fi
+	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
+		# from now on, run all lxc exec commands as user
+		export LXC_EXEC_EXTRA="--user $_uid --env HOME=$HOME"
+	fi
+
+	# gitconfig
+	if [ -s "${HOME}"/.gitconfig ]; then
+		run "lxc file push --uid $_uid ${HOME}/.gitconfig ${lxc_name}${_home}/.gitconfig"
+	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
+		if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
+			# expose OVE workspace to the container
+			run "lxc config device add ${lxc_name} home disk source=${OVE_BASE_DIR} path=${OVE_BASE_DIR}"
+			ws_name="${OVE_BASE_DIR}"
+			prefix="cd ${ws_name}; source ove hush"
 		else
-			ws_name="distrocheck"
-			lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/ove-tutorial'"
+			# search for a SETUP file
+			if [ "${OVE_OWEL_DIR}" != "x" ] && [ -s "${OVE_OWEL_DIR}/SETUP" ]; then
+				lxc_exec "bash -c '$(cat "${OVE_OWEL_DIR}"/SETUP)'"
+				ws_name=$(lxc_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
+				if [ "x${ws_name}" = "x" ]; then
+					echo "error: workspace name not found"
+					exit 1
+				fi
+			else
+				# fallback to ove-tutorial
+				ws_name="distrocheck"
+				lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/ove-tutorial'"
+			fi
+			prefix="cd ${ws_name}; source ove hush"
 		fi
-		prefix="cd ${ws_name}; source ove hush"
-	else
-		prefix="true"
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
@@ -254,7 +277,7 @@ function main {
 		fi
 
 		if [[ ${distro} == *opensuse* ]]; then
-			lxc_exec "zypper install -y -t pattern devel_basis"
+			lxc_exec "sudo zypper install -y -t pattern devel_basis"
 		fi
 	fi
 
@@ -288,22 +311,24 @@ function main {
 
 	if [ "x${distcheck}" != "x" ]; then
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
-			lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove install-pkg $distcheck'"
+			packs=$(lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove list-needs $distcheck'")
+			packs=${packs//$'\r'/ }
+			packs=${packs//$'\n'/}
+			if [ "$packs" != "" ]; then
+				LXC_EXEC_EXTRA="--user 0" lxc_exec "${package_manager} ${packs}"
+			fi
 			lxc_exec "bash -c ${bash_opt} '${prefix}; OVE_AUTO_CLONE=1 ove distcheck $distcheck'"
 		else
 			if [ -s "${distcheck}" ]; then
 				cp -a "${distcheck}" "${OVE_TMP}/${tag}.cmd"
 			else
 				echo "$distcheck" > "${OVE_TMP}/${tag}.cmd"
-				chmod +x "${OVE_TMP}/${tag}.cmd"
 			fi
+			chmod +x "${OVE_TMP}/${tag}.cmd"
 			run "lxc file push --uid 0 --gid 0 ${OVE_TMP}/${tag}.cmd ${lxc_name}/tmp/${tag}.cmd"
 			lxc_exec "/tmp/${tag}.cmd"
 		fi
 	fi
-
-	cleanup
-	run "# done in $((SECONDS - start_sec)) seconds"
 }
 
 main "$@"
