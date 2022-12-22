@@ -241,7 +241,9 @@ function main {
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 		if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
 			# expose OVE workspace to the container
-			run "lxc config device add ${lxc_name} home disk source=${OVE_BASE_DIR} path=${OVE_BASE_DIR}"
+			run "lxc config device add ${lxc_name} ove-base disk source=${OVE_BASE_DIR} path=${OVE_BASE_DIR}"
+			run "lxc config device add ${lxc_name} ove-tmp disk source=${OVE_TMP} path=${OVE_TMP}"
+			run "lxc config device add ${lxc_name} ove-state disk source=${OVE_GLOBAL_STATE_DIR} path=${OVE_GLOBAL_STATE_DIR}"
 			ws_name="${OVE_BASE_DIR}"
 			prefix="cd ${ws_name}; source ove hush"
 		else
