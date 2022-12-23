@@ -24,26 +24,51 @@
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 # list all MAJOR.MINOR.PATCH tags
-ove tag | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | sort -Vr > "${OVE_TMP}"/tags
+ove-tag | \
+	grep -o "tag:.*" | \
+	awk '{print $2}' | \
+	grep '[0-9]\+\.[0-9]\+\.[0-9]\+' | \
+	sort -Vr \
+	> "${OVE_TMP}"/tags
+
+n_tags=$(wc -l < "${OVE_TMP}"/tags)
 
 if ! [ -s "${OVE_TMP}"/tags ]; then
-	echo "error: no tags"
+	echo "error: no MAJOR.MINOR.PATCH tags found"
+	exit 1
+elif [ "$n_tags" -lt 2 ]; then
+	echo "error: one MAJOR.MINOR.PATCH tag is not enough"
 	exit 1
 fi
 
-# start tag
-s=$(head -1 "${OVE_TMP}"/tags)
+if [ "$n_tags" -eq 2 ]; then
+	s="$(head -1 "${OVE_TMP}"/tags)"
+	echo "${s}" > "${OVE_OWEL_DIR}"/CHANGELOG
+	t="$(tail -1 "${OVE_TMP}"/tags)"
+	if ! ove-log-owel "$t" "$s" | sed -e 's,^,  ,g' >> "${OVE_OWEL_DIR}"/CHANGELOG; then
+		echo "error: ove log-owel ${t} ${s} failed"
+		exit 1
+	fi
+else
+	# start with the most recent tag
+	s=$(head -1 "${OVE_TMP}"/tags)
 
-# create a CHANGELOG
-for t in $(tail -n +2 "${OVE_TMP}"/tags); do
-	echo "${s}"
-	ove log-project "${t}" "${s}";
-	s=$t
-done > "${OVE_OWEL_DIR}"/CHANGELOG
+	true > "${OVE_OWEL_DIR}"/CHANGELOG
+	for t in $(tail -n +2 "${OVE_TMP}"/tags); do
+		echo "${s}" >> "${OVE_OWEL_DIR}"/CHANGELOG
+		if ! ove-log-owel "${t}" "${s}" | sed -e 's,^,  ,g' >> "${OVE_OWEL_DIR}"/CHANGELOG; then
+			echo "error: ove log-owel ${t} ${s} failed"
+			exit 1
+		fi
+		s=$t
+	done > "${OVE_OWEL_DIR}"/CHANGELOG
+fi
 
 # remove color codes
 sed -i \
 	-r \
-	-e "s/\x1b\[1;3[1,3]m//g" \
+	-e "s/\x1b\[0;3[0-9];7m//g" \
 	-e "s/\x1b\[[0-9]+m//g" \
-	-e "s/\x1b\[m//g" "${OVE_OWEL_DIR}"/CHANGELOG
+	-e "s/\x1b\[m//g" \
+	-e 's/^  $//g' \
+	"${OVE_OWEL_DIR}"/CHANGELOG
