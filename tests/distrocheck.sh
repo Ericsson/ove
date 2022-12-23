@@ -45,6 +45,7 @@ function init {
 
 	if [ "$1" = "unittest" ]; then
 		unittest=1
+		OVE_DISTROCHECK_STEPS="ove sleep verbose"
 	else
 		unittest=0
 		distcheck="$1"
