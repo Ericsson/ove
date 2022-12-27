@@ -424,16 +424,22 @@ EOF
 			# worktree?
 			if [[ $OVE_DISTROCHECK_STEPS == *worktree* ]]; then
 				lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config $_home/.oveconfig OVE_REVTAB_CHECK 0'"
-				lxc_exec "bash -c ${bash_opt} '${prefix}; ove-worktree add ${OVE_TMP}/${tag}'"
+				if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
+					worktree_dir="${OVE_TMP}/${tag}"
+				else
+					worktree_dir="/var/tmp/${tag}"
+				fi
+
+				lxc_exec "bash -c ${bash_opt} '${prefix}; ove-worktree add ${worktree_dir}'"
 				prev_prefix="$prefix"
-				prefix="cd ${OVE_TMP}/${tag}; source ove hush"
+				prefix="cd ${worktree_dir}; source ove hush"
 			fi
 
 			lxc_exec "bash -c ${bash_opt} '${prefix}; OVE_AUTO_CLONE=1 ove-distcheck $distcheck'"
 
 			# remove worktree
 			if [[ $OVE_DISTROCHECK_STEPS == *worktree* ]]; then
-				lxc_exec "bash -c ${bash_opt} '${prev_prefix}; ove-worktree remove ${OVE_TMP}/${tag}'"
+				lxc_exec "bash -c ${bash_opt} '${prev_prefix}; ove-worktree remove ${worktree_dir}'"
 			fi
 		else
 			if [ -s "${distcheck}" ]; then
@@ -442,8 +448,8 @@ EOF
 				echo "$distcheck" > "${OVE_TMP}/${tag}.cmd"
 			fi
 			chmod +x "${OVE_TMP}/${tag}.cmd"
-			run "lxc file push --uid 0 --gid 0 ${OVE_TMP}/${tag}.cmd ${lxc_name}/tmp/${tag}.cmd"
-			lxc_exec "/tmp/${tag}.cmd"
+			run "lxc file push --uid 0 --gid 0 ${OVE_TMP}/${tag}.cmd ${lxc_name}/var/tmp/${tag}.cmd"
+			lxc_exec "/var/tmp/${tag}.cmd"
 		fi
 	fi
 }
