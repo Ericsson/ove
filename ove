@@ -8422,13 +8422,13 @@ $ ove ide
 # steps:
 #   ove       use the OVE workspace (map it or by running the oneliner) within the container
 #   running   leave the container running
-#   sleep     let system container boot up
 #   stopped   leave the container in stopped state
 #   user      run jobs as user
 #   verbose   debug printouts
+#   worktree  run distcheck within an OVE worktree
 #
 # run 'ove distcheck foo' within a Ubuntu 22.04 container, run the job as user, delete the container when done
-$ export OVE_DISTROCHECK_STEPS="user ove sleep"
+$ export OVE_DISTROCHECK_STEPS="user ove"
 $ ove distrocheck foo ubuntu/22.04/amd64
 
 # run a local script "test.sh" within Ubuntu 22.04, enable debug prints, leave the container running
@@ -8437,7 +8437,7 @@ $ export OVE_DISTROCHECK_STEPS="running verbose"
 $ ove distrocheck test.sh ubuntu/22.04/amd64
 
 # (tmux only) run 'ove distcheck ag' within three Linux distributions at the same time, run the job as root, leave the containers running
-$ export OVE_DISTROCHECK_STEPS="ove running sleep"
+$ export OVE_DISTROCHECK_STEPS="ove running"
 $ ove distrocheck-parallel ag alpine/edge/amd64 fedora/37/amd64 ubuntu/22.04/amd64
 
 $(ove_echo_cyan_noprefix "configuration")
@@ -11057,7 +11057,7 @@ function ove_config_builtins_init {
 
 	# OVE_DISTROCHECK_STEPS:string::distrocheck:list of steps to perform for distrocheck
 	if [ -z "${OVE_DISTROCHECK_STEPS+x}" ]; then
-		export OVE_DISTROCHECK_STEPS="sleep"
+		export OVE_DISTROCHECK_STEPS=""
 	fi
 }
 

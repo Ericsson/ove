@@ -45,7 +45,7 @@ function init {
 
 	if [ "$1" = "unittest" ]; then
 		unittest=1
-		OVE_DISTROCHECK_STEPS="ove sleep verbose"
+		OVE_DISTROCHECK_STEPS="ove verbose"
 	else
 		unittest=0
 		distcheck="$1"
@@ -59,7 +59,7 @@ function init {
 	distro="$2"
 
 	if [ ! -v OVE_DISTROCHECK_STEPS ]; then
-		OVE_DISTROCHECK_STEPS="sleep"
+		OVE_DISTROCHECK_STEPS=""
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
@@ -83,6 +83,7 @@ function run_no_exit {
 	_echo "[${distro}]$ $*"
 	if ! eval "$@"; then
 		_echo "warning: '$*' failed for distro ${distro}"
+		return 1
 	fi
 }
 
@@ -113,23 +114,44 @@ function lxc_exec {
 	run "lxc exec ${lxc_exec_options} ${lxc_name} -- $*"
 }
 
+function lxc_exec_no_exit {
+	local e
+	local lxc_exec_options
+
+	lxc_exec_options="${lxc_opt} --env DEBIAN_FRONTEND=noninteractive"
+	for e in ftp_proxy http_proxy https_proxy; do
+		if [ "x${!e}" = "x" ]; then
+			continue
+		fi
+		lxc_exec_options+=" --env ${e}=${!e}"
+	done
+
+	if [ "x$LXC_EXEC_EXTRA" != "x" ]; then
+		lxc_exec_options+=" $LXC_EXEC_EXTRA"
+	fi
+
+	if ! run_no_exit "lxc exec ${lxc_exec_options} ${lxc_name} -- $*"; then
+		return 1
+	fi
+}
+
 function package_manager_noconfirm {
-	lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1'"
+	lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1'"
 
 	if [[ ${package_manager} == apt-get* ]];  then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install'"
 	elif [[ ${package_manager} == pacman* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
 	elif [[ ${package_manager} == xbps-install* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y'"
 	elif [[ ${package_manager} == zypper* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
 	elif [[ ${package_manager} == dnf* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
 	elif [[ ${package_manager} == apk* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q'"
 	fi
-	lxc_exec "bash -c ${bash_opt} '${prefix}; ove config'"
+	lxc_exec "bash -c ${bash_opt} '${prefix}; ove-config'"
 }
 
 lxc_name=""
@@ -144,11 +166,47 @@ function cleanup {
 	run_no_exit "lxc delete ${lxc_name} --force"
 }
 
+function set_package_manager {
+	if lxc_command "apk"; then
+		package_manager="apk add --no-progress -q"
+		if lxc_exec_no_exit "timeout 10 apk update"; then
+			return 0
+		fi
+
+		lxc exec ${lxc_name} -- sed -i 's/https/http/g' /etc/apk/repositories
+		if lxc_exec_no_exit "timeout 10 apk update"; then
+			return 0
+		fi
+	elif lxc_command "pacman"; then
+		package_refresh="pacman -Syu --noconfirm -q --noprogressbar"
+		package_manager="pacman -S --noconfirm -q --noprogressbar"
+	elif lxc_command "apt-get"; then
+		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
+			ove_packs="bsdmainutils procps "
+		fi
+		package_manager="apt-get -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install"
+		if [ -s "/etc/apt/apt.conf" ]; then
+			run "lxc file push --uid 0 --gid 0 /etc/apt/apt.conf ${lxc_name}/etc/apt/apt.conf"
+		fi
+		package_refresh="apt-get update"
+	elif lxc_command "xbps-install"; then
+		package_manager="xbps-install -y"
+	elif lxc_command "dnf"; then
+		package_manager="dnf install -y"
+	elif lxc_command "zypper"; then
+		package_manager="zypper install -y"
+	else
+		echo "error: unknown package manager for '${distro}'"
+		exit 1
+	fi
+}
+
 function main {
 	local _home="/root"
 	local ove_packs
 	local package_manager
 	local prefix="true"
+	local server_name
 	local tag
 	local _uid=0
 
@@ -173,14 +231,62 @@ function main {
 		lxc_name=${lxc_name:0:63}
 	fi
 
+	# ove, user and lxc cluster? => create container on localhost
+	if [ ! -v OVE_LXC_LAUNCH_EXTRA_ARGS ] && \
+		[[ ${OVE_DISTROCHECK_STEPS} == *ove* ]] && \
+		[[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && \
+		lxc cluster list &> /dev/null; then
+		server_name=$(lxc info | grep server_name | awk '{print $2}')
+		if [ "x$server_name" != "x" ]; then
+			OVE_LXC_LAUNCH_EXTRA_ARGS="--target=$server_name"
+		fi
+	fi
+
+	# ephemeral container?
+	if [[ ${OVE_DISTROCHECK_STEPS} != *running* ]] && \
+		[[ ${OVE_DISTROCHECK_STEPS} != *stopped* ]]; then
+			OVE_LXC_LAUNCH_EXTRA_ARGS+=" --ephemeral"
+			OVE_DISTROCHECK_STEPS+=" stopped"
+	fi
+
 	if [[ ${distro} == *archlinux* ]] || [[ ${distro} == *fedora* ]]; then
 		run "lxc launch images:${distro} -c security.nesting=true ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
 	else
 		run "lxc launch images:${distro} ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
 	fi
-	run "sleep 1"
+
+	cat > "$OVE_TMP/bootcheck.sh" <<EOF
+#!/usr/bin/env sh
+if ! command -v systemctl > /dev/null; then
+	exit 0
+fi
+
+i=0
+while true; do
+	i=\$((i+1))
+	if [ \$i -ge 200 ]; then
+		exit 0
+	fi
+	s=\$(systemctl is-system-running 2> /dev/null);
+	if [ "x\$s" = "xrunning" ] || [ "x\$s" = "xdegraded" ]; then
+		break;
+	fi
+	sleep 0.01;
+done
+EOF
+
+	run "lxc file push --uid 0 --gid 0 $OVE_TMP/bootcheck.sh ${lxc_name}/var/tmp/bootcheck.sh"
+	lxc_exec_no_exit "sh /var/tmp/bootcheck.sh"
+
+	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || ( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
+		set_package_manager
+	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
+		lxc_exec "${package_manager} bash"
+		if [[ ${distro} == *alpine* ]]; then
+			lxc_exec "${package_manager} shadow sudo"
+		fi
 		lxc_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${OVE_USER:?}"
 		_uid=$(lxc_exec "id -u ${OVE_USER}")
 		_uid=${_uid/$'\r'/}
@@ -197,36 +303,21 @@ function main {
 		run "lxc restart ${lxc_name}"
 	fi
 
-	if [[ ${OVE_DISTROCHECK_STEPS} == *sleep* ]]; then
-		run "sleep 10"
-	fi
-
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
-		ove_packs="bash bzip2 git curl file binutils util-linux coreutils"
-		if lxc_command "apk"; then
-			package_manager="apk add --no-progress -q"
-		elif lxc_command "pacman"; then
-			package_manager="pacman -S --noconfirm -q --noprogressbar"
-		elif lxc_command "apt-get"; then
-			ove_packs+=" bsdmainutils procps"
-			package_manager="apt-get -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install"
-			if [ -s "/etc/apt/apt.conf" ]; then
-				run "lxc file push --uid 0 --gid 0 /etc/apt/apt.conf ${lxc_name}/etc/apt/apt.conf"
-			fi
-			lxc_exec "apt-get update"
-		elif lxc_command "xbps-install"; then
-			package_manager="xbps-install -y"
-		elif lxc_command "dnf"; then
-			package_manager="dnf install -y"
-		elif lxc_command "zypper"; then
-			package_manager="zypper install -y"
-		else
-			echo "error: unknown package manager for '${distro}'"
-			exit 1
+		ove_packs+="bash bzip2 git curl file binutils util-linux coreutils"
+
+		# refresh package manager
+		if [ "x${package_refresh}" != "x" ]; then
+			lxc_exec_no_exit "${package_refresh}"
 		fi
 
 		# install OVE packages
 		lxc_exec "${package_manager} ${ove_packs}"
+
+		if [[ ${distro} == *archlinux* ]]; then
+			lxc_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
+			lxc_exec "locale-gen"
+		fi
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
@@ -234,14 +325,24 @@ function main {
 		export LXC_EXEC_EXTRA="--user $_uid --env HOME=$HOME"
 	fi
 
-	# gitconfig
-	if [ -s "${HOME}"/.gitconfig ]; then
-		run "lxc file push --uid $_uid ${HOME}/.gitconfig ${lxc_name}${_home}/.gitconfig"
-	fi
-
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
+		# gitconfig
+		if [ -s "${HOME}"/.gitconfig ]; then
+			run "lxc file push --uid $_uid ${HOME}/.gitconfig ${lxc_name}${_home}/.gitconfig"
+		fi
+
+		# oveconfig
+		if [ -s "${HOME}"/.oveconfig ]; then
+			run "lxc file push --uid $_uid ${HOME}/.oveconfig ${lxc_name}${_home}/.oveconfig"
+		fi
+
+		# ove.bash
+		if [ -s "${HOME}"/.ove.bash ]; then
+			run "lxc file push --uid $_uid ${HOME}/.ove.bash ${lxc_name}${_home}/.ove.bash"
+		fi
+
 		if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
-			# expose OVE workspace to the container
+			# expose OVE workspace
 			run "lxc config device add ${lxc_name} ove-base disk source=${OVE_BASE_DIR} path=${OVE_BASE_DIR}"
 			run "lxc config device add ${lxc_name} ove-tmp disk source=${OVE_TMP} path=${OVE_TMP}"
 			run "lxc config device add ${lxc_name} ove-state disk source=${OVE_GLOBAL_STATE_DIR} path=${OVE_GLOBAL_STATE_DIR}"
@@ -263,22 +364,15 @@ function main {
 			fi
 			prefix="cd ${ws_name}; source ove hush"
 		fi
-	fi
 
-	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 		if [ ${unittest} -eq 1 ]; then
 			lxc_exec "bash -c ${bash_opt} 'cd ${ws_name}; source ove'"
-			lxc_exec "bash -c ${bash_opt} '${prefix}; ove env'"
-			lxc_exec "bash -c ${bash_opt} '${prefix}; ove list-externals'"
-			lxc_exec "bash -c ${bash_opt} '${prefix}; ove status'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; ove-env'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; ove-list-externals'"
+			lxc_exec "bash -c ${bash_opt} '${prefix}; ove-status'"
 		fi
 
 		package_manager_noconfirm
-		if [[ ${distro} == *archlinux* ]]; then
-			lxc_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
-			lxc_exec "locale-gen"
-		fi
-
 		if [[ ${distro} == *opensuse* ]]; then
 			lxc_exec "sudo zypper install -y -t pattern devel_basis"
 		fi
@@ -309,18 +403,38 @@ function main {
 		else
 			lxc_exec "cabal install --verbose=0 shelltestrunner-1.9"
 		fi
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove unittest'"
+		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-unittest'"
 	fi
 
 	if [ "x${distcheck}" != "x" ]; then
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
-			packs=$(lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove list-needs $distcheck'")
+			# sanity check project
+			if ! lxc_exec_no_exit "bash -c ${bash_opt} '${prefix}; ove-list-projects $distcheck &> /dev/null'"; then
+				echo "error: unknown project '$distcheck'"
+				exit 1
+			fi
+
+			packs=$(lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove-list-needs $distcheck'")
 			packs=${packs//$'\r'/ }
 			packs=${packs//$'\n'/}
 			if [ "$packs" != "" ]; then
 				LXC_EXEC_EXTRA="--user 0" lxc_exec "${package_manager} ${packs}"
 			fi
-			lxc_exec "bash -c ${bash_opt} '${prefix}; OVE_AUTO_CLONE=1 ove distcheck $distcheck'"
+
+			# worktree?
+			if [[ $OVE_DISTROCHECK_STEPS == *worktree* ]]; then
+				lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config $_home/.oveconfig OVE_REVTAB_CHECK 0'"
+				lxc_exec "bash -c ${bash_opt} '${prefix}; ove-worktree add ${OVE_TMP}/${tag}'"
+				prev_prefix="$prefix"
+				prefix="cd ${OVE_TMP}/${tag}; source ove hush"
+			fi
+
+			lxc_exec "bash -c ${bash_opt} '${prefix}; OVE_AUTO_CLONE=1 ove-distcheck $distcheck'"
+
+			# remove worktree
+			if [[ $OVE_DISTROCHECK_STEPS == *worktree* ]]; then
+				lxc_exec "bash -c ${bash_opt} '${prev_prefix}; ove-worktree remove ${OVE_TMP}/${tag}'"
+			fi
 		else
 			if [ -s "${distcheck}" ]; then
 				cp -a "${distcheck}" "${OVE_TMP}/${tag}.cmd"
