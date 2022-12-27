@@ -9959,7 +9959,7 @@ function ove-lastlog {
 	local pattern
 	local self=${FUNCNAME[0]/ove-/}
 
-	${ove_cmd2pathname["find"]:?} ${OVE_LOG_DIR} -name '2*.log' -type f ${find_opt} -print > $OVE_TMP/ove-${self}
+	${ove_cmd2pathname["find"]:?} ${OVE_LOG_DIR} -name "2*$HOSTNAME*.log" -type f ${find_opt} -print > $OVE_TMP/ove-${self}
 	if [ ! -s $OVE_TMP/ove-${self} ]; then
 		echo "error: no logs found"
 		return 1
