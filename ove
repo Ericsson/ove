@@ -12344,6 +12344,7 @@ function ove_worktree_remove {
 	local ret
 	local w
 	local worktree
+	local worktree_base
 
 	if [ $# -eq 0 ]; then
 		return 1
@@ -12360,6 +12361,10 @@ function ove_worktree_remove {
 		ove-forall "git worktree remove ${worktree}/\$repo_basename 2> /dev/null"
 		${ove_cmd2pathname["rm"]:?} -rf ${worktree:?}/
 		${ove_cmd2pathname["rmdir"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${worktree})
+		worktree_base="${worktree##*/}"
+		if [ -h "$OVE_OWEL_STATE_DIR/worktree/${worktree_base}" ]; then
+			rm "$OVE_OWEL_STATE_DIR/worktree/${worktree_base}"
+		fi
 	done
 
 	return ${ret}
