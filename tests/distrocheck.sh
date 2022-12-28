@@ -267,7 +267,7 @@ while true; do
 		exit 0
 	fi
 	s=\$(systemctl is-system-running 2> /dev/null);
-	if [ "x\$s" = "xrunning" ] || [ "x\$s" = "xdegraded" ]; then
+	if [ "x\$s" = "xrunning" ]; then
 		break;
 	fi
 	sleep 0.01;
