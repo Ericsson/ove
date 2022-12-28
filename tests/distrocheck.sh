@@ -90,14 +90,24 @@ function run {
 		fi
 
 		sleep_s=$((RANDOM%10))
-		if grep "i/o timeout" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd i/o timeout, re-try in $sleep_s sec"
+		if grep "^Error:.*i/o timeout" "${OVE_TMP}/${tag}.err"; then
+			ove-echo warning_noprefix "lxd: i/o timeout. Retry in $sleep_s sec"
 			sleep $sleep_s
 			continue
-		elif grep "Error: websocket:" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd websocket error, re-try in $sleep_s sec"
+		elif grep "^Error: websocket:" "${OVE_TMP}/${tag}.err"; then
+			ove-echo warning_noprefix "lxd: websocket error. Retry in $sleep_s sec"
 			sleep $sleep_s
 			continue
+		elif grep "^Error: Missing event connection with target cluster member" "${OVE_TMP}/${tag}.err"; then
+			ove-echo warning_noprefix "lxd: cluster error. Retry in $sleep_s sec"
+			sleep $sleep_s
+			continue
+		elif grep "^Error: Operation not found" "${OVE_TMP}/${tag}.err"; then
+			ove-echo warning_noprefix "lxd: operation not found error. Retry in $sleep_s sec"
+			sleep $sleep_s
+			continue
+		elif grep -q "^Error: Command not found" "${OVE_TMP}/${tag}.err"; then
+			true
 		else
 			cat "${OVE_TMP}/${tag}.err"
 		fi
@@ -117,7 +127,7 @@ function run_no_exit {
 }
 
 function lxc_command {
-	if ! lxc_exec_no_exit "sh -c 'command -v $1' &> /dev/null"; then
+	if ! lxc_exec_no_exit "sh -c 'command -v $1' > /dev/null"; then
 		return 1
 	else
 		return 0
@@ -180,7 +190,6 @@ function package_manager_noconfirm {
 	elif [[ ${package_manager} == apk* ]]; then
 		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q'"
 	fi
-	lxc_exec "bash -c ${bash_opt} '${prefix}; ove-config'"
 }
 
 function remove_tmp {
@@ -299,7 +308,10 @@ function main {
 		OVE_LXC_LAUNCH_EXTRA_ARGS+=" -c security.nesting=true"
 	fi
 
-	run "lxc launch images:${distro} ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
+	# shellcheck disable=SC2086
+	if ! lxc launch images:${distro} ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
+		exit 1
+	fi
 	trap cleanup EXIT
 
 	cat > "$OVE_TMP/${tag}-bootcheck.sh" <<EOF
@@ -335,8 +347,17 @@ EOF
 			lxc_exec "${package_manager} shadow sudo"
 		fi
 		lxc_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${OVE_USER:?}"
-		_uid=$(lxc_exec "id -u ${OVE_USER}")
-		_uid=${_uid/$'\r'/}
+		while true; do
+			_uid=$(lxc_exec "id -u ${OVE_USER}")
+			_uid=${_uid/$'\r'/}
+			if [[ ! "${_uid}" =~ ^[0-9]+$ ]]; then
+				sleep_s=$((RANDOM%10))
+				ove-echo warning_noprefix "wrong uid $_uid. Retry in $sleep_s sec"
+				sleep $sleep_s
+				continue
+			fi
+			break
+		done
 		_home=$HOME
 
 		_echo "idmap"
@@ -454,7 +475,7 @@ EOF
 	if [ "x${distcheck}" != "x" ]; then
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 			# sanity check project
-			if ! lxc_exec_no_exit "bash -c ${bash_opt} '${prefix}; ove-list-projects $distcheck &> /dev/null'"; then
+			if ! lxc_exec_no_exit "bash -c ${bash_opt} '${prefix}; ove-list-projects $distcheck > /dev/null'"; then
 				echo "error: unknown project '$distcheck'"
 				exit 1
 			fi
