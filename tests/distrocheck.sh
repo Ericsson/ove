@@ -164,7 +164,9 @@ function cleanup {
 	run_no_exit "lxc delete ${lxc_name} --force"
 }
 
-function set_package_manager {
+function setup_package_manager {
+	local package_refresh
+
 	if lxc_command "apk"; then
 		package_manager="apk add --no-progress -q"
 		if lxc_exec_no_exit "timeout 10 apk update"; then
@@ -196,6 +198,11 @@ function set_package_manager {
 	else
 		echo "error: unknown package manager for '${distro}'"
 		exit 1
+	fi
+
+	# refresh package manager?
+	if [ "x${package_refresh}" != "x" ]; then
+		lxc_exec_no_exit "${package_refresh}"
 	fi
 }
 
@@ -278,7 +285,7 @@ EOF
 	lxc_exec_no_exit "sh /var/tmp/bootcheck.sh"
 
 	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || ( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
-		set_package_manager
+		setup_package_manager
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
@@ -304,11 +311,6 @@ EOF
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 		ove_packs+="bash bzip2 git curl file binutils util-linux coreutils"
-
-		# refresh package manager
-		if [ "x${package_refresh}" != "x" ]; then
-			lxc_exec_no_exit "${package_refresh}"
-		fi
 
 		# install OVE packages
 		lxc_exec "${package_manager} ${ove_packs}"
