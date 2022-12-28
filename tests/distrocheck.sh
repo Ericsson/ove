@@ -23,6 +23,8 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+lxc_name=""
+tag=""
 
 function _echo {
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
@@ -70,23 +72,52 @@ function init {
 }
 
 function run {
+	local sleep_s
+
 	_echo "[${distro}]$ $*"
-	if ! eval "$@"; then
+	while true; do
+		if eval "$@" 2> "${OVE_TMP}/${tag:?}.err"; then
+			return 0
+		fi
+
 		_echo "error: '$*' failed for distro '${distro}'"
-		exit 1
-	fi
+		if [ ! -s "${OVE_TMP}/${tag}.err" ]; then
+			if [ "x$NO_EXIT" = "x1" ]; then
+				return 1
+			else
+				exit 1
+			fi
+		fi
+
+		sleep_s=$((RANDOM%10))
+		if grep "i/o timeout" "${OVE_TMP}/${tag}.err"; then
+			ove-echo warning_noprefix "lxd i/o timeout, re-try in $sleep_s sec"
+			sleep $sleep_s
+			continue
+		elif grep "Error: websocket:" "${OVE_TMP}/${tag}.err"; then
+			ove-echo warning_noprefix "lxd websocket error, re-try in $sleep_s sec"
+			sleep $sleep_s
+			continue
+		else
+			cat "${OVE_TMP}/${tag}.err"
+		fi
+
+		if [ "x$NO_EXIT" = "x1" ]; then
+			return 1
+		else
+			exit 1
+		fi
+	done
 }
 
 function run_no_exit {
-	_echo "[${distro}]$ $*"
-	if ! eval "$@"; then
-		_echo "warning: '$*' failed for distro ${distro}"
+	if ! NO_EXIT=1 run "$@"; then
 		return 1
 	fi
 }
 
 function lxc_command {
-	if ! lxc exec "${lxc_name}" -- sh -c "command -v $1" &> /dev/null; then
+	if ! lxc_exec_no_exit "sh -c 'command -v $1' &> /dev/null"; then
 		return 1
 	else
 		return 0
@@ -152,16 +183,23 @@ function package_manager_noconfirm {
 	lxc_exec "bash -c ${bash_opt} '${prefix}; ove-config'"
 }
 
-lxc_name=""
+function remove_tmp {
+	find "${OVE_TMP:?}" -maxdepth 1 -name "${tag:?}*" -exec rm {} \;
+	return 0
+}
+
 function cleanup {
 	if [[ ${OVE_DISTROCHECK_STEPS} == *running* ]]; then
+		remove_tmp
 		return
 	fi
 	run_no_exit "lxc stop ${lxc_name} --force"
 	if [[ ${OVE_DISTROCHECK_STEPS} == *stopped* ]]; then
+		remove_tmp
 		return
 	fi
 	run_no_exit "lxc delete ${lxc_name} --force"
+	remove_tmp
 }
 
 function setup_package_manager {
@@ -189,7 +227,8 @@ function setup_package_manager {
 		fi
 		package_manager="apt-get -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install"
 		if [ -s "/etc/apt/apt.conf" ]; then
-			run "lxc file push --uid 0 --gid 0 /etc/apt/apt.conf ${lxc_name}/etc/apt/apt.conf"
+			cp -a "/etc/apt/apt.conf" "$OVE_TMP/${tag}-apt.conf"
+			run "lxc file push --uid 0 --gid 0 $OVE_TMP/${tag}-apt.conf ${lxc_name}/etc/apt/apt.conf"
 		fi
 		package_refresh="apt-get update"
 	elif lxc_command "xbps-install"; then
@@ -215,7 +254,6 @@ function main {
 	local package_manager
 	local prefix="true"
 	local server_name
-	local tag
 	local _uid=0
 
 	init "$@"
@@ -264,7 +302,7 @@ function main {
 	run "lxc launch images:${distro} ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
 	trap cleanup EXIT
 
-	cat > "$OVE_TMP/bootcheck.sh" <<EOF
+	cat > "$OVE_TMP/${tag}-bootcheck.sh" <<EOF
 #!/usr/bin/env sh
 if ! command -v systemctl > /dev/null; then
 	exit 0
@@ -284,8 +322,8 @@ while true; do
 done
 EOF
 
-	run "lxc file push --uid 0 --gid 0 $OVE_TMP/bootcheck.sh ${lxc_name}/var/tmp/bootcheck.sh"
-	lxc_exec_no_exit "sh /var/tmp/bootcheck.sh"
+	run "lxc file push --uid 0 --gid 0 $OVE_TMP/${tag}-bootcheck.sh ${lxc_name}/var/tmp/${tag}-bootcheck.sh"
+	lxc_exec_no_exit "sh /var/tmp/${tag}-bootcheck.sh"
 
 	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || ( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
 		setup_package_manager
@@ -306,8 +344,8 @@ EOF
 			lxc config set "${lxc_name}" raw.idmap -
 
 		_echo "user and sudo"
-		echo "${OVE_USER} ALL=(ALL) NOPASSWD:ALL" > "$OVE_TMP/91-ove"
-		run "lxc file push --uid 0 --gid 0 $OVE_TMP/91-ove ${lxc_name}/etc/sudoers.d/91-ove"
+		echo "${OVE_USER} ALL=(ALL) NOPASSWD:ALL" > "$OVE_TMP/${tag}-sudoers"
+		run "lxc file push --uid 0 --gid 0 $OVE_TMP/${tag}-sudoers ${lxc_name}/etc/sudoers.d/91-ove"
 
 		run "lxc restart ${lxc_name}"
 	fi
@@ -332,17 +370,20 @@ EOF
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 		# gitconfig
 		if [ -s "${HOME}"/.gitconfig ]; then
-			run "lxc file push --uid $_uid ${HOME}/.gitconfig ${lxc_name}${_home}/.gitconfig"
+			cp -a "${HOME}"/.gitconfig "${OVE_TMP}/${tag}-gitconfig"
+			run "lxc file push --uid $_uid ${OVE_TMP}/${tag}-gitconfig ${lxc_name}${_home}/.gitconfig"
 		fi
 
 		# oveconfig
 		if [ -s "${HOME}"/.oveconfig ]; then
-			run "lxc file push --uid $_uid ${HOME}/.oveconfig ${lxc_name}${_home}/.oveconfig"
+			cp -a "${HOME}"/.oveconfig "${OVE_TMP}/${tag}-oveconfig"
+			run "lxc file push --uid $_uid ${OVE_TMP}/${tag}-oveconfig ${lxc_name}${_home}/.oveconfig"
 		fi
 
 		# ove.bash
 		if [ -s "${HOME}"/.ove.bash ]; then
-			run "lxc file push --uid $_uid ${HOME}/.ove.bash ${lxc_name}${_home}/.ove.bash"
+			cp -a "${HOME}"/.ove.bash "${OVE_TMP}/${tag}-ove.bash"
+			run "lxc file push --uid $_uid ${OVE_TMP}/${tag}-ove.bash ${lxc_name}${_home}/.ove.bash"
 		fi
 
 		if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
