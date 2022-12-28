@@ -177,6 +177,9 @@ function setup_package_manager {
 		if lxc_exec_no_exit "timeout 10 apk update"; then
 			return 0
 		fi
+
+		echo "error: apk update failed"
+		exit 1
 	elif lxc_command "pacman"; then
 		package_refresh="pacman -Syu --noconfirm -q --noprogressbar"
 		package_manager="pacman -S --noconfirm -q --noprogressbar"
