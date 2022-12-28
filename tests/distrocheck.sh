@@ -67,8 +67,6 @@ function init {
 			echo $s
 		done
 	fi
-
-	trap cleanup EXIT
 }
 
 function run {
@@ -250,10 +248,11 @@ function main {
 	fi
 
 	if [[ ${distro} == *archlinux* ]] || [[ ${distro} == *fedora* ]]; then
-		run "lxc launch images:${distro} -c security.nesting=true ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
-	else
-		run "lxc launch images:${distro} ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
+		OVE_LXC_LAUNCH_EXTRA_ARGS+=" -c security.nesting=true"
 	fi
+
+	run "lxc launch images:${distro} ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null"
+	trap cleanup EXIT
 
 	cat > "$OVE_TMP/bootcheck.sh" <<EOF
 #!/usr/bin/env sh
