@@ -241,6 +241,7 @@ Doing this, OVE will check that you have the required programs installed on your
 * ld
 * less
 * pgrep
+* tar
 * script
 * tsort
 
@@ -411,6 +412,7 @@ OVE has been tested ([distrocheck.sh](tests/distrocheck.sh)) for the following L
 
 | Distribution        | Release(s)                 |
 |---------------------|----------------------------|
+| AlmaLinux           | 9.1                        |
 | Alpine Linux        | 3.14, 3.15, 3.16           |
 | Arch Linux          | N/A                        |
 | Debian              | Buster, Bullseye, Bookworm |

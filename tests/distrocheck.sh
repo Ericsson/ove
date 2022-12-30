@@ -372,7 +372,7 @@ EOF
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
-		ove_packs+="bash bzip2 git curl file binutils util-linux coreutils"
+		ove_packs+="bash bzip2 git curl file binutils util-linux coreutils tar"
 
 		# install OVE packages
 		lxc_exec "${package_manager} ${ove_packs}"
@@ -454,6 +454,10 @@ EOF
 			lxc_exec "${package_manager} python3-PyYAML"
 		else
 			lxc_exec "${package_manager} python3-yaml"
+		fi
+
+		if [[ ${distro} == *almalinux* ]]; then
+			lxc_exec "${package_manager} epel-release"
 		fi
 
 		if [[ ${distro} == *alpine* ]]; then
