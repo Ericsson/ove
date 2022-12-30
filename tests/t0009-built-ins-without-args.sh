@@ -2,6 +2,7 @@
 
 set -e
 
+ignore+=" image-refresh"
 ignore+=" loop-close"
 ignore+=" post-push"
 ignore+=" post-push-parallel"
