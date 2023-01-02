@@ -276,6 +276,9 @@ function main {
 	fi
 
 	lxc_name="${OVE_USER}-${tag}-${distro}"
+	if [ "x${OVE_DISTROCHECK_CONTAINER_PREFIX}" != "x" ]; then
+		lxc_name="${OVE_DISTROCHECK_CONTAINER_PREFIX}-${lxc_name}"
+	fi
 
 	# replace slashes and dots
 	lxc_name="${lxc_name//\//-}"
@@ -287,29 +290,29 @@ function main {
 	fi
 
 	# ove, user and lxc cluster? => create container on localhost
-	if [ ! -v OVE_LXC_LAUNCH_EXTRA_ARGS ] && \
+	if [ ! -v OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS ] && \
 		[[ ${OVE_DISTROCHECK_STEPS} == *ove* ]] && \
 		[[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && \
 		lxc cluster list &> /dev/null; then
 		server_name=$(lxc info | grep server_name | awk '{print $2}')
 		if [ "x$server_name" != "x" ]; then
-			OVE_LXC_LAUNCH_EXTRA_ARGS="--target=$server_name"
+			OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS="--target=$server_name"
 		fi
 	fi
 
 	# ephemeral container?
 	if [[ ${OVE_DISTROCHECK_STEPS} != *running* ]] && \
 		[[ ${OVE_DISTROCHECK_STEPS} != *stopped* ]]; then
-			OVE_LXC_LAUNCH_EXTRA_ARGS+=" --ephemeral"
+			OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS+=" --ephemeral"
 			OVE_DISTROCHECK_STEPS+=" stopped"
 	fi
 
 	if [[ ${distro} == *archlinux* ]] || [[ ${distro} == *fedora* ]]; then
-		OVE_LXC_LAUNCH_EXTRA_ARGS+=" -c security.nesting=true"
+		OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS+=" -c security.nesting=true"
 	fi
 
 	# shellcheck disable=SC2086
-	if ! lxc launch images:${distro} ${lxc_name} ${OVE_LXC_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
+	if ! lxc launch images:${distro} ${lxc_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
 		exit 1
 	fi
 	trap cleanup EXIT

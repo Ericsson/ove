@@ -11055,9 +11055,19 @@ function ove_config_builtins_init {
 		export OVE_HASH_SIZE_THRESHOLD_IN_BYTES="104857600"
 	fi
 
-	# OVE_DISTROCHECK_STEPS:string::distrocheck:list of steps to perform for distrocheck
+	# OVE_DISTROCHECK_STEPS:string:ove running stopped user verbose worktree:distrocheck distrocheck-parallel:list of steps to perform for distrocheck
 	if [ -z "${OVE_DISTROCHECK_STEPS+x}" ]; then
 		export OVE_DISTROCHECK_STEPS=""
+	fi
+
+	# OVE_DISTROCHECK_CONTAINER_PREFIX:string::distrocheck distrocheck-parallel:prefix container name
+	if [ -z "${OVE_DISTROCHECK_CONTAINER_PREFIX+x}" ]; then
+		export OVE_DISTROCHECK_CONTAINER_PREFIX=""
+	fi
+
+	# OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS:string::distrocheck distrocheck-parallel:extra args sent to container framework on launch
+	if [ -z "${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS+x}" ]; then
+		export OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS=""
 	fi
 }
 
@@ -13801,8 +13811,12 @@ function ove-distrocheck-parallel {
 		env+=" OVE_DISTROCHECK_STEPS=${OVE_DISTROCHECK_STEPS// /:}"
 	fi
 
-	if [ -v OVE_LXC_LAUNCH_EXTRA_ARGS ]; then
-		env+=" OVE_LXC_LAUNCH_EXTRA_ARGS=${OVE_LXC_LAUNCH_EXTRA_ARGS// /\#}"
+	if [ -v OVE_DISTROCHECK_CONTAINER_PREFIX ]; then
+		env+=" OVE_DISTROCHECK_CONTAINER_PREFIX=${OVE_DISTROCHECK_CONTAINER_PREFIX}"
+	fi
+
+	if [ -v OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS ]; then
+		env+=" OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS=${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS// /\#}"
 	fi
 
 	for d in "${distro_list[@]}"; do
@@ -13883,7 +13897,8 @@ function ove-post-push {
 
 	mapfile -t distro_list <"${OVE_DIR}/tests/distrocheck.list"
 	for d in "${distro_list[@]}"; do
-		${OVE_DIR}/tests/distrocheck.sh "unittest" "${d}"
+		OVE_DISTROCHECK_CONTAINER_PREFIX=ove-ut \
+			${OVE_DIR}/tests/distrocheck.sh "unittest" "${d}"
 	done
 }
 
@@ -13904,7 +13919,7 @@ function ove-post-push-parallel {
 	fi
 
 	while read -r d; do
-		args+=" 0 '${OVE_DIR}/tests/distrocheck.sh unittest $d'"
+		args+=" 0 'OVE_DISTROCHECK_CONTAINER_PREFIX=ove-ut ${OVE_DIR}/tests/distrocheck.sh unittest $d'"
 	done <"${OVE_DIR}/tests/distrocheck.list"
 
 	eval ove-run-parallel $args
