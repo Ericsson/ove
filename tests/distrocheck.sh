@@ -23,8 +23,11 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+lxc_ip=""
 lxc_name=""
 tag=""
+_user=
+use_ssh=0
 
 function _echo {
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
@@ -55,7 +58,8 @@ function init {
 
 	if [ -t 1 ]; then
 		bash_opt="-i"
-		lxc_opt="-t"
+		lxc_global_flags="--force-local"
+		lxc_exec_flags="-t"
 	fi
 
 	distro="$2"
@@ -66,7 +70,7 @@ function init {
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
 		for s in ${OVE_DISTROCHECK_STEPS//:/ };do
-			echo $s
+			echo ${s}
 		done
 	fi
 }
@@ -82,7 +86,7 @@ function run {
 
 		_echo "error: '$*' failed for distro '${distro}'"
 		if [ ! -s "${OVE_TMP}/${tag}.err" ]; then
-			if [ "x$NO_EXIT" = "x1" ]; then
+			if [ "x${NO_EXIT}" = "x1" ]; then
 				return 1
 			else
 				exit 1
@@ -91,20 +95,20 @@ function run {
 
 		sleep_s=$((RANDOM%10))
 		if grep "^Error:.*i/o timeout" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd: i/o timeout. Retry in $sleep_s sec"
-			sleep $sleep_s
+			ove-echo warning_noprefix "lxd: i/o timeout. Retry in ${sleep_s} sec"
+			sleep ${sleep_s}
 			continue
 		elif grep "^Error: websocket:" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd: websocket error. Retry in $sleep_s sec"
-			sleep $sleep_s
+			ove-echo warning_noprefix "lxd: websocket error. Retry in ${sleep_s} sec"
+			sleep ${sleep_s}
 			continue
 		elif grep "^Error: Missing event connection with target cluster member" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd: cluster error. Retry in $sleep_s sec"
-			sleep $sleep_s
+			ove-echo warning_noprefix "lxd: cluster error. Retry in ${sleep_s} sec"
+			sleep ${sleep_s}
 			continue
 		elif grep "^Error: Operation not found" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd: operation not found error. Retry in $sleep_s sec"
-			sleep $sleep_s
+			ove-echo warning_noprefix "lxd: operation not found error. Retry in ${sleep_s} sec"
+			sleep ${sleep_s}
 			continue
 		elif grep -q "^Error: Command not found" "${OVE_TMP}/${tag}.err"; then
 			true
@@ -112,7 +116,7 @@ function run {
 			cat "${OVE_TMP}/${tag}.err"
 		fi
 
-		if [ "x$NO_EXIT" = "x1" ]; then
+		if [ "x${NO_EXIT}" = "x1" ]; then
 			return 1
 		else
 			exit 1
@@ -134,11 +138,29 @@ function lxc_command {
 	fi
 }
 
+function ssh_exec {
+       local prefix
+
+       _echo "ssh ${_user}@${lxc_ip} $*"
+       if ! ssh -t -o StrictHostKeyChecking=no ${_user:?}@${lxc_ip} "$@"; then
+               return 1
+       fi
+
+       return 0
+}
+
 function lxc_exec {
 	local e
 	local lxc_exec_options
 
-	lxc_exec_options="${lxc_opt} --env DEBIAN_FRONTEND=noninteractive"
+	if [ ${use_ssh} -eq 1 ]; then
+		if ! ssh_exec "$@"; then
+			return 1
+		fi
+		return 0
+	fi
+
+	lxc_exec_options="${lxc_exec_flags} --env DEBIAN_FRONTEND=noninteractive"
 	for e in ftp_proxy http_proxy https_proxy; do
 		if [ "x${!e}" = "x" ]; then
 			continue
@@ -146,18 +168,25 @@ function lxc_exec {
 		lxc_exec_options+=" --env ${e}=${!e}"
 	done
 
-	if [ "x$LXC_EXEC_EXTRA" != "x" ]; then
-		lxc_exec_options+=" $LXC_EXEC_EXTRA"
+	if [ "x${LXC_EXEC_EXTRA}" != "x" ]; then
+		lxc_exec_options+=" ${LXC_EXEC_EXTRA}"
 	fi
 
-	run "lxc exec ${lxc_exec_options} ${lxc_name} -- $*"
+	run "lxc ${lxc_global_flags} exec ${lxc_exec_options} ${lxc_name} -- $*"
 }
 
 function lxc_exec_no_exit {
 	local e
 	local lxc_exec_options
 
-	lxc_exec_options="${lxc_opt} --env DEBIAN_FRONTEND=noninteractive"
+	if [ ${use_ssh} -eq 1 ]; then
+		if ! ssh_exec "$@"; then
+			return 1
+		fi
+		return 0
+	fi
+
+	lxc_exec_options="${lxc_exec_flags} --env DEBIAN_FRONTEND=noninteractive"
 	for e in ftp_proxy http_proxy https_proxy; do
 		if [ "x${!e}" = "x" ]; then
 			continue
@@ -165,30 +194,30 @@ function lxc_exec_no_exit {
 		lxc_exec_options+=" --env ${e}=${!e}"
 	done
 
-	if [ "x$LXC_EXEC_EXTRA" != "x" ]; then
-		lxc_exec_options+=" $LXC_EXEC_EXTRA"
+	if [ "x${LXC_EXEC_EXTRA}" != "x" ]; then
+		lxc_exec_options+=" ${LXC_EXEC_EXTRA}"
 	fi
 
-	if ! run_no_exit "lxc exec ${lxc_exec_options} ${lxc_name} -- $*"; then
+	if ! run_no_exit "lxc ${lxc_global_flags} exec ${lxc_exec_options} ${lxc_name} -- $*"; then
 		return 1
 	fi
 }
 
 function package_manager_noconfirm {
-	lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1'"
+	lxc_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_INSTALL_PKG 1'"
 
 	if [[ ${package_manager} == apt-get* ]];  then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install'"
+		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install'"
 	elif [[ ${package_manager} == pacman* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
+		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
 	elif [[ ${package_manager} == xbps-install* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y'"
+		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y'"
 	elif [[ ${package_manager} == zypper* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
+		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
 	elif [[ ${package_manager} == dnf* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
+		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
 	elif [[ ${package_manager} == apk* ]]; then
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q'"
+		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS add --no-progress -q'"
 	fi
 }
 
@@ -202,12 +231,12 @@ function cleanup {
 		remove_tmp
 		return
 	fi
-	run_no_exit "lxc stop ${lxc_name} --force"
+	run_no_exit "lxc ${lxc_global_flags} stop ${lxc_name} --force"
 	if [[ ${OVE_DISTROCHECK_STEPS} == *stopped* ]]; then
 		remove_tmp
 		return
 	fi
-	run_no_exit "lxc delete ${lxc_name} --force"
+	run_no_exit "lxc ${lxc_global_flags} delete ${lxc_name} --force"
 	remove_tmp
 }
 
@@ -220,7 +249,7 @@ function setup_package_manager {
 			return 0
 		fi
 
-		lxc exec ${lxc_name} -- sed -i 's/https/http/g' /etc/apk/repositories
+		lxc ${lxc_global_flags} exec ${lxc_name} -- sed -i 's/https/http/g' /etc/apk/repositories
 		if lxc_exec_no_exit "timeout 10 apk update"; then
 			return 0
 		fi
@@ -236,8 +265,8 @@ function setup_package_manager {
 		fi
 		package_manager="apt-get -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install"
 		if [ -s "/etc/apt/apt.conf" ]; then
-			cp -a "/etc/apt/apt.conf" "$OVE_TMP/${tag}-apt.conf"
-			run "lxc file push --uid 0 --gid 0 $OVE_TMP/${tag}-apt.conf ${lxc_name}/etc/apt/apt.conf"
+			cp -a "/etc/apt/apt.conf" "${OVE_TMP}/${tag}-apt.conf"
+			run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-apt.conf ${lxc_name}/etc/apt/apt.conf"
 		fi
 		package_refresh="apt-get update"
 	elif lxc_command "xbps-install"; then
@@ -254,6 +283,86 @@ function setup_package_manager {
 	# refresh package manager?
 	if [ "x${package_refresh}" != "x" ]; then
 		lxc_exec_no_exit "${package_refresh}"
+	fi
+}
+
+function setup_sshd {
+	lxc_exec "${package_manager} openssh-server"
+	if [[ ${distro} == *alpine* ]]; then
+		lxc_exec "${package_manager} openssh"
+	fi
+
+	if ! lxc ${lxc_global_flags} exec "${lxc_name}" -- \
+		sed -i \
+		-e 's/.*PermitRootLogin.*/PermitRootLogin yes/g' \
+		-e 's/.*PermitUserEnvironment.*/PermitUserEnvironment yes/g' \
+		-e 's,.*PasswordAuthentication.*,PasswordAuthentication yes,g' /etc/ssh/sshd_config; then
+		return 1
+	fi
+
+	if [[ ${distro} == *alpine* ]]; then
+		lxc_exec "rc-update add sshd"
+		lxc_exec "/etc/init.d/sshd start"
+	elif [[ ${distro} == *ubuntu/22.10* ]]; then
+		lxc_exec "systemctl restart ssh"
+	else
+		lxc_exec "systemctl restart sshd"
+	fi
+
+	lxc_ip=$(lxc list -c4 --format csv ${lxc_name})
+	lxc_ip=${lxc_ip% *}
+	if [ "x${lxc_ip}" = "x" ]; then
+		echo "error: no IPv4 address for ${lxc_name}"
+		exit 1
+	fi
+	_echo "${lxc_name}=${lxc_ip}"
+}
+
+# $1: user
+function setup_ssh {
+	local pass="${RANDOM}${RANDOM}${RANDOM}"
+
+	if ! command -v sshpass > /dev/null; then
+		echo "error: command sshpass missing"
+		exit 1
+	fi
+	_user="$1"
+
+	if [[ ${distro} == *alpine* ]]; then
+		# shellcheck disable=SC2097,SC2098
+		_user=root lxc_exec "sh -c 'echo -e ${pass}\\\n${pass} | passwd ${_user}'"
+	else
+		# shellcheck disable=SC2097,SC2098
+		_user=root lxc_exec "usermod -p '$(openssl passwd -1 ${pass})' ${_user}"
+	fi
+	if [ -s "${HOME}/.ssh/known_hosts" ]; then
+		_echo "remove any previous entries in known_hosts"
+		ssh-keygen -f "${HOME}/.ssh/known_hosts" -R "${lxc_ip:?}" -q &> /dev/null
+	fi
+
+	_echo "copy public key to container"
+	if ! sshpass -p${pass} \
+		ssh-copy-id \
+		-o StrictHostKeyChecking=no \
+		"${_user}"@"${lxc_ip}" &> /dev/null; then
+		echo "error: not possible to copy public key to ${lxc_name} ${lxc_ip}"
+		exit 1
+	fi
+
+	# from now on use ssh instead of lxc exec
+	use_ssh=1
+
+	true > "${OVE_TMP}/${tag}-sshenv"
+	for e in ftp_proxy http_proxy https_proxy; do
+		if [ "x${!e}" = "x" ]; then
+			continue
+		fi
+		echo "${e}=${!e}" >> "${OVE_TMP}/${tag}-sshenv"
+	done
+
+	if [ -s "${OVE_TMP}/${tag}-sshenv" ]; then
+		lxc_exec "mkdir -vp .ssh"
+		scp -p -q "${OVE_TMP}/${tag}-sshenv" "${_user}"@"${lxc_ip}":.ssh/environment
 	fi
 }
 
@@ -293,10 +402,10 @@ function main {
 	if [ ! -v OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS ] && \
 		[[ ${OVE_DISTROCHECK_STEPS} == *ove* ]] && \
 		[[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && \
-		lxc cluster list &> /dev/null; then
-		server_name=$(lxc info | grep server_name | awk '{print $2}')
-		if [ "x$server_name" != "x" ]; then
-			OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS="--target=$server_name"
+		lxc ${lxc_global_flags} cluster list &> /dev/null; then
+		server_name=$(lxc ${lxc_global_flags} info | grep server_name | awk '{print $2}')
+		if [ "x${server_name}" != "x" ]; then
+			OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS="--target=${server_name}"
 		fi
 	fi
 
@@ -312,12 +421,12 @@ function main {
 	fi
 
 	# shellcheck disable=SC2086
-	if ! lxc launch images:${distro} ${lxc_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
+	if ! lxc ${lxc_global_flags} launch images:${distro} ${lxc_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
 		exit 1
 	fi
 	trap cleanup EXIT
 
-	cat > "$OVE_TMP/${tag}-bootcheck.sh" <<EOF
+	cat > "${OVE_TMP}/${tag}-bootcheck.sh" <<EOF
 #!/usr/bin/env sh
 if ! command -v systemctl > /dev/null; then
 	exit 0
@@ -337,11 +446,17 @@ while true; do
 done
 EOF
 
-	run "lxc file push --uid 0 --gid 0 $OVE_TMP/${tag}-bootcheck.sh ${lxc_name}/var/tmp/${tag}-bootcheck.sh"
+	run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-bootcheck.sh ${lxc_name}/var/tmp/${tag}-bootcheck.sh"
 	lxc_exec_no_exit "sh /var/tmp/${tag}-bootcheck.sh"
 
-	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || ( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
+	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ssh* ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
 		setup_package_manager
+		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
+			setup_sshd
+			setup_ssh "root"
+		fi
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
@@ -355,30 +470,34 @@ EOF
 			_uid=${_uid/$'\r'/}
 			if [[ ! "${_uid}" =~ ^[0-9]+$ ]]; then
 				sleep_s=$((RANDOM%10))
-				ove-echo warning_noprefix "wrong uid $_uid. Retry in $sleep_s sec"
-				sleep $sleep_s
+				ove-echo warning_noprefix "wrong uid ${_uid}. Retry in ${sleep_s} sec"
+				sleep ${sleep_s}
 				continue
 			fi
 			break
 		done
-		_home=$HOME
+		_home=${HOME}
 
 		_echo "idmap"
-		printf "uid %s $_uid\ngid %s $_uid" "$(id -u)" "$(id -g)" | \
-			lxc config set "${lxc_name}" raw.idmap -
+		printf "uid %s ${_uid}\ngid %s ${_uid}" "$(id -u)" "$(id -g)" | \
+			lxc ${lxc_global_flags} config set "${lxc_name}" raw.idmap -
 
 		_echo "user and sudo"
-		echo "${OVE_USER} ALL=(ALL) NOPASSWD:ALL" > "$OVE_TMP/${tag}-sudoers"
-		run "lxc file push --uid 0 --gid 0 $OVE_TMP/${tag}-sudoers ${lxc_name}/etc/sudoers.d/91-ove"
+		echo "${OVE_USER} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
+		run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-sudoers ${lxc_name}/etc/sudoers.d/91-ove"
 
-		run "lxc restart ${lxc_name}"
+		run "lxc ${lxc_global_flags} restart ${lxc_name}"
+
+		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
+			setup_ssh "${OVE_USER}"
+		fi
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 		ove_packs+="bash bzip2 git curl file binutils util-linux coreutils tar"
 
 		# install OVE packages
-		lxc_exec "${package_manager} ${ove_packs}"
+		_user=root lxc_exec "${package_manager} ${ove_packs}"
 
 		if [[ ${distro} == *archlinux* ]]; then
 			lxc_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
@@ -388,33 +507,33 @@ EOF
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
 		# from now on, run all lxc exec commands as user
-		export LXC_EXEC_EXTRA="--user $_uid --env HOME=$HOME"
+		export LXC_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 		# gitconfig
 		if [ -s "${HOME}"/.gitconfig ]; then
 			cp -a "${HOME}"/.gitconfig "${OVE_TMP}/${tag}-gitconfig"
-			run "lxc file push --uid $_uid ${OVE_TMP}/${tag}-gitconfig ${lxc_name}${_home}/.gitconfig"
+			run "lxc ${lxc_global_flags} file push --uid ${_uid} ${OVE_TMP}/${tag}-gitconfig ${lxc_name}${_home}/.gitconfig"
 		fi
 
 		# oveconfig
 		if [ -s "${HOME}"/.oveconfig ]; then
 			cp -a "${HOME}"/.oveconfig "${OVE_TMP}/${tag}-oveconfig"
-			run "lxc file push --uid $_uid ${OVE_TMP}/${tag}-oveconfig ${lxc_name}${_home}/.oveconfig"
+			run "lxc ${lxc_global_flags} file push --uid ${_uid} ${OVE_TMP}/${tag}-oveconfig ${lxc_name}${_home}/.oveconfig"
 		fi
 
 		# ove.bash
 		if [ -s "${HOME}"/.ove.bash ]; then
 			cp -a "${HOME}"/.ove.bash "${OVE_TMP}/${tag}-ove.bash"
-			run "lxc file push --uid $_uid ${OVE_TMP}/${tag}-ove.bash ${lxc_name}${_home}/.ove.bash"
+			run "lxc ${lxc_global_flags} file push --uid ${_uid} ${OVE_TMP}/${tag}-ove.bash ${lxc_name}${_home}/.ove.bash"
 		fi
 
 		if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
 			# expose OVE workspace
-			run "lxc config device add ${lxc_name} ove-base disk source=${OVE_BASE_DIR} path=${OVE_BASE_DIR}"
-			run "lxc config device add ${lxc_name} ove-tmp disk source=${OVE_TMP} path=${OVE_TMP}"
-			run "lxc config device add ${lxc_name} ove-state disk source=${OVE_GLOBAL_STATE_DIR} path=${OVE_GLOBAL_STATE_DIR}"
+			run "lxc ${lxc_global_flags} config device add ${lxc_name} ove-base disk source=${OVE_BASE_DIR} path=${OVE_BASE_DIR}"
+			run "lxc ${lxc_global_flags} config device add ${lxc_name} ove-tmp disk source=${OVE_TMP} path=${OVE_TMP}"
+			run "lxc ${lxc_global_flags} config device add ${lxc_name} ove-state disk source=${OVE_GLOBAL_STATE_DIR} path=${OVE_GLOBAL_STATE_DIR}"
 			ws_name="${OVE_BASE_DIR}"
 			prefix="cd ${ws_name}; source ove hush"
 		else
@@ -422,6 +541,7 @@ EOF
 			if [ "${OVE_OWEL_DIR}" != "x" ] && [ -s "${OVE_OWEL_DIR}/SETUP" ]; then
 				lxc_exec "bash -c '$(cat "${OVE_OWEL_DIR}"/SETUP)'"
 				ws_name=$(lxc_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
+				ws_name=${ws_name//$'\r'/}
 				if [ "x${ws_name}" = "x" ]; then
 					echo "error: workspace name not found"
 					exit 1
@@ -435,10 +555,10 @@ EOF
 		fi
 
 		if [ ${unittest} -eq 1 ]; then
-			lxc_exec "bash -c ${bash_opt} 'cd ${ws_name}; source ove'"
-			lxc_exec "bash -c ${bash_opt} '${prefix}; ove-env'"
-			lxc_exec "bash -c ${bash_opt} '${prefix}; ove-list-externals'"
-			lxc_exec "bash -c ${bash_opt} '${prefix}; ove-status'"
+			lxc_exec "bash ${bash_opt} -c 'cd ${ws_name}; source ove'"
+			lxc_exec "bash ${bash_opt} -c '${prefix}; ove-env'"
+			lxc_exec "bash ${bash_opt} -c '${prefix}; ove-list-externals'"
+			lxc_exec "bash ${bash_opt} -c '${prefix}; ove-status'"
 		fi
 
 		package_manager_noconfirm
@@ -476,52 +596,52 @@ EOF
 		else
 			lxc_exec "cabal install --verbose=0 shelltestrunner-1.9"
 		fi
-		lxc_exec "bash -c ${bash_opt} '${prefix}; ove-unittest'"
+		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-unittest'"
 	fi
 
 	if [ "x${distcheck}" != "x" ]; then
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 			# sanity check project
-			if ! lxc_exec_no_exit "bash -c ${bash_opt} '${prefix}; ove-list-projects $distcheck > /dev/null'"; then
-				echo "error: unknown project '$distcheck'"
+			if ! lxc_exec_no_exit "bash ${bash_opt} -c '${prefix}; ove-list-projects ${distcheck} > /dev/null'"; then
+				echo "error: unknown project '${distcheck}'"
 				exit 1
 			fi
 
-			packs=$(lxc_exec "bash -c ${bash_opt} '${prefix}; DEBIAN_FRONTEND=noninteractive ove-list-needs $distcheck'")
+			packs=$(lxc_exec "bash ${bash_opt} -c '${prefix}; DEBIAN_FRONTEND=noninteractive ove-list-needs ${distcheck}'")
 			packs=${packs//$'\r'/ }
 			packs=${packs//$'\n'/}
-			if [ "$packs" != "" ]; then
-				LXC_EXEC_EXTRA="--user 0" lxc_exec "${package_manager} ${packs}"
+			if [ "${packs}" != "" ]; then
+				_user=root LXC_EXEC_EXTRA="--user 0" lxc_exec "${package_manager} ${packs}"
 			fi
 
 			# worktree?
-			if [[ $OVE_DISTROCHECK_STEPS == *worktree* ]]; then
-				lxc_exec "bash -c ${bash_opt} '${prefix}; ove-add-config $_home/.oveconfig OVE_REVTAB_CHECK 0'"
+			if [[ ${OVE_DISTROCHECK_STEPS} == *worktree* ]]; then
+				lxc_exec "bash ${bash_opt} -c '${prefix}; ove-add-config ${_home}/.oveconfig OVE_REVTAB_CHECK 0'"
 				if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
 					worktree_dir="${OVE_TMP}/${tag}"
 				else
 					worktree_dir="/var/tmp/${tag}"
 				fi
 
-				lxc_exec "bash -c ${bash_opt} '${prefix}; ove-worktree add ${worktree_dir}'"
-				prev_prefix="$prefix"
+				lxc_exec "bash ${bash_opt} -c '${prefix}; ove-worktree add ${worktree_dir}'"
+				prev_prefix="${prefix}"
 				prefix="cd ${worktree_dir}; source ove hush"
 			fi
 
-			lxc_exec "bash -c ${bash_opt} '${prefix}; OVE_AUTO_CLONE=1 ove-distcheck $distcheck'"
+			lxc_exec "bash ${bash_opt} -c '${prefix}; OVE_AUTO_CLONE=1 ove-distcheck ${distcheck}'"
 
 			# remove worktree
-			if [[ $OVE_DISTROCHECK_STEPS == *worktree* ]]; then
-				lxc_exec "bash -c ${bash_opt} '${prev_prefix}; ove-worktree remove ${worktree_dir}'"
+			if [[ ${OVE_DISTROCHECK_STEPS} == *worktree* ]]; then
+				lxc_exec "bash ${bash_opt} -c '${prev_prefix}; ove-worktree remove ${worktree_dir}'"
 			fi
 		else
 			if [ -s "${distcheck}" ]; then
 				cp -a "${distcheck}" "${OVE_TMP}/${tag}.cmd"
 			else
-				echo "$distcheck" > "${OVE_TMP}/${tag}.cmd"
+				echo "${distcheck}" > "${OVE_TMP}/${tag}.cmd"
 			fi
 			chmod +x "${OVE_TMP}/${tag}.cmd"
-			run "lxc file push --uid 0 --gid 0 ${OVE_TMP}/${tag}.cmd ${lxc_name}/var/tmp/${tag}.cmd"
+			run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}.cmd ${lxc_name}/var/tmp/${tag}.cmd"
 			lxc_exec "/var/tmp/${tag}.cmd"
 		fi
 	fi

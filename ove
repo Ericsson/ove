@@ -8422,6 +8422,7 @@ $ ove ide
 # steps:
 #   ove       use the OVE workspace (map it or by running the oneliner) within the container
 #   running   leave the container running
+#   ssh       install sshd within the container and use ssh instead of lxc exec
 #   stopped   leave the container in stopped state
 #   user      run jobs as user
 #   verbose   debug printouts
