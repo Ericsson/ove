@@ -13736,7 +13736,12 @@ function ove_distrocheck_helper {
 	fi
 
 	proj="$1"
-	if [[ -v ove_projects_name2index[${proj}] ]] && [ -s "${OVE_OWEL_DIR}/projects/${proj}/distcheck" ]; then
+	if [[ -v ove_projects_name2index[${proj}] ]]; then
+		if [ ! -e "${OVE_OWEL_DIR}/projects/${proj}/distcheck" ]; then
+			ove_echo_error_noprefix "$proj does not have a distcheck file '\${OVE_OWEL_DIR}/projects/${proj}/distcheck'. Add one and retry!"
+			return 1
+		fi
+
 		OVE_DISTROCHECK_STEPS+=" ove"
 	fi
 
