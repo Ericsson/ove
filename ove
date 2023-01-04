@@ -5358,8 +5358,20 @@ function ove_locate_print {
 # setup:[dir]:print or execute ${OVE_OWEL_DIR}/SETUP:CORE
 function ove-setup {
 	local p
+	local o
+	local u
 
 	if [ ! -s "${OVE_OWEL_DIR}/SETUP" ]; then
+		if ! o="$(ove_repo_cmd "${OVE_OWEL_DIR}" "remote" | ${ove_cmd2pathname["head"]:?} -1)"; then
+			return 0
+		elif [ "x$o" = "x" ]; then
+			return 0
+		elif ! u=$(ove_repo_cmd "${OVE_OWEL_DIR}" "remote" "get-url" "$o"); then
+			return 0
+		elif [ "x$u" = "x" ]; then
+			return 0
+		fi
+		echo "curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${OVE_OWEL_NAME} ${u}"
 		return 0
 	elif [ ! -x "${OVE_OWEL_DIR}/SETUP" ]; then
 		${ove_cmd2pathname["cat"]:?} "${OVE_OWEL_DIR}/SETUP"
