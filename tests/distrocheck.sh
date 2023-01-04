@@ -81,6 +81,10 @@ function init {
 			echo "error: command sshpass missing"
 			exit 1
 		fi
+		ssh_opts=""
+	        ssh_opts+=" -o GlobalKnownHostsFile=/dev/null"
+		ssh_opts+=" -o StrictHostKeyChecking=no"
+		ssh_opts+=" -o UserKnownHostsFile=/dev/null"
 	fi
 }
 
@@ -104,19 +108,19 @@ function run {
 
 		sleep_s=$((RANDOM%10))
 		if grep "^Error:.*i/o timeout" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd: i/o timeout. Retry in ${sleep_s} sec"
+			_echo "lxd: i/o timeout. Retry in ${sleep_s} sec"
 			sleep ${sleep_s}
 			continue
 		elif grep "^Error: websocket:" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd: websocket error. Retry in ${sleep_s} sec"
+			_echo "lxd: websocket error. Retry in ${sleep_s} sec"
 			sleep ${sleep_s}
 			continue
 		elif grep "^Error: Missing event connection with target cluster member" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd: cluster error. Retry in ${sleep_s} sec"
+			_echo "lxd: cluster error. Retry in ${sleep_s} sec"
 			sleep ${sleep_s}
 			continue
 		elif grep "^Error: Operation not found" "${OVE_TMP}/${tag}.err"; then
-			ove-echo warning_noprefix "lxd: operation not found error. Retry in ${sleep_s} sec"
+			_echo "lxd: operation not found error. Retry in ${sleep_s} sec"
 			sleep ${sleep_s}
 			continue
 		elif grep -q "^Error: Command not found" "${OVE_TMP}/${tag}.err"; then
@@ -143,7 +147,13 @@ function ssh_exec {
        local prefix
 
        _echo "ssh ${_user}@${lxc_ip} $*"
-       if ! ssh -t -o StrictHostKeyChecking=no ${_user:?}@${lxc_ip} "$@"; then
+       # shellcheck disable=SC2086
+       if ! ssh \
+	       -F /dev/null \
+	       -t \
+	       -q \
+	       ${ssh_opts} \
+	       ${_user:?}@${lxc_ip} "$@"; then
                return 1
        fi
 
@@ -242,7 +252,6 @@ function cleanup {
 }
 
 function setup_package_manager {
-	local package_refresh
 	local packman
 
 	run "lxc ${lxc_global_flags} file pull ${lxc_name}/var/tmp/${tag}-packman ${OVE_TMP}/${tag}-packman"
@@ -254,20 +263,19 @@ function setup_package_manager {
 	packman=$(cat "${OVE_TMP}/${tag}-packman")
 	if [ "${packman}" = "apk" ]; then
 		package_manager="apk add --no-progress -q"
-		if lxc_exec_no_exit "timeout 10 apk update"; then
-			return 0
-		fi
-
-		# shellcheck disable=SC2086
-		lxc ${lxc_global_flags} exec ${lxc_name} -- sed -i 's/https/http/g' /etc/apk/repositories
-		if lxc_exec_no_exit "timeout 10 apk update"; then
-			return 0
-		fi
-
+		cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
+if ! timeout 10 apk update > /dev/null 2>&1; then
+	sed -i 's,https,http,g' /etc/apk/repositories
+	if ! timeout 10 apk update > /dev/null 2>&1; then
 		echo "error: apk update failed"
 		exit 1
+	fi
+fi
+EOF
 	elif [ "${packman}" = "pacman" ]; then
-		package_refresh="pacman -Syu --noconfirm -q --noprogressbar"
+		cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
+pacman -Syu --noconfirm -q --noprogressbar
+EOF
 		package_manager="pacman -S --noconfirm -q --noprogressbar"
 	elif [ "${packman}" = "apt-get" ]; then
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
@@ -278,7 +286,7 @@ function setup_package_manager {
 			cp -a "/etc/apt/apt.conf" "${OVE_TMP}/${tag}-apt.conf"
 			run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-apt.conf ${lxc_name}/etc/apt/apt.conf"
 		fi
-		package_refresh="apt-get update"
+		echo "apt-get update >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 	elif [ "${packman}" = "xbps" ]; then
 		package_manager="xbps-install -y"
 	elif [ "${packman}" = "dnf" ]; then
@@ -289,24 +297,19 @@ function setup_package_manager {
 		echo "error: unknown package manager for '${distro}'"
 		exit 1
 	fi
-
-	# refresh package manager?
-	if [ "x${package_refresh}" != "x" ]; then
-		lxc_exec_no_exit "${package_refresh}"
-	fi
 }
 
 function setup_sshd {
-	lxc_exec_no_exit "${package_manager} openssh-server"
-	lxc_exec_no_exit "${package_manager} openssh"
+	echo "${package_manager:?} openssh-server >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
+	echo "${package_manager} openssh >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 
 	if [[ ${distro} == *opensuse* ]]; then
-		lxc_exec_no_exit "cp -av /usr/etc/ssh/sshd_config /etc/ssh/"
+		echo "cp -a /usr/etc/ssh/sshd_config /etc/ssh/" >> "${OVE_TMP}/${tag}-services.sh"
 	elif [[ ${distro} == *void* ]]; then
-		lxc_exec_no_exit "ln -s /etc/sv/sshd /var/service"
+		echo "ln -s /etc/sv/sshd /var/service" >> "${OVE_TMP}/${tag}-services.sh"
 	fi
 
-	cat > "${OVE_TMP}/${tag}-sshd" <<EOF
+	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
 #!/usr/bin/env sh
 
 if ! sed -i \
@@ -315,48 +318,37 @@ if ! sed -i \
 	-e 's,.*PasswordAuthentication.*,PasswordAuthentication yes,g' /etc/ssh/sshd_config; then
 	exit 1
 fi
-exit 0
 EOF
-	run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-sshd ${lxc_name}/var/tmp/${tag}-sshd"
-	use_ssh=0 _user=root lxc_exec "sh /var/tmp/${tag}-sshd"
-
 	if [[ ${distro} == *alpine* ]]; then
-		lxc_exec "rc-update add sshd"
-		lxc_exec "/etc/init.d/sshd start"
+		echo "rc-update add sshd >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
+		echo "/etc/init.d/sshd start >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 	else
-		lxc_exec_no_exit "systemctl -q restart ssh sshd"
+		for s in ssh sshd; do
+			echo "systemctl -q restart $s >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
+			echo "systemctl -q enable $s >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
+		done
 	fi
 
-	wait_for_ssh_server
-
-	lxc_ip=$(lxc list -c4 --format csv ${lxc_name})
-	lxc_ip=${lxc_ip% *}
-	if [ "x${lxc_ip}" = "x" ]; then
-		echo "error: no IPv4 address for ${lxc_name}"
+	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
+i=0
+while true; do
+	i=\$((i+1))
+	if [ \$i -gt 100 ]; then
+		echo "error: sshd did not start"
 		exit 1
+	elif pgrep -f sshd > /dev/null; then
+		sleep 1
+		break
 	fi
-	_echo "${lxc_name}=${lxc_ip}"
-}
 
-function wait_for_ssh_server {
-	local i
+	echo "waiting for sshd \$i"
+	sleep 0.1
+done
+EOF
 
-	i=0
-	while true; do
-		((i++))
-		if [ ${i} -gt 100 ]; then
-			echo "error: sshd did not start"
-			exit 1
-		elif lxc_exec_no_exit "pgrep -f sshd" > /dev/null; then
-			# FIXME
-			_echo "sleep 1 sec"
-			sleep 1
-			break;
-		fi
-
-		_echo "waiting for sshd ${i}"
-		sleep 0.1
-	done
+	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+		sed -i -e "1iset -x" "${OVE_TMP}/${tag}-services.sh"
+	fi
 }
 
 # $1: user
@@ -377,19 +369,27 @@ EOF
 		use_ssh=0 _user=root lxc_exec "usermod -p '$(openssl passwd -1 ${pass})' ${_user}"
 	fi
 
-	if [ -s "${HOME}/.ssh/known_hosts" ]; then
-		_echo "remove any previous entries in known_hosts"
-		ssh-keygen -f "${HOME}/.ssh/known_hosts" -R "${lxc_ip:?}" -q &> /dev/null
-	fi
-
 	_echo "copy public key to container"
-	if ! sshpass -p${pass} \
-		ssh-copy-id \
-		-o StrictHostKeyChecking=no \
-		"${_user}"@"${lxc_ip}" &> /dev/null; then
-		echo "error: not possible to copy public key to ${lxc_name} ${lxc_ip}"
-		exit 1
-	fi
+	i=0
+	while true; do
+		((i++))
+		if [ ${i} -gt 3 ]; then
+			echo "error: not possible to copy public key to ${lxc_name} ${lxc_ip}"
+			exit 1
+		fi
+
+		# shellcheck disable=SC2086
+		if ! sshpass -p${pass} \
+			ssh-copy-id \
+			-f \
+			${ssh_opts} \
+			"${_user}"@"${lxc_ip}" &> /dev/null; then
+			_echo "copy public key to ${lxc_name} ${lxc_ip} failed - retry in 1 sec"
+			sleep 1
+			continue
+		fi
+		break
+	done
 
 	# from now on use ssh instead of lxc exec
 	use_ssh=1
@@ -404,7 +404,8 @@ EOF
 
 	if [ -s "${OVE_TMP}/${tag}-sshenv" ]; then
 		lxc_exec "mkdir -vp .ssh"
-		scp -p -q "${OVE_TMP}/${tag}-sshenv" "${_user}"@"${lxc_ip}":.ssh/environment
+		# shellcheck disable=SC2086
+		scp ${ssh_opts} -p -q "${OVE_TMP}/${tag}-sshenv" "${_user}"@"${lxc_ip}":.ssh/environment
 	fi
 }
 
@@ -511,17 +512,20 @@ fi
 i=0
 while true; do
 	i=\$((i+1))
-	if [ \$i -ge 200 ]; then
+	if [ \$i -ge 100 ]; then
 		exit 0
 	fi
 	s=\$(\$cmd 2> /dev/null);
 	if [ "x\$s" = "x\$exp" ]; then
-		break;
+		break
 	fi
-	sleep 0.01;
+	sleep 0.1
 done
 exit 0
 EOF
+	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+		sed -i -e "1iset -x" "${OVE_TMP}/${tag}-bootcheck.sh"
+	fi
 
 	run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-bootcheck.sh ${lxc_name}/var/tmp/${tag}-bootcheck.sh"
 	lxc_exec_no_exit "sh /var/tmp/${tag}-bootcheck.sh"
@@ -532,8 +536,36 @@ EOF
 		setup_package_manager
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
 			setup_sshd
-			setup_ssh "root"
 		fi
+	fi
+
+	if [ -s "${OVE_TMP}/${tag}-services.sh" ]; then
+		run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-services.sh ${lxc_name}/var/tmp/${tag}-services.sh"
+		lxc_exec_no_exit "sh /var/tmp/${tag}-services.sh"
+	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
+		i=0
+		while true; do
+			((i++))
+			if [ $i -ge 100 ]; then
+				echo "no IPv4 address for ${lxc_name}"
+				exit 1
+			fi
+
+			# shellcheck disable=SC2086
+			lxc_ip=$(lxc ${lxc_global_flags} list -c4 --format csv ${lxc_name})
+			lxc_ip=${lxc_ip% *}
+			if [ "x${lxc_ip}" = "x" ]; then
+				echo "waiting for IPv4 address for ${lxc_name} ($i)"
+				sleep 1
+				continue
+			fi
+			_echo "${lxc_name}=${lxc_ip}"
+			break
+		done
+
+		setup_ssh "root"
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
@@ -547,7 +579,7 @@ EOF
 			_uid=${_uid/$'\r'/}
 			if [[ ! "${_uid}" =~ ^[0-9]+$ ]]; then
 				sleep_s=$((RANDOM%10))
-				ove-echo warning_noprefix "wrong uid ${_uid}. Retry in ${sleep_s} sec"
+				_echo "wrong uid ${_uid}. Retry in ${sleep_s} sec"
 				sleep ${sleep_s}
 				continue
 			fi
@@ -568,7 +600,31 @@ EOF
 		use_ssh=0 lxc_exec "sh /var/tmp/${tag}-bootcheck.sh"
 
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
-			wait_for_ssh_server
+			cat > "${OVE_TMP}/${tag}-wait-for-sshd.sh" <<EOF
+#!/usr/bin/env sh
+
+i=0
+while true; do
+	i=\$((i+1))
+	if [ \$i -gt 100 ]; then
+		echo "error: sshd did not start"
+		exit 1
+	elif pgrep -f sshd > /dev/null; then
+		sleep 1
+		break
+	fi
+
+	echo "waiting for sshd \$i"
+	sleep 0.1
+done
+EOF
+
+			if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+				sed -i -e "1iset -x" "${OVE_TMP}/${tag}-wait-for-sshd.sh"
+			fi
+
+			run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-wait-for-sshd.sh ${lxc_name}/var/tmp/${tag}-wait-for-sshd.sh"
+			use_ssh=0 lxc_exec "sh /var/tmp/${tag}-wait-for-sshd.sh"
 			setup_ssh "${OVE_USER}"
 		fi
 	fi
@@ -577,7 +633,7 @@ EOF
 		ove_packs+="bash bzip2 git curl file binutils util-linux coreutils tar"
 
 		# install OVE packages
-		_user=root lxc_exec "${package_manager} ${ove_packs}"
+		_user=root lxc_exec "${package_manager} ${ove_packs} >/dev/null 2>&1"
 
 		if [[ ${distro} == *archlinux* ]]; then
 			lxc_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
@@ -627,7 +683,7 @@ EOF
 			ws_name=${ws_name//$'\r'/}
 			if [ "x${ws_name}" = "x" ]; then
 				ws_name="ove-tutorial"
-				ove-echo cyan "using ${ws_name} as OVE workspace (fallback)"
+				_echo "using ${ws_name} as OVE workspace (fallback)"
 				lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/${ws_name}'"
 			fi
 			prefix="cd ${ws_name}; source ove hush"
