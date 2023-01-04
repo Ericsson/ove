@@ -5357,6 +5357,8 @@ function ove_locate_print {
 
 # setup:[dir]:print or execute ${OVE_OWEL_DIR}/SETUP:CORE
 function ove-setup {
+	ove_entry || return
+
 	local p
 	local o
 	local u

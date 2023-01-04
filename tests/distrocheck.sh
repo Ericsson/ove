@@ -58,7 +58,6 @@ function init {
 
 	if [ -t 1 ]; then
 		bash_opt="-i"
-		lxc_global_flags="--force-local"
 		lxc_exec_flags="-t"
 	fi
 
@@ -68,10 +67,13 @@ function init {
 		OVE_DISTROCHECK_STEPS=""
 	fi
 
+	lxc_global_flags="--force-local"
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
 		for s in ${OVE_DISTROCHECK_STEPS//:/ };do
 			echo ${s}
 		done
+	elif lxc -h | grep -q '\-q'; then
+		lxc_global_flags+=" -q"
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
@@ -256,6 +258,7 @@ function setup_package_manager {
 			return 0
 		fi
 
+		# shellcheck disable=SC2086
 		lxc ${lxc_global_flags} exec ${lxc_name} -- sed -i 's/https/http/g' /etc/apk/repositories
 		if lxc_exec_no_exit "timeout 10 apk update"; then
 			return 0
@@ -299,6 +302,7 @@ function setup_sshd {
 		lxc_exec "${package_manager} openssh"
 	fi
 
+	# shellcheck disable=SC2086
 	if ! lxc ${lxc_global_flags} exec "${lxc_name}" -- \
 		sed -i \
 		-e 's/.*PermitRootLogin.*/PermitRootLogin yes/g' \
@@ -332,12 +336,17 @@ function setup_ssh {
 	_user="$1"
 
 	if [[ ${distro} == *alpine* ]]; then
+		cat > "${OVE_TMP}/${tag}-passwd-${_user}" <<EOF
+echo -e "${pass}\n${pass}" | passwd ${_user} &> /dev/null
+EOF
+		run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-passwd-${_user} ${lxc_name}/var/tmp/${tag}-passwd-${_user}"
 		# shellcheck disable=SC2097,SC2098
-		_user=root lxc_exec "sh -c 'echo -e ${pass}\\\n${pass} | passwd ${_user}'"
+		use_ssh=0 _user=root lxc_exec "sh /var/tmp/${tag}-passwd-${_user}"
 	else
 		# shellcheck disable=SC2097,SC2098
-		_user=root lxc_exec "usermod -p '$(openssl passwd -1 ${pass})' ${_user}"
+		use_ssh=0 _user=root lxc_exec "usermod -p '$(openssl passwd -1 ${pass})' ${_user}"
 	fi
+
 	if [ -s "${HOME}/.ssh/known_hosts" ]; then
 		_echo "remove any previous entries in known_hosts"
 		ssh-keygen -f "${HOME}/.ssh/known_hosts" -R "${lxc_ip:?}" -q &> /dev/null
@@ -402,6 +411,7 @@ function main {
 	fi
 
 	# ove, user and lxc cluster? => create container on localhost
+	# shellcheck disable=SC2086
 	if [[ ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS} != *--target=* ]] && \
 		[[ ${OVE_DISTROCHECK_STEPS} == *ove* ]] && \
 		[[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && \
@@ -431,7 +441,16 @@ function main {
 
 	cat > "${OVE_TMP}/${tag}-bootcheck.sh" <<EOF
 #!/usr/bin/env sh
-if ! command -v systemctl > /dev/null; then
+
+if command -v systemctl > /dev/null; then
+	cmd="systemctl is-system-running"
+	exp="running"
+elif command -v rc-status > /dev/null; then
+	cmd="rc-status -r"
+	exp="default"
+else
+	echo "bootcheck: unknown init system - sleep 1 sec"
+	sleep 1
 	exit 0
 fi
 
@@ -441,12 +460,13 @@ while true; do
 	if [ \$i -ge 200 ]; then
 		exit 0
 	fi
-	s=\$(systemctl is-system-running 2> /dev/null);
-	if [ "x\$s" = "xrunning" ]; then
+	s=\$(\$cmd 2> /dev/null);
+	if [ "x\$s" = "x\$exp" ]; then
 		break;
 	fi
 	sleep 0.01;
 done
+exit 0
 EOF
 
 	run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-bootcheck.sh ${lxc_name}/var/tmp/${tag}-bootcheck.sh"
@@ -482,6 +502,7 @@ EOF
 		_home=${HOME}
 
 		_echo "idmap"
+		# shellcheck disable=SC2086
 		printf "uid %s ${_uid}\ngid %s ${_uid}" "$(id -u)" "$(id -g)" | \
 			lxc ${lxc_global_flags} config set "${lxc_name}" raw.idmap -
 
@@ -490,8 +511,23 @@ EOF
 		run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-sudoers ${lxc_name}/etc/sudoers.d/91-ove"
 
 		run "lxc ${lxc_global_flags} restart ${lxc_name}"
+		use_ssh=0 lxc_exec "sh /var/tmp/${tag}-bootcheck.sh"
 
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
+			i=0
+			while true; do
+				((i++))
+				if [ $i -gt 100 ]; then
+					echo "error: sshd did not start"
+					exit 1
+				elif lxc_exec_no_exit "pgrep -f sshd" > /dev/null; then
+					break;
+				fi
+
+				_echo "waiting for sshd $i"
+				sleep 0.1
+			done
+
 			setup_ssh "${OVE_USER}"
 		fi
 	fi
