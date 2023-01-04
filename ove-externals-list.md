@@ -24,7 +24,7 @@
 | getconf       | 2      |
 | git           | 73     |
 | grep          | 175    |
-| head          | 19     |
+| head          | 20     |
 | inotifywait   | 3      |
 | ld            | 1      |
 | less          | 3      |

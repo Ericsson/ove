@@ -537,19 +537,18 @@ EOF
 			ws_name="${OVE_BASE_DIR}"
 			prefix="cd ${ws_name}; source ove hush"
 		else
-			# search for a SETUP file
-			if [ "${OVE_OWEL_DIR}" != "x" ] && [ -s "${OVE_OWEL_DIR}/SETUP" ]; then
-				lxc_exec "bash -c '$(cat "${OVE_OWEL_DIR}"/SETUP)'"
-				ws_name=$(lxc_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
-				ws_name=${ws_name//$'\r'/}
-				if [ "x${ws_name}" = "x" ]; then
-					echo "error: workspace name not found"
-					exit 1
-				fi
+			if [ -x "${OVE_OWEL_DIR}/SETUP" ]; then
+				run "lxc ${lxc_global_flags} file push --uid ${_uid} ${OVE_OWEL_DIR}/SETUP ${lxc_name}${_home}/SETUP"
+				lxc_exec "bash ${_home}/SETUP"
 			else
-				# fallback to ove-tutorial
-				ws_name="distrocheck"
-				lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/ove-tutorial'"
+				lxc_exec "bash -c '$(ove-setup)'"
+			fi
+			ws_name=$(lxc_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
+			ws_name=${ws_name//$'\r'/}
+			if [ "x$ws_name" = "x" ]; then
+				ws_name="ove-tutorial"
+				ove-echo cyan "using ${ws_name} as OVE workspace (fallback)"
+				lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/${ws_name}'"
 			fi
 			prefix="cd ${ws_name}; source ove hush"
 		fi
