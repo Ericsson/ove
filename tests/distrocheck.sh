@@ -73,6 +73,13 @@ function init {
 			echo ${s}
 		done
 	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
+		if ! command -v sshpass > /dev/null; then
+			echo "error: command sshpass missing"
+			exit 1
+		fi
+	fi
 }
 
 function run {
@@ -322,10 +329,6 @@ function setup_sshd {
 function setup_ssh {
 	local pass="${RANDOM}${RANDOM}${RANDOM}"
 
-	if ! command -v sshpass > /dev/null; then
-		echo "error: command sshpass missing"
-		exit 1
-	fi
 	_user="$1"
 
 	if [[ ${distro} == *alpine* ]]; then
