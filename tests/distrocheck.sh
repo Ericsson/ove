@@ -399,7 +399,7 @@ function main {
 	fi
 
 	# ove, user and lxc cluster? => create container on localhost
-	if [ ! -v OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS ] && \
+	if [[ ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS} != *--target=* ]] && \
 		[[ ${OVE_DISTROCHECK_STEPS} == *ove* ]] && \
 		[[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && \
 		lxc ${lxc_global_flags} cluster list &> /dev/null; then
