@@ -13785,10 +13785,6 @@ function ove_distrocheck_helper {
 			echo "$d"
 		done
 	fi
-
-	if [[ "$OVE_DISTROCHECK_STEPS" == *sleep* ]]; then
-		${ove_cmd2pathname["sleep"]:?} 2
-	fi
 }
 
 # distrocheck:file|project pattern...:verify a project within multiple Linux distributions (LXD only):UTIL
