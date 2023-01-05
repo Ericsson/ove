@@ -139,14 +139,6 @@ function run_no_exit {
 	fi
 }
 
-function lxc_command {
-	if ! lxc_exec_no_exit "sh -c 'command -v $1' > /dev/null"; then
-		return 1
-	else
-		return 0
-	fi
-}
-
 function ssh_exec {
        local prefix
 
@@ -240,7 +232,7 @@ function cleanup {
 		remove_tmp
 		return
 	fi
-	run_no_exit "lxc ${lxc_global_flags} stop ${lxc_name} --force"
+	run_no_exit "lxc ${lxc_global_flags} stop ${lxc_name}"
 	if [[ ${OVE_DISTROCHECK_STEPS} == *stopped* ]]; then
 		remove_tmp
 		return
@@ -251,8 +243,16 @@ function cleanup {
 
 function setup_package_manager {
 	local package_refresh
+	local packman
 
-	if lxc_command "apk"; then
+	run "lxc ${lxc_global_flags} file pull ${lxc_name}/var/tmp/${tag}-packman ${OVE_TMP}/${tag}-packman"
+	if [ ! -s "${OVE_TMP}/${tag}-packman" ]; then
+		echo "error: could not determine package manager for ${distro}"
+		exit 1
+	fi
+
+	packman=$(cat "${OVE_TMP}/${tag}-packman")
+	if [ "${packman}" = "apk" ]; then
 		package_manager="apk add --no-progress -q"
 		if lxc_exec_no_exit "timeout 10 apk update"; then
 			return 0
@@ -266,10 +266,10 @@ function setup_package_manager {
 
 		echo "error: apk update failed"
 		exit 1
-	elif lxc_command "pacman"; then
+	elif [ "${packman}" = "pacman" ]; then
 		package_refresh="pacman -Syu --noconfirm -q --noprogressbar"
 		package_manager="pacman -S --noconfirm -q --noprogressbar"
-	elif lxc_command "apt-get"; then
+	elif [ "${packman}" = "apt-get" ]; then
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 			ove_packs="bsdmainutils procps "
 		fi
@@ -279,11 +279,11 @@ function setup_package_manager {
 			run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-apt.conf ${lxc_name}/etc/apt/apt.conf"
 		fi
 		package_refresh="apt-get update"
-	elif lxc_command "xbps-install"; then
+	elif [ "${packman}" = "xbps" ]; then
 		package_manager="xbps-install -y"
-	elif lxc_command "dnf"; then
+	elif [ "${packman}" = "dnf" ]; then
 		package_manager="dnf install -y"
-	elif lxc_command "zypper"; then
+	elif [ "${packman}" = "zypper" ]; then
 		package_manager="zypper install -y"
 	else
 		echo "error: unknown package manager for '${distro}'"
@@ -297,28 +297,37 @@ function setup_package_manager {
 }
 
 function setup_sshd {
-	lxc_exec "${package_manager} openssh-server"
-	if [[ ${distro} == *alpine* ]]; then
-		lxc_exec "${package_manager} openssh"
+	lxc_exec_no_exit "${package_manager} openssh-server"
+	lxc_exec_no_exit "${package_manager} openssh"
+
+	if [[ ${distro} == *opensuse* ]]; then
+		lxc_exec_no_exit "cp -av /usr/etc/ssh/sshd_config /etc/ssh/"
+	elif [[ ${distro} == *void* ]]; then
+		lxc_exec_no_exit "ln -s /etc/sv/sshd /var/service"
 	fi
 
-	# shellcheck disable=SC2086
-	if ! lxc ${lxc_global_flags} exec "${lxc_name}" -- \
-		sed -i \
-		-e 's/.*PermitRootLogin.*/PermitRootLogin yes/g' \
-		-e 's/.*PermitUserEnvironment.*/PermitUserEnvironment yes/g' \
-		-e 's,.*PasswordAuthentication.*,PasswordAuthentication yes,g' /etc/ssh/sshd_config; then
-		return 1
-	fi
+	cat > "${OVE_TMP}/${tag}-sshd" <<EOF
+#!/usr/bin/env sh
+
+if ! sed -i \
+	-e 's,.*PermitRootLogin.*,PermitRootLogin yes,g' \
+	-e 's,.*PermitUserEnvironment.*,PermitUserEnvironment yes,g' \
+	-e 's,.*PasswordAuthentication.*,PasswordAuthentication yes,g' /etc/ssh/sshd_config; then
+	exit 1
+fi
+exit 0
+EOF
+	run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-sshd ${lxc_name}/var/tmp/${tag}-sshd"
+	use_ssh=0 _user=root lxc_exec "sh /var/tmp/${tag}-sshd"
 
 	if [[ ${distro} == *alpine* ]]; then
 		lxc_exec "rc-update add sshd"
 		lxc_exec "/etc/init.d/sshd start"
-	elif [[ ${distro} == *ubuntu/22.10* ]]; then
-		lxc_exec "systemctl restart ssh"
 	else
-		lxc_exec "systemctl restart sshd"
+		lxc_exec_no_exit "systemctl -q restart ssh sshd"
 	fi
+
+	wait_for_ssh_server
 
 	lxc_ip=$(lxc list -c4 --format csv ${lxc_name})
 	lxc_ip=${lxc_ip% *}
@@ -327,6 +336,27 @@ function setup_sshd {
 		exit 1
 	fi
 	_echo "${lxc_name}=${lxc_ip}"
+}
+
+function wait_for_ssh_server {
+	local i
+
+	i=0
+	while true; do
+		((i++))
+		if [ ${i} -gt 100 ]; then
+			echo "error: sshd did not start"
+			exit 1
+		elif lxc_exec_no_exit "pgrep -f sshd" > /dev/null; then
+			# FIXME
+			_echo "sleep 1 sec"
+			sleep 1
+			break;
+		fi
+
+		_echo "waiting for sshd ${i}"
+		sleep 0.1
+	done
 }
 
 # $1: user
@@ -442,14 +472,38 @@ function main {
 	cat > "${OVE_TMP}/${tag}-bootcheck.sh" <<EOF
 #!/usr/bin/env sh
 
+if command -v apk > /dev/null; then
+	packman="apk"
+elif command -v pacman > /dev/null; then
+	packman="pacman"
+elif command -v apt-get > /dev/null; then
+	packman="apt-get"
+elif command -v dnf > /dev/null; then
+	packman="dnf"
+elif command -v zypper > /dev/null; then
+	packman="zypper"
+elif command -v xbps-install > /dev/null; then
+	packman="xbps"
+else
+	echo "bootcheck: unknown package manager for ${distro}"
+	packman="unknown"
+fi
+echo "\$packman" > /var/tmp/${tag}-packman
+
 if command -v systemctl > /dev/null; then
 	cmd="systemctl is-system-running"
 	exp="running"
 elif command -v rc-status > /dev/null; then
 	cmd="rc-status -r"
 	exp="default"
+elif command -v sv > /dev/null; then
+	cmd="readlink -f /etc/runit/runsvdir/current"
+	exp="/etc/runit/runsvdir/default"
+elif command -v runlevel > /dev/null; then
+	cmd="runlevel"
+	exp="N 2"
 else
-	echo "bootcheck: unknown init system - sleep 1 sec"
+	echo "bootcheck: unknown init system for ${distro} - sleep 1 sec"
 	sleep 1
 	exit 0
 fi
@@ -514,20 +568,7 @@ EOF
 		use_ssh=0 lxc_exec "sh /var/tmp/${tag}-bootcheck.sh"
 
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
-			i=0
-			while true; do
-				((i++))
-				if [ $i -gt 100 ]; then
-					echo "error: sshd did not start"
-					exit 1
-				elif lxc_exec_no_exit "pgrep -f sshd" > /dev/null; then
-					break;
-				fi
-
-				_echo "waiting for sshd $i"
-				sleep 0.1
-			done
-
+			wait_for_ssh_server
 			setup_ssh "${OVE_USER}"
 		fi
 	fi
@@ -584,7 +625,7 @@ EOF
 			fi
 			ws_name=$(lxc_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
 			ws_name=${ws_name//$'\r'/}
-			if [ "x$ws_name" = "x" ]; then
+			if [ "x${ws_name}" = "x" ]; then
 				ws_name="ove-tutorial"
 				ove-echo cyan "using ${ws_name} as OVE workspace (fallback)"
 				lxc_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/${ws_name}'"
