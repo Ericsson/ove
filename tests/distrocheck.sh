@@ -592,6 +592,9 @@ EOF
 		_home=${HOME}
 
 		_echo "idmap"
+		run "lxc ${lxc_global_flags} config set ${lxc_name} security.idmap.isolated true"
+		run "lxc ${lxc_global_flags} config set ${lxc_name} security.idmap.base 200000000"
+
 		# shellcheck disable=SC2086
 		printf "uid %s ${_uid}\ngid %s ${_gid}" "$(id -u)" "$(id -g)" | \
 			lxc ${lxc_global_flags} config set "${lxc_name}" raw.idmap -
