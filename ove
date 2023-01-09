@@ -8434,13 +8434,14 @@ $ ove ide
 # distrocheck
 #
 # steps:
-#   ove       use the OVE workspace (map it or by running the oneliner) within the container
-#   running   leave the container running
-#   ssh       install sshd within the container and use ssh instead of lxc exec
-#   stopped   leave the container in stopped state
-#   user      run jobs as user
-#   verbose   debug printouts
-#   worktree  run distcheck within an OVE worktree
+#   ove        use the OVE workspace (map it or by running the oneliner) within the container
+#   running    leave the container running
+#   ssh        install sshd within the container and use ssh instead of lxc exec
+#   ssh_config update \$HOME/.ssh/config with host entries
+#   stopped    leave the container in stopped state
+#   user       run jobs as user
+#   verbose    debug printouts
+#   worktree   run distcheck within an OVE worktree
 #
 # run 'ove distcheck foo' within a Ubuntu 22.04 container, run the job as user, delete the container when done
 $ export OVE_DISTROCHECK_STEPS="user ove"

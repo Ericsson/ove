@@ -351,6 +351,23 @@ EOF
 	fi
 }
 
+function update_ssh_config {
+	if ! mkdir -p "${HOME}/.ssh"; then
+		echo "error: mkdir ${HOME}/.ssh failed"
+		exit 1
+	fi
+	cat >> "${HOME}/.ssh/config" <<EOF
+Host ${lxc_name}
+	HostName ${lxc_ip}
+	ProxyCommand ssh -W %h:%p ${HOSTNAME}
+	StrictHostKeyChecking no
+EOF
+	if [[ ( ${OVE_DISTROCHECK_STEPS} == *ssh* ) && \
+		( ${OVE_DISTROCHECK_STEPS} != *user* ) ]]; then
+		echo -e "\tUser root" >> "${HOME}/.ssh/config"
+	fi
+}
+
 # $1: user
 function setup_ssh {
 	local pass="${RANDOM}${RANDOM}${RANDOM}"
@@ -563,6 +580,10 @@ EOF
 				continue
 			fi
 			_echo "${lxc_name}=${lxc_ip}"
+
+			if [[ ${OVE_DISTROCHECK_STEPS} == *ssh_config* ]]; then
+				update_ssh_config
+			fi
 			break
 		done
 
