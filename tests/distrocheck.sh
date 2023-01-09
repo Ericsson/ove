@@ -416,6 +416,7 @@ function main {
 	local prefix="true"
 	local server_name
 	local _uid=0
+	local _gid=0
 
 	init "$@"
 
@@ -573,23 +574,26 @@ EOF
 		if [[ ${distro} == *alpine* ]]; then
 			lxc_exec "${package_manager} shadow sudo"
 		fi
+
 		lxc_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${OVE_USER:?}"
-		while true; do
-			_uid=$(lxc_exec "id -u ${OVE_USER}")
-			_uid=${_uid/$'\r'/}
-			if [[ ! "${_uid}" =~ ^[0-9]+$ ]]; then
-				sleep_s=$((RANDOM%10))
-				_echo "wrong uid ${_uid}. Retry in ${sleep_s} sec"
-				sleep ${sleep_s}
-				continue
-			fi
-			break
-		done
+		_uid=$(lxc_exec "id -u ${OVE_USER}")
+		_uid=${_uid/$'\r'/}
+		if [[ ! "${_uid}" =~ ^[0-9]+$ ]]; then
+			echo "error: weird uid ${_uid}"
+			exit 1
+		fi
+
+		_gid=$(lxc_exec "id -g ${OVE_USER}")
+		_gid=${_gid/$'\r'/}
+		if [[ ! "${_gid}" =~ ^[0-9]+$ ]]; then
+			echo "error: weird gid ${_gid}"
+			exit 1
+		fi
 		_home=${HOME}
 
 		_echo "idmap"
 		# shellcheck disable=SC2086
-		printf "uid %s ${_uid}\ngid %s ${_uid}" "$(id -u)" "$(id -g)" | \
+		printf "uid %s ${_uid}\ngid %s ${_gid}" "$(id -u)" "$(id -g)" | \
 			lxc ${lxc_global_flags} config set "${lxc_name}" raw.idmap -
 
 		_echo "user and sudo"
@@ -650,19 +654,19 @@ EOF
 		# gitconfig
 		if [ -s "${HOME}"/.gitconfig ]; then
 			cp -a "${HOME}"/.gitconfig "${OVE_TMP}/${tag}-gitconfig"
-			run "lxc ${lxc_global_flags} file push --uid ${_uid} ${OVE_TMP}/${tag}-gitconfig ${lxc_name}${_home}/.gitconfig"
+			run "lxc ${lxc_global_flags} file push --uid ${_uid} --gid ${_gid} ${OVE_TMP}/${tag}-gitconfig ${lxc_name}${_home}/.gitconfig"
 		fi
 
 		# oveconfig
 		if [ -s "${HOME}"/.oveconfig ]; then
 			cp -a "${HOME}"/.oveconfig "${OVE_TMP}/${tag}-oveconfig"
-			run "lxc ${lxc_global_flags} file push --uid ${_uid} ${OVE_TMP}/${tag}-oveconfig ${lxc_name}${_home}/.oveconfig"
+			run "lxc ${lxc_global_flags} file push --uid ${_uid} --gid ${_gid} ${OVE_TMP}/${tag}-oveconfig ${lxc_name}${_home}/.oveconfig"
 		fi
 
 		# ove.bash
 		if [ -s "${HOME}"/.ove.bash ]; then
 			cp -a "${HOME}"/.ove.bash "${OVE_TMP}/${tag}-ove.bash"
-			run "lxc ${lxc_global_flags} file push --uid ${_uid} ${OVE_TMP}/${tag}-ove.bash ${lxc_name}${_home}/.ove.bash"
+			run "lxc ${lxc_global_flags} file push --uid ${_uid} --gid ${_gid} ${OVE_TMP}/${tag}-ove.bash ${lxc_name}${_home}/.ove.bash"
 		fi
 
 		if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
@@ -674,7 +678,7 @@ EOF
 			prefix="cd ${ws_name}; source ove hush"
 		else
 			if [ -x "${OVE_OWEL_DIR}/SETUP" ]; then
-				run "lxc ${lxc_global_flags} file push --uid ${_uid} ${OVE_OWEL_DIR}/SETUP ${lxc_name}${_home}/SETUP"
+				run "lxc ${lxc_global_flags} file push --uid ${_uid} --gid ${_gid} ${OVE_OWEL_DIR}/SETUP ${lxc_name}${_home}/SETUP"
 				lxc_exec "bash ${_home}/SETUP"
 			else
 				lxc_exec "bash -c '$(ove-setup)'"
