@@ -4,7 +4,7 @@
 | awk           | 54     |
 | basename      | 1      |
 | bash          | 17     |
-| cat           | 41     |
+| cat           | 42     |
 | chmod         | 6      |
 | column        | 27     |
 | comm          | 14     |
@@ -23,7 +23,7 @@
 | fzf           | 5      |
 | getconf       | 2      |
 | git           | 73     |
-| grep          | 175    |
+| grep          | 177    |
 | head          | 20     |
 | inotifywait   | 3      |
 | ld            | 1      |
@@ -42,7 +42,7 @@
 | ps            | 1      |
 | readlink      | 26     |
 | rev           | 4      |
-| rm            | 41     |
+| rm            | 42     |
 | rmdir         | 2      |
 | scp           | 2      |
 | script        | 4      |
@@ -61,14 +61,14 @@
 | task          | 2      |
 | tee           | 11     |
 | timeout       | 4      |
-| tmux          | 9      |
+| tmux          | 13     |
 | touch         | 2      |
 | tr            | 23     |
 | tsort         | 2      |
 | tsp           | 3      |
 | uname         | 4      |
 | uniq          | 7      |
-| wc            | 19     |
+| wc            | 21     |
 | whoami        | 1      |
 | xargs         | 36     |
 | yamllint      | 1      |

@@ -1561,8 +1561,12 @@ function ove-run {
 	local _cmd
 	local cmd
 	local header
+	local num_panes
 	local read_args
 	local _timeout
+	local target_window
+	local tmux_cmd
+	local tmux_opt
 
 	if [ $# -eq 1 ]; then
 		ove_command_usage
@@ -1599,7 +1603,40 @@ function ove-run {
 			header="true"
 		fi
 
-		${ove_cmd2pathname["tmux"]:?} split-window -h "\
+		tmux_cmd="split-window"
+		tmux_opt="-h"
+		target_window=
+		if ! [[ "${OVE_TMUX_PANE_PER_WINDOW}" =~ ^[0-9]+$ ]]; then
+			ove_echo_warning "invalid value for OVE_TMUX_PANE_PER_WINDOW: $OVE_TMUX_PANE_PER_WINDOW"
+		elif [ ${OVE_TMUX_PANE_PER_WINDOW} -gt 0 ]; then
+			num_panes=$(${ove_cmd2pathname["tmux"]:?} list-panes | ${ove_cmd2pathname["wc"]:?} -l)
+			if [ $num_panes -ge ${OVE_TMUX_PANE_PER_WINDOW} ]; then
+				if [ -s "${OVE_OWEL_STATE_DIR}/tmux-target-name" ]; then
+					target_window=$(${ove_cmd2pathname["cat"]:?} "${OVE_OWEL_STATE_DIR}/tmux-target-name")
+					if ${ove_cmd2pathname["tmux"]:?} list-panes -F'#W' -a | ${ove_cmd2pathname["grep"]:?} -q "$target_window"; then
+						tmux_opt+=" -t ${target_window}"
+						num_panes=$(${ove_cmd2pathname["tmux"]:?} list-panes -t ${target_window} | ${ove_cmd2pathname["wc"]:?} -l)
+					else
+						${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_STATE_DIR}/tmux-target-name
+						target_window=
+					fi
+				fi
+
+				if [ $num_panes -ge ${OVE_TMUX_PANE_PER_WINDOW} ]; then
+					target_name="ove-${RANDOM}"
+					if ${ove_cmd2pathname["tmux"]:?} list-panes -F'#W' -a | ${ove_cmd2pathname["grep"]:?} -q "$target_name"; then
+						target_name+="-${RANDOM}"
+					fi
+					tmux_cmd="new-window"
+					tmux_opt="-d -n $target_name"
+					echo "$target_name" > ${OVE_OWEL_STATE_DIR}/tmux-target-name
+				else
+					tmux_opt+=" -d"
+				fi
+			fi
+		fi
+
+		${ove_cmd2pathname["tmux"]:?} $tmux_cmd $tmux_opt "\
 			source ${OVE_BASE_DIR}/ove; \
 			ove_init; \
 			${header}; \
@@ -1607,8 +1644,14 @@ function ove-run {
 			echo -; \
 			read -n 1 -s -r -p '' ${read_args}"
 
-		${ove_cmd2pathname["tmux"]:?} select-layout ${OVE_TMUX_LAYOUT}
-		${ove_cmd2pathname["tmux"]:?} select-pane -t 0
+		tmux_opt=
+		if [ "x$target_window" != "x" ]; then
+			tmux_opt="-t ${target_window}"
+		fi
+		${ove_cmd2pathname["tmux"]:?} select-layout ${tmux_opt} ${OVE_TMUX_LAYOUT}
+		if [ "x$target_window" = "x" ]; then
+			${ove_cmd2pathname["tmux"]:?} select-pane -t ${TMUX_PANE}
+		fi
 	else
 		ove_echo_cyan_error "${cmd}"
 		OVE_PAGER="${ove_cmd2pathname[tee]:?} /dev/null" ${cmd}
@@ -10982,6 +11025,11 @@ function ove_config_builtins_init {
 		export OVE_TMUX_PANE_HEADER="short"
 	fi
 
+	# OVE_TMUX_PANE_PER_WINDOW:int::run run-parallel:max number of tmux panes within one tmux window, no limit (=0)
+	if [ -z "${OVE_TMUX_PANE_PER_WINDOW+x}" ]; then
+		export OVE_TMUX_PANE_PER_WINDOW=0
+	fi
+
 	# OVE_LOCATE_LIFESPAN_TIME_IN_SEC:int::cd forowel locate locate-all refresh:local OVE workspace cache lifespan
 	if [ -z "${OVE_LOCATE_LIFESPAN_TIME_IN_SEC+x}" ]; then
 		export OVE_LOCATE_LIFESPAN_TIME_IN_SEC=86400
@@ -11071,7 +11119,7 @@ function ove_config_builtins_init {
 		export OVE_HASH_SIZE_THRESHOLD_IN_BYTES="104857600"
 	fi
 
-	# OVE_DISTROCHECK_STEPS:string:ove running stopped user verbose worktree:distrocheck distrocheck-parallel:list of steps to perform for distrocheck
+	# OVE_DISTROCHECK_STEPS:string:ove running ssh ssh_config stopped user verbose worktree:distrocheck distrocheck-parallel:list of steps to perform for distrocheck
 	if [ -z "${OVE_DISTROCHECK_STEPS+x}" ]; then
 		export OVE_DISTROCHECK_STEPS=""
 	fi
