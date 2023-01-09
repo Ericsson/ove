@@ -297,6 +297,13 @@ EOF
 		echo "error: unknown package manager for '${distro}'"
 		exit 1
 	fi
+
+	cat > "${OVE_TMP}/${tag}-packman" <<EOF
+#!/usr/bin/env sh
+set -x
+${package_manager} "\$@"
+EOF
+	run "lxc ${lxc_global_flags} file push --mode 0755 --uid 0 --gid 0 ${OVE_TMP}/${tag}-packman ${lxc_name}/sbin/packman"
 }
 
 function setup_sshd {
