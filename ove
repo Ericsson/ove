@@ -12565,6 +12565,7 @@ function ove-replicate {
 	local ps_local
 	local ps_remote
 	local q
+	local repos
 	local s
 
 	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
@@ -12632,6 +12633,12 @@ function ove-replicate {
 		fi
 	fi
 
+	if [ ${OVE_REPOS_FETCHED} -lt $(${ove_cmd2pathname["wc"]:?} -w <<<"${OVE_REPO_LIST}") ]; then
+		# shellcheck disable=SC2016
+		repos="$(ove-status | ${ove_cmd2pathname["awk"]:?} '{print $1}')"
+		repos=${repos//$'\n'/ }
+	fi
+
 	if ! ${ove_cmd2pathname["ssh"]:?} ${host} "
 		echo '${ps_local} ssh ${host}'
 		echo '${ps_remote} cd ${d}'
@@ -12647,8 +12654,8 @@ function ove-replicate {
 		echo '${ps_remote} source ove'
 		source ove || exit
 		if [ $# -eq 1 ]; then
-			echo '${ps_remote} ove fetch'
-			ove-fetch
+			echo '${ps_remote} ove fetch ${repos}'
+			ove-fetch ${repos}
 		fi
 		md5=\$(md5sum \$OVE_OWEL_DIR/revtab)
 		if [ -e \"${q_remote}\" ]; then

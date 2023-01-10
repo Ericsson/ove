@@ -1,7 +1,7 @@
 | Command       | Usage
 |-|-|
 | ag            | 3      |
-| awk           | 54     |
+| awk           | 55     |
 | basename      | 1      |
 | bash          | 17     |
 | cat           | 42     |
@@ -68,7 +68,7 @@
 | tsp           | 3      |
 | uname         | 4      |
 | uniq          | 7      |
-| wc            | 21     |
+| wc            | 22     |
 | whoami        | 1      |
 | xargs         | 36     |
 | yamllint      | 1      |
