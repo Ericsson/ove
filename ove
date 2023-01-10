@@ -12563,15 +12563,13 @@ function ove-worktree {
 function ove-replicate {
 	ove_entry || return
 
-	local base_dir
 	local d
 	local host
 	local now
 	local p
-	local ps_local
-	local ps_remote
 	local q
 	local repos
+	local run_setup
 	local s
 
 	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
@@ -12579,7 +12577,28 @@ function ove-replicate {
 		return 1
 	fi
 
+	host="$1"
+	if ! ${ove_cmd2pathname["ssh"]:?} -q ${host} exit 0; then
+		ove_echo_error_noprefix "'${host}' is not reachable via ssh"
+		return 1
+	fi
+
+	run_setup=0
 	if [ $# -eq 1 ]; then
+		d=$(${ove_cmd2pathname["ssh"]:?} ${host} mktemp -d)
+		run_setup=1
+	elif ! d=$(${ove_cmd2pathname["ssh"]:?} ${host} readlink -f $2); then
+		d="$2"
+		run_setup=1
+	elif ! ${ove_cmd2pathname["ssh"]:?} -q ${host} "[ -L ${d}/ove ] && [ -L ${d}/.owel ]"; then
+		if ! ${ove_cmd2pathname["ssh"]:?} ${host} mkdir -p $2; then
+			return 1
+		fi
+		d="$2"
+		run_setup=1
+	fi
+
+	if [ ${run_setup} -eq 1 ]; then
 		if [ ! -e "${OVE_OWEL_DIR}/SETUP" ]; then
 			ove_echo_error_noprefix "'${OVE_OWEL_DIR}/SETUP' not found"
 			return 1
@@ -12591,34 +12610,12 @@ function ove-replicate {
 		fi
 	fi
 
-	host="$1"
-	if ! ${ove_cmd2pathname["ssh"]:?} -q ${host} exit 0; then
-		ove_echo_error_noprefix "'${host}' is not reachable via ssh"
-		return 1
-	fi
-
-	# remote directory
-	if [ $# -eq 1 ]; then
-		d=$(${ove_cmd2pathname["ssh"]:?} ${host} mktemp -d)
-	else
-		d=$(${ove_cmd2pathname["ssh"]:?} ${host} readlink -f $2)
-		# sanity check
-		if ! ${ove_cmd2pathname["ssh"]:?} -q ${host} "[ -L ${d}/ove ] && [ -L ${d}/.owel ]"; then
-			ove_echo_error_noprefix "'${d}' is not a valid OVE workspace on '${host}'"
-			return 1
-		fi
-	fi
-
 	now=$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S')
-	ps_local="[${HOSTNAME}]$"
-	ps_remote="[${host}]$"
 
 	q="$(${ove_cmd2pathname["mktemp"]:?} -p ${OVE_OWEL_TMP_DIR}).tar.bz2"
-	echo "${ps_local} ove format-patch ${q}"
-	ove-format-patch ${q}
+	ove-format-patch ${q} &> /dev/null
 	if [ -s "${q}" ]; then
 		q_remote="${d}/${now}.tar.bz2"
-		echo "${ps_local} scp -q ${q} ${host}:${q_remote}"
 		if ! ${ove_cmd2pathname["scp"]:?} -q ${q} ${host}:${q_remote}; then
 			ove_echo_error_noprefix "not possible to transfer patch archive to '${host}'"
 			${ove_cmd2pathname["rm"]:?} ${q}
@@ -12627,11 +12624,9 @@ function ove-replicate {
 	fi
 
 	p=$(${ove_cmd2pathname["mktemp"]:?} -p ${OVE_OWEL_TMP_DIR})
-	echo "${ps_local} ove diff > ${p}"
 	ove-diff > ${p}
 	if [ -s "${p}" ]; then
 		p_remote="${d}/${now}.patch"
-		echo "${ps_local} scp -q ${p} ${host}:${p_remote}"
 		if ! ${ove_cmd2pathname["scp"]:?} -q ${p} ${host}:${p_remote}; then
 			ove_echo_error_noprefix "not possible to transfer patch file to '${host}'"
 			${ove_cmd2pathname["rm"]:?} ${p} ${q}
@@ -12646,54 +12641,39 @@ function ove-replicate {
 	fi
 
 	if ! ${ove_cmd2pathname["ssh"]:?} ${host} "
-		echo '${ps_local} ssh ${host}'
-		echo '${ps_remote} cd ${d}'
 		cd ${d}
-		if [ $# -eq 1 ]; then
-			echo '${ps_remote} ${s}'
+		if [ ${run_setup} -eq 1 ]; then
+			touch .ref
 			set -o pipefail
-			eval ${s} || exit
-			cd \$(${ove_cmd2pathname["find"]:?} \${PWD} -maxdepth 1 -mindepth 1 -type d)
-			echo '${ps_remote} pwd'
-			echo \${PWD}
+			if ! eval ${s} > /dev/null; then
+				exit 1
+			fi
+			cd \$(${ove_cmd2pathname["find"]:?} \${PWD} -maxdepth 1 -mindepth 1 -type d -newer .ref)
+			if [ -e ../.ref ]; then
+				rm ../.ref
+			fi
 		fi
-		echo '${ps_remote} source ove'
-		source ove || exit
-		if [ $# -eq 1 ]; then
-			echo '${ps_remote} ove fetch ${repos}'
-			ove-fetch ${repos}
+		source ove hush || exit
+		if [ ${run_setup} -eq 1 ]; then
+			ove-fetch ${repos} &> /dev/null
 		fi
 		md5=\$(md5sum \$OVE_OWEL_DIR/revtab)
 		if [ -e \"${q_remote}\" ]; then
-			echo '${ps_remote} ove am ${q_remote}'
-			ove-am ${q_remote}
+			ove-am ${q_remote} &> /dev/null
+			rm ${q_remote}
 		fi
 		if [ -e \"${p_remote}\" ]; then
-			echo '${ps_remote} ove apply ${p_remote}'
-			ove-apply ${p_remote}
+			ove-apply ${p_remote} &> /dev/null
+			rm ${p_remote}
 		fi
 
 		# one extra fetch if revtab was changed
 		if [ \"x\$md5\" != \"x\$(md5sum \$OVE_OWEL_DIR/revtab)\" ]; then
-			echo '${ps_remote} ove fetch'
-			ove-fetch
-		else
-			echo '${ps_remote} ove status'
-			ove-status
+			ove-fetch &> /dev/null
 		fi"; then
-		ove_echo_error_noprefix "trying to replicate OVE workspace on '${host}'"
-	else
-		echo
-		echo -n "OVE workspace has been replicated to '${host}:${d}'"
-		base_dir=$(${ove_cmd2pathname["ssh"]:?} ${host} find ${d} -maxdepth 2 -name .owel 2> /dev/null)
-		if [ "x${base_dir}" != "x" ]; then
-			echo ". Start a login shell on '${host}' and enter the replicated workspace:"
-			echo
-			base_dir=${base_dir%/*}
-			echo -e " ssh -t ${host} 'cd ${base_dir}; bash --login'"
-		else
-			echo
-		fi
+		return 1
+	elif [ $# -eq 1 ]; then
+		echo "${host}:${d}"
 	fi
 
 	if [ -e ${p} ]; then
