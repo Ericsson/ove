@@ -10,7 +10,7 @@
 | comm          | 14     |
 | cp            | 5      |
 | csplit        | 1      |
-| cut           | 62     |
+| cut           | 61     |
 | date          | 16     |
 | diff          | 1      |
 | dirname       | 5      |
@@ -23,7 +23,7 @@
 | fzf           | 5      |
 | getconf       | 2      |
 | git           | 73     |
-| grep          | 177    |
+| grep          | 176    |
 | head          | 20     |
 | inotifywait   | 3      |
 | ld            | 1      |
@@ -47,7 +47,7 @@
 | scp           | 2      |
 | script        | 4      |
 | scriptreplay  | 1      |
-| sed           | 86     |
+| sed           | 85     |
 | seq           | 11     |
 | setsid        | 1      |
 | sleep         | 12     |

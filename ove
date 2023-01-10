@@ -3160,19 +3160,22 @@ function ove_revtab_status_parse_one {
 		return
 	fi
 
-	branch_status=$(ove_repo_cmd "${repo_fullpath}" "${OVE_GIT_OPTIONS} branch" -v | ${ove_cmd2pathname["grep"]:?} '^\*')
+	branch_status=$(${ove_cmd2pathname["git"]:?} \
+		-C "${repo_fullpath}" \
+		branch \
+		-v \
+		--format="%(upstream:track,nobracket)" \
+		--list $(${ove_cmd2pathname["git"]:?} \
+			-C "${repo_fullpath}" \
+			rev-parse \
+			--abbrev-ref HEAD))
 	nbr_commits=0
-
-	# keep 'ahead X, behind Y'
-	branch_status=${branch_status#*[}
-	branch_status=${branch_status%%]*}
-
 	if [[ "${branch_status}" == *"${tense}"* ]]; then
 		if [ "${tense}" == "ahead" ]; then
 			branch_status=${branch_status%%,*}
 			nbr_commits=${branch_status##${tense} }
 		elif [ "${tense}" == "behind" ]; then
-			if ! ove_repo_cmd "${repo_fullpath}" "cat-file" -e "FETCH_HEAD" 2> /dev/null; then
+			if ! ${ove_cmd2pathname["git"]:?} -C "${repo_fullpath}" cat-file -e FETCH_HEAD 2> /dev/null; then
 				return 1
 			fi
 			nbr_commits=${branch_status##*${tense} }
@@ -3182,7 +3185,7 @@ function ove_revtab_status_parse_one {
 		fi
 
 		ove_echo_yellow_noprefix "$(ove_repo2shortpath $1): ${nbr_commits} new commit(s):"
-		ove_repo_cmd "${repo_fullpath}" "--no-pager log" ${git_args} -n ${nbr_commits} --format="${git_fmt}" | \
+		${ove_cmd2pathname["git"]:?} --no-pager -C "${repo_fullpath}" log ${git_args} -n ${nbr_commits} --format="${git_fmt}" | \
 			${ove_cmd2pathname["column"]:?} -t -s?
 		echo
 	fi
@@ -3344,7 +3347,9 @@ function ove_update_checksum_config {
 function ove_repos_fingerprint {
 	local md5
 
-	md5=$(ove-forall-parallel ${ove_cmd2pathname["stat"]:?} --format '%Y' .git/HEAD 2> /dev/null | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["md5sum"]:?})
+	md5=$(ove_revtab_forall_parallel ${ove_cmd2pathname["stat"]:?} --format '%Y' .git/HEAD 2> /dev/null | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
+		${ove_cmd2pathname["md5sum"]:?})
 	md5=${md5%% *}
 	echo "${md5}"
 }
@@ -7756,26 +7761,27 @@ function ove-am {
 # $1: behind|ahead
 function ove_any_repo {
 	# shellcheck disable=SC2016
-	if ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v | ${ove_cmd2pathname["grep"]:?} ^\*' | \
-		${ove_cmd2pathname["grep"]:?} -q "${1}.*]"; then
-		return 0
-	else
-		return 1
-	fi
+	ove_revtab_forall_parallel '${ove_cmd2pathname["git"]:?} branch -v --format="%(upstream:track,nobracket)" --list $(${ove_cmd2pathname["git"]:?} rev-parse --abbrev-ref HEAD 2> /dev/null)' |
+	while read -r line; do
+		if [[ ${line} == $1* ]]; then
+			exit 1
+		fi
+	done
+
+	return $((PIPESTATUS[1] ^= 1))
 }
 
 # $1: behind|ahead
 function ove_list_repositories {
-	local repos
-
-	# shellcheck disable=SC2016
-	repos=$(ove_revtab_forall_parallel 'ove_repo_cmd ${repo} "branch" -v | ${ove_cmd2pathname["sed"]:?} -e "s|^\*|${repo_basename}|g"' |
-		${ove_cmd2pathname["grep"]:?} "${1}.*]" |
-		${ove_cmd2pathname["cut"]:?} -d' ' -f1)
-
-	if [ "x${repos}" != "x" ]; then
-		printf "%s\n" ${repos}
-	fi
+	# shellcheck disable=SC2016,SC2030
+	ove_revtab_forall 'echo -n ${repo_basename}:; ${ove_cmd2pathname["git"]:?} "rev-parse" "--abbrev-ref" "HEAD" 2> /dev/null' | \
+	while IFS=: read -r repo revision; do
+		if [ "${revision}" = "HEAD" ]; then
+			continue
+		elif [[ $(${ove_cmd2pathname["git"]:?} -C $(ove_repo2fullpath "${repo}") "branch" "-v" "--list" "${revision}") == *"$1"* ]]; then
+			echo "${repo}"
+		fi
+	done
 }
 
 # pull:[git...]:git pull for all/specified repositories:CORE
@@ -10315,7 +10321,7 @@ function ove_bash_complete {
 			if [ "${COMP_WORDS[2]}" == "drop" ] ||
 				[ "${COMP_WORDS[2]}" == "pop" ] ||
 				[ "${COMP_WORDS[2]}" == "show" ]; then
-			wordlist=$(ove-forall-parallel "git stash list" | \
+			wordlist=$(ove_revtab_forall_parallel "git stash list" | \
 				${ove_cmd2pathname["grep"]:?} -o 'OVE@[0-9].*' | \
 				${ove_cmd2pathname["tr"]:?} '@' ' ' | \
 				${ove_cmd2pathname["xargs"]:?} -n1 | \
@@ -12388,7 +12394,7 @@ function ove_worktree_add {
 			ove_repo_cmd "$OVE_OWEL_DIR" worktree add -B ove-worktree-${worktree_base} -f ${worktree}/$OVE_OWEL_NAME $2
 		)
 	else
-		ove-forall "ove_repo_cmd \$repo worktree add -B ove-worktree-${worktree_base} -f ${worktree}/\$repo_basename &> /dev/null"
+		ove_revtab_forall "ove_repo_cmd \$repo worktree add -B ove-worktree-${worktree_base} -f ${worktree}/\$repo_basename &> /dev/null"
 	fi
 
 	(cd ${worktree} || return 1; [ -h ove ]   || ${ove_cmd2pathname["ln"]:?} -s ${OVE_SELF/$OVE_BASE_DIR\/} ove)
@@ -12433,7 +12439,7 @@ function ove_worktree_remove {
 			continue
 		fi
 
-		ove-forall "git worktree remove ${worktree}/\$repo_basename 2> /dev/null"
+		ove_revtab_forall "git worktree remove ${worktree}/\$repo_basename 2> /dev/null"
 		${ove_cmd2pathname["rm"]:?} -rf ${worktree:?}/
 		${ove_cmd2pathname["rmdir"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${worktree})
 		worktree_base="${worktree##*/}"
@@ -12534,7 +12540,7 @@ function ove-worktree {
 		shift
 		ove_worktree_status "$@"
 	elif [ $# -eq 1 ] && [ "x$1" = "xprune" ]; then
-		ove-forall 'git worktree prune -v'
+		ove_revtab_forall 'git worktree prune -v'
 	elif [ $# -ge 2 ] && [ "x$1" = "xremove" ]; then
 		shift
 		if ! ove_worktree_remove "$@"; then
