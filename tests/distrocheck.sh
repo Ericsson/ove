@@ -366,7 +366,6 @@ function update_ssh_config {
 	cat >> "${HOME}/.ssh/config" <<EOF
 Host ${lxc_name}
 	HostName ${lxc_ip}
-	ProxyCommand ssh -W %h:%p ${HOSTNAME}
 	StrictHostKeyChecking no
 EOF
 	if [[ ( ${OVE_DISTROCHECK_STEPS} == *ssh* ) && \
