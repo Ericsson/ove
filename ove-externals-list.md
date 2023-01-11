@@ -1,7 +1,7 @@
 | Command       | Usage
 |-|-|
 | ag            | 3      |
-| awk           | 55     |
+| awk           | 54     |
 | basename      | 1      |
 | bash          | 17     |
 | cat           | 42     |
@@ -10,7 +10,7 @@
 | comm          | 14     |
 | cp            | 5      |
 | csplit        | 1      |
-| cut           | 61     |
+| cut           | 62     |
 | date          | 16     |
 | diff          | 1      |
 | dirname       | 5      |
@@ -22,8 +22,8 @@
 | fold          | 2      |
 | fzf           | 5      |
 | getconf       | 2      |
-| git           | 73     |
-| grep          | 176    |
+| git           | 80     |
+| grep          | 173    |
 | head          | 20     |
 | inotifywait   | 3      |
 | ld            | 1      |
@@ -47,7 +47,7 @@
 | scp           | 2      |
 | script        | 4      |
 | scriptreplay  | 1      |
-| sed           | 85     |
+| sed           | 83     |
 | seq           | 11     |
 | setsid        | 1      |
 | sleep         | 12     |

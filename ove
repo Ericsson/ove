@@ -2368,14 +2368,86 @@ function ove-fzf {
 
 # not really a complete YAML parser
 function ove_parse_yaml {
+	local a
+	local col
+	local i
+	local key
+	local key_col
 	local line
+	local project
+	local v
+	local val
+	local val_col
 
-	# shellcheck disable=SC2016
-	while IFS=: read -r line; do
-		${ove_cmd2pathname["sed"]:?} -e 's/: /:/g' -e "s/\([a-zA-Z0-9_]\+\):/\" ove_${line%%:*}_\1=\"/g" -e "s/$/\"/g" -e "s/^\" //g" -e "s/ \"/\"/g" <<<"${line#*: }" &
-	done < <(${ove_cmd2pathname["sed"]:?} -e '1{/^---$/d;}' -e 's/^\([a-zA-Z0-9_]\+:$\)/\n\1/g' -e 's/#.*//g' -e 's,^//.*,,g' -e '/^$/d' $1 | \
-		${ove_cmd2pathname["awk"]:?} NF=NF RS= OFS=' ')
-	wait
+	i=0
+	while IFS= read -r line; do
+		((i++))
+		if [ ${i} -eq 1 ] && [ "${line}" = "---" ]; then
+			continue
+		elif [ "${line}" = "---" ]; then
+			echo "error: format error: document start at wrong position in '$1' at line #${i} '${line}'" 1>&2
+			return 1
+		elif [[ ${line:0:1} == \#* ]] || [[ ${line:0:1} == '' ]] || [[ ${line::2} == "//" ]]; then
+			continue
+		elif [ "${line:0:1}" != " " ]; then
+			if [ "${line: -1}" != ":" ]; then
+				echo "error: format error: project name should end with a colon in '$1' at line #${i} '${line}'" 1>&2
+				return 1
+			fi
+			project=${line::-1}
+			unset keys
+			declare -A keys
+			col=1
+		elif ! a="${line//[![:blank:]]/}"; then
+			return 1
+		elif ! col=${#a}; then
+			return 1
+		elif [[ "${line}" == *": "* ]]; then
+			echo "error: format error: colon followed by a space is not allowed in '$1' at line #${i} '${line}'" 1>&2
+			return 1
+		elif [ "${line: -1}" = ":" ]; then
+			if [ "${key_col}" != "" ] && [ ${key_col} -ne ${col} ]; then
+				echo "error: format error: a key at wrong place? in '$1' at line #${i} '${line}'" 1>&2
+				return 1
+			elif [ "$project" = "" ]; then
+				echo "error: format error: a key without a project in '$1' at line #${i} '${line}'" 1>&2
+				return 1
+			fi
+
+			key="${line//[[:blank:]]/}"
+			key="${key::-1}"
+			if ! ove_read_config_validate_name ${key}; then
+				echo "error: format error: key name '${key}' is not allowed in '$1' at line #${i} '${line}'" 1>&2
+				return 1
+			elif  [ "${keys["${key}"]+isset}" ]; then
+				echo "error: format error: duplicate key '${key}' in '$1' at line #${i} '${line}'" 1>&2
+				return 1
+			fi
+			keys["${key}"]=1
+			key_col=${col}
+		elif [ "${key_col}" = "" ]; then
+			echo "error: format error: no key found in '$1' at line #${i} '${line}'" 1>&2
+			return 1
+		elif [ ${col} -le ${key_col} ]; then
+			echo "error: format error: check indentation? in '$1' at line #${i} '${line}'" 1>&2
+			return 1
+		elif [ "${val_col}" != "" ] && [ ${val_col} -ne ${col} ]; then
+			echo "error: format error: check indentation? in '$1' at line #${i} '${line}'" 1>&2
+			return 1
+		else
+			val=${line#"${line%%[![:blank:]]*}"}
+			val_col=${col}
+			for v in ${val}; do
+				if [ -v ove_YaMl_${project}_${key} ]; then
+					eval "ove_YaMl_${project}_${key}+=' ${v}'"
+				else
+					eval "ove_YaMl_${project}_${key}+='${v}'"
+				fi
+			done
+		fi
+	done < $1
+
+	return $?
 }
 
 function ove_project_commands_list {
@@ -2421,6 +2493,8 @@ function ove_projects_init {
 	local os_version
 	local projects
 	local tmp_var
+	local t
+	local v
 
 	unset ove_projects_name
 	unset ove_projects_deps
@@ -2435,8 +2509,7 @@ function ove_projects_init {
 		return
 	fi
 
-	if ! eval $(ove_parse_yaml "${OVE_OWEL_DIR}/projs") 2> /dev/null; then
-		ove_echo_error_noprefix "possible format error(s) in '${OVE_OWEL_DIR}/projs'"
+	if ! ove_parse_yaml "${OVE_OWEL_DIR}/projs"; then
 		if command -v yamllint > /dev/null; then
 			${ove_cmd2pathname["yamllint"]:?} "${OVE_OWEL_DIR}/projs"
 		fi
@@ -2566,12 +2639,12 @@ function ove_projects_init {
 		ove_projects_name2index[${name}]=${i}
 
 		# deps
-		tmp_var="ove_${name}_deps"
+		tmp_var="ove_YaMl_${name}_deps"
 		ove_projects_deps[${i}]=${!tmp_var}
 		unset ${tmp_var}
 
 		# path
-		tmp_var="ove_${name}_path"
+		tmp_var="ove_YaMl_${name}_path"
 		if [ "${!tmp_var:0:1}" = "/" ]; then
 			ove_projects_path[${i}]="${!tmp_var}"
 		else
@@ -2580,12 +2653,12 @@ function ove_projects_init {
 		unset ${tmp_var}
 
 		# needs
-		tmp_var="ove_${name}_needs"
+		tmp_var="ove_YaMl_${name}_needs"
 		ove_projects_needs[${i}]=${!tmp_var}
 		unset ${tmp_var}
 
 		# tags
-		tmp_var="ove_${name}_tags"
+		tmp_var="ove_YaMl_${name}_tags"
 		for t in ${!tmp_var};  do
 			if [ "x${ove_projects_tags[${t}]}" = "x" ]; then
 				ove_projects_tags[${t}]="${name}"
@@ -2598,7 +2671,7 @@ function ove_projects_init {
 		# distro needs
 		needs_distro_version_found=0
 		for m in ${OVE_OS_ID} ${OVE_OS_ID_LIKE}; do
-			tmp_var="ove_${name}_needs_${m//-/_}_${os_version}"
+			tmp_var="ove_YaMl_${name}_needs_${m//-/_}_${os_version}"
 			if [ "${!tmp_var}" != "" ]; then
 				needs_distro_version_found=1
 				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
@@ -2607,7 +2680,7 @@ function ove_projects_init {
 					ove_projects_needs[${i}]+=" ${!tmp_var}"
 				fi
 				unset ${tmp_var}
-			elif [ $needs_distro_version_found -eq 0 ] && tmp_var="ove_${name}_needs_${m//-/_}" && [ "${!tmp_var}" != "" ]; then
+			elif [ $needs_distro_version_found -eq 0 ] && tmp_var="ove_YaMl_${name}_needs_${m//-/_}" && [ "${!tmp_var}" != "" ]; then
 				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
 					ove_projects_needs[${i}]="${!tmp_var}"
 				else
@@ -2618,7 +2691,7 @@ function ove_projects_init {
 		done
 
 		# version
-		tmp_var="ove_${name}_version"
+		tmp_var="ove_YaMl_${name}_version"
 		ove_projects_version[${i}]=${!tmp_var}
 		unset ${tmp_var}
 
@@ -2627,9 +2700,16 @@ function ove_projects_init {
 
 	# unset any distro needs laying around
 	unset $(set -o posix; set | \
-		${ove_cmd2pathname["grep"]:?} '^ove_.*_needs.*=' | \
-		${ove_cmd2pathname["grep"]:?} -v '^ove_projects_needs=' | \
+		${ove_cmd2pathname["grep"]:?} '^ove_YaMl_.*_needs.*=' | \
 		${ove_cmd2pathname["cut"]:?} -d= -f1)
+
+	# re-define any leftovers
+	for v in $(set -o posix; set | \
+		${ove_cmd2pathname["grep"]:?} '^ove_YaMl_.*' | \
+		${ove_cmd2pathname["cut"]:?} -d= -f1); do
+		eval ${v/_YaMl}=${!v}
+		unset ${v}
+	done
 
 	if ! ove_validate_projs; then
 		return 1
@@ -6409,6 +6489,10 @@ function ove_validate_projs {
 		name="${ove_projects_name[${i}]}"
 		if [ "${ove_projects_deps[${i}]}" != "" ]; then
 			for d in ${ove_projects_deps[${i}]}; do
+				if [ "${ove_projects_name[${i}]}" = "${d}" ]; then
+					ove_echo_error_noprefix "circular dependency in '${OVE_OWEL_DIR}/projs' detected. Project '${d}' is dependent on '${d}'."
+					return 1
+				fi
 				echo "${ove_projects_name[${i}]} ${d}"
 			done
 		fi
@@ -7939,6 +8023,7 @@ function ove-apply {
 function ove_patch_one_repo {
 	local p
 	local repo
+	local repo_s
 	local ret=0
 	local repo_shortpath
 
@@ -12781,9 +12866,9 @@ function ove_unittest_preparations {
 	else
 		for a in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_projs}); do
 			echo "p${a}:" >> ${unittest_dir}/git-top/projs
-			echo "  path: .owel" >> ${unittest_dir}/git-top/projs
+			echo -e "  path:\n    .owel" >> ${unittest_dir}/git-top/projs
 			if [ ${a} -lt ${nbr_of_projs} ]; then
-				echo "  deps: p$((a+1))" >> ${unittest_dir}/git-top/projs
+				echo -e "  deps:\n    p$((a+1))" >> ${unittest_dir}/git-top/projs
 			fi
 			echo >> ${unittest_dir}/git-top/projs
 			${ove_cmd2pathname["mkdir"]:?} -p ${unittest_dir}/git-top/projects/p${a}
@@ -12799,7 +12884,7 @@ function ove_unittest_preparations {
 					return 1
 				fi
 				# add l1 to 'projs'
-				echo -e "l${a}:\n  path: .owel\n\n" >> ${unittest_dir}/git-top/projs
+				echo -e "l${a}:\n  path:\n    .owel\n\n" >> ${unittest_dir}/git-top/projs
 			fi
 		done
 	fi
