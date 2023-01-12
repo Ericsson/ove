@@ -12726,9 +12726,9 @@ function ove-replicate {
 	fi
 
 	if ! ${ove_cmd2pathname["ssh"]:?} ${host} "
-		cd ${d}
+		cd ${d} || exit
 		if [ ${run_setup} -eq 1 ]; then
-			touch .ref
+			touch .ref || exit
 			set -o pipefail
 			if ! eval ${s} > /dev/null; then
 				exit 1
