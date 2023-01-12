@@ -10637,11 +10637,14 @@ function ove_bash_complete {
 				_known_hosts_real -a -- "$cur"
 				return
 			fi
+		elif [ ${size} -eq 3 ] && [ "${COMP_WORDS[2]}" = "localhost" ]; then
+			wordlist=$(ove_list_workspaces_full)
 		elif [ ${size} -eq 3 ]; then
-			wordlist=$(${ove_cmd2pathname["ssh"]:?} ${COMP_WORDS[2]} "command -v locate > /dev/null && ${ove_cmd2pathname["locate"]:?} .owel || \
-				${ove_cmd2pathname["find"]:?} \${PWD} -maxdepth 2 -name .owel" | \
+			wordlist=$(${ove_cmd2pathname["ssh"]:?} ${COMP_WORDS[2]} "command -v locate > /dev/null && locate .owel || find \${PWD} -maxdepth 2 -name .owel" | \
 				${ove_cmd2pathname["sed"]:?} -e 's|/.owel$||g' | \
 				${ove_cmd2pathname["xargs"]:?})
+		elif [ ${size} -eq 4 ]; then
+			wordlist="force save"
 		fi
 	elif [ "${subcommand}" == "tail-lastlog" ] ||
 		[ "${subcommand}" == "less-lastlog" ]; then
@@ -12644,12 +12647,15 @@ function ove-worktree {
 	return 0
 }
 
-# replicate:host [path]:replicate OVE workspace on 'host':UTIL
+# replicate:host [path][force|save [msg]]:replicate OVE workspace on 'host'
 function ove-replicate {
 	ove_entry || return
 
 	local d
 	local host
+	local md5
+	local n
+	local n_base
 	local now
 	local p
 	local q
@@ -12658,30 +12664,47 @@ function ove-replicate {
 	local run_setup
 	local s
 
-	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
+	if [ $# -eq 0 ] || [ $# -gt 4 ]; then
 		ove_command_usage
 		return 1
 	fi
 
 	host="$1"
-	if ! ${ove_cmd2pathname["ssh"]:?} -q ${host} exit 0; then
-		ove_echo_error_noprefix "'${host}' is not reachable via ssh"
-		return 1
-	fi
-
-	run_setup=0
-	if [ $# -eq 1 ]; then
-		d=$(${ove_cmd2pathname["ssh"]:?} ${host} mktemp -d)
-		run_setup=1
-	elif ! d=$(${ove_cmd2pathname["ssh"]:?} ${host} readlink -f $2); then
-		d="$2"
-		run_setup=1
-	elif ! ${ove_cmd2pathname["ssh"]:?} -q ${host} "[ -L ${d}/ove ] && [ -L ${d}/.owel ]"; then
-		if ! ${ove_cmd2pathname["ssh"]:?} ${host} mkdir -p $2; then
+	if [ "${host}" = "localhost" ]; then
+		run_setup=0
+		if [ $# -eq 1 ]; then
+			d=$(${ove_cmd2pathname["mktemp"]:?} -d)
+			run_setup=1
+		elif ! d=$(${ove_cmd2pathname["readlink"]:?} -f $2); then
+			d="$2"
+			run_setup=1
+		elif ! [ -L ${d}/ove ] && ! [ -L ${d}/.owel ]; then
+			if ! ${ove_cmd2pathname["mkdir"]:?} -p $2; then
+				return 1
+			fi
+			d="$2"
+			run_setup=1
+		fi
+	else
+		if ! ${ove_cmd2pathname["ssh"]:?} -q ${host} exit 0; then
+			ove_echo_error_noprefix "'${host}' is not reachable via ssh"
 			return 1
 		fi
-		d="$2"
-		run_setup=1
+
+		run_setup=0
+		if [ $# -eq 1 ]; then
+			d=$(${ove_cmd2pathname["ssh"]:?} ${host} mktemp -d)
+			run_setup=1
+		elif ! d=$(${ove_cmd2pathname["ssh"]:?} ${host} readlink -f $2); then
+			d="$2"
+			run_setup=1
+		elif ! ${ove_cmd2pathname["ssh"]:?} -q ${host} "[ -L ${d}/ove ] && [ -L ${d}/.owel ]"; then
+			if ! ${ove_cmd2pathname["ssh"]:?} ${host} mkdir -p $2; then
+				return 1
+			fi
+			d="$2"
+			run_setup=1
+		fi
 	fi
 
 	if [ ${run_setup} -eq 1 ]; then
@@ -12701,7 +12724,7 @@ function ove-replicate {
 	ove-format-patch ${q} &> /dev/null
 	if [ -s "${q}" ]; then
 		q_remote="${d}/${now}.tar.bz2"
-		if ! ${ove_cmd2pathname["scp"]:?} -q ${q} ${host}:${q_remote}; then
+		if [ "${host}" != "localhost" ] && ! ${ove_cmd2pathname["scp"]:?} -q ${q} ${host}:${q_remote}; then
 			ove_echo_error_noprefix "not possible to scp patch archive to '${host}'"
 			${ove_cmd2pathname["rm"]:?} ${q}
 			return 1
@@ -12712,7 +12735,7 @@ function ove-replicate {
 	ove-diff > ${p}
 	if [ -s "${p}" ]; then
 		p_remote="${d}/${now}.patch"
-		if ! ${ove_cmd2pathname["scp"]:?} -q ${p} ${host}:${p_remote}; then
+		if [ "${host}" != "localhost" ] && ! ${ove_cmd2pathname["scp"]:?} -q ${p} ${host}:${p_remote}; then
 			ove_echo_error_noprefix "not possible to scp patch file to '${host}'"
 			${ove_cmd2pathname["rm"]:?} ${p} ${q} 2> /dev/null
 			return 1
@@ -12725,7 +12748,62 @@ function ove-replicate {
 		repos=${repos//$'\n'/ }
 	fi
 
-	if ! ${ove_cmd2pathname["ssh"]:?} ${host} "
+	if [ "${host}" = "localhost" ]; then
+		cd ${d} || return
+		if [ ${run_setup} -eq 1 ]; then
+			${ove_cmd2pathname["touch"]:?} .ref || return
+			set -o pipefail
+			if ! eval ${s} > /dev/null; then
+				return 1
+			fi
+			n=$(${ove_cmd2pathname["find"]:?} ${PWD} -maxdepth 1 -mindepth 1 -type d -newer .ref)
+			n_base=${n##*/}
+			cd $n || return
+			if [ -e ../.ref ]; then
+				${ove_cmd2pathname["rm"]:?} ../.ref
+			fi
+		fi
+		source ove hush || return
+		if [ ${run_setup} -eq 1 ]; then
+			ove-fetch ${repos} &> /dev/null
+		fi
+
+		if [ $# -eq 3 ] && [ "$3" = "force" ]; then
+			ove-stash &> /dev/null
+			ove-stash drop &> /dev/null
+			ove-reset-ahead &> /dev/null
+		elif [ $# -ge 3 ] && [ "$3" = "save" ]; then
+			if [ $# -eq 4 ]; then
+				ove-stash push "$4" &> /dev/null
+			else
+				ove-stash &> /dev/null
+			fi
+			ove-format-patch &> /dev/null
+			ove-reset-ahead &> /dev/null
+		fi
+
+		md5=$(${ove_cmd2pathname["md5sum"]:?} $OVE_OWEL_DIR/revtab)
+		if [ -e "${q}" ]; then
+			ove-am ${q} &> /dev/null
+			rm ${q}
+		fi
+
+		if [ -e "${p}" ]; then
+			ove-apply ${p} &> /dev/null
+			rm ${p}
+		fi
+
+		# one extra fetch if revtab was changed
+		if [ "x$md5" != "x$(${ove_cmd2pathname["md5sum"]:?} $OVE_OWEL_DIR/revtab)" ]; then
+			ove-fetch &> /dev/null
+		fi
+
+		if [ ${run_setup} -eq 1 ]; then
+			cd .. || return
+			${ove_cmd2pathname["mv"]:?} ${n_base}/{.[!.],}* . || return
+			${ove_cmd2pathname["rmdir"]:?} ${n_base} || return
+		fi
+	elif ! ${ove_cmd2pathname["ssh"]:?} ${host} "
 		cd ${d} || exit
 		if [ ${run_setup} -eq 1 ]; then
 			touch .ref || exit
@@ -12733,7 +12811,9 @@ function ove-replicate {
 			if ! eval ${s} > /dev/null; then
 				exit 1
 			fi
-			cd \$(${ove_cmd2pathname["find"]:?} \${PWD} -maxdepth 1 -mindepth 1 -type d -newer .ref)
+			n=\$(\find \${PWD} -maxdepth 1 -mindepth 1 -type d -newer .ref)
+			n_base=\${n##*/}
+			cd \${n} || exit
 			if [ -e ../.ref ]; then
 				rm ../.ref
 			fi
@@ -12741,6 +12821,19 @@ function ove-replicate {
 		source ove hush || exit
 		if [ ${run_setup} -eq 1 ]; then
 			ove-fetch ${repos} &> /dev/null
+		fi
+		if [ $# -eq 3 ] && [ $3 = force ]; then
+			ove-stash
+			ove-stash drop &> /dev/null
+			ove-reset-ahead &> /dev/null
+		elif [ $# -ge 3 ] && [ $3 = save ]; then
+			if [ $# -eq 4 ]; then
+				ove-stash push $4 &> /dev/null
+			else
+				ove-stash &> /dev/null
+			fi
+			ove-format-patch &> /dev/null
+			ove-reset-ahead &> /dev/null
 		fi
 		md5=\$(md5sum \$OVE_OWEL_DIR/revtab)
 		if [ -e \"${q_remote}\" ]; then
@@ -12755,6 +12848,12 @@ function ove-replicate {
 		# one extra fetch if revtab was changed
 		if [ \"x\$md5\" != \"x\$(md5sum \$OVE_OWEL_DIR/revtab)\" ]; then
 			ove-fetch &> /dev/null
+		fi
+
+		if [ ${run_setup} -eq 1 ]; then
+			cd .. || exit
+			mv \${n_base}/{.[!.],}* . || exit
+			rmdir \${n_base} || exit
 		fi"; then
 		ret=1
 	elif [ $# -eq 1 ]; then
