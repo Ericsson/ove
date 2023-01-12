@@ -12654,6 +12654,7 @@ function ove-replicate {
 	local p
 	local q
 	local repos
+	local ret=0
 	local run_setup
 	local s
 
@@ -12696,13 +12697,12 @@ function ove-replicate {
 	fi
 
 	now=$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S')
-
-	q="$(${ove_cmd2pathname["mktemp"]:?} -p ${OVE_OWEL_TMP_DIR}).tar.bz2"
+	q="$(${ove_cmd2pathname["mktemp"]:?} -u -p ${OVE_OWEL_TMP_DIR}).tar.bz2"
 	ove-format-patch ${q} &> /dev/null
 	if [ -s "${q}" ]; then
 		q_remote="${d}/${now}.tar.bz2"
 		if ! ${ove_cmd2pathname["scp"]:?} -q ${q} ${host}:${q_remote}; then
-			ove_echo_error_noprefix "not possible to transfer patch archive to '${host}'"
+			ove_echo_error_noprefix "not possible to scp patch archive to '${host}'"
 			${ove_cmd2pathname["rm"]:?} ${q}
 			return 1
 		fi
@@ -12713,8 +12713,8 @@ function ove-replicate {
 	if [ -s "${p}" ]; then
 		p_remote="${d}/${now}.patch"
 		if ! ${ove_cmd2pathname["scp"]:?} -q ${p} ${host}:${p_remote}; then
-			ove_echo_error_noprefix "not possible to transfer patch file to '${host}'"
-			${ove_cmd2pathname["rm"]:?} ${p} ${q}
+			ove_echo_error_noprefix "not possible to scp patch file to '${host}'"
+			${ove_cmd2pathname["rm"]:?} ${p} ${q} 2> /dev/null
 			return 1
 		fi
 	fi
@@ -12756,7 +12756,7 @@ function ove-replicate {
 		if [ \"x\$md5\" != \"x\$(md5sum \$OVE_OWEL_DIR/revtab)\" ]; then
 			ove-fetch &> /dev/null
 		fi"; then
-		return 1
+		ret=1
 	elif [ $# -eq 1 ]; then
 		echo "${host}:${d}"
 	fi
@@ -12768,7 +12768,7 @@ function ove-replicate {
 		${ove_cmd2pathname["rm"]:?} ${q}
 	fi
 
-	return 0
+	return ${ret}
 }
 
 function ove_unittest_preparations {
