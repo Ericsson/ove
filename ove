@@ -8590,6 +8590,20 @@ $ ove distrocheck test.sh ubuntu/22.04/amd64
 $ export OVE_DISTROCHECK_STEPS="ove running"
 $ ove distrocheck-parallel ag alpine/edge/amd64 fedora/37/amd64 ubuntu/22.04/amd64
 
+# replicate
+#
+# replicate OVE workspace to a tmp directory on localhost
+$ ove replicate localhost
+
+# replicate OVE workspace to a specific directory on remotehost (ssh)
+$ ove replicate remotehost /var/tmp/backup
+
+# keep replicated workspace in sync with OVE workspace. Save any changes in the replicated workspace though "ove stash" and/or "ove format-patch".
+$ ove replicate host /var/tmp/backup save
+
+# keep replicated workspace in sync (forced) with OVE workspace. USE WITH CARE!
+$ ove replicate host /var/tmp/backup force
+
 $(ove_echo_cyan_noprefix "configuration")
 -------------
 # OVE tries to keep all repos in-sync with whatever is stated in the '\${OVE_OWEL_DIR}/revtab' file.
