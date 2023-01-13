@@ -23,22 +23,22 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-i=0
+__i=0
 case $- in
-	*i*) i=1;;
+	*i*) __i=1;;
 esac
-if [ "${i}" -eq 1 ]; then
+if [ "${__i}" -eq 1 ]; then
 	# shellcheck disable=SC2009
-	p=$(\ps | \grep -w $$ | \grep -v grep)
-	if [ "${p#*bash}" = "$p" ]; then
+	__p=$(\ps | \grep -w $$ | \grep -v grep)
+	if [ "${__p#*bash}" = "$__p" ]; then
 		echo 'error: run this in bash'
-		unset i
-		unset p
+		unset __i
+		unset __p
 		return 1
 	fi
-	unset p
+	unset __p
 fi
-unset i
+unset __i
 
 function ove_version_check_early {
 	local ret=0
