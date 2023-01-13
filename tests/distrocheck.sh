@@ -322,6 +322,7 @@ function setup_sshd {
 if ! sed -i \
 	-e 's,.*PermitRootLogin.*,PermitRootLogin yes,g' \
 	-e 's,.*PermitUserEnvironment.*,PermitUserEnvironment yes,g' \
+	-e 's,.*AllowAgentForwarding.*,AllowAgentForwarding yes,g' \
 	-e 's,.*PasswordAuthentication.*,PasswordAuthentication yes,g' /etc/ssh/sshd_config; then
 	exit 1
 fi
