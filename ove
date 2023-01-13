@@ -12789,10 +12789,11 @@ function ove-replicate {
 		elif [ $# -ge 3 ] && [ "$3" = "save" ]; then
 			if [ $# -eq 4 ]; then
 				ove-stash push "$4" &> /dev/null
+				ove-format-patch "$4" &> /dev/null
 			else
 				ove-stash &> /dev/null
+				ove-format-patch &> /dev/null
 			fi
-			ove-format-patch &> /dev/null
 			ove-reset-ahead &> /dev/null
 		fi
 
@@ -12843,10 +12844,11 @@ function ove-replicate {
 		elif [ $# -ge 3 ] && [ $3 = save ]; then
 			if [ $# -eq 4 ]; then
 				ove-stash push $4 &> /dev/null
+				ove-format-patch $4 &> /dev/null
 			else
 				ove-stash &> /dev/null
+				ove-format-patch &> /dev/null
 			fi
-			ove-format-patch &> /dev/null
 			ove-reset-ahead &> /dev/null
 		fi
 		md5=\$(md5sum \$OVE_OWEL_DIR/revtab)
