@@ -12856,10 +12856,14 @@ function ove-replicate {
 			rmdir \${n_base} || exit
 		fi"; then
 		ret=1
-	elif [ $# -eq 1 ]; then
-		echo "${host}:${d}"
 	fi
 
+	if [ $# -eq 1 ]; then
+		if [ "${host}" != "localhost" ]; then
+			echo -n "${host}:"
+		fi
+		echo "${d}"
+	fi
 	if [ -e ${p} ]; then
 		${ove_cmd2pathname["rm"]:?} ${p}
 	fi
