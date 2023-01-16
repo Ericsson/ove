@@ -2368,7 +2368,6 @@ function ove-fzf {
 
 # not really a complete YAML parser
 function ove_parse_yaml {
-	local a
 	local col
 	local i
 	local key
@@ -2398,9 +2397,9 @@ function ove_parse_yaml {
 			unset keys
 			declare -A keys
 			col=1
-		elif ! a="${line//[![:blank:]]/}"; then
+		elif ! [[ ${line} =~ ^[[:space:]]+ ]]; then
 			return 1
-		elif ! col=${#a}; then
+		elif ! col=${#BASH_REMATCH[0]}; then
 			return 1
 		elif [[ "${line}" == *": "* ]]; then
 			echo "error: format error: colon followed by a space is not allowed in '$1' at line #${i} '${line}'" 1>&2
@@ -2429,14 +2428,16 @@ function ove_parse_yaml {
 			echo "error: format error: no key found in '$1' at line #${i} '${line}'" 1>&2
 			return 1
 		elif [ ${col} -le ${key_col} ]; then
-			echo "error: format error: check indentation? in '$1' at line #${i} '${line}'" 1>&2
+			echo "error: format error: weird indentation in '$1' at line #${i} '${line}'" 1>&2
 			return 1
 		elif [ "${val_col}" != "" ] && [ ${val_col} -ne ${col} ]; then
-			echo "error: format error: check indentation? in '$1' at line #${i} '${line}'" 1>&2
+			echo "error: format error: check indentation in '$1' at line #${i} '${line}'" 1>&2
 			return 1
 		else
+			if [ "x${val_col}" = "x" ]; then
+				val_col=${col}
+			fi
 			val=${line#"${line%%[![:blank:]]*}"}
-			val_col=${col}
 			for v in ${val}; do
 				if [ -v ove_YaMl_${project}_${key} ]; then
 					eval "ove_YaMl_${project}_${key}+=' ${v}'"
@@ -2707,7 +2708,7 @@ function ove_projects_init {
 	for v in $(set -o posix; set | \
 		${ove_cmd2pathname["grep"]:?} '^ove_YaMl_.*' | \
 		${ove_cmd2pathname["cut"]:?} -d= -f1); do
-		eval ${v/_YaMl}=${!v}
+		eval ${v/_YaMl}='${!v}'
 		unset ${v}
 	done
 
