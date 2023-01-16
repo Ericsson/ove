@@ -452,18 +452,22 @@ function main {
 		tag="$(date '+%Y%m%d-%H%M%S%N')"
 	fi
 
-	lxc_name="${OVE_USER}-${tag}-${distro}"
-	if [ "x${OVE_DISTROCHECK_CONTAINER_PREFIX}" != "x" ]; then
-		lxc_name="${OVE_DISTROCHECK_CONTAINER_PREFIX}-${lxc_name}"
-	fi
+	if [ "x${OVE_DISTROCHECK_CONTAINER_NAME}" != "x" ]; then
+		lxc_name="${OVE_DISTROCHECK_CONTAINER_NAME}"
+	else
+		lxc_name="${OVE_USER}-${tag}-${distro}"
+		if [ "x${OVE_DISTROCHECK_CONTAINER_PREFIX}" != "x" ]; then
+			lxc_name="${OVE_DISTROCHECK_CONTAINER_PREFIX}-${lxc_name}"
+		fi
 
-	# replace slashes and dots
-	lxc_name="${lxc_name//\//-}"
-	lxc_name="${lxc_name//./-}"
+		# replace slashes and dots
+		lxc_name="${lxc_name//\//-}"
+		lxc_name="${lxc_name//./-}"
 
-	if [ ${#lxc_name} -gt 63 ]; then
-		_echo "info: lxc name '${lxc_name}' tuncated"
-		lxc_name=${lxc_name:0:63}
+		if [ ${#lxc_name} -gt 63 ]; then
+			_echo "info: lxc name '${lxc_name}' tuncated"
+			lxc_name=${lxc_name:0:63}
+		fi
 	fi
 
 	# ove, user and lxc cluster? => create container on localhost

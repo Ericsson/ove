@@ -11232,6 +11232,11 @@ function ove_config_builtins_init {
 		export OVE_DISTROCHECK_STEPS=""
 	fi
 
+	# OVE_DISTROCHECK_CONTAINER_NAME:string::distrocheck distrocheck-parallel:set container name
+	if [ -z "${OVE_DISTROCHECK_CONTAINER_NAME+x}" ]; then
+		export OVE_DISTROCHECK_CONTAINER_NAME=""
+	fi
+
 	# OVE_DISTROCHECK_CONTAINER_PREFIX:string::distrocheck distrocheck-parallel:prefix container name
 	if [ -z "${OVE_DISTROCHECK_CONTAINER_PREFIX+x}" ]; then
 		export OVE_DISTROCHECK_CONTAINER_PREFIX=""
@@ -14075,6 +14080,10 @@ function ove-distrocheck-parallel {
 
 	if [ -v OVE_DISTROCHECK_CONTAINER_PREFIX ]; then
 		env+=" OVE_DISTROCHECK_CONTAINER_PREFIX=${OVE_DISTROCHECK_CONTAINER_PREFIX}"
+	fi
+
+	if [ -v OVE_DISTROCHECK_CONTAINER_NAME ]; then
+		env+=" OVE_DISTROCHECK_CONTAINER_NAME=${OVE_DISTROCHECK_CONTAINER_NAME}"
 	fi
 
 	if [ -v OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS ]; then
