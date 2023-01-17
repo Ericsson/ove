@@ -23,6 +23,7 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+ephemeral=0
 lxc_ip=""
 lxc_name=""
 lxc_location=""
@@ -496,6 +497,7 @@ function main {
 	# ephemeral container?
 	if [[ ${OVE_DISTROCHECK_STEPS} != *running* ]] && \
 		[[ ${OVE_DISTROCHECK_STEPS} != *stopped* ]]; then
+			ephemeral=1
 			OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS+=" --ephemeral"
 			OVE_DISTROCHECK_STEPS+=" stopped"
 	fi
@@ -827,15 +829,21 @@ EOF
 				fi
 
 				lxc_exec "bash ${bash_opt} -c '${prefix}; ove-worktree add ${worktree_dir}'"
+				# configurable?
+				lxc_exec "bash ${bash_opt} -c '${prefix}; ove-replicate localhost ${worktree_dir}'"
 				prev_prefix="${prefix}"
 				prefix="cd ${worktree_dir}; source ove hush"
 			fi
 
 			lxc_exec "bash ${bash_opt} -c '${prefix}; OVE_AUTO_CLONE=1 ove-distcheck ${distcheck}'"
 
-			# remove worktree
+			# remove the worktree if ephemeral
 			if [[ ${OVE_DISTROCHECK_STEPS} == *worktree* ]]; then
-				lxc_exec "bash ${bash_opt} -c '${prev_prefix}; ove-worktree remove ${worktree_dir}'"
+				if [ ${ephemeral} -eq 0 ]; then
+					_echo "the worktree '${worktree_dir}' is kept intact"
+				else
+					lxc_exec "bash ${bash_opt} -c '${prev_prefix}; ove-worktree remove ${worktree_dir}'"
+				fi
 			fi
 		else
 			if [ -s "${distcheck}" ]; then
