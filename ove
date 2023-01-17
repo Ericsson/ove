@@ -8582,6 +8582,7 @@ $ ove ide
 #
 # steps:
 #   ove        use the OVE workspace (map it or by running the oneliner) within the container
+#   replicate  replicate OVE workspace to container's host (LXD clustering only)
 #   running    leave the container running
 #   ssh        install sshd within the container and use ssh instead of lxc exec
 #   ssh_config update \$HOME/.ssh/config with host entries
