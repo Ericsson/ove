@@ -2646,7 +2646,19 @@ function ove_projects_init {
 
 		# path
 		tmp_var="ove_YaMl_${name}_path"
-		if [ "${!tmp_var:0:1}" = "/" ]; then
+		if [[ "${!tmp_var}" == *"$"* ]]; then
+			t=$(eval echo ${!tmp_var})
+			if [ "x${t}" = "x" ]; then
+				ove_projects_path[${i}]="${OVE_BASE_DIR}"
+			else
+				v="$(readlink -f ${t})"
+				if [ "x${v}" = "x" ]; then
+					ove_projects_path[${i}]="${OVE_BASE_DIR}/${t}"
+				else
+					ove_projects_path[${i}]="${v}"
+				fi
+			fi
+		elif [ "${!tmp_var:0:1}" = "/" ]; then
 			ove_projects_path[${i}]="${!tmp_var}"
 		else
 			ove_projects_path[${i}]="${OVE_BASE_DIR}/${!tmp_var}"

@@ -63,7 +63,7 @@ How does OVE keep track of dependencies? Well, to start with there are (at least
     name:      name of project, characters allowed: a-z, A-Z, 0-9 and underscore
       deps:    list of projects that need to be built before myself
       needs:   list of packages that need to be installed before I can be built
-      path:    path to project work directory. Relative to OVE_BASE_DIR or an absolute path.
+      path:    path to project work directory. Relative to OVE_BASE_DIR or an absolute path. Variables are allowed.
       tags:    mark project with one or many tags. Tags will allow you to refererence groups of projects (e.g. for builds).
       version: Optional. Passed on as a bash variable to all steps for this project.
 
