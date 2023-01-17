@@ -235,7 +235,7 @@ function package_manager_noconfirm {
 }
 
 function remove_tmp {
-	find "${OVE_TMP:?}" -maxdepth 1 -name "${tag:?}*" -exec rm {} \;
+	find "${OVE_TMP:?}" -maxdepth 1 -type f -name "${tag:?}*" -exec rm {} \;
 	return 0
 }
 
