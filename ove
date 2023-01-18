@@ -12831,6 +12831,10 @@ function ove-replicate {
 
 		if [ ${run_setup} -eq 1 ]; then
 			cd .. || return
+			if [ ${OVE_BASE_DIR##*/} = ${OVE_OWEL_NAME} ]; then
+				mv ${OVE_OWEL_NAME} ${OVE_OWEL_NAME}a
+				n_base=${OVE_OWEL_NAME}a
+			fi
 			${ove_cmd2pathname["mv"]:?} ${n_base}/{.[!.],}* . || return
 			${ove_cmd2pathname["rmdir"]:?} ${n_base} || return
 		fi
@@ -12884,6 +12888,10 @@ function ove-replicate {
 
 		if [ ${run_setup} -eq 1 ]; then
 			cd .. || exit
+			if [ \${OVE_BASE_DIR##*/} = \${OVE_OWEL_NAME} ]; then
+				mv \${OVE_OWEL_NAME} \${OVE_OWEL_NAME}a
+				n_base=\${OVE_OWEL_NAME}a
+			fi
 			mv \${n_base}/{.[!.],}* . || exit
 			rmdir \${n_base} || exit
 		fi"; then
