@@ -2033,8 +2033,8 @@ function ove {
 	ove_update_terminal_stats
 
 	if [ $# -eq 0 ]; then
-		ove-help
-		return $?
+		ove-help | ${OVE_PAGER}
+		return 0
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
 		re=\\b${cmd}
 		if ! [[ "${OVE_ALL_COMMANDS}" =~ ${re} ]]; then
@@ -8486,9 +8486,6 @@ function ove_help {
 	ove-list-commands
 	echo
 	${ove_cmd2pathname["cat"]:?} <<EOF
-
-$(ove_echo_cyan_noprefix "EXAMPLES")
---------
 
 $(ove_echo_cyan_noprefix "high level git commands")
 -----------------------
