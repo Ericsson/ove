@@ -506,6 +506,7 @@ function main {
 		OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS+=" -c security.nesting=true"
 	fi
 
+	_echo "lxc ${lxc_global_flags} launch images:${distro} ${lxc_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ }"
 	# shellcheck disable=SC2086
 	if ! lxc ${lxc_global_flags} launch images:${distro} ${lxc_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
 		exit 1
@@ -609,7 +610,7 @@ EOF
 		while true; do
 			((i++))
 			if [ $i -ge 100 ]; then
-				echo "no IPv4 address for ${lxc_name}"
+				echo "error: no IPv4 address for ${lxc_name}"
 				exit 1
 			fi
 
