@@ -1,7 +1,7 @@
 | Command       | Usage
 |-|-|
 | ag            | 3      |
-| awk           | 54     |
+| awk           | 55     |
 | basename      | 1      |
 | bash          | 17     |
 | cat           | 42     |
@@ -10,7 +10,7 @@
 | comm          | 14     |
 | cp            | 5      |
 | csplit        | 1      |
-| cut           | 62     |
+| cut           | 63     |
 | date          | 16     |
 | diff          | 1      |
 | dirname       | 5      |
@@ -23,7 +23,7 @@
 | fzf           | 5      |
 | getconf       | 2      |
 | git           | 80     |
-| grep          | 173    |
+| grep          | 174    |
 | head          | 20     |
 | inotifywait   | 3      |
 | ld            | 1      |
@@ -31,7 +31,7 @@
 | ln            | 18     |
 | locate        | 1      |
 | lsb_release   | 2      |
-| lxc           | 1      |
+| lxc           | 4      |
 | make          | 1      |
 | md5deep       | 1      |
 | md5sum        | 14     |

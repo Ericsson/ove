@@ -10671,6 +10671,10 @@ function ove_bash_complete {
 		elif [ ${size} -eq 4 ]; then
 			wordlist="force save"
 		fi
+	elif [ "${subcommand}" == "replicate-cluster" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist="force save"
+		fi
 	elif [ "${subcommand}" == "tail-lastlog" ] ||
 		[ "${subcommand}" == "less-lastlog" ]; then
 		if [ ${size} -ge 2 ]; then
@@ -12677,7 +12681,39 @@ function ove-worktree {
 	return 0
 }
 
-# replicate:host [path][force|save [msg]]:replicate OVE workspace on 'host'
+# replicate-cluster:[force|save [msg]]:replicate OVE workspace on all cluster members (LXD only)
+function ove-replicate-cluster {
+	local h
+	local s
+
+	if ! command -v lxc > /dev/null; then
+		ove_command_not_found "lxc"
+		return 1
+	elif ! ${ove_cmd2pathname["lxc"]:?} cluster list &> /dev/null; then
+		ove_echo_error_noprefix "not a LXD cluster"
+		return 1
+	fi
+
+	# shellcheck disable=SC2016
+	s=$(${ove_cmd2pathname["lxc"]:?} info | \
+		${ove_cmd2pathname["grep"]:?} server_name | \
+		${ove_cmd2pathname["awk"]:?} '{print $2}')
+	if [ "x${s}" = "x" ]; then
+		ove_echo_fatal_noprefix "could not get 'server_name'"
+		return 0
+	fi
+
+	for h in $(${ove_cmd2pathname["lxc"]:?} cluster list --format csv | \
+		${ove_cmd2pathname["cut"]:?} -d, -f1); do
+		if [ "${s}" != "${h}" ]; then
+			if ! ove-replicate "${h}" "${OVE_BASE_DIR}" "$@"; then
+				return 1
+			fi
+		fi
+	done
+}
+
+# replicate:host [path [force|save [msg]]]:replicate OVE workspace on 'host'
 function ove-replicate {
 	ove_entry || return
 
