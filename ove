@@ -10670,10 +10670,14 @@ function ove_bash_complete {
 				${ove_cmd2pathname["xargs"]:?})
 		elif [ ${size} -eq 4 ]; then
 			wordlist="force save"
+		elif [ ${size} -eq 5 ] && [ "${COMP_WORDS[4]}" = "force" ]; then
+			wordlist="pull"
 		fi
 	elif [ "${subcommand}" == "replicate-cluster" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist="force save"
+		elif [ ${size} -eq 3 ] && [ "${COMP_WORDS[2]}" = "force" ]; then
+			wordlist="pull"
 		fi
 	elif [ "${subcommand}" == "tail-lastlog" ] ||
 		[ "${subcommand}" == "less-lastlog" ]; then
@@ -12681,7 +12685,7 @@ function ove-worktree {
 	return 0
 }
 
-# replicate-cluster:[force|save [msg]]:replicate OVE workspace on all cluster members (LXD only)
+# replicate-cluster:[force [pull]|save [msg]]:replicate OVE workspace on all cluster members (LXD only):UTIL
 function ove-replicate-cluster {
 	local h
 	local s
@@ -12713,7 +12717,7 @@ function ove-replicate-cluster {
 	done
 }
 
-# replicate:host [path [force|save [msg]]]:replicate OVE workspace on 'host'
+# replicate:host [path [force [pull]|save [msg]]]:replicate OVE workspace on 'host':UTIL
 function ove-replicate {
 	ove_entry || return
 
@@ -12834,10 +12838,14 @@ function ove-replicate {
 			ove-fetch ${repos} &> /dev/null
 		fi
 
-		if [ $# -eq 3 ] && [ "$3" = "force" ]; then
+		if [ $# -ge 3 ] && [ "$3" = "force" ]; then
 			ove-stash &> /dev/null
 			ove-stash drop &> /dev/null
 			ove-reset-ahead &> /dev/null
+			if [ $# -eq 4 ] && [ "$4" = "pull" ]; then
+				ove-fetch &> /dev/null
+				ove-pull &> /dev/null
+			fi
 		elif [ $# -ge 3 ] && [ "$3" = "save" ]; then
 			if [ $# -eq 4 ]; then
 				ove-stash push "$4" &> /dev/null
@@ -12893,10 +12901,14 @@ function ove-replicate {
 		if [ ${run_setup} -eq 1 ]; then
 			ove-fetch ${repos} &> /dev/null
 		fi
-		if [ $# -eq 3 ] && [ $3 = force ]; then
+		if [ $# -ge 3 ] && [ $3 = force ]; then
 			ove-stash
 			ove-stash drop &> /dev/null
 			ove-reset-ahead &> /dev/null
+			if [ $# -eq 4 ] && [ $4 = pull ]; then
+				ove-fetch &> /dev/null
+				ove-pull &> /dev/null
+			fi
 		elif [ $# -ge 3 ] && [ $3 = save ]; then
 			if [ $# -eq 4 ]; then
 				ove-stash push $4 &> /dev/null
