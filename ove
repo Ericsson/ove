@@ -12685,9 +12685,15 @@ function ove-worktree {
 	return 0
 }
 
+# replicate-cluster-parallel:[force [pull]|save [msg]]:replicate-cluster in parallel (LXD only):UTIL
+function ove-replicate-cluster-parallel {
+	ove-replicate-cluster "$@"
+}
+
 # replicate-cluster:[force [pull]|save [msg]]:replicate OVE workspace on all cluster members (LXD only):UTIL
 function ove-replicate-cluster {
 	local h
+	local p
 	local s
 
 	if ! command -v lxc > /dev/null; then
@@ -12696,6 +12702,12 @@ function ove-replicate-cluster {
 	elif ! ${ove_cmd2pathname["lxc"]:?} cluster list &> /dev/null; then
 		ove_echo_error_noprefix "not a LXD cluster"
 		return 1
+	fi
+
+	p=0
+	if [ ${#FUNCNAME[*]} -eq 2 ] && \
+		[[ ${FUNCNAME[1]} == ${FUNCNAME[0]}-parallel ]]; then
+		p=1
 	fi
 
 	# shellcheck disable=SC2016
@@ -12710,11 +12722,19 @@ function ove-replicate-cluster {
 	for h in $(${ove_cmd2pathname["lxc"]:?} cluster list --format csv | \
 		${ove_cmd2pathname["cut"]:?} -d, -f1); do
 		if [ "${s}" != "${h}" ]; then
-			if ! ove-replicate "${h}" "${OVE_BASE_DIR}" "$@"; then
+			if [ $p -eq 1 ]; then
+				ove-replicate "${h}" "${OVE_BASE_DIR}" "$@" &
+			elif ! ove-replicate "${h}" "${OVE_BASE_DIR}" "$@"; then
 				return 1
 			fi
 		fi
 	done
+
+	if [ $p -eq 1 ]; then
+		wait
+	fi
+
+	return 0
 }
 
 # replicate:host [path [force [pull]|save [msg]]]:replicate OVE workspace on 'host':UTIL
