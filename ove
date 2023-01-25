@@ -9544,53 +9544,50 @@ function ove-list-heads {
 	done | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["column"]:?} -t -s? 2> /dev/null
 }
 
-# ls-remote: :git ls-remote <remote.origin.url> HEAD for all git repositories:CORE
+# ls-remote:[git...]:git ls-remote <remote.origin.url> HEAD for specified/all git repositories:CORE
 function ove-ls-remote {
 	ove_entry || return
 
 	local i
-	local p
-	local repo
+	local r
+	local repos
+	local repo_shortpath
 	local ret
 	local sha
 	local str
 	local url
 
-	i=0
-	ret=0
-	while ((i < ove_revtab_num_repositories)); do
-		url="${ove_revtab_fetch_url[${i}]}"
-		if [ "${url}" == "noremote" ]; then
-			(( i+=1 ))
+	if [ $# -ge 1 ]; then
+		repos=$(ove_validate_repo_list "$@")
+		if [ "x${repos}" = "x" ]; then
+			return 1
+		fi
+	else
+		repos=${OVE_REPO_LIST}
+	fi
+
+	for r in ${repos}; do
+		repo_shortpath="$(ove_repo2shortpath ${r})"
+		if [ "${repo_shortpath}" == "${OVE_OWEL_NAME}" ]; then
+			url=$(ove_repo_cmd "${OVE_OWEL_DIR}" config --get remote.origin.url)
+		else
+			i=${ove_revtab_name2index[${repo_shortpath}]}
+			url="${ove_revtab_fetch_url[${i}]}"
+		fi
+
+		if [ "${url}" == "" ] || [ "${url}" == "noremote" ]; then
 			continue
 		fi
-		repo="${ove_revtab_git_name[${i}]}"
-		p="${OVE_BASE_DIR}/${repo}"
 
-		# shellcheck disable=SC2016
-		sha=$(ove_repo_cmd "${p}" ls-remote ${url} HEAD | ${ove_cmd2pathname["awk"]:?} '{print $1}')
+		sha=$(ove_repo_cmd "${repo_shortpath}" ls-remote ${url} HEAD)
+		sha=${sha%%[[:space:]]*}
 		if [ "${sha}" == "" ]; then
 			ove_echo_error_noprefix "ls-remote failed for '${url}'"
 			(( ret+=1 ))
 		else
-			str+="${repo}:${sha}\n"
+			str+="${repo_shortpath}:${sha}\n"
 		fi
-		(( i+=1 ))
 	done
-
-	url=$(ove_repo_cmd "${OVE_OWEL_DIR}" config --get remote.origin.url)
-	if [ "${url}" == "" ] || [ "${url}" == "noremote" ]; then
-		:
-	else
-		# shellcheck disable=SC2016
-		sha=$(ove_repo_cmd "${OVE_OWEL_DIR}" ls-remote ${url} HEAD | ${ove_cmd2pathname["awk"]:?} '{print $1}')
-		if [ "${sha}" == "" ]; then
-			ove_echo_error_noprefix "ls-remote failed for '${url}'"
-			(( ret+=1 ))
-		else
-			str+="${OVE_OWEL_NAME}:${sha}\n"
-		fi
-	fi
 
 	printf "${str}" | \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
@@ -10591,6 +10588,7 @@ function ove_bash_complete {
 		[ "${subcommand}" == "describe" ] ||
 		[ "${subcommand}" == "fsck" ] ||
 		[ "${subcommand}" == "heads2revtab" ] ||
+		[ "${subcommand}" == "ls-remote" ] ||
 		[ "${subcommand}" == "list-stash" ] ||
 		[ "${subcommand}" == "readme" ] ||
 		[ "${subcommand}" == "remote" ] ||

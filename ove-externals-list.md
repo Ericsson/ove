@@ -1,7 +1,7 @@
 | Command       | Usage
 |-|-|
 | ag            | 3      |
-| awk           | 55     |
+| awk           | 53     |
 | basename      | 1      |
 | bash          | 17     |
 | cat           | 42     |
