@@ -3800,7 +3800,7 @@ function ove_revtab_clone_and_checkout_one {
 
 	ove_revtab_checkout "${name}"
 	ove_revtab_check_fetch_push "${name}" "${fetch_url}" "${push_url}"
-	ove_patch_repos ${name}
+	ove_patch_repos ${name} || true
 
 	if [ -e "${OVE_BASE_DIR}/${name}/.gitmodules" ]; then
 		if [ ${OVE_FETCH_SUBMODULES} -eq 1 ]; then
@@ -7945,7 +7945,7 @@ function ove-pull {
 			ove_revtab_check
 
 			# patch repos
-			ove_patch_repos
+			ove_patch_repos || true
 		fi
 	done
 
@@ -8391,7 +8391,7 @@ function ove-checkout {
 		fi
 
 		# patch all repos
-		ove_patch_repos
+		ove_patch_repos || true
 	fi
 
 	return 0
@@ -11692,7 +11692,7 @@ function ove_post_checks {
 	ove_revtab_check
 
 	# patch repos
-	ove_patch_repos
+	ove_patch_repos || true
 
 	# aliases
 	ove_aliases
