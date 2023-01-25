@@ -10673,7 +10673,8 @@ function ove_bash_complete {
 		elif [ ${size} -eq 5 ] && [ "${COMP_WORDS[4]}" = "force" ]; then
 			wordlist="pull"
 		fi
-	elif [ "${subcommand}" == "replicate-cluster" ]; then
+	elif [ "${subcommand}" == "replicate-cluster" ] ||
+		[ "${subcommand}" == "replicate-cluster-parallel" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist="force save"
 		elif [ ${size} -eq 3 ] && [ "${COMP_WORDS[2]}" = "force" ]; then
