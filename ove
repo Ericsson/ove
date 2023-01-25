@@ -7885,15 +7885,29 @@ function ove_list_repositories {
 function ove-pull {
 	ove_entry || return
 
+	local autostash
 	local repo
 	local repos
 
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
 
+	autostash=0
+	if declare -p ove_revtab_git_cmd_opts &>/dev/null && \
+		[ "x${ove_revtab_git_cmd_opts["*:pull"]}" != "x" ] && \
+		[[ "${ove_revtab_git_cmd_opts["*:pull"]}" == *--autostash* ]]; then
+		autostash=1
+	fi
+
 	if [ $# -ge 1 ]; then
 		for repo in $(ove_validate_repo_list ${*//${OVE_BASE_DIR}\/}); do
-			if ove_repo_is_dirty ${OVE_BASE_DIR}/${repo}; then
+			if [ ${autostash} -eq 1 ]; then
+				true
+			elif declare -p ove_revtab_git_cmd_opts &>/dev/null && \
+				[ "x${ove_revtab_git_cmd_opts["${repo}:pull"]}" != "x" ] && \
+				[[ "${ove_revtab_git_cmd_opts["${repo}:pull"]}" == *--autostash* ]]; then
+				true
+			elif ove_repo_is_dirty ${OVE_BASE_DIR}/${repo}; then
 				ove_echo_error_noprefix "cannot pull '${repo}' as it is dirty"
 				continue
 			fi
@@ -7902,7 +7916,13 @@ function ove-pull {
 	else
 		if ove_any_repo behind; then
 			for repo in $(ove_list_repositories "behind"); do
-				if ove_repo_is_dirty ${OVE_BASE_DIR}/${repo}; then
+				if [ ${autostash} -eq 1 ]; then
+					true
+				elif declare -p ove_revtab_git_cmd_opts &>/dev/null && \
+					[ "x${ove_revtab_git_cmd_opts["${repo}:pull"]}" != "x" ] && \
+					[[ "${ove_revtab_git_cmd_opts["${repo}:pull"]}" == *--autostash* ]]; then
+					true
+				elif ove_repo_is_dirty ${OVE_BASE_DIR}/${repo}; then
 					ove_echo_error_noprefix "cannot pull '${repo}' as it is dirty"
 					continue
 				fi
