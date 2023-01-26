@@ -6803,7 +6803,9 @@ function ove_patch_one_project {
 	proj=${1##*/}
 	proj=${proj/.patch/}
 
-	echo "${proj}"
+	if [ "${proj}" != "common" ]; then
+		echo "${proj}"
+	fi
 	if ${ove_cmd2pathname["grep"]:?} -q ^$proj: ${OVE_OWEL_DIR}/projs; then
 		return
 	fi
@@ -11085,6 +11087,11 @@ function ove_config_builtins_init {
 		export OVE_AUTO_RM_LOGS=0
 	fi
 
+	# OVE_IMPORT_PROJECTS:int:0-2:add-repo:skip (=0), import (=1) or prompt user (=2)
+	if [ -z "${OVE_IMPORT_PROJECTS+x}" ]; then
+		export OVE_IMPORT_PROJECTS=2
+	fi
+
 	# OVE_ANONYMIZE_LOGS:int:0|1:all:try to anonymize logs by removing user specific info
 	if [ -z "${OVE_ANONYMIZE_LOGS+x}" ]; then
 		export OVE_ANONYMIZE_LOGS=0
@@ -11206,7 +11213,7 @@ function ove_config_builtins_init {
 		export OVE_STATUS_TRUNC=1
 	fi
 
-	# OVE_INSTALL_PKG:int:0-2:buildme buildme-parallel install-pkg:skip (=0), install (=1) or prompt (=2) packages
+	# OVE_INSTALL_PKG:int:0-2:buildme buildme-parallel install-pkg:skip (=0), install (=1) or prompt user (=2) packages
 	if [ -z "${OVE_INSTALL_PKG+x}" ]; then
 		export OVE_INSTALL_PKG=2
 	fi
@@ -13455,6 +13462,7 @@ function ove-add-repo {
 
 	local fetch_url
 	local name
+	local p
 	local push_url
 	local remote
 	local revision
@@ -13534,6 +13542,29 @@ function ove-add-repo {
 		return 1
 	elif [ ! -d "${name}" ] && ! ove-fetch "${name}"; then
 		return 1
+	fi
+
+	# import projects
+	if [ "x${OVE_IMPORT_PROJECTS}" != "x0" ] && [ -d ${OVE_BASE_DIR}/${name}/.ove ]; then
+		if [ "x${OVE_IMPORT_PROJECTS}" != "x1" ] && [ "x${OVE_IMPORT_PROJECTS}" != "x2" ]; then
+			ove_echo_warning_noprefix "invalid value '${OVE_IMPORT_PROJECTS}' for config 'OVE_IMPORT_PROJECTS'"
+			true
+		else
+			for p in $(${ove_cmd2pathname["find"]:?} ${OVE_BASE_DIR}/${name}/.ove -maxdepth 1 -mindepth 1 -type f -name '*.tar.bz2'); do
+				if [ "x${OVE_IMPORT_PROJECTS}" = "x2" ]; then
+					# display list of projects
+					${ove_cmd2pathname["tar"]:?} tf "${p}" --wildcards '*.patch' | \
+						${ove_cmd2pathname["sed"]:?} -e '/common.patch/d' -e 's,\.patch$,,g' -e 's,^\.\/,,g' | \
+						LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
+						${ove_cmd2pathname["cat"]:?} -n
+					read -p "import project(s) from '${p}'? (y/N) " -r
+					if [[ ! ${REPLY} =~ ^[Yy]$ ]]; then
+						continue
+					fi
+				fi
+				ove-import "${p}" || true
+			done
+		fi
 	fi
 
 	return 0
