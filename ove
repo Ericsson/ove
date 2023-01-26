@@ -13769,6 +13769,7 @@ function ove-generate-doc {
 	local header
 	local sorted
 	local str
+	local sum
 
 	# ove-cmd-list.md (command list)
 	a=$(${ove_cmd2pathname["grep"]:?} -B1 "^function ove-" "${OVE_BASE_DIR}"/ove | \
@@ -13841,15 +13842,17 @@ function ove-generate-doc {
 		${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-variables-list.md
 
 	# ove-externals-list.md (external commands and usage)
-	header="| Command:| Usage:"
+	header="| Command:| Usage:|"
 	str=
+	sum=0
 	# shellcheck disable=SC2016
 	while read -r a b; do
 		str+="| $a:| $b:|\n"
+		sum=$((sum + b))
 	done <<<"$(ove-list-externals | \
 		${ove_cmd2pathname["awk"]:?} '{print $1,$5}')"
-	printf "$header\n|-|-|\n$str" | \
-		${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-externals-list.md
+	printf "$header\n| ---:| ---:|\n$str| __sum__:| __${sum}__:|\n" | \
+	${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-externals-list.md
 
 	return 0
 }
