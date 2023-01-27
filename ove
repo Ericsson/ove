@@ -12785,6 +12785,7 @@ function ove-replicate {
 	local n
 	local n_base
 	local now
+	local o
 	local p
 	local q
 	local repos
@@ -12853,7 +12854,7 @@ function ove-replicate {
 	if [ -s "${q}" ]; then
 		q_remote="${d}/${now}.tar.bz2"
 		if [ "${host}" != "localhost" ] && ! ${ove_cmd2pathname["scp"]:?} -q ${q} ${host}:${q_remote}; then
-			ove_echo_error_noprefix "not possible to scp patch archive to '${host}'"
+			ove_echo_error_noprefix "scp ${q} ${host}:${q_remote} failed"
 			${ove_cmd2pathname["rm"]:?} ${q}
 			return 1
 		fi
@@ -12862,10 +12863,21 @@ function ove-replicate {
 	p=$(${ove_cmd2pathname["mktemp"]:?} -p ${OVE_OWEL_TMP_DIR})
 	ove-diff > ${p}
 	if [ -s "${p}" ]; then
-		p_remote="${d}/${now}.patch"
+		p_remote="${d}/${now}.diff"
 		if [ "${host}" != "localhost" ] && ! ${ove_cmd2pathname["scp"]:?} -q ${p} ${host}:${p_remote}; then
-			ove_echo_error_noprefix "not possible to scp patch file to '${host}'"
+			ove_echo_error_noprefix "scp ${p} ${host}:${p_remote} failed"
 			${ove_cmd2pathname["rm"]:?} ${p} ${q} 2> /dev/null
+			return 1
+		fi
+	fi
+
+	o=$(${ove_cmd2pathname["mktemp"]:?} -p ${OVE_OWEL_TMP_DIR})
+	ove-diff-cached > ${o}
+	if [ -s "${o}" ]; then
+		o_remote="${d}/${now}.cached"
+		if [ "${host}" != "localhost" ] && ! ${ove_cmd2pathname["scp"]:?} -q ${o} ${host}:${o_remote}; then
+			ove_echo_error_noprefix "scp ${o} ${host}:${o_remote} failed"
+			${ove_cmd2pathname["rm"]:?} ${p} ${q} ${o} 2> /dev/null
 			return 1
 		fi
 	fi
@@ -12919,6 +12931,11 @@ function ove-replicate {
 		if [ -e "${q}" ]; then
 			ove-am ${q} &> /dev/null
 			rm ${q}
+		fi
+
+		if [ -e "${o}" ]; then
+			ove-apply-cached ${o} &> /dev/null
+			rm ${o}
 		fi
 
 		if [ -e "${p}" ]; then
@@ -12981,6 +12998,10 @@ function ove-replicate {
 		if [ -e \"${q_remote}\" ]; then
 			ove-am ${q_remote} &> /dev/null
 			rm ${q_remote}
+		fi
+		if [ -e \"${o_remote}\" ]; then
+			ove-apply-cached ${o_remote} &> /dev/null
+			rm ${o_remote}
 		fi
 		if [ -e \"${p_remote}\" ]; then
 			ove-apply ${p_remote} &> /dev/null

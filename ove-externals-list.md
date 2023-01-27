@@ -36,15 +36,15 @@
 | md5deep       | 1         |
 | md5sum        | 14        |
 | mkdir         | 33        |
-| mktemp        | 6         |
+| mktemp        | 7         |
 | mv            | 7         |
 | pgrep         | 3         |
 | ps            | 1         |
 | readlink      | 27        |
 | rev           | 4         |
-| rm            | 43        |
+| rm            | 44        |
 | rmdir         | 3         |
-| scp           | 2         |
+| scp           | 3         |
 | script        | 4         |
 | scriptreplay  | 1         |
 | sed           | 84        |
@@ -72,4 +72,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1193__  |
+| __sum__       | __1196__  |
