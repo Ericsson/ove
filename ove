@@ -2401,6 +2401,8 @@ function ove_parse_yaml {
 			return 1
 		elif ! col=${#BASH_REMATCH[0]}; then
 			return 1
+		elif [ "${line:$col:1}" = "#" ]; then
+			continue
 		elif [[ "${line}" == *": "* ]]; then
 			echo "error: format error: colon followed by a space is not allowed in '$1' at line #${i} '${line}'" 1>&2
 			return 1
