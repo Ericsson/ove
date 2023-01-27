@@ -26,7 +26,6 @@
 ephemeral=0
 lxc_ip=""
 lxc_name=""
-lxc_location=""
 tag=""
 _user=
 use_ssh=0
@@ -435,21 +434,11 @@ EOF
 	fi
 }
 
-function lxd_cluster {
-	# shellcheck disable=SC2086
-	if lxc ${lxc_global_flags} cluster list &> /dev/null; then
-		return 0
-	else
-		return 1
-	fi
-}
-
 function main {
 	local _home="/root"
 	local ove_packs
 	local package_manager
 	local prefix="true"
-	local server_name
 	local _uid=0
 	local _gid=0
 
@@ -481,19 +470,6 @@ function main {
 		fi
 	fi
 
-	# ove, user, lxd cluster and !replicate? => create container on localhost
-	# shellcheck disable=SC2086
-	if [[ ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS} != *--target=* ]] && \
-		[[ ${OVE_DISTROCHECK_STEPS} == *ove* ]] && \
-		[[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && \
-		lxd_cluster && \
-		[[ ${OVE_DISTROCHECK_STEPS} != *replicate* ]]; then
-		server_name=$(lxc ${lxc_global_flags} info | grep server_name | awk '{print $2}')
-		if [ "x${server_name}" != "x" ]; then
-			OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS="--target=${server_name}"
-		fi
-	fi
-
 	# ephemeral container?
 	if [[ ${OVE_DISTROCHECK_STEPS} != *running* ]] && \
 		[[ ${OVE_DISTROCHECK_STEPS} != *stopped* ]]; then
@@ -512,24 +488,6 @@ function main {
 		exit 1
 	fi
 	trap cleanup EXIT
-
-	# ove, user, lxd cluster and replicate => replicate the OVE workspace if the container is running on a remote host
-	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]] && \
-		[[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && \
-		lxd_cluster && \
-		[[ ${OVE_DISTROCHECK_STEPS} == *replicate* ]]; then
-		# shellcheck disable=SC2086
-		lxc_location=$(lxc ${lxc_global_flags} list --format csv -cL "${lxc_name}")
-
-		# shellcheck disable=SC2086
-		server_name=$(lxc ${lxc_global_flags} info | grep server_name | awk '{print $2}')
-		if [ "${server_name}" != "${lxc_location}" ]; then
-			_echo "replicate OVE workspace to ${lxc_location}:${OVE_BASE_DIR}"
-			if ! ove-replicate "${lxc_location}" "${OVE_BASE_DIR}"; then
-				exit 1
-			fi
-		fi
-	fi
 
 	cat > "${OVE_TMP}/${tag}-bootcheck.sh" <<EOF
 #!/usr/bin/env sh
