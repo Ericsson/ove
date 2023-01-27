@@ -7961,10 +7961,16 @@ function ove-pull {
 	set -m
 }
 
+# apply-cached:patch:apply one OVE patch to index:CORE
+function ove-apply-cached {
+	OVE_APPLY_CACHED=1 ove-apply "$@"
+}
+
 # apply:patch:apply one OVE patch:CORE
 function ove-apply {
 	ove_entry || return
 
+	local args
 	local lineno
 	local p
 	local patches
@@ -8026,6 +8032,10 @@ function ove-apply {
 		patches=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_TMP_DIR} -maxdepth 1 -name 'ove-apply-patch*' | LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
 	fi
 
+	if [ "x${OVE_APPLY_CACHED}" = "x1" ]; then
+		args="--index"
+	fi
+
 	for p in ${patches}; do
 		repo_basename=$(${ove_cmd2pathname["head"]:?} -1 -q ${p})
 		repo_basename=${repo_basename/${OVE_BASE_DIR}\/}
@@ -8041,14 +8051,14 @@ function ove-apply {
 		if [ -d "${repo_fullpath}" ] && \
 			[ -e ${repo_fullpath}/.git ]; then
 			# Run 'git apply --check' and if ok, apply the patch
-			if ! ove_repo_cmd "${repo_fullpath}" apply --check ${q} 2> /dev/null; then
+			if ! ove_repo_cmd "${repo_fullpath}" apply ${args} --check ${q} 2> /dev/null; then
 				ove_echo_yellow_noprefix "${repo_basename}: patch '${q}' does not apply"
 				((ret++))
 				continue
 			fi
 
 			# apply the patch
-			ove_repo_cmd "${repo_fullpath}" apply ${q}
+			ove_repo_cmd "${repo_fullpath}" apply ${args} ${q}
 		fi
 	done
 
