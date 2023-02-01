@@ -307,6 +307,15 @@ EOF
 	run "lxc ${lxc_global_flags} file push --mode 0755 --uid 0 --gid 0 ${OVE_TMP}/${tag}-packman ${lxc_name}/sbin/packman"
 }
 
+function lxd_cluster {
+	# shellcheck disable=SC2086
+	if lxc ${lxc_global_flags} cluster list &> /dev/null; then
+		return 0
+	else
+		return 1
+	fi
+}
+
 function setup_sshd {
 	echo "${package_manager:?} openssh-server >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 	echo "${package_manager} openssh >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
@@ -488,6 +497,11 @@ function main {
 		exit 1
 	fi
 	trap cleanup EXIT
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]] && lxd_cluster; then
+		# shellcheck disable=SC2086
+		_echo "location:$(lxc ${lxc_global_flags} list --format csv -cL "${lxc_name}")"
+	fi
 
 	cat > "${OVE_TMP}/${tag}-bootcheck.sh" <<EOF
 #!/usr/bin/env sh
