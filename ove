@@ -7025,9 +7025,11 @@ function ove_build_pre {
 				re=\\b$a\\b
 				if ! [[ "${OVE_PROJECT_LIST_BUILDABLE}" =~ ${re} ]]; then
 					for p in $(ove_get_paths_recursive $a | ${ove_cmd2pathname["xargs"]:?} -n1 | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u); do
-						[ -d ${p} ] && continue
+						if [ -d ${p} ]; then
+							continue
+						fi
 						for q in ${OVE_REPO_LIST}; do
-							if [[ ${p} == *"${q}"* ]] && ! [ -d "${q}" ]; then
+							if [[ ${p}/ == *"${q}/"* ]] && ! [ -d "${q}" ]; then
 								repos+="$(ove_repo2shortpath ${q}) "
 							fi
 						done
