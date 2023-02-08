@@ -324,8 +324,6 @@ function setup_sshd {
 	fi
 
 	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
-#!/usr/bin/env sh
-
 if ! sed -i \
 	-e 's,.*PermitRootLogin.*,PermitRootLogin yes,g' \
 	-e 's,.*PermitUserEnvironment.*,PermitUserEnvironment yes,g' \
@@ -351,12 +349,15 @@ while true; do
 	if [ \$i -gt 100 ]; then
 		echo "error: sshd did not start"
 		exit 1
-	elif pgrep -f sshd > /dev/null; then
+	elif pgrep -f sshd >/dev/null 2>&1; then
 		sleep 1
 		break
 	fi
-
-	echo "waiting for sshd \$i"
+EOF
+	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+		echo -e "\techo \"waiting for sshd \$i\"" >> "${OVE_TMP}/${tag}-services.sh"
+	fi
+	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
 	sleep 0.1
 done
 EOF
@@ -364,6 +365,8 @@ EOF
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
 		sed -i -e "1iset -x" "${OVE_TMP}/${tag}-services.sh"
 	fi
+
+	sed -i -e "1i#!/usr/bin/env sh" "${OVE_TMP}/${tag}-services.sh"
 }
 
 function update_ssh_config {
