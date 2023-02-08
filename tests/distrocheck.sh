@@ -42,7 +42,7 @@ function init {
 	local s
 
 	if ! command -v lxc > /dev/null; then
-		echo "error: lxc missing"
+		echo "error: lxc missing" 1>&2
 		exit 1
 	elif [ $# -ne 2 ]; then
 		echo "usage: $(basename "$0") file|project|unittest distro"
@@ -79,7 +79,7 @@ function init {
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
 		if ! command -v sshpass > /dev/null; then
-			echo "error: command sshpass missing"
+			echo "error: command sshpass missing" 1>&2
 			exit 1
 		fi
 		ssh_opts=""
@@ -257,7 +257,7 @@ function setup_package_manager {
 
 	run "lxc ${lxc_global_flags} file pull ${lxc_name}/var/tmp/${tag}-packman ${OVE_TMP}/${tag}-packman"
 	if [ ! -s "${OVE_TMP}/${tag}-packman" ]; then
-		echo "error: could not determine package manager for ${distro}"
+		echo "error: could not determine package manager for ${distro}" 1>&2
 		exit 1
 	fi
 
@@ -295,7 +295,7 @@ EOF
 	elif [ "${packman}" = "zypper" ]; then
 		package_manager="zypper install -y"
 	else
-		echo "error: unknown package manager for '${distro}'"
+		echo "error: unknown package manager for '${distro}'" 1>&2
 		exit 1
 	fi
 
@@ -371,7 +371,7 @@ EOF
 
 function update_ssh_config {
 	if ! mkdir -p "${HOME}/.ssh"; then
-		echo "error: mkdir ${HOME}/.ssh failed"
+		echo "error: mkdir ${HOME}/.ssh failed" 1>&2
 		exit 1
 	fi
 	cat >> "${HOME}/.ssh/config" <<EOF
@@ -408,7 +408,7 @@ EOF
 	while true; do
 		((i++))
 		if [ ${i} -gt 3 ]; then
-			echo "error: not possible to copy public key to ${lxc_name} ${lxc_ip}"
+			echo "error: not possible to copy public key to ${lxc_name} ${lxc_ip}" 1>&2
 			exit 1
 		fi
 
@@ -582,7 +582,7 @@ EOF
 		while true; do
 			((i++))
 			if [ $i -ge 100 ]; then
-				echo "error: no IPv4 address for ${lxc_name}"
+				echo "error: no IPv4 address for ${lxc_name}" 1>&2
 				exit 1
 			fi
 
@@ -781,7 +781,7 @@ EOF
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
 			# sanity check project
 			if ! lxc_exec_no_exit "bash ${bash_opt} -c '${prefix}; ove-list-projects ${distcheck} > /dev/null'"; then
-				echo "error: unknown project '${distcheck}'"
+				echo "error: unknown project '${distcheck}'" 1>&2
 				exit 1
 			fi
 
