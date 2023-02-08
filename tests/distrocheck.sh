@@ -443,6 +443,37 @@ EOF
 	fi
 }
 
+# $1: uid or gid
+function get_id {
+	local i
+	local _id
+	local sleep_s
+
+	i=0
+	while true; do
+		((i++))
+		if [ $i -ge 30 ]; then
+			echo "error: could not retreive $1 for ${OVE_USER} for ${lxc_name}" 1>&2
+			return 1
+		fi
+		_id=$(lxc_exec "id -${1::1} ${OVE_USER}")
+		if [ "x${_id}" = "x" ]; then
+			sleep_s=$((RANDOM%10))
+			echo "warning: empty $1, retry in ${sleep_s}s ($i)" 1>&2
+			sleep ${sleep_s}
+			continue
+		fi
+		break
+	done
+	_id=${_id/$'\r'/}
+	if [[ ! "${_id}" =~ ^[0-9]+$ ]]; then
+		echo "error: weird $1 '${_id}'" 1>&2
+		return 1
+	fi
+
+	echo "$_id"
+}
+
 function main {
 	local _home="/root"
 	local ove_packs
@@ -612,17 +643,10 @@ EOF
 		fi
 
 		lxc_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${OVE_USER:?}"
-		_uid=$(lxc_exec "id -u ${OVE_USER}")
-		_uid=${_uid/$'\r'/}
-		if [[ ! "${_uid}" =~ ^[0-9]+$ ]]; then
-			echo "error: weird uid ${_uid}"
-			exit 1
-		fi
 
-		_gid=$(lxc_exec "id -g ${OVE_USER}")
-		_gid=${_gid/$'\r'/}
-		if [[ ! "${_gid}" =~ ^[0-9]+$ ]]; then
-			echo "error: weird gid ${_gid}"
+		if ! _uid=$(get_id "uid"); then
+			exit 1
+		elif ! _gid=$(get_id "gid"); then
 			exit 1
 		fi
 		_home=${HOME}
