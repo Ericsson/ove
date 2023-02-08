@@ -57,11 +57,8 @@ function init {
 		distcheck="$1"
 	fi
 
-	if [ -t 1 ]; then
-		bash_opt="-i"
-		lxc_exec_flags="-t"
-	fi
-
+	lxc_exec_flags=""
+	bash_opt=""
 	distro="$2"
 
 	if [ ! -v OVE_DISTROCHECK_STEPS ]; then
@@ -810,8 +807,7 @@ EOF
 			fi
 
 			packs=$(lxc_exec "bash ${bash_opt} -c '${prefix}; DEBIAN_FRONTEND=noninteractive ove-list-needs ${distcheck}'")
-			packs=${packs//$'\r'/ }
-			packs=${packs//$'\n'/}
+			packs=${packs//$'\n'/ }
 			if [ "${packs}" != "" ]; then
 				_user=root LXC_EXEC_EXTRA="--user 0" lxc_exec "${package_manager} ${packs}"
 			fi
