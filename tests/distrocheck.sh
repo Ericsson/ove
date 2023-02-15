@@ -465,7 +465,7 @@ function get_id {
 		fi
 		break
 	done
-	_id=${_id/$'\r'/}
+	_id=${_id//[$'\t\r\n']/}
 	if [[ ! "${_id}" =~ ^[0-9]+$ ]]; then
 		echo "error: weird $1 '${_id}'" 1>&2
 		return 1
@@ -747,7 +747,7 @@ EOF
 				lxc_exec "bash -c '$(ove-setup)'"
 			fi
 			ws_name=$(lxc_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
-			ws_name=${ws_name//$'\r'/}
+			ws_name=${ws_name//[$'\t\r\n']/}
 			if [ "x${ws_name}" = "x" ]; then
 				ws_name="ove-tutorial"
 				_echo "using ${ws_name} as OVE workspace (fallback)"
@@ -810,7 +810,7 @@ EOF
 			fi
 
 			packs=$(lxc_exec "bash ${bash_opt} -c '${prefix}; DEBIAN_FRONTEND=noninteractive ove-list-needs ${distcheck}'")
-			packs=${packs//$'\n'/ }
+			packs=${packs//[$'\t\r\n']/ }
 			if [ "${packs}" != "" ]; then
 				_user=root LXC_EXEC_EXTRA="--user 0" lxc_exec "${package_manager} ${packs}"
 			fi
