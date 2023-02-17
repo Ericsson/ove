@@ -324,6 +324,10 @@ function setup_sshd {
 	fi
 
 	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
+if [ ! -s /etc/ssh/sshd_config ]; then
+	echo 'error: could not find /etc/ssh/sshd_config' >&2
+	exit 1
+fi
 if ! sed -i \
 	-e 's,.*PermitRootLogin.*,PermitRootLogin yes,g' \
 	-e 's,.*PermitUserEnvironment.*,PermitUserEnvironment yes,g' \
@@ -588,7 +592,7 @@ done
 exit 0
 EOF
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
-		sed -i -e "1iset -x" "${OVE_TMP}/${tag}-bootcheck.sh"
+		sed -i -e "2iset -x" "${OVE_TMP}/${tag}-bootcheck.sh"
 	fi
 
 	run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-bootcheck.sh ${lxc_name}/var/tmp/${tag}-bootcheck.sh"
