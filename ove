@@ -4008,35 +4008,76 @@ function ove_revtab_fetch_helper {
 	return $?
 }
 
+# $1: repo name
+function ove_repo_is_excluded {
+	local o
+	local opt
+	local re
+	local repo
+
+	repo="$1"
+	while IFS=';' read -a opt -r; do
+		for o in "${opt[@]}"; do
+			# remove all ' and "
+			o=${o//\'}
+			o=${o//\"}
+			re=\\b$o\\b
+			if [[ "${o}" = ". .. "* ]]; then
+				return 0
+			elif [[ "${o}" = ".*" ]]; then
+				return 0
+			elif [[ "${repo}" =~ $re ]]; then
+				return 0
+			fi
+		done
+	done <<<"${OVE_FETCH_EXCLUDE}"
+
+	return 1
+}
+
 # $*: optional list of repositories
 function ove_revtab_fetch {
-	local cc_list
+	local c_list
 	local err
 	local f_list
 	local i
+	local name
+	local repo
+	local repos
+	local url
 
 	err=0
 	if [ $# -ge 1 ]; then
-		ove_revtab_clone_and_checkout "$@"
-		ove_revtab_fetch_helper "$@"
-		return $?
+		repos="$*"
+	else
+		repos=${OVE_REPO_LIST}
 	fi
 
-	i=0
-	while ((i < ove_revtab_num_repositories)); do
-		if [ "${ove_revtab_fetch_url[${i}]}" == "noremote" ]; then
-			:
-		elif [ ! -e "${OVE_BASE_DIR}/${ove_revtab_git_name[${i}]}/.git" ]; then
-			cc_list+="${ove_revtab_git_name[${i}]} "
+	for repo in ${repos}; do
+		if [ "${repo##*/}" = "${OVE_OWEL_NAME}" ]; then
+			name="${OVE_OWEL_NAME}"
+			url=$(ove_repo_cmd "${OVE_OWEL_DIR}" config --get remote.origin.url)
 		else
-			f_list+="${ove_revtab_git_name[${i}]} "
+			i=${ove_revtab_name2index[${repo/${OVE_BASE_DIR}\//}]}
+			name=${ove_revtab_git_name[${i}]}
+			url="${ove_revtab_fetch_url[${i}]}"
 		fi
-		(( i+=1 ))
-	done
-	f_list+=" ${OVE_OWEL_NAME}"
 
-	if [ "x${cc_list}" != "x" ]; then
-		ove_revtab_clone_and_checkout ${cc_list} &
+		if [ "${url}" = "noremote" ]; then
+			:
+		elif [ "x${url}" = "x" ]; then
+			:
+		elif [ "x${OVE_FETCH_EXCLUDE}" != "x" ] && ove_repo_is_excluded "$name"; then
+			:
+		elif [ ! -e "${OVE_BASE_DIR}/${name}/.git" ]; then
+			c_list+="${name} "
+		else
+			f_list+="${name} "
+		fi
+	done
+
+	if [ "x${c_list}" != "x" ]; then
+		ove_revtab_clone_and_checkout ${c_list} &
 	fi
 
 	ove_revtab_fetch_helper "${f_list}"
@@ -11043,14 +11084,19 @@ function ove_config_builtins_init {
 		export OVE_DRY_RUN=0
 	fi
 
-	# OVE_FETCH_MAX_PARALLEL:int:[0-9]+:fetch:max number of 'git fetch' to run in parallel
+	# OVE_FETCH_MAX_PARALLEL:int:[0-9]+:fetch fetch-fetched:max number of 'git fetch' to run in parallel
 	if [ -z "${OVE_FETCH_MAX_PARALLEL+x}" ]; then
 		export OVE_FETCH_MAX_PARALLEL=0
 	fi
 
-	# OVE_FETCH_SUBMODULES:int:0-1:add-repo,fetch:automatically run 'ove import-submodules' on inital clone
+	# OVE_FETCH_SUBMODULES:int:0-1:add-repo fetch:automatically run 'ove import-submodules' on inital clone
 	if [ -z "${OVE_FETCH_SUBMODULES+x}" ]; then
 		export OVE_FETCH_SUBMODULES=1
+	fi
+
+	# OVE_FETCH_EXCLUDE:string::fetch fetch-fetched:semi-colon separated list of repos to exclude
+	if [ -z "${OVE_FETCH_EXCLUDE+x}" ]; then
+		export OVE_FETCH_EXCLUDE=""
 	fi
 
 	# OVE_AUTO_CLONE:int:0|1:all-build-commands:automatically clone repos
