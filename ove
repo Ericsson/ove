@@ -3109,6 +3109,15 @@ function ove_repo2index {
 	fi
 }
 
+# $1: dir
+function ove_dir_is_repo {
+	if [ -d "${1}" ] && [ -e "${1}"/.git ]; then
+		return 0
+	fi
+
+	return 1
+}
+
 # $1: repo
 function ove_status_one_repo {
 	local git_opt
@@ -3124,7 +3133,9 @@ function ove_status_one_repo {
 	[ $# -ne 1 ] && return 1
 
 	repo_fullpath=$(ove_repo2fullpath $1)
-	if [ "${repo_fullpath}" == "" ] || ! [ -d "${repo_fullpath}" ] || ! [ -e "${repo_fullpath}"/.git ]; then
+	if [ "x${repo_fullpath}" = "x" ]; then
+		return
+	elif ! ove_dir_is_repo "${repo_fullpath}"; then
 		return
 	fi
 
@@ -5296,7 +5307,7 @@ function ove_extract_only_a {
 	repo=$(${ove_cmd2pathname["awk"]:?} '{print $2}' <<<"${line}")
 	# shellcheck disable=SC2016
 	sha_1=$(${ove_cmd2pathname["awk"]:?} '{print $3}' <<<"${line}")
-	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -e ${OVE_BASE_DIR}/${repo}/.git ]; then
+	if ove_dir_is_repo "${OVE_BASE_DIR}/${repo}"; then
 		only_a+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
 	else
 		only_a+="${line:1}\n"
@@ -5313,7 +5324,7 @@ function ove_extract_only_b {
 	repo=$(${ove_cmd2pathname["awk"]:?} '{print $2}' <<<"${line}")
 	# shellcheck disable=SC2016
 	sha_1=$(${ove_cmd2pathname["awk"]:?} '{print $3}' <<<"${line}")
-	if [ -d ${OVE_BASE_DIR}/${repo} ] && [ -e ${OVE_BASE_DIR}/${repo}/.git ]; then
+	if ove_dir_is_repo "${OVE_BASE_DIR}/${repo}"; then
 		only_b+="  ${repo}|$(ove_repo_cmd ${OVE_BASE_DIR}/${repo} log -1 --oneline --pretty="  %C(auto)%h|%s" ${sha_1})\n"
 	else
 		only_b+="${line:1}\n"
@@ -7066,12 +7077,14 @@ function ove_build_pre {
 				re=\\b$a\\b
 				if ! [[ "${OVE_PROJECT_LIST_BUILDABLE}" =~ ${re} ]]; then
 					for p in $(ove_get_paths_recursive $a | ${ove_cmd2pathname["xargs"]:?} -n1 | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u); do
-						if [ -d ${p} ]; then
+						if ove_dir_is_repo "${p}"; then
 							continue
 						fi
 						for q in ${OVE_REPO_LIST}; do
-							if [[ ${p}/ == *"${q}/"* ]] && ! [ -d "${q}" ]; then
-								repos+="$(ove_repo2shortpath ${q}) "
+							if [[ ${p}/ == *"${q}/"* ]]; then
+								if ! ove_dir_is_repo "${q}"; then
+									repos+="$(ove_repo2shortpath ${q}) "
+								fi
 							fi
 						done
 					done
@@ -8091,8 +8104,7 @@ function ove-apply {
 		# rename the patch
 		q="${OVE_OWEL_TMP_DIR}/ove-apply-${repo_basename////-}.patch"
 		${ove_cmd2pathname["mv"]:?} ${p} ${q}
-		if [ -d "${repo_fullpath}" ] && \
-			[ -e ${repo_fullpath}/.git ]; then
+		if ove_dir_is_repo "${repo_fullpath}"; then
 			# Run 'git apply --check' and if ok, apply the patch
 			if ! ove_repo_cmd "${repo_fullpath}" apply ${args} --check ${q} 2> /dev/null; then
 				ove_echo_yellow_noprefix "${repo_basename}: patch '${q}' does not apply"
@@ -9668,9 +9680,7 @@ function ove-heads2revtab {
 	fi
 
 	for repo in ${repos}; do
-		if [ ! -d "${OVE_BASE_DIR}"/${repo} ]; then
-			continue
-		elif [ ! -e "${OVE_BASE_DIR}/${repo}/.git" ]; then
+		if ! ove_dir_is_repo "${OVE_BASE_DIR}/${repo}"; then
 			ove_echo_warning_noprefix "${repo}/.git missing"
 			continue
 		fi
@@ -11779,7 +11789,9 @@ function ove_buildable_projects {
 	declare -A projs_hash
 
 	for q in ${OVE_REPO_LIST}; do
-		[ -d "${q}" ] && continue
+		if ove_dir_is_repo "${q}"; then
+		       continue
+		fi
 		repos_not_fetched+="${q} "
 	done
 
@@ -13550,7 +13562,7 @@ function ove-add-repo {
 	if [ $# -eq 0 ] || [ $# -gt 3 ]; then
 		ove_command_usage
 		return 1
-	elif [ $# -eq 1 ] && [ -d "${1}" ] && [ -e "${1}"/.git ]; then
+	elif [ $# -eq 1 ] && ove_dir_is_repo "${1}"; then
 		name=${1}
 
 		# remove any trailing slash
