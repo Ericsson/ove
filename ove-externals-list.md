@@ -11,13 +11,13 @@
 | cp            | 5         |
 | csplit        | 1         |
 | cut           | 63        |
-| date          | 16        |
+| date          | 17        |
 | diff          | 1         |
 | dirname       | 5         |
 | du            | 3         |
 | env           | 1         |
 | file          | 3         |
-| find          | 71        |
+| find          | 72        |
 | flock         | 10        |
 | fold          | 2         |
 | fzf           | 5         |
@@ -57,7 +57,7 @@
 | sync          | 1         |
 | tac           | 3         |
 | tail          | 11        |
-| tar           | 5         |
+| tar           | 6         |
 | task          | 2         |
 | tee           | 11        |
 | timeout       | 4         |
@@ -72,4 +72,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1196__  |
+| __sum__       | __1199__  |

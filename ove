@@ -10315,6 +10315,28 @@ function ove-rm-logs {
 	return 0
 }
 
+# export-logs: :export OVE logs:LOG
+function ove-export-logs {
+	local o
+
+	if [ "x$(${ove_cmd2pathname["find"]:?} ${OVE_LOG_DIR} -name "2*$HOSTNAME*.log" -type f -print 2> /dev/null | head -1)" = "x" ]; then
+		ove_echo_error_noprefix "no logs found"
+		return 1
+	fi
+
+	o="$(pwd -P)"
+	if [ ! -w "${o}" ]; then
+		o="${OVE_TMP:?}"
+	fi
+	o+="/ove-logs-$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S')-${HOSTNAME}.tar.bz2"
+	if ! ${ove_cmd2pathname["tar"]:?} -C "${OVE_LOG_DIR}" --owner=0 --group=0 -cjf "${o}" .; then
+		return 1
+	fi
+	echo "${o}"
+
+	return 0
+}
+
 # authors: :list author summary for all git repositories:UTIL
 function ove-authors {
 	ove_entry || return
