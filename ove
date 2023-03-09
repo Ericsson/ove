@@ -9506,6 +9506,26 @@ function ove-mrproper {
 	return 0
 }
 
+# return a list of uniq directores for all repos
+function ove_revtab_list_dirs_uniq {
+	local c
+	local d
+
+	{
+		for d in $(ove_revtab_list_fullpath); do
+			c="$d"
+			while true; do
+				if [ "${c}" = "${OVE_BASE_DIR}" ]; then
+					break
+				fi
+				c=${c%/*}
+				printf "%s\n" "$c"
+			done
+		done
+		printf "%s\n" $(ove_revtab_list_fullpath)
+	} | ${ove_cmd2pathname["sort"]:?} -u
+}
+
 # wipe-base-dir:[y]:remove untracked files from ${OVE_BASE_DIR}, USE WITH CARE:CORE
 function ove-wipe-base-dir {
 	ove_entry || return
@@ -9530,7 +9550,7 @@ function ove-wipe-base-dir {
 	fi
 
 	# repos and some reserved files and directories
-	read -a reserved -r <<<"$(echo $(ove_revtab_list_fullpath) ${OVE_OWEL_DIR} ${OVE_STAGE_DIR} ${OVE_ARCHIVE_DIR} ${OVE_BASE_DIR}/{.owel,ove,.ove*,README*})"
+	read -a reserved -r <<<"$(echo $(ove_revtab_list_dirs_uniq) ${OVE_OWEL_DIR} ${OVE_STAGE_DIR} ${OVE_ARCHIVE_DIR} ${OVE_BASE_DIR}/{.owel,ove,.ove*,README*})"
 
 	# compare candidates vs. reserved
 	mapfile -t remove <<<"$(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -2 -3 \
@@ -9544,7 +9564,7 @@ function ove-wipe-base-dir {
 
 	if [ "$1" == "y" ]; then
 		rm_options=""
-	else
+	elif [ ${#remove[@]} -ge 2 ]; then
 		echo "${remove[@]}" | ${ove_cmd2pathname["xargs"]:?} file | ${ove_cmd2pathname["cat"]:?} -n
 		echo
 	fi
