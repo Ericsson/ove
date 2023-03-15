@@ -1903,7 +1903,11 @@ function ove_setup_trace {
 		${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/trace.cont
 
 	{
-		while true; do [ -e ${OVE_OWEL_TMP_DIR}/bash.pid ] && break; done
+		while true; do
+			if [ -e ${OVE_OWEL_TMP_DIR}/bash.pid ]; then
+				break
+			fi
+		done
 
 		# launch trace in background and let it start up
 		if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
@@ -11279,10 +11283,15 @@ function ove_config_builtins_init {
 		export OVE_OWEL_CI_BRANCH="origin/${OVE_DEFAULT_BRANCH_NAME}"
 	fi
 
-	# OVE_LOGLEVEL:int:0-9:all:set a specific log level
+	# OVE_LOGLEVEL:int:0-9:all loglevel:set a specific log level
 	if [ -z "${OVE_LOGLEVEL+x}" ]; then
 		export OVE_LOGLEVEL=1
 		export OVE_REDIRECT_OUTPUT=""
+	fi
+
+	# OVE_TRACE_MODE:int:0|1:all loglevel:what to include in the trace, skip OVE internals (=0), include OVE internals (=1)
+	if [ -z "${OVE_TRACE_MODE+x}" ]; then
+		export OVE_TRACE_MODE=0
 	fi
 
 	# OVE_AUTO_CORRECT:int:0|1:all:automatically correct commands
@@ -11577,6 +11586,15 @@ function ove_externals_probe {
 	export OVE_FLOCK_OPTIONS
 }
 
+function ove_trace_barrier {
+	echo ${BASHPID} > ${OVE_OWEL_TMP_DIR}/bash.pid
+	while true; do
+		if [ -e ${OVE_OWEL_TMP_DIR}/trace.cont ]; then
+			break
+		fi
+	done
+}
+
 # init:initialize OVE workspace
 function ove_init {
 	local broken_link
@@ -11584,6 +11602,10 @@ function ove_init {
 	local func
 	local resolved
 	local script_help
+
+	if [ -n "${OVE_TRACE_CMD+x}" ] && [ "${OVE_TRACE_MODE}" -eq 1 ]; then
+		ove_trace_barrier
+	fi
 
 	if ! dir=$(ove_get_base_dir); then
 		return 1
@@ -11648,13 +11670,6 @@ function ove_init {
 
 	if [ "${OVE_LOGLEVEL}" == "2" ]; then
 		set -x
-	fi
-
-	if [ -n "${OVE_TRACE_CMD+x}" ]; then
-		echo ${BASHPID} > ${OVE_OWEL_TMP_DIR}/bash.pid
-		while true; do
-			[ -e ${OVE_OWEL_TMP_DIR}/trace.cont ] && break
-		done
 	fi
 
 	if ! ove_set_built_ins; then
@@ -11791,6 +11806,11 @@ function ove_init {
 
 	# setup git command options
 	ove_git_command_options_init
+
+	# keep this last
+	if [ -n "${OVE_TRACE_CMD+x}" ] && [ "${OVE_TRACE_MODE}" -eq 0 ]; then
+		ove_trace_barrier
+	fi
 
 	return 0
 }
