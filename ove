@@ -2456,14 +2456,32 @@ function ove_parse_yaml {
 function ove_project_commands_list {
 	local a
 
-	# for each project, look for executable files, ignore files with hyphen-minus, underscore and number sign
+	if [ ! -d "${OVE_OWEL_DIR}/projects" ]; then
+		return 0
+	fi
+
 	a=$(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u <(
-		for f in $(cd ${OVE_OWEL_DIR} && ${ove_cmd2pathname["find"]:?} -L projects/*/ -perm -u=x -type f \
+		# for each valid project: look for executable files except files with hyphen-minus, underscore and number sign
+		for f in $(cd ${OVE_OWEL_DIR}/projects && ${ove_cmd2pathname["find"]:?} -L ${OVE_PROJECT_LIST} -perm -u=x -type f \
 			-not -name '*-*' \
 			-not -name '*_*' \
 			-not -name '*#*' 2> /dev/null); do
 			echo ${f##*/};
-		done))
+		done
+
+		if [ -e "${OVE_OWEL_DIR}/projects/common" ]; then
+			# for the common directory: include all files except pre/post files and files with hyphen-minus, underscore, number sign
+			for f in $(cd ${OVE_OWEL_DIR}/projects && ${ove_cmd2pathname["find"]:?} -L common -type f \
+				-not -name '*.pre' \
+				-not -name '*.post' \
+				-not -name '*-*' \
+				-not -name '*_*' \
+				-not -name '*#*' 2> /dev/null); do
+				echo ${f##*/};
+			done
+		fi
+		)
+	)
 
 	if [ "x${a}" != "x" ]; then
 		echo ${a}
@@ -2775,7 +2793,9 @@ function ove_projects_cmd_execute {
 		ret="$?"
 	fi
 
-	if [ ${ret} -eq 0 ]; then
+	# sanity check that the project command is executable
+	if [ ${ret} -eq 0 ] && \
+		[ -x "${OVE_OWEL_DIR}/projects/${proj_name}/${proj_command}" ]; then
 		# "$1"/$2 is no longer needed
 		shift 2
 
@@ -2817,6 +2837,18 @@ function ove_projects_cmd_execute {
 
 # $1: project name
 # $2: project command
+function ove_project_has_step {
+	if [ -e "${OVE_OWEL_DIR}/projects/${1}/${2}" ]; then
+		return 0
+	elif [ -e "${OVE_OWEL_DIR}/projects/common/${2}" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# $1: project name
+# $2: project command
 function ove_projects_cmd {
 	local i
 	local path
@@ -2831,8 +2863,8 @@ function ove_projects_cmd {
 	ret=0
 
 	# sanity check
-	if ! [ -e "${OVE_OWEL_DIR}/projects/${proj_name}/${proj_command}" ]; then
-		return
+	if ! ove_project_has_step "${proj_name}" "${proj_command}"; then
+		return 0
 	fi
 
 	i=${ove_projects_name2index[${proj_name}]}
@@ -7282,9 +7314,9 @@ function ove-buildme {
 				fi
 			fi
 
-			! [ -e "${OVE_OWEL_DIR}/projects/${b}/${p}" ] && continue
-
-			if [ "$(type -t ove-${p})" == "function" ] && \
+			if ! ove_project_has_step "${b}" "${p}"; then
+				continue
+			elif [ "$(type -t ove-${p})" == "function" ] && \
 				! eval ove-${p} ${b} ${OVE_REDIRECT_OUTPUT}; then
 				ove_echo_error_noprefix "${FUNCNAME[0]}: ${p} ${b} failed"
 				return 1
@@ -7352,7 +7384,9 @@ function ove_buildme_parallel_shell {
 				fi
 			fi
 
-			! [ -e "${OVE_OWEL_DIR}/projects/${b}/${p}" ] && continue
+			if ! ove_project_has_step "${b}" "${p}"; then
+				continue
+			fi
 
 			{
 				if [ "$(type -t ove-${p})" == "function" ] && \
@@ -7480,9 +7514,10 @@ EOF
 				fi
 			fi
 
-			if [ ! -e "${OVE_OWEL_DIR}/projects/${b}/${p}" ]; then
+			if ! ove_project_has_step "${b}" "${p}"; then
 				continue
 			fi
+
 			echo "${b}_${p}:" >> "${makefile}"
 			phony+=" ${b}_$p"
 			echo -e "\t\$(PREFIX) ove-${p} ${b} || \$(SUFFIX)" >> "${makefile}"
@@ -10908,6 +10943,16 @@ function ove_update_tab_complete {
 	done
 }
 
+function ove_add_script_helper {
+	local a
+	local b
+	local c
+
+	while IFS=: read -r a b c; do
+		echo "$b:$c"
+	done < "$1"
+}
+
 function ove_add_script_func {
 	local htext
 	local r_dir
@@ -10930,7 +10975,7 @@ function ove_add_script_func {
 	if [ -f ${s_dir}/${s}.help ]; then
 		htext=$(<${s_dir}/${s}.help)
 		if [[ "$htext" != *:PLUGIN ]]; then
-			htext="$s:$(${ove_cmd2pathname["cut"]:?} -d: -f2- ${s_dir}/${s}.help):PLUGIN"
+			htext="$s:$(ove_add_script_helper ${s_dir}/${s}.help):PLUGIN"
 		fi
 	else
 		htext="${s}: :run '${s_dir}/${s}':PLUGIN"

@@ -10,14 +10,14 @@
 | comm          | 14        |
 | cp            | 5         |
 | csplit        | 1         |
-| cut           | 63        |
+| cut           | 62        |
 | date          | 17        |
 | diff          | 1         |
 | dirname       | 5         |
 | du            | 3         |
 | env           | 1         |
 | file          | 3         |
-| find          | 72        |
+| find          | 73        |
 | flock         | 10        |
 | fold          | 2         |
 | fzf           | 5         |
