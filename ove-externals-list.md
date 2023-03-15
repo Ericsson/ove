@@ -14,7 +14,8 @@
 | date          | 17        |
 | diff          | 1         |
 | dirname       | 5         |
-| du            | 3         |
+| dot           | 2         |
+| du            | 5         |
 | env           | 1         |
 | file          | 3         |
 | find          | 73        |
@@ -23,6 +24,7 @@
 | fzf           | 5         |
 | getconf       | 2         |
 | git           | 80        |
+| graph-easy    | 2         |
 | grep          | 174       |
 | head          | 20        |
 | inotifywait   | 3         |
@@ -72,4 +74,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1200__  |
+| __sum__       | __1206__  |
