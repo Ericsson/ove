@@ -14509,7 +14509,7 @@ function ove-pre-push {
 	fi
 
 	if ove_sanity_check_tmux 2> /dev/null; then
-		ove-run-parallel 0 "ove shell-check" 0 "ove generate-doc" 0 "ove blame ${OVE_USER}" 0 "ove tail-lastlog ${OVE_USER}"
+		ove-run-parallel 0 "ove shell-check" 0 "ove generate-doc" 0 "ove blame ${OVE_USER}"
 		ove-unittest
 	else
 		ove-shell-check
