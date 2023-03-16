@@ -3308,7 +3308,9 @@ function ove_revtab_status_parse_one {
 	git_fmt='%<(15,trunc)%h?%<(15,trunc)%ar?%<(40,mtrunc)%ae?%s'
 	repo_fullpath=$(ove_repo2fullpath $1)
 
-	if [ "${repo_fullpath}" == "" ] || ! [ -d "${repo_fullpath}" ]; then
+	if [ "x${repo_fullpath}" = "x" ]; then
+		return
+	elif ! ove_dir_is_repo "${repo_fullpath}"; then
 		return
 	fi
 
@@ -3732,7 +3734,9 @@ function ove_revtab_forall {
 	local repo_basename
 
 	for repo in ${OVE_REPO_LIST}; do
-		! [ -d "${repo}" ] && continue
+		if ! ove_dir_is_repo "${repo}"; then
+			continue
+		fi
 		repo_basename=${repo/${OVE_BASE_DIR}\/}
 		eval "pushd ${repo} &>/dev/null && $1; popd&>/dev/null"
 	done
@@ -3782,10 +3786,14 @@ function ove_revtab_forall_parallel {
 	local repo
 	local repo_basename
 
-	[ $# -eq 2 ] && max_parallel=$2
+	if [ $# -eq 2 ]; then
+		max_parallel=$2
+	fi
 
 	for repo in ${OVE_REPO_LIST}; do
-		! [ -d "${repo}" ] && continue
+		if ! ove_dir_is_repo "${repo}"; then
+			continue
+		fi
 		repo_basename=${repo/${OVE_BASE_DIR}\/}
 		pushd "${repo}" &>/dev/null && eval "$1" &
 		ove_cap_jobs ${max_parallel}
@@ -3801,8 +3809,9 @@ function ove_revtab_forsome {
 
 	for i in ${*:2}; do
 		for repo in ${OVE_REPO_LIST}; do
-			! [ -d "${repo}" ] && continue
-			if [ "${repo}" == "${OVE_BASE_DIR}/${i}" ]; then
+			if ! ove_dir_is_repo "${repo}"; then
+				continue
+			elif [ "${repo}" == "${OVE_BASE_DIR}/${i}" ]; then
 				repo_basename=${repo/${OVE_BASE_DIR}\/}
 				eval "pushd ${repo} &>/dev/null && $1; popd&>/dev/null"
 			fi
@@ -3820,8 +3829,9 @@ function ove_revtab_forsome_parallel {
 
 	for i in ${*:3}; do
 		for repo in ${OVE_REPO_LIST}; do
-			! [ -d "${repo}" ] && continue
-			if [ "${repo}" == "${OVE_BASE_DIR}/${i}" ]; then
+			if ! ove_dir_is_repo "${repo}"; then
+				continue
+			elif [ "${repo}" == "${OVE_BASE_DIR}/${i}" ]; then
 				eval "pushd ${repo} &>/dev/null; $1; popd&>/dev/null" &
 				ove_cap_jobs ${2}
 			fi
@@ -6017,7 +6027,7 @@ function ove-branch {
 	fi
 
 	for r in ${repos}; do
-		if ! [ -d "${OVE_BASE_DIR}/${r}" ]; then
+		if ! ove_dir_is_repo "${OVE_BASE_DIR}/${r}"; then
 			echo "error: repo '${r}' is not yet fetched"
 			continue
 		fi
@@ -8993,7 +9003,10 @@ function ove-blame {
 	s="$*"
 
 	for repo in ${OVE_REPO_LIST}; do
-		! [ -d "${repo}" ] && continue
+		if ! ove_dir_is_repo "${repo}"; then
+			continue
+		fi
+
 		mapfile -t res < <(ove_repo_cmd "${repo}" "--no-pager grep" --no-color -I -n "${s}" | ${ove_cmd2pathname["cut"]:?} -d: -f1,2)
 
 		for i in "${res[@]}"; do
@@ -9793,7 +9806,6 @@ function ove-heads2revtab {
 
 	for repo in ${repos}; do
 		if ! ove_dir_is_repo "${OVE_BASE_DIR}/${repo}"; then
-			ove_echo_warning_noprefix "${repo}/.git missing"
 			continue
 		fi
 		sha_1=$(ove_repo_cmd "${OVE_BASE_DIR}"/${repo} rev-parse HEAD)
