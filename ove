@@ -7273,28 +7273,45 @@ function ove-list-tags {
 	done | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["column"]:?} -t -s'|'
 }
 
+# list-deps:[project...|tag...]:list dependencies for all/specified project(s):CORE
+function ove-list-deps {
+	ove_list_helper "${FUNCNAME[0]/ove-list-}" "$@"
+}
+
 # list-needs:[project...|tag...]:list OS packages needs for all/specified project(s):CORE
 function ove-list-needs {
+	ove_list_helper "${FUNCNAME[0]/ove-list-}" "$@"
+}
+
+function ove_list_helper {
 	ove_entry || return
 
 	local b
 	local build_list
+	local deps_list
 	local i
 	local n
-	local p
-	local pack_list
+	local -n p
 	local proj_list
+	local projs
 	local re
 	declare -A proj_mask
 
-	if [ $# -ge 1 ]; then
-		if ! proj_list=$(ove_validate_project_list "$@"); then
-			return 1
-		fi
+	p="ove_projects_${1}"
+	shift
 
-		build_list="$(ove_get_build_list ${proj_list})"
-		ove_set_proj_mask "$@"
+	if [ $# -eq 0 ]; then
+		projs="${OVE_PROJECT_LIST}"
+	else
+		projs="$*"
 	fi
+
+	if ! proj_list=$(ove_validate_project_list "${projs}"); then
+		return 1
+	fi
+
+	build_list="$(ove_get_build_list ${proj_list})"
+	ove_set_proj_mask "${projs}"
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
@@ -7307,13 +7324,13 @@ function ove-list-needs {
 		fi
 
 		i=${ove_projects_name2index[${b}]}
-		for n in ${ove_projects_needs[${i}]}; do
-			pack_list+="${n} "
+		for n in ${p[${i}]}; do
+			deps_list+="${n} "
 		done
 	done
 
-	if [ "${pack_list}" != "" ]; then
-		printf "%s\n" ${pack_list} | \
+	if [ "${deps_list}" != "" ]; then
+		printf "%s\n" ${deps_list} | \
 			LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u
 	fi
 
@@ -10585,6 +10602,7 @@ function ove_bash_complete {
 		[ "${subcommand}" == "buildme-parallel" ] ||
 		[ "${subcommand}" == "export" ] ||
 		[ "${subcommand}" == "install-pkg" ] ||
+		[ "${subcommand}" == "list-deps" ] ||
 		[ "${subcommand}" == "list-needs" ] ||
 		[ "${subcommand}" == "list-missing-projects" ] ||
 		[ "${subcommand}" == "list-projects" ]; then
