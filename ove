@@ -6539,35 +6539,49 @@ function ove_get_paths_recursive {
 	done
 }
 
-# proj2val:project key:print project value based on key:CORE
+# proj2val:project... key:print project(s) value based on key:CORE
 function ove-proj2val {
 	ove_entry || return
 
-	local i
-	local -n p
-	local -n q
+	local k
+	local err
 
-	if [ $# -ne 2 ] || [[ ! -v ove_projects_name2index[${1}] ]]; then
+	if [ $# -lt 2 ] || [[ ! -v ove_projects_name2index[${1}] ]]; then
 		ove_command_usage
 		return 1
 	fi
 
-	p="ove_$1_$2"
-	if [[ -v ${!p} ]]; then
-		if [ "x$p" != "x" ]; then
-			printf "%s\n" $p
+	k="${*: -1}"
+	err=0
+	while true; do
+		local i
+		local -n p="ove_${1}_${k}"
+		local -n q="ove_projects_${k}"
+
+		if [[ -v ${!p} ]]; then
+			if [ "x$p" != "x" ]; then
+				printf "%s\n" $p
+			else
+				err=$((err + 1))
+			fi
+		else
+			if [[ ! -v q[*] ]]; then
+				err=$((err + 1))
+			else
+				i=${ove_projects_name2index[$1]}
+				if [ "x${q[${i}]}" != "x" ]; then
+					printf "%s\n" ${q[${i}]}
+				fi
+			fi
 		fi
-	else
-		q="ove_projects_$2"
-		if [[ ! -v q[*] ]]; then
-			ove_echo_error_noprefix "key '$2' not found for '$1'"
-			return 1
+
+		shift
+		if [ $# -eq 1 ]; then
+			break
 		fi
-		i=${ove_projects_name2index[$1]}
-		if [ "x${q[${i}]}" != "x" ]; then
-			printf "%s\n" ${q[${i}]}
-		fi
-	fi
+	done
+
+	return ${err}
 }
 
 function ove_revtab_validate {
@@ -10590,7 +10604,7 @@ function ove_bash_complete {
 		if [ ${size} -eq 2 ]; then
 			wordlist=${OVE_PROJECT_LIST}
 		elif [ ${size} -ge 3 ]; then
-			wordlist="deps needs path version"
+			wordlist="deps needs path version ${OVE_PROJECT_LIST}"
 		fi
 	elif [ "${subcommand}" == "distrocheck" ] ||
 		[ "${subcommand}" == "distrocheck-parallel" ]; then
