@@ -12512,6 +12512,7 @@ function ove_deps {
 	optional+=('inotifywait')
 	optional+=('locate')
 	optional+=('lxc')
+	optional+=('make')
 	optional+=('md5deep')
 	optional+=('rg')
 	optional+=('strace')

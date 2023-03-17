@@ -701,7 +701,7 @@ EOF
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
-		ove_packs+="bash bzip2 git curl file binutils util-linux coreutils tar"
+		ove_packs+="bash bzip2 git curl file binutils util-linux coreutils tar make"
 
 		# install OVE packages
 		_user=root lxc_exec "${package_manager} ${ove_packs} >/dev/null 2>&1"
