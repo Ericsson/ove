@@ -2695,7 +2695,12 @@ function ove_projects_init {
 		elif [ "${!tmp_var:0:1}" = "/" ]; then
 			ove_projects_path[${i}]="${!tmp_var}"
 		else
-			ove_projects_path[${i}]="${OVE_BASE_DIR}/${!tmp_var}"
+			ove_projects_path[${i}]="${OVE_BASE_DIR}"
+			if [ "x${!tmp_var}" = "x." ]; then
+				true
+			elif [ "x${!tmp_var}" != "x" ]; then
+				ove_projects_path[${i}]+="/${!tmp_var}"
+			fi
 		fi
 		unset ${tmp_var}
 
@@ -7283,6 +7288,11 @@ function ove-list-needs {
 	ove_list_helper "${FUNCNAME[0]/ove-list-}" "$@"
 }
 
+# list-path:[project...|tag...]:list paths for all/specified project(s):CORE
+function ove-list-path {
+	ove_list_helper "${FUNCNAME[0]/ove-list-}" "$@"
+}
+
 function ove_list_helper {
 	ove_entry || return
 
@@ -10605,6 +10615,7 @@ function ove_bash_complete {
 		[ "${subcommand}" == "list-deps" ] ||
 		[ "${subcommand}" == "list-needs" ] ||
 		[ "${subcommand}" == "list-missing-projects" ] ||
+		[ "${subcommand}" == "list-path" ] ||
 		[ "${subcommand}" == "list-projects" ]; then
 		if [[ $cur == +* ]] || [[ $cur == -* ]]; then
 			wordlist=$(printf "\${cur:0:1}%s " $OVE_PROJECT_LIST)
