@@ -8088,7 +8088,7 @@ function ove_list_repositories {
 	while IFS=: read -r repo revision; do
 		if [ "${revision}" = "HEAD" ]; then
 			continue
-		elif [[ $(${ove_cmd2pathname["git"]:?} -C $(ove_repo2fullpath "${repo}") "branch" "-v" "--list" "${revision}") == *"$1"* ]]; then
+		elif [[ $(${ove_cmd2pathname["git"]:?} -C $(ove_repo2fullpath "${repo}") "branch" "-v" "--list" "${revision}") == *"[$1 "* ]]; then
 			echo "${repo}"
 		fi
 	done
