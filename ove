@@ -7347,7 +7347,19 @@ function ove_list_helper {
 	return 0
 }
 
-# install-pkg:[project...|tag...]:install needed OS packages:CORE
+# install-pkg-os:pkg...:install OS packages:CORE
+function ove-install-pkg-os {
+	ove_entry || return
+
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	elif ! ove_install_packages "${@}"; then
+		return 1
+	fi
+}
+
+# install-pkg:[project...|tag...]:install needed OS packages for all/specified project(s):CORE
 function ove-install-pkg {
 	ove_entry || return
 
@@ -7355,11 +7367,9 @@ function ove-install-pkg {
 
 	if ! pack_list=$(ove-list-needs "${@}"); then
 		return 1
-	elif [ "${pack_list}" == "" ]; then
+	elif [ "x${pack_list}" = "x" ]; then
 		return 0
-	fi
-
-	if ! ove_install_packages ${pack_list}; then
+	elif ! ove_install_packages ${pack_list}; then
 		return 1
 	fi
 }
@@ -11490,7 +11500,7 @@ function ove_config_builtins_init {
 		export OVE_STATUS_TRUNC=1
 	fi
 
-	# OVE_INSTALL_PKG:int:0-2:buildme buildme-parallel install-pkg:skip (=0), install (=1) or prompt user (=2) packages
+	# OVE_INSTALL_PKG:int:0-2:buildme buildme-parallel install-pkg install-pkg-os:skip (=0), install (=1) or prompt user (=2) packages
 	if [ -z "${OVE_INSTALL_PKG+x}" ]; then
 		export OVE_INSTALL_PKG=2
 	fi
