@@ -7298,30 +7298,25 @@ function ove_list_helper {
 
 	local b
 	local build_list
-	local deps_list
 	local i
 	local n
 	local -n p
 	local proj_list
-	local projs
 	local re
+	local result_list
 	declare -A proj_mask
 
 	p="ove_projects_${1}"
 	shift
 
-	if [ $# -eq 0 ]; then
-		projs="${OVE_PROJECT_LIST}"
-	else
-		projs="$*"
-	fi
+	if [ $# -ge 1 ]; then
+		if ! proj_list=$(ove_validate_project_list "${@}"); then
+			return 1
+		fi
 
-	if ! proj_list=$(ove_validate_project_list "${projs}"); then
-		return 1
+		build_list="$(ove_get_build_list ${proj_list})"
+		ove_set_proj_mask "$@"
 	fi
-
-	build_list="$(ove_get_build_list ${proj_list})"
-	ove_set_proj_mask "${projs}"
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
@@ -7335,12 +7330,12 @@ function ove_list_helper {
 
 		i=${ove_projects_name2index[${b}]}
 		for n in ${p[${i}]}; do
-			deps_list+="${n} "
+			result_list+="${n} "
 		done
 	done
 
-	if [ "${deps_list}" != "" ]; then
-		printf "%s\n" ${deps_list} | \
+	if [ "${result_list}" != "" ]; then
+		printf "%s\n" ${result_list} | \
 			LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u
 	fi
 
