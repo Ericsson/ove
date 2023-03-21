@@ -14555,6 +14555,30 @@ function ove-distrocheck-parallel {
 	eval ove-run-parallel $args
 }
 
+# distrocheck-all:pattern...:distrocheck ALL projects within one or multiple Linux distributions (LXD only):UTIL
+function ove-distrocheck-all {
+	ove_entry || return
+
+	local p
+
+	if ! command -v lxc > /dev/null; then
+		ove_command_not_found "lxc"
+		return 1
+	elif [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	# random order
+	for p in $(printf "%s\n" $OVE_PROJECT_LIST | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -R); do
+		if ove_sanity_check_tmux 2> /dev/null; then
+			OVE_DISTROCHECK_CONTAINER_PREFIX="$p" ove-distrocheck-parallel "$p" "$@"
+		else
+			OVE_DISTROCHECK_CONTAINER_PREFIX="$p" ove-distrocheck "$p" "$@"
+		fi
+	done
+}
+
 # pre-push: :shell-check+unittest+generate-doc combo:INTERNAL
 function ove-pre-push {
 	ove_entry || return

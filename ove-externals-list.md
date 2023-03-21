@@ -33,7 +33,7 @@
 | ln            | 18        |
 | locate        | 1         |
 | lsb_release   | 2         |
-| lxc           | 4         |
+| lxc           | 5         |
 | make          | 1         |
 | md5deep       | 1         |
 | md5sum        | 14        |
@@ -53,7 +53,7 @@
 | seq           | 11        |
 | setsid        | 1         |
 | sleep         | 12        |
-| sort          | 111       |
+| sort          | 112       |
 | ssh           | 7         |
 | stat          | 8         |
 | sync          | 1         |
@@ -74,4 +74,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1206__  |
+| __sum__       | __1208__  |
