@@ -10656,6 +10656,16 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" == "distrocheck-all" ]; then
+		if [ ${size} -ge 2 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
+			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+		elif [ ${size} -eq 2 ]; then
+			if ove-image-refresh &> /dev/null; then
+				wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+			fi
+		else
+			return
+		fi
 	elif [ "${subcommand}" == "run" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist="TIMEOUT"
