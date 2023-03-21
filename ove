@@ -14559,6 +14559,7 @@ function ove-distrocheck-parallel {
 function ove-distrocheck-all {
 	ove_entry || return
 
+	local cmd
 	local p
 
 	if ! command -v lxc > /dev/null; then
@@ -14569,13 +14570,14 @@ function ove-distrocheck-all {
 		return 1
 	fi
 
+	cmd="ove-distrocheck"
+	if ove_sanity_check_tmux 2> /dev/null; then
+		cmd+="-parallel"
+	fi
+
 	# random order
 	for p in $(printf "%s\n" $OVE_PROJECT_LIST | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -R); do
-		if ove_sanity_check_tmux 2> /dev/null; then
-			OVE_DISTROCHECK_CONTAINER_PREFIX="$p" ove-distrocheck-parallel "$p" "$@"
-		else
-			OVE_DISTROCHECK_CONTAINER_PREFIX="$p" ove-distrocheck "$p" "$@"
-		fi
+		OVE_DISTROCHECK_CONTAINER_PREFIX="${p//_/-}" "${cmd}" "$p" "$@"
 	done
 }
 
