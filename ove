@@ -8068,7 +8068,7 @@ function ove_any_repo {
 	# shellcheck disable=SC2016
 	ove_revtab_forall_parallel '${ove_cmd2pathname["git"]:?} branch -v --format="%(upstream:track,nobracket)" --list $(${ove_cmd2pathname["git"]:?} rev-parse --abbrev-ref HEAD 2> /dev/null)' |
 	while read -r line; do
-		if [[ ${line} == $1* ]]; then
+		if [[ ${line} == *$1* ]]; then
 			exit 1
 		fi
 	done
@@ -8083,7 +8083,7 @@ function ove_list_repositories {
 	while IFS=: read -r repo revision; do
 		if [ "${revision}" = "HEAD" ]; then
 			continue
-		elif [[ $(${ove_cmd2pathname["git"]:?} -C $(ove_repo2fullpath "${repo}") "branch" "-v" "--list" "${revision}") == *"[$1 "* ]]; then
+		elif [[ $(${ove_cmd2pathname["git"]:?} -C $(ove_repo2fullpath "${repo}") "branch" "-v" "--format=%(upstream:track,nobracket)" "--list" "${revision}") == *$1* ]]; then
 			echo "${repo}"
 		fi
 	done
