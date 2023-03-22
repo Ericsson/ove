@@ -4,7 +4,7 @@
 | awk           | 53        |
 | basename      | 1         |
 | bash          | 17        |
-| cat           | 43        |
+| cat           | 45        |
 | chmod         | 6         |
 | column        | 27        |
 | comm          | 14        |
@@ -33,7 +33,7 @@
 | ln            | 18        |
 | locate        | 1         |
 | lsb_release   | 2         |
-| lxc           | 5         |
+| lxc           | 4         |
 | make          | 1         |
 | md5deep       | 1         |
 | md5sum        | 14        |
@@ -74,4 +74,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1208__  |
+| __sum__       | __1209__  |

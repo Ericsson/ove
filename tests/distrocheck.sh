@@ -504,15 +504,35 @@ function main {
 			lxc_name="${OVE_DISTROCHECK_CONTAINER_PREFIX}-${lxc_name}"
 		fi
 
-		# replace slashes and dots
-		lxc_name="${lxc_name//\//-}"
-		lxc_name="${lxc_name//./-}"
-
-		if [ ${#lxc_name} -gt 63 ]; then
-			_echo "info: lxc name '${lxc_name}' tuncated"
-			lxc_name=${lxc_name:0:63}
-		fi
 	fi
+
+	_echo "info: replace all spaces, slashes, dots and underscores with hyphen-minus"
+	lxc_name="${lxc_name// /-}"
+	lxc_name="${lxc_name//\//-}"
+	lxc_name="${lxc_name//./-}"
+	lxc_name="${lxc_name//_/-}"
+
+	if [ ${#lxc_name} -gt 63 ]; then
+		_echo "info: lxc name is ${#lxc_name} chars, max allowed is 63. Truncating."
+		lxc_name=${lxc_name:0:63}
+	fi
+
+	while true; do
+		if [ "${#lxc_name}" -eq 0 ]; then
+			echo "error: lxc name can not be empty" 1>&2
+			exit 1
+		elif [ "${lxc_name:0:1}" = "-" ]; then
+			_echo "info: container name '${lxc_name}' can not start with hyphen-minus"
+			lxc_name="${lxc_name:1}"
+			continue
+		elif [ "${lxc_name: -1}" = "-" ]; then
+			_echo "info: container name '${lxc_name}' can not end with hyphen-minus"
+			lxc_name="${lxc_name::-1}"
+			continue
+		fi
+
+		break
+	done
 
 	# ephemeral container?
 	if [[ ${OVE_DISTROCHECK_STEPS} != *running* ]] && \
