@@ -3106,6 +3106,9 @@ function ove_revtab_init {
 	# OVE_REPO_LIST:space separated list of all git repositories for one OVE workspace
 	OVE_REPO_LIST=$(ove_revtab_list_fullpath)
 	export OVE_REPO_LIST
+
+	# OVE_REPO_LIST_WIDTH:longest repo name
+	export OVE_REPO_LIST_WIDTH
 }
 
 # $1: repo name (either 'name' or '${OVE_BASE_DIR}/'name')
@@ -4610,6 +4613,18 @@ function ove-forall-parallel {
 	fi
 
 	ove_revtab_forall_parallel "$*"
+}
+
+# forsome:command git...:run 'command' for specified git repositories:CORE
+function ove-forsome {
+	ove_entry || return
+
+	if [ $# -lt 2 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	ove_revtab_forsome "$1" "${@:2}"
 }
 
 # list systest groups helper

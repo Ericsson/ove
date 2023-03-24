@@ -20,6 +20,7 @@
 | OVE_PROJECT_COMMANDS         | space separated list of project commands                                       |
 | OVE_PROJECT_LIST             | space separated list of OVE projects defined in 'projs'                        |
 | OVE_REPO_LIST                | space separated list of all git repositories for one OVE workspace             |
+| OVE_REPO_LIST_WIDTH          | longest repo name                                                              |
 | OVE_SHA                      | OVE version in use                                                             |
 | OVE_STAGE_DIR                | directory where intermediate build files can be shared                         |
 | OVE_TMP                      | temporary directory for all OVE workspaces (per user)                          |
