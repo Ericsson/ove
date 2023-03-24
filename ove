@@ -2685,7 +2685,7 @@ function ove_projects_init {
 			if [ "x${t}" = "x" ]; then
 				ove_projects_path[${i}]="${OVE_BASE_DIR}"
 			else
-				v="$(readlink -f ${t})"
+				v="$(${ove_cmd2pathname["readlink"]:?} -f ${t})"
 				if [ "x${v}" = "x" ]; then
 					ove_projects_path[${i}]="${OVE_BASE_DIR}/${t}"
 				else
@@ -4663,12 +4663,121 @@ function ove-list-systests-aliases {
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 }
 
-# list-hooks: :list available hooks:CORE
+# hooks:[disable|enable|install|remove [hook]|list]:manage hooks:CORE
+function ove-hooks {
+	ove_entry || return
+
+	local args
+	local h
+	local i
+
+	if [ $# -eq 0 ]; then
+		cmd="list"
+	else
+		cmd="$1"
+	fi
+
+	if [ "${cmd}" = "list" ]; then
+		if [ ! -d ${OVE_DIR}/hooks ]; then
+			return 0
+		fi
+
+		echo "available:"
+		while read -r h; do
+			echo "  ${h##*/}"
+			while read -r i; do
+				echo "    ${i##*/}"
+			done <<<$(${ove_cmd2pathname["find"]:?} ${h} -type f)
+		done <<<$(${ove_cmd2pathname["find"]:?} "${OVE_DIR}/hooks" -maxdepth 1 -mindepth 1)
+		if [ -d "${OVE_OWEL_DIR}/hooks" ]; then
+			h=$(ove-list-hooks enabled)
+			i=$(ove-list-hooks disabled)
+			if [ "${h}" != "" ] || [ "${i}" != "" ]; then
+				echo "installed:"
+				if [ "${h}" != "" ]; then
+					echo "  enabled:"
+					printf "%s\n" "${h}" | ${ove_cmd2pathname["sed"]:?} -e 's,^,    ,g'
+				fi
+				if [ "${i}" != "" ]; then
+					echo "  disabled:"
+					printf "%s\n" "${i}" | ${ove_cmd2pathname["sed"]:?} -e 's,^,    ,g'
+				fi
+			fi
+		fi
+	elif [ "${cmd}" = "disable" ] || [ "${cmd}" = "enable" ] || [ "${cmd}" = "remove" ]; then
+		if [ $# -eq 2 ]; then
+			h="$2"
+		else
+			if ! read -r -p "hook: "; then
+				return 1
+			fi
+			h="$REPLY"
+		fi
+		# sanity check
+		if [ ! -d "${OVE_OWEL_DIR}/hooks/${h}" ]; then
+			ove_echo_error_noprefix "hook '${h}' is not installed"
+			return 1
+		elif [ -d "${OVE_OWEL_DIR}/hooks/${h}" ]; then
+			while read -r i; do
+				if [ "${cmd}" = "remove" ]; then
+					${ove_cmd2pathname["rm"]:?} "${i}"
+					continue
+				elif [ "${cmd}" = "disable" ]; then
+					args="-x"
+				else
+					args="+x"
+				fi
+				${ove_cmd2pathname["chmod"]:?} ${args} "${i}"
+			done <<<$(${ove_cmd2pathname["find"]:?} "${OVE_OWEL_DIR}/hooks/${h}" -maxdepth 1 -mindepth 1)
+			if [ "${cmd}" = "remove" ]; then
+				${ove_cmd2pathname["rmdir"]:?} "${OVE_OWEL_DIR}/hooks/${h}"
+			fi
+		fi
+	elif [ "${cmd}" = "install" ]; then
+		if [ $# -eq 2 ]; then
+			h="$2"
+		else
+			if ! read -r -p "hook: "; then
+				return 1
+			fi
+			h="$REPLY"
+		fi
+
+		# sanity check
+		if [ ! -d "${OVE_DIR}/hooks/${h}" ]; then
+			ove_echo_error_noprefix "hook '${h}' is not available"
+			return 1
+		fi
+
+		if ! ${ove_cmd2pathname["mkdir"]:?} -p "${OVE_OWEL_DIR}/hooks"; then
+			return 1
+		elif ! ${ove_cmd2pathname["cp"]:?} -a "${OVE_DIR}/hooks/${h}" "${OVE_OWEL_DIR}/hooks"; then
+			return 1
+		fi
+	else
+		ove_command_usage
+		return 1
+	fi
+}
+
+# list-hooks:[enabled|disabled]:list installed hooks:CORE
 function ove-list-hooks {
 	ove_entry || return
 
+	local opt
 	local p
 	local repo
+
+	if [ $# -eq 1 ]; then
+		if [ "$1" = "disabled" ]; then
+			opt="-not"
+		elif [ "$1" = "enabled" ]; then
+			true
+		else
+			ove_command_usage
+			return 1
+		fi
+	fi
 
 	# project hooks
 	if [ -d "${OVE_OWEL_DIR}/hooks" ]; then
@@ -4684,7 +4793,7 @@ function ove-list-hooks {
 	done
 
 	if [ "${p}" != "" ]; then
-		${ove_cmd2pathname["find"]:?} -L ${p} -perm -u=x -type f -not -size 0 | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
+		${ove_cmd2pathname["find"]:?} -L ${p} ${opt} -perm -u=x -type f -not -size 0 | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 	fi
 
 	return 0
@@ -10984,6 +11093,18 @@ function ove_bash_complete {
 			wordlist="force save"
 		elif [ ${size} -eq 3 ] && [ "${COMP_WORDS[2]}" = "force" ]; then
 			wordlist="pull"
+		fi
+	elif [ "${subcommand}" == "hooks" ]; then
+		if [ ${size} -eq 2 ]; then
+			wordlist="disable enable install list remove"
+		elif [ ${size} -eq 3 ] && [ "${COMP_WORDS[2]}" = "install" ]; then
+			if [ -d "${OVE_DIR}/hooks" ]; then
+				wordlist=$(${ove_cmd2pathname["find"]:?} "${OVE_DIR}/hooks" -maxdepth 1 -mindepth 1 -type d -exec basename {} \;)
+			fi
+		elif [ ${size} -eq 3 ]; then
+			if [ -d "${OVE_OWEL_DIR}/hooks" ]; then
+				wordlist=$(${ove_cmd2pathname["find"]:?} "${OVE_OWEL_DIR}/hooks" -maxdepth 1 -mindepth 1 -type d -exec basename {} \;)
+			fi
 		fi
 	elif [ "${subcommand}" == "tail-lastlog" ] ||
 		[ "${subcommand}" == "less-lastlog" ]; then
