@@ -1138,6 +1138,14 @@ function ove_strace_create_graph {
 	LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u ${OVE_OWEL_TMP_DIR}/timing > ${o_timing}
 	${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/timing
 
+	${ove_cmd2pathname["du"]:?} -sh ${o_dot}
+	if command -v dot > /dev/null; then
+		if ! ${ove_cmd2pathname["dot"]:?} -Tsvg ${o_dot} > ${o_svg}; then
+			return 1
+		fi
+		${ove_cmd2pathname["du"]:?} -sh ${o_svg}
+	fi
+
 	if command -v graph-easy > /dev/null; then
 		if ! ${ove_cmd2pathname["graph-easy"]:?} \
 			--from=dot \
@@ -1146,14 +1154,6 @@ function ove_strace_create_graph {
 			return 1
 		fi
 		echo
-	fi
-
-	${ove_cmd2pathname["du"]:?} -sh ${o_dot}
-	if command -v dot > /dev/null; then
-		if ! ${ove_cmd2pathname["dot"]:?} -Tsvg ${o_dot} > ${o_svg}; then
-			return 1
-		fi
-		${ove_cmd2pathname["du"]:?} -sh ${o_svg}
 	fi
 }
 
