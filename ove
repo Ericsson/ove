@@ -11083,14 +11083,14 @@ function ove_bash_complete {
 				${ove_cmd2pathname["sed"]:?} -e 's|/.owel$||g' | \
 				${ove_cmd2pathname["xargs"]:?})
 		elif [ ${size} -eq 4 ]; then
-			wordlist="force save"
+			wordlist="force save nofetch"
 		elif [ ${size} -eq 5 ] && [ "${COMP_WORDS[4]}" = "force" ]; then
 			wordlist="pull"
 		fi
 	elif [ "${subcommand}" == "replicate-cluster" ] ||
 		[ "${subcommand}" == "replicate-cluster-parallel" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist="force save"
+			wordlist="force save nofetch"
 		elif [ ${size} -eq 3 ] && [ "${COMP_WORDS[2]}" = "force" ]; then
 			wordlist="pull"
 		fi
@@ -13153,12 +13153,12 @@ function ove-worktree {
 	return 0
 }
 
-# replicate-cluster-parallel:[force [pull]|save [msg]]:replicate-cluster in parallel (LXD only):UTIL
+# replicate-cluster-parallel:[force [pull]|save [msg]|nofetch]:replicate-cluster in parallel (LXD only):UTIL
 function ove-replicate-cluster-parallel {
 	ove-replicate-cluster "$@"
 }
 
-# replicate-cluster:[force [pull]|save [msg]]:replicate OVE workspace on all cluster members (LXD only):UTIL
+# replicate-cluster:[force [pull]|save [msg]|nofetch]:replicate OVE workspace on all cluster members (LXD only):UTIL
 function ove-replicate-cluster {
 	local h
 	local p
@@ -13205,12 +13205,13 @@ function ove-replicate-cluster {
 	return 0
 }
 
-# replicate:host [path [force [pull]|save [msg]]]:replicate OVE workspace on 'host':UTIL
+# replicate:host [path [force [pull]|save [msg]|nofetch]]:replicate OVE workspace on 'host':UTIL
 function ove-replicate {
 	ove_entry || return
 
 	local d
 	local host
+	local fetch=1
 	local md5
 	local n
 	local n_base
@@ -13312,7 +13313,9 @@ function ove-replicate {
 		fi
 	fi
 
-	if [ ${OVE_REPOS_FETCHED} -lt $(${ove_cmd2pathname["wc"]:?} -w <<<"${OVE_REPO_LIST}") ]; then
+	if [ $# -ge 3 ] && [ "$3" = "nofetch" ]; then
+		fetch=0
+	elif [ ${OVE_REPOS_FETCHED} -lt $(${ove_cmd2pathname["wc"]:?} -w <<<"${OVE_REPO_LIST}") ]; then
 		# shellcheck disable=SC2016
 		repos="$(ove-status | ${ove_cmd2pathname["awk"]:?} '{print $1}')"
 		repos=${repos//$'\n'/ }
@@ -13334,7 +13337,7 @@ function ove-replicate {
 			fi
 		fi
 		source ove hush || return
-		if [ ${run_setup} -eq 1 ]; then
+		if [ ${run_setup} -eq 1 ] && [ ${fetch} -eq 1 ]; then
 			ove-fetch ${repos} &> /dev/null
 		fi
 
@@ -13374,7 +13377,8 @@ function ove-replicate {
 		fi
 
 		# one extra fetch if revtab was changed
-		if [ "x$md5" != "x$(${ove_cmd2pathname["md5sum"]:?} $OVE_OWEL_DIR/revtab)" ]; then
+		if [ "x$md5" != "x$(${ove_cmd2pathname["md5sum"]:?} $OVE_OWEL_DIR/revtab)" ] && \
+			[ ${fetch} -eq 1 ]; then
 			ove-fetch &> /dev/null
 		fi
 
@@ -13403,7 +13407,7 @@ function ove-replicate {
 			fi
 		fi
 		source ove hush || exit
-		if [ ${run_setup} -eq 1 ]; then
+		if [ ${run_setup} -eq 1 ] && [ ${fetch} -eq 1 ]; then
 			ove-fetch ${repos} &> /dev/null
 		fi
 		if [ $# -ge 3 ] && [ $3 = force ]; then
@@ -13439,7 +13443,8 @@ function ove-replicate {
 		fi
 
 		# one extra fetch if revtab was changed
-		if [ \"x\$md5\" != \"x\$(md5sum \$OVE_OWEL_DIR/revtab)\" ]; then
+		if [ \"x\$md5\" != \"x\$(md5sum \$OVE_OWEL_DIR/revtab)\" ] && \
+			[ ${fetch} -eq 1 ]; then
 			ove-fetch &> /dev/null
 		fi
 
