@@ -855,7 +855,7 @@ EOF
 				prefix="cd ${worktree_dir}; source ove hush"
 			fi
 
-			lxc_exec "bash ${bash_opt} -c '${prefix}; OVE_AUTO_CLONE=1 ove-distcheck ${distcheck}'"
+			lxc_exec "bash ${bash_opt} -c '${prefix}; OVE_AUTO_CLONE=1 ove distcheck ${distcheck}'"
 
 			# remove the worktree if ephemeral
 			if [[ ${OVE_DISTROCHECK_STEPS} == *worktree* ]]; then
