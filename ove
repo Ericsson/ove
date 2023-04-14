@@ -1994,8 +1994,12 @@ EOF
 					a=1
 				fi
 
-				# append it
-				echo "$h |& ${ove_cmd2pathname["tee"]:?} -a \$OVE_LAST_COMMAND" >> ${f}
+				# append the hook
+				if [ "x$OVE_HOOKS_APPEND_TO_LASTLOG" = "x1" ]; then
+					echo "$h |& ${ove_cmd2pathname["tee"]:?} -a \$OVE_LAST_COMMAND" >> ${f}
+				else
+					echo "$h" >> ${f}
+				fi
 			fi
 		done
 	fi
@@ -2153,8 +2157,14 @@ function ove {
 	if [ -v ove_hooks_pre[${cmd}] ]; then
 		for h in ${ove_hooks_pre[${cmd}]}; do
 			if [ -s "$h" ] && [ -x "$h" ]; then
-				$h "${@:2}" |& ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
-				ret=${PIPESTATUS[0]}
+				if [ "x$OVE_HOOKS_APPEND_TO_LASTLOG" = "x1" ]; then
+					$h "${@:2}" |& ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
+					ret=${PIPESTATUS[0]}
+				else
+					$h "${@:2}"
+					ret=$?
+				fi
+
 				if [ $ret -ne 0 ]; then
 					ove_echo_red_noprefix "error: pre hook '$h' failed with exit code $ret"
 					return $ret
@@ -2245,8 +2255,14 @@ function ove {
 	if [ "x${log_cmd}" != "xtsp" ] && [ -v ove_hooks_post[${cmd}] ]; then
 		for h in ${ove_hooks_post[${cmd}]}; do
 			if [ -s "$h" ] && [ -x "$h" ]; then
-				$h "${@:2}" |& ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
-				ret=${PIPESTATUS[0]}
+				if [ "x$OVE_HOOKS_APPEND_TO_LASTLOG" = "x1" ]; then
+					$h "${@:2}" |& ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
+					ret=${PIPESTATUS[0]}
+				else
+					$h "${@:2}"
+					ret=$?
+				fi
+
 				if [ $ret -ne 0 ]; then
 					ove_echo_red_noprefix "error: post hook '$h' failed with exit code $ret"
 					return $ret
@@ -11716,6 +11732,11 @@ function ove_config_builtins_init {
 	# OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS:string::distrocheck distrocheck-parallel:extra args sent to container framework on launch
 	if [ -z "${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS+x}" ]; then
 		export OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS=""
+	fi
+
+	# OVE_HOOKS_APPEND_TO_LASTLOG:int:0-1:all:append output from hooks to lastlog
+	if [ -z "${OVE_HOOKS_APPEND_TO_LASTLOG+x}" ]; then
+		export OVE_HOOKS_APPEND_TO_LASTLOG=1
 	fi
 }
 
