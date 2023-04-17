@@ -6891,11 +6891,18 @@ function ove_install_packages {
 
 	cmd="${OVE_OS_PACKAGE_MANAGER} ${OVE_OS_PACKAGE_MANAGER_ARGS} ${missing_packages_sorted}"
 	if [ ${EUID} != 0 ]; then
-		cmd="sudo ${cmd}"
+		if [ "${OVE_INSTALL_PKG_ELEVATE_METHOD:?}" = "sudo" ]; then
+			cmd="sudo ${cmd}"
+		elif [ "${OVE_INSTALL_PKG_ELEVATE_METHOD:?}" = "su" ]; then
+			cmd="su -c \"${cmd}\""
+		else
+			ove_echo_fatal_noprefix "unknown elevate method '${OVE_INSTALL_PKG_ELEVATE_METHOD:?}'"
+			return 1
+		fi
 	fi
 
 	if [ ${OVE_INSTALL_PKG:?} -eq 1 ]; then
-		if ! ${cmd}; then
+		if ! eval ${cmd}; then
 			ove_echo_fatal_noprefix "'${cmd}' failed"
 			return 1
 		fi
@@ -11658,6 +11665,11 @@ function ove_config_builtins_init {
 	# OVE_INSTALL_PKG:int:0-2:buildme buildme-parallel install-pkg install-pkg-os:skip (=0), install (=1) or prompt user (=2) packages
 	if [ -z "${OVE_INSTALL_PKG+x}" ]; then
 		export OVE_INSTALL_PKG=2
+	fi
+
+	# OVE_INSTALL_PKG_ELEVATE_METHOD:string:sudo|su:install-pkg install-pkg-os:elevating method to use when installing packages
+	if [ -z "${OVE_INSTALL_PKG_ELEVATE_METHOD+x}" ]; then
+		export OVE_INSTALL_PKG_ELEVATE_METHOD="sudo"
 	fi
 
 	# OVE_GIT_COMMAND_OPTIONS_DEFAULT:string::all commands:semi-colon separated list of git command options (defaults)
