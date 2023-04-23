@@ -5827,6 +5827,67 @@ function ove-setup {
 	return 0
 }
 
+function ove_refresh_helper {
+	local cmd
+	local ret
+
+	cmd="$1"
+	ret=0
+	if [[ ${cmd} =~ ^[Pp]$ ]]; then
+		ove-pull
+	elif [[ ${cmd} =~ ^[a]$ ]]; then
+		ove-ahead
+	elif [[ ${cmd} =~ ^[A]$ ]]; then
+		ove-show-ahead
+	elif [[ ${cmd} =~ ^[b]$ ]]; then
+		ove-behind
+	elif [[ ${cmd} =~ ^[B]$ ]]; then
+		ove-show-behind
+	elif [[ ${cmd} =~ ^[Cc]$ ]]; then
+		ove-checkout
+	elif [[ ${cmd} =~ ^[Dd]$ ]]; then
+		ove-diff
+	elif [[ ${cmd} =~ ^[f]$ ]]; then
+		ove-fetch
+	elif [[ ${cmd} =~ ^[F]$ ]]; then
+		ove-fetch-fetched
+	elif [[ ${cmd} =~ ^[Xx]$ ]]; then
+		if ove-pull; then
+			ret=1
+		fi
+	elif [[ ${cmd} =~ ^[Ll]$ ]]; then
+		ove-log
+	elif [[ ${cmd} =~ ^[s]$ ]]; then
+		ove-status
+	elif [[ ${cmd} =~ ^[S]$ ]]; then
+		ove-show-news
+	elif [[ ${cmd} =~ ^[Qq]$ ]]; then
+		return 2
+	elif [[ ${cmd} =~ ^[Nn]$ ]]; then
+		ret=1
+	elif [[ ${cmd} =~ ^[h]$ ]]; then
+		echo 'a - ahead'
+		echo 'A - show-ahead'
+		echo 'b - behind'
+		echo 'B - show-behind'
+		echo 'c - checkout'
+		echo 'd - diff'
+		echo 'f - fetch'
+		echo 'F - fetch-fetched'
+		echo 'h - this help'
+		echo 'l - log'
+		echo 'n - next'
+		echo 'p - pull'
+		echo 'q - quit'
+		echo 's - status'
+		echo 'S - show-news'
+		echo 'x - pull and next'
+	fi
+	echo
+
+	return ${ret}
+}
+
 # refresh:[pattern...]:refresh OVE workspaces on this host:UTIL
 function ove-refresh {
 	ove_entry || return
@@ -5846,97 +5907,48 @@ function ove-refresh {
 		while ((i < ${#projs[@]})); do
 			proj_base=${projs[i]##*/}
 			for p in "$@"; do
-				[[ "${proj_base,,}" =~ ${p,,} ]] && proj_list+="$i "
+				if [[ "${proj_base,,}" =~ ${p,,} ]]; then
+					proj_list+="$i "
+				fi
 			done
 			(( i+=1 ))
 		done
 	fi
 
 	for i in ${proj_list}; do
-		str+=$(printf "
-			echo '$ # %s'
-			echo '$ cd %s'
-			cd %s
-			ove_init
-			echo '$ ove fetch-fetched'
-			ove fetch-fetched
-			if ove news > /dev/null; then
-				ove news
+		echo "# $(ove_echo_green_noprefix ${projs[i]##*/})"
+		echo "$ cd ${projs[i]}"
+		cd "${projs[i]}" || continue
+		ove_init
+		if [ "${OVE_REFRESH_STEPS}" = "interactive" ]; then
+			echo "$ ove fetch-fetched"
+			ove-fetch-fetched
+			if ove-news > /dev/null; then
+				ove-news
 				while true; do
-					read -p '%s [?,a,A,b,B,c,d,l,n,p,q,s,S,x]? ' -r -n1
+					read -p "$(ove_echo_green_noprefix ${projs[i]##*/}) [a,A,b,B,c,d,f,F,h,l,n,p,q,s,S,x]? " -r -n1
 					echo
-					if [[ \${REPLY} =~ ^[Pp]$ ]]; then
-						echo '$ ove pull'
-						ove pull
-						echo
-					elif [[ \${REPLY} =~ ^[a]$ ]]; then
-						echo '$ ove ahead'
-						ove ahead
-						echo
-					elif [[ \${REPLY} =~ ^[A]$ ]]; then
-						echo '$ ove show-ahead'
-						ove show-ahead
-						echo
-					elif [[ \${REPLY} =~ ^[b]$ ]]; then
-						echo '$ ove behind'
-						ove behind
-						echo
-					elif [[ \${REPLY} =~ ^[B]$ ]]; then
-						echo '$ ove show-behind'
-						ove show-behind
-						echo
-					elif [[ \${REPLY} =~ ^[Cc]$ ]]; then
-						echo '$ ove checkout'
-						ove checkout
-						echo
-					elif [[ \${REPLY} =~ ^[Dd]$ ]]; then
-						echo '$ ove diff'
-						ove diff
-						echo
-					elif [[ \${REPLY} =~ ^[Xx]$ ]]; then
-						echo '$ ove pull'
-						if ove pull; then
-							break
-						fi
-						echo
-					elif [[ \${REPLY} =~ ^[Ll]$ ]]; then
-						echo '$ ove log'
-						ove log
-						echo
-					elif [[ \${REPLY} =~ ^[s]$ ]]; then
-						echo '$ ove status'
-						ove status
-						echo
-					elif [[ \${REPLY} =~ ^[S]$ ]]; then
-						echo '$ ove show-news'
-						ove show-news
-						echo
-					elif [[ \${REPLY} =~ ^[Qq]$ ]]; then
-						return
-					elif [[ \${REPLY} =~ ^[Nn]$ ]]; then
+					ove_refresh_helper $REPLY
+					ret=$?
+					if [ $ret -eq 1 ]; then
 						break
-					elif [[ \${REPLY} =~ ^[?]$ ]]; then
-						echo 'a - ahead'
-						echo 'A - show-ahead'
-						echo 'b - behind'
-						echo 'B - show-behind'
-						echo 'c - checkout'
-						echo 'd - diff'
-						echo 'l - log'
-						echo 'n - next'
-						echo 'p - pull'
-						echo 'q - quit'
-						echo 's - status'
-						echo 'S - show-news'
-						echo 'x - pull and next'
-						echo '? - this help'
-						continue
+					elif [ $ret -eq 2 ]; then
+						return
 					fi
 				done
 			fi
-			echo" $(ove_echo_green_noprefix ${projs[i]##*/}) ${projs[i]} ${projs[i]} $(ove_echo_green_noprefix ${projs[i]##*/}))
+		else
+			for cmd in ${OVE_REFRESH_STEPS}; do
+				ove_refresh_helper $cmd
+				ret=$?
+				if [ $ret -eq 1 ]; then
+					break
+				elif [ $ret -eq 2 ]; then
+					return
+				fi
+			done
+		fi
 	done
-	eval "${str}"
 }
 
 function ove_locate_owels {
@@ -11749,6 +11761,11 @@ function ove_config_builtins_init {
 	# OVE_HOOKS_APPEND_TO_LASTLOG:int:0-1:all:append output from hooks to lastlog
 	if [ -z "${OVE_HOOKS_APPEND_TO_LASTLOG+x}" ]; then
 		export OVE_HOOKS_APPEND_TO_LASTLOG=1
+	fi
+
+	# OVE_REFRESH_STEPS:string::refresh:steps to perform for refresh
+	if [ -z "${OVE_REFRESH_STEPS+x}" ]; then
+		export OVE_REFRESH_STEPS=interactive
 	fi
 }
 
