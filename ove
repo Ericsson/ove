@@ -3870,26 +3870,52 @@ function ove_revtab_clone_and_checkout_one {
 	local i=$1
 	local name
 	local push_url
+	local sleep_s
+	local try
 
 	fetch_url="${ove_revtab_fetch_url[${i}]}"
 	push_url="${ove_revtab_push_url[${i}]}"
 	name="${ove_revtab_git_name[${i}]}"
+	try=0
 
 	if [ "$fetch_url" = "noremote" ]; then
 		return
 	fi
 
 	while true; do
-		if ! ALLOW_OVERRIDE=1 ove_repo_cmd "${OVE_BASE_DIR}/${name}" clone "${fetch_url}" "${OVE_BASE_DIR}/${name}"; then
-			return 1
-		fi
-		break
-	done |& ${ove_cmd2pathname["sed"]:?} "s|^|$(printf "%-${OVE_REPO_LIST_WIDTH}s" ${name})|g"
+		try=$((try + 1))
+		while true; do
+			if ! ALLOW_OVERRIDE=1 ove_repo_cmd "${OVE_BASE_DIR}/${name}" clone "${fetch_url}" "${OVE_BASE_DIR}/${name}"; then
+				return 1
+			fi
+			break
+		done |& ${ove_cmd2pathname["sed"]:?} "s|^|$(printf "%-${OVE_REPO_LIST_WIDTH}s" ${name})|g"
 
-	if [ ${PIPESTATUS[0]} -ne 0 ]; then
-		ove_echo_error_noprefix "'git clone ${fetch_url} ${OVE_BASE_DIR}/${name}' failed"
-		return 1
-	fi
+		if [ ${PIPESTATUS[0]} -ne 0 ]; then
+			if [ ${try} -eq ${OVE_CLONE_RETRY:?} ]; then
+				ove_echo_error_noprefix "'git clone ${fetch_url} ${OVE_BASE_DIR}/${name}' failed"
+				return 1
+			else
+				if [[ "${OVE_CLONE_RETRY_PERIOD:?}" == *","* ]] || [[ "${OVE_CLONE_RETRY_PERIOD:?}" == *"."* ]]; then
+					ove_echo_error_noprefix "OVE_CLONE_RETRY_PERIOD: no floats"
+					return 1
+				fi
+
+				if [ "${OVE_CLONE_RETRY_PERIOD:?}" -eq 0 ]; then
+					continue
+				elif [ "${OVE_CLONE_RETRY_PERIOD:?}" -lt 0 ]; then
+					sleep_s=$((RANDOM%${OVE_CLONE_RETRY_PERIOD/-} + 1))
+				else
+					sleep_s=${OVE_CLONE_RETRY_PERIOD:?}
+				fi
+				ove_echo_cyan_noprefix "'git clone ${fetch_url} ${OVE_BASE_DIR}/${name}' try ${try}/${OVE_CLONE_RETRY} failed - retry in ${sleep_s} seconds"
+				${ove_cmd2pathname["sleep"]:?} ${sleep_s}
+				continue
+			fi
+		fi
+
+		break
+	done
 
 	ove_revtab_checkout "${name}"
 	ove_revtab_check_fetch_push "${name}" "${fetch_url}" "${push_url}"
@@ -11504,6 +11530,16 @@ function ove_config_builtins_init {
 	# OVE_CLONE_MAX_PARALLEL:int:[0-9]+:fetch:max number of 'git clone' to run in parallel
 	if [ -z "${OVE_CLONE_MAX_PARALLEL+x}" ]; then
 		export OVE_CLONE_MAX_PARALLEL=0
+	fi
+
+	# OVE_CLONE_RETRY:int:[0-9]+:fetch:number of retry attempts for 'git clone'
+	if [ -z "${OVE_CLONE_RETRY+x}" ]; then
+		export OVE_CLONE_RETRY=1
+	fi
+
+	# OVE_CLONE_RETRY_PERIOD:int:[0-9]+:fetch:sleep period between every clone attempt, 0 = no sleep, <0 randomize sleep
+	if [ -z "${OVE_CLONE_RETRY_PERIOD+x}" ]; then
+		export OVE_CLONE_RETRY_PERIOD=1
 	fi
 
 	# OVE_LOCATE_SEARCH_DIR:string::locate:where to search for OVE workspaces (only if 'locate' is unavailable)

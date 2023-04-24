@@ -53,7 +53,7 @@
 | sed           | 86        |
 | seq           | 11        |
 | setsid        | 1         |
-| sleep         | 12        |
+| sleep         | 13        |
 | sort          | 112       |
 | ssh           | 7         |
 | stat          | 8         |
@@ -75,4 +75,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1223__  |
+| __sum__       | __1225__  |
