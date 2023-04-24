@@ -38,12 +38,13 @@
 | md5deep       | 1         |
 | md5sum        | 14        |
 | mkdir         | 34        |
-| mktemp        | 7         |
+| mktemp        | 8         |
 | mv            | 7         |
 | pgrep         | 3         |
 | ps            | 1         |
 | readlink      | 28        |
 | rev           | 4         |
+| rg            | 1         |
 | rm            | 45        |
 | rmdir         | 4         |
 | scp           | 3         |
@@ -74,4 +75,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1222__  |
+| __sum__       | __1223__  |

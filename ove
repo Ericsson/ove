@@ -8130,7 +8130,7 @@ function ove-format-patch {
 	local d
 	local f
 
-	d="${OVE_OWEL_TMP_DIR}/format-patch"
+	d=$(${ove_cmd2pathname["mktemp"]:?} -d -p ${OVE_OWEL_TMP_DIR})
 	${ove_cmd2pathname["mkdir"]:?} -p ${d}
 	${ove_cmd2pathname["find"]:?} ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
 
