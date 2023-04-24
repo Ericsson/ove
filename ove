@@ -13329,7 +13329,7 @@ function ove-replicate {
 		fi
 	fi
 
-	now=$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S')
+	now=$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S%N')
 	q="$(${ove_cmd2pathname["mktemp"]:?} -u -p ${OVE_OWEL_TMP_DIR}).tar.bz2"
 	ove-format-patch ${q} &> /dev/null
 	if [ -s "${q}" ]; then
