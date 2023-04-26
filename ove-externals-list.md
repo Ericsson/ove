@@ -25,7 +25,7 @@
 | getconf       | 2         |
 | git           | 80        |
 | graph-easy    | 2         |
-| grep          | 174       |
+| grep          | 173       |
 | head          | 20        |
 | inotifywait   | 3         |
 | ld            | 1         |
@@ -66,7 +66,7 @@
 | timeout       | 4         |
 | tmux          | 13        |
 | touch         | 3         |
-| tr            | 23        |
+| tr            | 22        |
 | tsort         | 2         |
 | tsp           | 3         |
 | uname         | 4         |
@@ -75,4 +75,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1225__  |
+| __sum__       | __1223__  |
