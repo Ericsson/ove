@@ -18,7 +18,7 @@
 | du            | 5         |
 | env           | 1         |
 | file          | 3         |
-| find          | 78        |
+| find          | 79        |
 | flock         | 10        |
 | fold          | 2         |
 | fzf           | 5         |
@@ -42,7 +42,7 @@
 | mv            | 7         |
 | pgrep         | 3         |
 | ps            | 1         |
-| readlink      | 28        |
+| readlink      | 29        |
 | rev           | 4         |
 | rg            | 1         |
 | rm            | 45        |
@@ -75,4 +75,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1223__  |
+| __sum__       | __1225__  |

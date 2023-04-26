@@ -11133,6 +11133,11 @@ function ove_bash_complete {
 		if [ ${size} -ge 2 ]; then
 			wordlist=$(${ove_cmd2pathname["find"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${PWD}) -maxdepth 1 -mindepth 1 -not -path '*.git' -type f -exec basename {} \;)
 		fi
+	elif [ "${subcommand}" == "am" ] ||
+		[ "${subcommand}" == "import" ]; then
+		if [ ${size} -ge 2 ]; then
+			wordlist=$(${ove_cmd2pathname["find"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${PWD}) -maxdepth 1 -mindepth 1 -name '*.tar.bz2' -not -path '*.git' -type f -exec basename {} \;)
+		fi
 	elif [ "${subcommand}" == "replicate" ]; then
 		if [ ${size} -eq 2 ]; then
 			if [ "$(type -t _known_hosts_real)" == "function" ]; then
