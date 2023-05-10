@@ -4108,6 +4108,11 @@ function ove_repo_cmd {
 		cmd="${ove_cmd2pathname["git"]:?} $1 ${git_cmd_opt}"
 	else
 		cmd="${ove_cmd2pathname["git"]:?} -C ${repo} $1 ${git_cmd_opt}"
+
+		# dry run?
+		if [ "x${GIT_DRY_RUN}" != "x" ] && [ "${GIT_DRY_RUN}" = "1" ]; then
+			cmd+=" --dry-run"
+		fi
 	fi
 	shift
 
@@ -9794,27 +9799,32 @@ function ove-mrproper {
 
 	local nbr_untracked_files
 
-	if [ "$1" == "y" ]; then
+	if [ "$1" = "y" ]; then
 		# shellcheck disable=SC2016
-		ove_revtab_forall 'ove_repo_cmd ${repo} "--no-pager clean" -dffx > /dev/null'
-		! [ "${OVE_STAGE_DIR}" == "" ] && ${ove_cmd2pathname["rm"]:?} -rf ${OVE_STAGE_DIR:?}/*
-		! [ "${OVE_ARCHIVE_DIR}" == "" ] && ${ove_cmd2pathname["rm"]:?} -rf ${OVE_ARCHIVE_DIR:?}/*
+		ove_revtab_forall 'ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} "--no-pager clean" > /dev/null'
+		if [ "${OVE_STAGE_DIR}" != "" ]; then
+			${ove_cmd2pathname["rm"]:?} -rf ${OVE_STAGE_DIR:?}/*
+		fi
+
+		if [ "${OVE_ARCHIVE_DIR}" != "" ]; then
+			${ove_cmd2pathname["rm"]:?} -rf ${OVE_ARCHIVE_DIR:?}/*
+		fi
 
 		return 0
 	fi
 
 	# shellcheck disable=SC2016
-	nbr_untracked_files=$(ove_revtab_forall_parallel 'ove_repo_cmd ${repo} clean -dffxn'| ${ove_cmd2pathname["wc"]:?} -l)
+	nbr_untracked_files=$(ove_revtab_forall_parallel 'GIT_DRY_RUN=1 ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} clean' | ${ove_cmd2pathname["wc"]:?} -l)
 	if [ "${nbr_untracked_files}" -ne 0 ]; then
 		# dry-run first
 		# shellcheck disable=SC2016
-		ove_revtab_forall 'a=$(ove_repo_cmd ${repo} "--no-pager clean" -dffxn); [ "${a}" != "" ] && printf "${a}\n" | ${ove_cmd2pathname["sed"]:?} -e "s|Would remove \(.*\)$|${PWD}/\1|g"'
-		read -p "Proceed to remove ${nbr_untracked_files} untracked files/directories (list above) using 'git clean -dffx'? (y/N) " -r
+		ove_revtab_forall 'GIT_DRY_RUN=1 ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} "--no-pager clean" | ${ove_cmd2pathname["sed"]:?} -e "s|Would remove \(.*\)$|${PWD}/\1|g"'
+		read -p "Proceed to remove ${nbr_untracked_files} untracked files/directories (list above) using 'git clean'? (y/N) " -r
 		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 			read -p "Are you really sure? (y/N) " -r
 			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 				# shellcheck disable=SC2016
-				ove_revtab_forall 'ove_repo_cmd ${repo} "--no-pager clean" -dffx'
+				ove_revtab_forall 'ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} "--no-pager clean"'
 			fi
 		fi
 	fi
@@ -11733,6 +11743,7 @@ function ove_config_builtins_init {
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@add:-p;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@branch:-vv --color=always;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@checkout:-p;"
+		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@clean:-dffx;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@clone: ;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@describe:--tags --always --dirty --long;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@diff:--color=always;"
