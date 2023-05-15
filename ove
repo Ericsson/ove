@@ -4759,25 +4759,39 @@ function ove-hooks {
 				return 1
 			fi
 			h="$REPLY"
+			if [ "$h" = "" ]; then
+				return 1
+			fi
 		fi
-		# sanity check
-		if [ ! -d "${OVE_OWEL_DIR}/hooks/${h}" ]; then
+
+		# relative hook?
+		if [ -f "${OVE_OWEL_DIR}/hooks/${h}" ]; then
+			h="${OVE_OWEL_DIR}/hooks/${h}"
+		# absolute hook?
+		elif [[ "$h" = "${OVE_OWEL_DIR}/hooks/"* ]] && [ -f "${h}" ]; then
+			true
+		# hook dir?
+		elif [ -d "${OVE_OWEL_DIR}/hooks/${h}" ]; then
+			h="${OVE_OWEL_DIR}/hooks/${h}"
+		else
 			ove_echo_error_noprefix "hook '${h}' is not installed"
 			return 1
-		elif [ -d "${OVE_OWEL_DIR}/hooks/${h}" ]; then
-			while read -r i; do
-				if [ "${cmd}" = "remove" ]; then
-					${ove_cmd2pathname["rm"]:?} "${i}"
-					continue
-				elif [ "${cmd}" = "disable" ]; then
-					args="-x"
-				else
-					args="+x"
-				fi
-				${ove_cmd2pathname["chmod"]:?} ${args} "${i}"
-			done <<<$(${ove_cmd2pathname["find"]:?} "${OVE_OWEL_DIR}/hooks/${h}" -maxdepth 1 -mindepth 1)
+		fi
+
+		while read -r i; do
 			if [ "${cmd}" = "remove" ]; then
-				${ove_cmd2pathname["rmdir"]:?} "${OVE_OWEL_DIR}/hooks/${h}"
+				${ove_cmd2pathname["rm"]:?} "${i}"
+				continue
+			elif [ "${cmd}" = "disable" ]; then
+				args="-x"
+			else
+				args="+x"
+			fi
+			${ove_cmd2pathname["chmod"]:?} ${args} "${i}"
+		done <<<$(${ove_cmd2pathname["find"]:?} "${h}" -maxdepth 1 -type f)
+		if [ "${cmd}" = "remove" ]; then
+			if [ -e "${h}" ]; then
+				${ove_cmd2pathname["rm"]:?} -rf "${h}"
 			fi
 		fi
 	elif [ "${cmd}" = "install" ]; then
@@ -4788,17 +4802,23 @@ function ove-hooks {
 				return 1
 			fi
 			h="$REPLY"
+			if [ "$h" = "" ]; then
+				return 1
+			fi
 		fi
 
-		# sanity check
-		if [ ! -d "${OVE_DIR}/hooks/${h}" ]; then
-			ove_echo_error_noprefix "hook '${h}' is not available"
+		# hook dir?
+		if [ -d "${OVE_DIR}/hooks/${h}" ]; then
+			h="${OVE_DIR}/hooks/${h}"
+			if ! ${ove_cmd2pathname["mkdir"]:?} -p "${OVE_OWEL_DIR}/hooks"; then
+				return 1
+			fi
+		else
+			ove_echo_error_noprefix "hook '${h}' not found"
 			return 1
 		fi
 
-		if ! ${ove_cmd2pathname["mkdir"]:?} -p "${OVE_OWEL_DIR}/hooks"; then
-			return 1
-		elif ! ${ove_cmd2pathname["cp"]:?} -a "${OVE_DIR}/hooks/${h}" "${OVE_OWEL_DIR}/hooks"; then
+		if ! ${ove_cmd2pathname["cp"]:?} -a "${h}" "${OVE_OWEL_DIR}/hooks"; then
 			return 1
 		fi
 	else
@@ -11181,7 +11201,8 @@ function ove_bash_complete {
 			fi
 		elif [ ${size} -eq 3 ]; then
 			if [ -d "${OVE_OWEL_DIR}/hooks" ]; then
-				wordlist=$(${ove_cmd2pathname["find"]:?} "${OVE_OWEL_DIR}/hooks" -maxdepth 1 -mindepth 1 -type d -exec basename {} \;)
+				wordlist=$(${ove_cmd2pathname["find"]:?} "${OVE_OWEL_DIR}/hooks" -maxdepth 2 -mindepth 1 | \
+					${ove_cmd2pathname["sed"]:?} -e "s,${OVE_OWEL_DIR}/hooks/,,g")
 			fi
 		fi
 	elif [ "${subcommand}" == "tail-lastlog" ] ||

@@ -45,12 +45,12 @@
 | readlink      | 29        |
 | rev           | 4         |
 | rg            | 1         |
-| rm            | 45        |
-| rmdir         | 4         |
+| rm            | 46        |
+| rmdir         | 3         |
 | scp           | 3         |
 | script        | 4         |
 | scriptreplay  | 1         |
-| sed           | 86        |
+| sed           | 87        |
 | seq           | 11        |
 | setsid        | 1         |
 | sleep         | 13        |
@@ -75,4 +75,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1225__  |
+| __sum__       | __1226__  |
