@@ -42,7 +42,7 @@
 | mv            | 7         |
 | pgrep         | 3         |
 | ps            | 1         |
-| readlink      | 29        |
+| readlink      | 30        |
 | rev           | 4         |
 | rg            | 1         |
 | rm            | 46        |
@@ -75,4 +75,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1226__  |
+| __sum__       | __1227__  |

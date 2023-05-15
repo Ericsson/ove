@@ -3,6 +3,7 @@ alpine/3.14
 alpine/3.15
 alpine/3.16
 alpine/3.17
+alpine/3.18
 alpine/edge
 archlinux
 debian/10
@@ -12,6 +13,7 @@ devuan/beowulf
 devuan/chimaera
 fedora/36
 fedora/37
+fedora/38
 kali
 mint/uma
 mint/una

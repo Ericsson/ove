@@ -410,19 +410,19 @@ A list of OVE environment variables that will remain stable across OVE versions 
 
 OVE has been tested ([distrocheck.sh](tests/distrocheck.sh)) for the following Linux distributions:
 
-| Distribution        | Release(s)                 |
-|---------------------|----------------------------|
-| AlmaLinux           | 9.1                        |
-| Alpine Linux        | 3.14, 3.15, 3.16, 3.17     |
-| Arch Linux          | N/A                        |
-| Debian              | Buster, Bullseye, Bookworm |
-| Devuan              | Beowulf, Chimaera          |
-| Fedora              | 33, 34, 35, 36, 37         |
-| Kali                | N/A                        |
-| Linux Mint          | Uma, Una, Vanessa, Vera    |
-| openSUSE Tumbleweed | N/A                        |
-| Ubuntu              | 16.04, 18.04, 20.04, 22.04 |
-| Void Linux          | N/A                        |
+| Distribution        | Release(s)                   |
+|---------------------|------------------------------|
+| AlmaLinux           | 9.1                          |
+| Alpine Linux        | 3.14, 3.15, 3.16, 3.17, 3.18 |
+| Arch Linux          | N/A                          |
+| Debian              | Buster, Bullseye, Bookworm   |
+| Devuan              | Beowulf, Chimaera            |
+| Fedora              | 33, 34, 35, 36, 37, 38       |
+| Kali                | N/A                          |
+| Linux Mint          | Uma, Una, Vanessa, Vera      |
+| openSUSE Tumbleweed | N/A                          |
+| Ubuntu              | 16.04, 18.04, 20.04, 22.04   |
+| Void Linux          | N/A                          |
 
 Want to know more about OVE? Please check out the OVE [tutorial](https://github.com/Ericsson/ove-tutorial) or ask OVE:
 
