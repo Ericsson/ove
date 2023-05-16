@@ -1,8 +1,15 @@
-bash -c "OVE_TEST_STRING; ove status"
->>> /git-.*OVE_DEFAULT_BRANCH_NAME.*origin/
->>>= 0
+#!/usr/bin/env bash
 
-bash -c "OVE_TEST_STRING; ove status | wc -l"
->>>
-nbr_of_repos
->>>= 0
+function testStatus() {
+	ove status | grep -q "git-.*${OVE_DEFAULT_BRANCH_NAME:?}.*origin"
+	ret=$?
+	assertEquals "0" $ret
+}
+
+function testNumberOfRepos() {
+	num=$(ove status | wc -l)
+	assertEquals "${nbr_of_repos:?}" "$num"
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

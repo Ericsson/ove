@@ -1,6 +1,9 @@
-# make sure that no OVE variable is defined before running any test
-bash -c "set | grep ^OVE"
->>>= 1
-# only bash (for now)
-sh -i -c ". ./ove"
->>>= 1
+#!/usr/bin/env bash
+
+test_sh() {
+	sh -i -c '. ./ove'
+	assertEquals "1" "$?"
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

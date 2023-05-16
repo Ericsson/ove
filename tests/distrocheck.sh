@@ -51,7 +51,12 @@ function init {
 
 	if [ "$1" = "unittest" ]; then
 		unittest=1
-		OVE_DISTROCHECK_STEPS="ove verbose"
+		OVE_DISTROCHECK_STEPS="ove verbose user"
+
+		if ! command -v shunit2 > /dev/null; then
+			echo "error: shunit2 missing" 1>&2
+			exit 1
+		fi
 	else
 		unittest=0
 		distcheck="$1"
@@ -788,12 +793,14 @@ EOF
 		fi
 
 		package_manager_noconfirm
-		if [[ ${distro} == *opensuse* ]]; then
+		if [ ${unittest} -eq 0 ] && [[ ${distro} == *opensuse* ]]; then
 			lxc_exec "sudo zypper install -y -t pattern devel_basis"
 		fi
 	fi
 
 	if [ ${unittest} -eq 1 ]; then
+		export LXC_EXEC_EXTRA="--user 0 --env HOME=${HOME}"
+
 		lxc_exec "${package_manager} python3"
 		if [[ ${distro} == *alpine* ]]; then
 			lxc_exec "${package_manager} py3-yaml"
@@ -805,23 +812,10 @@ EOF
 			lxc_exec "${package_manager} python3-yaml"
 		fi
 
-		if [[ ${distro} == *almalinux* ]]; then
-			lxc_exec "${package_manager} epel-release"
-		fi
+		# from now on, run all lxc exec commands as user
+		export LXC_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
+		run "lxc ${lxc_global_flags} file push --uid ${_uid} --gid ${_gid} $(command -v shunit2) ${lxc_name}/var/tmp/shunit2"
 
-		if [[ ${distro} == *alpine* ]]; then
-			lxc_exec "${package_manager} alpine-sdk cabal ghc libffi-dev"
-		elif [[ ${distro} == *voidlinux* ]]; then
-			lxc_exec "${package_manager} cabal-install ghc"
-		else
-			lxc_exec "${package_manager} cabal-install ghc happy"
-		fi
-		lxc_exec "cabal update --verbose=0"
-		if [[ ${distro} == *archlinux* ]]; then
-			lxc_exec "cabal install --verbose=0 --ghc-options=-dynamic shelltestrunner-1.9"
-		else
-			lxc_exec "cabal install --verbose=0 shelltestrunner-1.9"
-		fi
 		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-unittest'"
 	fi
 

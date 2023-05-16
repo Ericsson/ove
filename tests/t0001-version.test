@@ -1,3 +1,8 @@
-bash -c "OVE_TEST_STRING; ove version"
->>> /[a-f0-9]{5,6}/
->>>= 0
+#!/usr/bin/env bash
+
+function testVersion () {
+	assertNotNull "$(ove version | grep -oE '[a-f0-9]{5,6}')"
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

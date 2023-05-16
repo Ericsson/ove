@@ -1,2 +1,25 @@
-bash -c "OVE_TEST_STRING; source OVE_DIR/tests/t0009*.sh"
->>>= 0
+#!/usr/bin/env bash
+
+function test_built_ins_without_args() {
+	ignore+=" digraph"
+	ignore+=" export-logs"
+	ignore+=" image-refresh"
+	ignore+=" loop-close"
+	ignore+=" post-push"
+	ignore+=" post-push-parallel"
+	ignore+=" pre-push"
+	ignore+=" refresh"
+	ignore+=" shell-check"
+	ignore+=" unsource"
+
+	for a in ${OVE_BUILT_INS_WITHOUT_ARGS}; do
+		if [[ $ignore == *$a* ]]; then
+		       continue
+		fi
+		ove "$a"
+		assertEquals "ove $a FAILED" "0" "$?"
+	done
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

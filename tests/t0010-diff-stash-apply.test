@@ -1,2 +1,35 @@
-bash -c "OVE_TEST_STRING; [ nbr_of_repos -lt 5 ] && exit 0; source OVE_DIR/tests/t0010*.sh"
->>>= 0
+#!/usr/bin/env bash
+
+function test_diff_stash_apply() {
+	if [ "${nbr_of_repos:?}" -lt 5 ]; then
+		return 0
+	fi
+
+	while read -r f; do
+		echo 123 >> "$f"
+	done < <(find git-1 git-3 git-5 -path '*/.git' -prune -o -type f -print)
+	ove diff > a.diff
+	assertEquals "0" "$?"
+	ove stash push
+	assertEquals "0" "$?"
+	ove apply a.diff
+	assertEquals "0" "$?"
+	ove stash drop
+	assertEquals "0" "$?"
+}
+
+function oneTimeTearDown() {
+	if [ -e a.diff ]; then
+		rm a.diff
+	fi
+
+	ove stash push
+	assertEquals "0" "$?"
+	ove stash drop
+	assertEquals "0" "$?"
+
+	return 0
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

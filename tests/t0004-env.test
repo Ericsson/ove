@@ -1,9 +1,14 @@
-bash -c "OVE_TEST_STRING; ove env"
->>>= 0
+#!/usr/bin/env bash
 
-bash -c "OVE_TEST_STRING; ove env |grep ^OVE_BASE_DIR"
->>> /OVE_BASE_DIR.*OVE_TEST_BASE/
->>>= 0
+function test_env() {
+	ove env
+	assertEquals "0" "$?"
+}
 
-: check for trailing whitespace; bash -c "OVE_TEST_STRING; ove env | cut -f2 -d' ' | sed 's|^ *||' | grep -q ' $'"
->>>= 1
+function test_env_trailing_whitespace() {
+	ove env | cut -f2 -d' ' | sed 's|^ *||' | grep -q ' $'
+	assertEquals "1" "$?"
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

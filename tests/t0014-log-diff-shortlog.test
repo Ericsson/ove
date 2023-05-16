@@ -1,2 +1,39 @@
-bash -c "OVE_TEST_STRING; [ nbr_of_repos -eq 1 ] && exit 0; source OVE_DIR/tests/t0014*.sh"
->>>= 0
+#!/usr/bin/env bash
+
+function test_log_diff_shortlog() {
+	if [ "${nbr_of_repos:?}" -eq 1 ]; then
+		return 0
+	fi
+
+	for i in {1..10}; do
+		for r in .owel git-1; do
+			tr -dc "\t\n [:alnum:]" < /dev/urandom | head -c1000 > $r/README
+			assertEquals "0" "$?"
+			git -C $r add README
+			assertEquals "0" "$?"
+			git -C $r commit -q -m "README $i"
+			assertEquals "0" "$?"
+		done
+	done
+
+	for t in 0.0.1 0.0.2 0.0.3; do
+		ove update-revtab git-1 $t
+		assertEquals "0" "$?"
+		git -C .owel add revtab
+		assertEquals "0" "$?"
+		git -C .owel commit -q -m "git-1 on $t"
+		assertEquals "0" "$?"
+	done
+
+	for r in {1..10}; do
+		echo $r:log-owel
+		ove log-owel HEAD~$r HEAD
+		assertEquals "0" "$?"
+		echo $r:shortlog-owel
+		ove shortlog-owel HEAD~$r HEAD
+		assertEquals "0" "$?"
+	done
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

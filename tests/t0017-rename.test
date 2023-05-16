@@ -1,22 +1,62 @@
-bash -c "OVE_TEST_STRING; ove rename qwerty1234-_"
->>>= 0
-bash -c "OVE_TEST_STRING; ove rename git-top"
->>>= 0
-bash -c "OVE_TEST_STRING; ove rename 1 2"
->>>= 1
-bash -c "OVE_TEST_STRING; ove rename stage"
->>>= 1
-bash -c "OVE_TEST_STRING; ove rename archives"
->>>= 1
-bash -c "OVE_TEST_STRING; [ nbr_of_repos -eq 1 ] && exit 1; ove rename git-1"
->>>= 1
-bash -c "OVE_TEST_STRING; ove rename @"
->>>= 1
-bash -c "OVE_TEST_STRING; ove rename +"
->>>= 1
-bash -c "OVE_TEST_STRING; ove rename var"
->>>= 1
-bash -c "OVE_TEST_STRING; ove rename tmp"
->>>= 1
-bash -c "OVE_TEST_STRING; ove rename ove"
->>>= 1
+#!/usr/bin/env bash
+
+function test_rename_a() {
+	ove rename qwerty1234-_
+	assertEquals "0" "$?"
+}
+
+function test_rename_b() {
+	ove rename git-top
+	assertEquals "0" "$?"
+}
+
+function test_rename_c() {
+	ove rename 1 2
+	assertEquals "1" "$?"
+}
+
+function test_rename_d() {
+	ove rename stage
+	assertEquals "1" "$?"
+}
+
+function test_rename_e() {
+	ove rename archives
+	assertEquals "1" "$?"
+}
+
+function test_rename_f() {
+	ove rename @
+	assertEquals "1" "$?"
+}
+
+function test_rename_g() {
+	ove rename +
+	assertEquals "1" "$?"
+}
+
+function test_rename_h() {
+	ove rename var
+	assertEquals "1" "$?"
+}
+
+function test_rename_i() {
+	ove rename tmp
+	assertEquals "1" "$?"
+}
+
+function test_rename_j() {
+	ove rename ove
+	assertEquals "1" "$?"
+}
+
+function test_rename_k() {
+	if [ "${nbr_of_repos:?}" -eq 1 ]; then
+		return 0
+	fi
+	ove rename git-1
+	assertEquals "1" "$?"
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

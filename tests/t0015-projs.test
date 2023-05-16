@@ -1,9 +1,38 @@
-# no projs file
-bash -c "OVE_TEST_STRING; rm .owel/projs; . ove; ove nop"
->>>= 0
-# empty projs file
-bash -c "OVE_TEST_STRING; > .owel/projs; . ove; ove nop"
->>>= 0
-# corrupt projs file
-bash -c "OVE_TEST_STRING; echo 1234 > .owel/projs; . ove; ret=\$?; git -C .owel checkout projs; trap '' EXIT; exit \$ret"
->>>= 1
+#!/usr/bin/env bash
+
+function test_no_projs() {
+	rm .owel/projs
+	assertEquals "0" "$?"
+	# shellcheck disable=SC1091
+	source ove
+	assertEquals "0" "$?"
+	ove nop
+	assertEquals "0" "$?"
+}
+
+function test_empty_projs() {
+	true > .owel/projs
+	assertEquals "0" "$?"
+	# shellcheck disable=SC1091
+	source ove
+	assertEquals "0" "$?"
+	ove nop
+	assertEquals "0" "$?"
+}
+
+function test_corrupt_projs() {
+	echo 1234 > .owel/projs
+	assertEquals "0" "$?"
+	# shellcheck disable=SC1091
+	source ove
+	assertEquals "1" "$?"
+	ove nop
+	assertEquals "127" "$?"
+}
+
+function tearDown() {
+	git -C .owel checkout -q projs
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

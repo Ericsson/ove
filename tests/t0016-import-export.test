@@ -1,24 +1,53 @@
-bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove export"
->>>= 0
-bash -c "OVE_TEST_STRING; ove export foobar"
->>>= 1
-bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove import git-top-$(git -C git-top log -1 --format=%h).tar.bz2"
->>>= 0
-bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove export p1"
->>>= 0
-bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove import git-top-$(git -C git-top log -1 --format=%h)-p1.tar.bz2"
->>>= 0
-bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove export p1"
->>>= 0
-bash -c "OVE_TEST_STRING; [ nbr_of_projs -eq 0 ] && exit 0; ove import git-top-$(git -C git-top log -1 --format=%h).tar.bz2"
->>>= 0
-bash -c "OVE_TEST_STRING; ove import"
->>>= 1
-bash -c "OVE_TEST_STRING; ove import foo bar"
->>>= 1
-bash -c "OVE_TEST_STRING; ove import /dev/null"
->>>= 1
-bash -c "OVE_TEST_STRING; ove import foobar"
->>>= 1
-bash -c "find -maxdepth 1 -name '*.bz2' -exec rm -v {} \;"
->>>= 0
+#!/usr/bin/env bash
+
+function test_import_export() {
+	if [ "${nbr_of_projs:?}" -eq 0 ]; then
+		return
+	fi
+
+	ove export
+	assertEquals "0" "$?"
+
+	ove export foobar
+	assertEquals "1" "$?"
+
+	sha=$(git -C git-top log -1 --format=%h)
+	f="git-top-${sha}.tar.bz2"
+
+	ove import "$f"
+	assertEquals "0" "$?"
+
+	ove export p1
+	assertEquals "0" "$?"
+
+	sha=$(git -C git-top log -1 --format=%h)
+	f="git-top-${sha}-p1.tar.bz2"
+	ove import "$f"
+	assertEquals "0" "$?"
+
+	ove export p1
+	assertEquals "0" "$?"
+
+	sha=$(git -C git-top log -1 --format=%h)
+	f="git-top-${sha}.tar.bz2"
+	ove import "$f"
+	assertEquals "0" "$?"
+
+	ove import
+	assertEquals "1" "$?"
+
+	ove import foo bar
+	assertEquals "1" "$?"
+
+	ove import /dev/null
+	assertEquals "1" "$?"
+
+	ove import foobar
+	assertEquals "1" "$?"
+
+	find . -maxdepth 1 -name '*.bz2' -exec rm -v {} \;
+	assertEquals "0" "$?"
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"

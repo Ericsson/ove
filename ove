@@ -12833,6 +12833,7 @@ function ove_deps {
 	optional+=('make')
 	optional+=('md5deep')
 	optional+=('rg')
+	optional+=('shellcheck')
 	optional+=('strace')
 	optional+=('task')
 	optional+=('tmux')
@@ -13732,6 +13733,9 @@ function ove_unittest_preparations {
 		done
 	fi
 
+	# config
+	echo "OVE_LOCAL_ECHO 1" > ${unittest_dir}/git-top/.oveconfig
+
 	# commit and push
 	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/git-top add .
 	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/git-top commit -q -m "test"
@@ -13758,7 +13762,7 @@ function ove_unittest {
 	local nbr_of_projs
 	local nbr_of_repos
 	local nbr_of_systests
-	local shelltest_opts
+	local t
 	local tot_files
 	local unittest_dir
 
@@ -13794,30 +13798,23 @@ function ove_unittest {
 		((tot_files+=2))
 	fi
 
+	# config
+	((tot_files++))
+
 	tot_tests=$((nbr_of_systests * 3))
 	if [ $nbr_of_systests -ne 0 ]; then
 		((tot_tests+=1))
 	fi
 
-	# launch shelltestrunner
 	cd ${OVE_OWEL_TMP_DIR}/unittest || return 1
-	shelltest_opts=" --debug "
 
-	${ove_cmd2pathname["env"]:?} -i - HOME=${HOME} USER=${OVE_USER} \
-		${shelltest} ${tests} \
-		${shelltest_opts} \
-		--color \
-		--diff \
-		-a \
-		-DOVE_TEST_STRING="set -m; source ove > /dev/null; ove_init > /dev/null; export TIMEFORMAT=\"%3lR\"; ove-loglevel 0 > /dev/null; trap ove_unittest_cleanup EXIT" \
-		-DOVE_DEFAULT_BRANCH_NAME=${OVE_DEFAULT_BRANCH_NAME} \
-		-Dnbr_of_systests=${tot_tests} \
-		-Dnbr_of_projs=${nbr_of_projs} \
-		-Dnbr_of_repos=$((nbr_of_repos + 1 )) \
-		-Dnbr_of_files=${tot_files} \
-		-DOVE_DIR=${OVE_DIR} \
-		-DOVE_TEST_BASE="$(${ove_cmd2pathname["sed"]:?} -e 's|/|\\/|g' <<<"${OVE_OWEL_TMP_DIR}/unittest")" | \
-		${ove_cmd2pathname["sed"]:?} -e 's|\\n|\n|g'
+	export nbr_of_systests=${tot_tests}
+	export nbr_of_projs=${nbr_of_projs}
+	export nbr_of_repos=$((nbr_of_repos + 1 ))
+	export nbr_of_files=${tot_files}
+	for t in $tests; do
+		$OVE_DIR/tests/$t
+	done
 }
 
 # unittest:[test...]:run all/specific unit tests:INTERNAL
@@ -13826,19 +13823,6 @@ function ove-unittest {
 
 	local a
 	local tests
-
-	if command -v shelltest > /dev/null; then
-		shelltest=$(command -v shelltest)
-	elif [ -x "${HOME}/.cabal/bin/shelltest" ]; then
-		shelltest="${HOME}/.cabal/bin/shelltest"
-	elif [ -x "${HOME}/.local/bin/shelltest" ]; then
-		shelltest="${HOME}/.local/bin/shelltest"
-	elif [ -h "${HOME}/.local/bin/shelltest" ]; then
-		shelltest="$(${ove_cmd2pathname["readlink"]:?} -f ${HOME}/.local/bin/shelltest)"
-	else
-		ove_command_not_found "shelltestrunner" "Version 1.9 or greater is needed."
-		return 1
-	fi
 
 	trap ove_unittest_exit EXIT
 	if [ -e "${OVE_GLOBAL_STATE_DIR}/.oveconfig" ]; then
@@ -13850,12 +13834,43 @@ function ove-unittest {
 
 	if [ $# -eq 0 ]; then
 		tests="tests/t*.test"
+
+		# tests that depends on nbr_of_systests, nbr_of_projs, nbr_of_repos or nbr_of_files
+		${ove_cmd2pathname["git"]:?} \
+			-C $OVE_DIR/tests \
+			grep \
+			-E \
+			'nbr_of_systests|nbr_of_projs|nbr_of_repos|nbr_of_files' $OVE_DIR/tests/*.test | \
+			${ove_cmd2pathname["cut"]:?} -d':' -f1 | \
+			LC_ALL=1 ${ove_cmd2pathname["sort"]:?} -u > $OVE_TMP/tests_vars
+
+		# all tests
+		${ove_cmd2pathname["find"]:?} ${OVE_DIR}/tests -name '*.test' -exec basename {} \; | LC_ALL=1 ${ove_cmd2pathname["sort"]:?} > $OVE_TMP/tests_all
+
+		# other tests
+		LC_ALL=1 ${ove_cmd2pathname["comm"]:?} -1 -3 $OVE_TMP/tests_vars $OVE_TMP/tests_all > $OVE_TMP/tests_other
+
+		# setup what to test
+		tests=$(${ove_cmd2pathname["cat"]:?} $OVE_TMP/tests_vars)
+
+		#            files_per_repo | projs | repos | systest
+		ove_unittest       0            0       0        0
+		ove_unittest       0            1       0        0
+		ove_unittest       1            0       1        0
+		ove_unittest       0            0       0        1
+		ove_unittest       1            1       1        1
+		ove_unittest       2            2       2        2
+		ove_unittest       3            3       3        3
+		ove_unittest       3           10      10        3
+
+		# setup what to test
+		tests=$(${ove_cmd2pathname["cat"]:?} $OVE_TMP/tests_other)
 	else
 		for a in "$@"; do
 			if ! [ -e "${OVE_DIR}/tests/${a}.test" ]; then
 				continue
 			fi
-			tests+="tests/${a}.test "
+			tests+="${a}.test "
 		done
 
 		if [ "${tests}" == "" ]; then
@@ -13865,15 +13880,7 @@ function ove-unittest {
 		fi
 	fi
 
-	#            files_per_repo | projs | repos | systest
-	ove_unittest       0            0       0        0
-	ove_unittest       0            1       0        0
-	ove_unittest       1            0       1        0
-	ove_unittest       0            0       0        1
-	ove_unittest       1            1       1        1
-	ove_unittest       2            2       2        2
-	ove_unittest       3            3       3        3
-	ove_unittest       3           10      10        3
+	ove_unittest 3 3 3 3
 }
 
 # less-lastlog:[user...]:peek into user(s) last OVE log using less:LOG
@@ -14468,7 +14475,7 @@ function ove-shell-check {
 
 	# first, run shellcheck on some random scripts
 	while read -r f; do
-		(cd "${OVE_DIR}" && \shellcheck "${f}")
+		(cd "${OVE_DIR}" && ${ove_cmd2pathname["shellcheck"]:?} "${f}")
 	done < <(${ove_cmd2pathname["git"]:?} -C ${OVE_DIR} ls-files -- ":(exclude)${OVE_BASENAME}" | ${ove_cmd2pathname["xargs"]:?} file | ${ove_cmd2pathname["grep"]:?} 'shell script' | ${ove_cmd2pathname["cut"]:?} -d: -f1)
 
 	# then, run shellcheck on self
@@ -14539,7 +14546,6 @@ function ove_externals_init {
 	cmds+=('dirname')
 	cmds+=('dot')
 	cmds+=('du')
-	cmds+=('env')
 	cmds+=('file')
 	cmds+=('find')
 	cmds+=('flock')
@@ -14576,6 +14582,7 @@ function ove_externals_init {
 	cmds+=('sed')
 	cmds+=('seq')
 	cmds+=('setsid')
+	cmds+=('shellcheck')
 	cmds+=('sleep')
 	cmds+=('sort')
 	cmds+=('ssh')

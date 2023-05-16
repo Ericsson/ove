@@ -1,4 +1,14 @@
-bash -c "OVE_TEST_STRING; OVE_AUTO_CORRECT=0 ove statu"
->>>= 1
-bash -c "OVE_TEST_STRING; OVE_AUTO_CORRECT=1 ove statu"
->>>= 0
+#!/usr/bin/env bash
+
+function test_auto_correct_a() {
+	OVE_AUTO_CORRECT=0 ove statu
+	assertEquals "1" "$?"
+}
+
+function test_auto_correct_b() {
+	OVE_AUTO_CORRECT=1 ove statu
+	assertEquals "0" "$?"
+}
+
+# shellcheck disable=SC1090
+source "${OVE_DIR}/tests/common.sh"
