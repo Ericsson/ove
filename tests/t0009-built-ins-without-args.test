@@ -4,6 +4,8 @@ function test_built_ins_without_args() {
 	ignore+=" digraph"
 	ignore+=" export-logs"
 	ignore+=" image-refresh"
+	ignore+=" locate-all"
+	ignore+=" logo"
 	ignore+=" loop-close"
 	ignore+=" post-push"
 	ignore+=" post-push-parallel"
