@@ -12823,11 +12823,13 @@ function ove_deps {
 
 	optional=()
 	optional+=('ag')
+	optional+=('convert')
 	optional+=('dig')
 	optional+=('dot')
 	optional+=('fzf')
 	optional+=('graph-easy')
 	optional+=('inotifywait')
+	optional+=('jp2a')
 	optional+=('locate')
 	optional+=('lxc')
 	optional+=('make')
@@ -14538,6 +14540,7 @@ function ove_externals_init {
 	cmds+=('chmod')
 	cmds+=('column')
 	cmds+=('comm')
+	cmds+=('convert')
 	cmds+=('cp')
 	cmds+=('csplit')
 	cmds+=('cut')
@@ -14557,6 +14560,7 @@ function ove_externals_init {
 	cmds+=('grep')
 	cmds+=('head')
 	cmds+=('inotifywait')
+	cmds+=('jp2a')
 	cmds+=('ld')
 	cmds+=('less')
 	cmds+=('ln')
@@ -14966,6 +14970,25 @@ function ove-post-push-parallel {
 	done <"${OVE_DIR}/tests/distrocheck.list"
 
 	eval ove-run-parallel $args
+}
+
+# logo: :logo:CORE
+function ove-logo {
+	ove_entry || return
+
+	if ! command -v convert > /dev/null; then
+		ove_command_not_found "convert"
+		return 1
+	elif ! command -v jp2a > /dev/null; then
+		ove_command_not_found "jp2a"
+		return 1
+	elif [ ! -s "${OVE_DIR:?}/ove.png" ]; then
+		echo "error: '${OVE_DIR:?}/ove.png' not found"
+		return 1
+	fi
+
+	${ove_cmd2pathname["convert"]:?} "${OVE_DIR:?}/ove.png" jpg:- | \
+		${ove_cmd2pathname["jp2a"]:?} --colors --fill -
 }
 
 ove_main "$@"

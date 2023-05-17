@@ -8,6 +8,7 @@
 | chmod         | 7         |
 | column        | 27        |
 | comm          | 15        |
+| convert       | 1         |
 | cp            | 6         |
 | csplit        | 1         |
 | cut           | 63        |
@@ -27,6 +28,7 @@
 | grep          | 173       |
 | head          | 20        |
 | inotifywait   | 3         |
+| jp2a          | 1         |
 | ld            | 1         |
 | less          | 3         |
 | ln            | 18        |
@@ -75,4 +77,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1232__  |
+| __sum__       | __1234__  |
