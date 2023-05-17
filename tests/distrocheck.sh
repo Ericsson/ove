@@ -816,7 +816,7 @@ EOF
 		export LXC_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
 		run "lxc ${lxc_global_flags} file push --uid ${_uid} --gid ${_gid} $(command -v shunit2) ${lxc_name}/var/tmp/shunit2"
 
-		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-unittest'"
+		lxc_exec "bash ${bash_opt} -c '${prefix}; ove-unittest $OVE_UNITTEST_TC'"
 	fi
 
 	if [ "x${distcheck}" != "x" ]; then

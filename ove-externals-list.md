@@ -18,7 +18,7 @@
 | dot           | 2         |
 | du            | 5         |
 | file          | 3         |
-| find          | 80        |
+| find          | 81        |
 | flock         | 10        |
 | fold          | 2         |
 | fzf           | 5         |
@@ -56,7 +56,7 @@
 | setsid        | 1         |
 | shellcheck    | 1         |
 | sleep         | 13        |
-| sort          | 114       |
+| sort          | 115       |
 | ssh           | 7         |
 | stat          | 8         |
 | sync          | 1         |
@@ -77,4 +77,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1234__  |
+| __sum__       | __1236__  |

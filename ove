@@ -13887,6 +13887,26 @@ function ove-unittest {
 	ove_unittest 3 3 3 3
 }
 
+# unittest-parallel:pattern:run all unit tests in parallel (tmux+LXD only):INTERNAL
+function ove-unittest-parallel {
+	ove_entry || return
+
+	local t
+
+	if [ $# -ne 1 ] || ! ove_sanity_check_tmux; then
+		ove_command_usage
+		return 1
+	elif ! ove-replicate-cluster-parallel force pull; then
+		return 1
+	fi
+
+	for t in $(${ove_cmd2pathname["find"]:?} ${OVE_DIR:?}/tests -maxdepth 1 -mindepth 1 -name "t*.test" -type f -exec basename {} .test \; | LC_ALL=C ${ove_cmd2pathname["sort"]:?}); do
+		OVE_DISTROCHECK_STEPS="user verbose worktree" \
+			OVE_UNITTEST_TC=$t \
+			ove-distrocheck-parallel unittest "$1"
+	done
+}
+
 # less-lastlog:[user...]:peek into user(s) last OVE log using less:LOG
 function ove-less-lastlog {
 	ove_entry || return
@@ -14824,6 +14844,10 @@ function ove-distrocheck-parallel {
 	elif ! ove_distrocheck_helper "$@"; then
 		ove_command_usage
 		return 1
+	fi
+
+	if [ -v OVE_UNITTEST_TC ]; then
+		env+=" OVE_UNITTEST_TC=${OVE_UNITTEST_TC}"
 	fi
 
 	if [ -v OVE_DISTROCHECK_STEPS ]; then
