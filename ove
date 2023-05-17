@@ -13737,6 +13737,7 @@ function ove_unittest_preparations {
 
 	# config
 	echo "OVE_LOCAL_ECHO 1" > ${unittest_dir}/git-top/.oveconfig
+	echo "OVE_LOG_DIR_DISK_USAGE_WARNING_MB 0" >> ${unittest_dir}/git-top/.oveconfig
 
 	# commit and push
 	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/git-top add .
