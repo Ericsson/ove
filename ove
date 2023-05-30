@@ -10068,6 +10068,10 @@ function ove-heads2revtab {
 	for repo in ${repos}; do
 		if ! ove_dir_is_repo "${OVE_BASE_DIR}/${repo}"; then
 			continue
+		elif [ -n "${OVE_HEADS2REVTAB_MODE+x}" ] && \
+			[ ${OVE_HEADS2REVTAB_MODE} -eq 1 ] && \
+			! ${ove_cmd2pathname["git"]:?} -C "${OVE_BASE_DIR}/${repo}" symbolic-ref -q HEAD > /dev/null; then
+			continue
 		fi
 		sha_1=$(ove_repo_cmd "${OVE_BASE_DIR}"/${repo} rev-parse HEAD)
 		if [ "x${sha_1}" = "x" ]; then
@@ -11841,6 +11845,11 @@ function ove_config_builtins_init {
 	# OVE_REFRESH_STEPS:string::refresh:steps to perform for refresh
 	if [ -z "${OVE_REFRESH_STEPS+x}" ]; then
 		export OVE_REFRESH_STEPS=interactive
+	fi
+
+	# OVE_HEADS2REVTAB_MODE:int:0|1:heads2revtab:include detached repos (=0), exclude detached repos (=1)
+	if [ -z "${OVE_HEADS2REVTAB_MODE+x}" ]; then
+		export OVE_HEADS2REVTAB_MODE=0
 	fi
 }
 
@@ -14425,7 +14434,7 @@ function ove-generate-doc {
 		> ${OVE_DIR}/ove-cmd-list.md
 
 	# ove-config-list.md (configuration list)
-	for c in $(type ove_config_builtins_init | ${ove_cmd2pathname["grep"]:?} -o 'OVE_[A-Z_]\+'| LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u); do
+	for c in $(type ove_config_builtins_init | ${ove_cmd2pathname["grep"]:?} -o 'OVE_[A-Z_0-9]\+'| LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u); do
 		str+="$(${ove_cmd2pathname["grep"]:?} -o "# ${c}:.*:.*" ${OVE_SELF} | ${ove_cmd2pathname["cut"]:?} -b3-):$(type ove_config_builtins_init | \
 			${ove_cmd2pathname["grep"]:?} "export ${c}=" | \
 			${ove_cmd2pathname["cut"]:?} -d= -f2- | \

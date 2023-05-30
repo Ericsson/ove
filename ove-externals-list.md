@@ -23,7 +23,7 @@
 | fold          | 2         |
 | fzf           | 5         |
 | getconf       | 2         |
-| git           | 81        |
+| git           | 82        |
 | graph-easy    | 2         |
 | grep          | 173       |
 | head          | 20        |
@@ -77,4 +77,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1236__  |
+| __sum__       | __1237__  |
