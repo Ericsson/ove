@@ -61,8 +61,8 @@ Thats it! This is how OVE keeps track of git revisions. There is no intermediate
 How does OVE keep track of dependencies? Well, to start with there are (at least) two types of dependencies: First, there are prerequisites for most projects to build, usually installed using a package manager. Secondly, within a top project handled by OVE the sub-projects almost always have dependencies to each other. To specify these two types, you use a YAML file in the OWEL, 'projs', that contains a list of projects with the following syntax:
 
     name:      name of project, characters allowed: a-z, A-Z, 0-9 and underscore
-      deps:    list of projects that need to be built before myself
-      needs:   list of packages that need to be installed before I can be built
+      deps:    list of OVE projects that need to be built before this project
+      needs:   list of OS packages that need to be installed before this project can be built. Shell command substitution is allowed.
       path:    path to project work directory. Relative to OVE_BASE_DIR or an absolute path. Variables are allowed.
       tags:    mark project with one or many tags. Tags will allow you to refererence groups of projects (e.g. for builds).
       version: Optional. Passed on as a bash variable to all steps for this project.
@@ -95,6 +95,7 @@ Example:
         projC
       needs:
         build-essential
+        linux-headers-$(uname -r)
       path:
         repoY
       tags:

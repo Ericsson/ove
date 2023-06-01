@@ -2722,7 +2722,7 @@ function ove_projects_init {
 
 		# needs
 		tmp_var="ove_YaMl_${name}_needs"
-		ove_projects_needs[${i}]=${!tmp_var}
+		ove_projects_needs[${i}]=$(eval echo ${!tmp_var})
 		unset ${tmp_var}
 
 		# tags
@@ -2743,16 +2743,16 @@ function ove_projects_init {
 			if [ "${!tmp_var}" != "" ]; then
 				needs_distro_version_found=1
 				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
-					ove_projects_needs[${i}]="${!tmp_var}"
+					ove_projects_needs[${i}]=$(eval echo ${!tmp_var})
 				else
-					ove_projects_needs[${i}]+=" ${!tmp_var}"
+					ove_projects_needs[${i}]=" $(eval echo ${!tmp_var})"
 				fi
 				unset ${tmp_var}
 			elif [ $needs_distro_version_found -eq 0 ] && tmp_var="ove_YaMl_${name}_needs_${m//-/_}" && [ "${!tmp_var}" != "" ]; then
 				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
-					ove_projects_needs[${i}]="${!tmp_var}"
+					ove_projects_needs[${i}]=$(eval echo ${!tmp_var})
 				else
-					ove_projects_needs[${i}]+=" ${!tmp_var}"
+					ove_projects_needs[${i}]=" $(eval echo ${!tmp_var})"
 				fi
 				unset ${tmp_var}
 			fi
