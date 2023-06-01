@@ -2745,14 +2745,14 @@ function ove_projects_init {
 				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
 					ove_projects_needs[${i}]=$(eval echo ${!tmp_var})
 				else
-					ove_projects_needs[${i}]=" $(eval echo ${!tmp_var})"
+					ove_projects_needs[${i}]+=" $(eval echo ${!tmp_var})"
 				fi
 				unset ${tmp_var}
 			elif [ $needs_distro_version_found -eq 0 ] && tmp_var="ove_YaMl_${name}_needs_${m//-/_}" && [ "${!tmp_var}" != "" ]; then
 				if [ "x${ove_projects_needs[${i}]}" = "x" ]; then
 					ove_projects_needs[${i}]=$(eval echo ${!tmp_var})
 				else
-					ove_projects_needs[${i}]=" $(eval echo ${!tmp_var})"
+					ove_projects_needs[${i}]+=" $(eval echo ${!tmp_var})"
 				fi
 				unset ${tmp_var}
 			fi
