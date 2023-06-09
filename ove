@@ -3625,7 +3625,9 @@ function ove_revtab_check_one {
 	local sha_b
 
 	name=$1
-	[ -e "${OVE_BASE_DIR}/${name}/.git" ] || return
+	if [ ! -e "${OVE_BASE_DIR}/${name}/.git" ]; then
+		return
+	fi
 
 	revision=$4
 	sha_a=$(${ove_cmd2pathname["git"]:?} -C ${OVE_BASE_DIR}/${name} rev-list -n 1 --abbrev-commit HEAD --)
@@ -3709,6 +3711,7 @@ function ove_revtab_check {
 
 	local i
 	local n=${FUNCNAME^^}
+	local name
 
 	[ -n "${!n}" ] && [ "${!n}" -eq 0 ] && return
 
@@ -3717,8 +3720,15 @@ function ove_revtab_check {
 
 	i=0
 	while ((i < ove_revtab_num_repositories)); do
+		name="${ove_revtab_git_name[${i}]}"
+		# ignore patched repos
+		if [ -d "${OVE_OWEL_DIR}/patches/${name}" ]; then
+			(( i+=1 ))
+			continue
+		fi
+
 		ove_revtab_check_one \
-			${ove_revtab_git_name[${i}]} \
+			${name} \
 			${ove_revtab_fetch_url[${i}]} \
 			${ove_revtab_push_url[${i}]} \
 			${ove_revtab_rev[${i}]} &
