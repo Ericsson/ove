@@ -13335,6 +13335,7 @@ function ove-replicate-cluster {
 	fi
 
 	for h in $(${ove_cmd2pathname["lxc"]:?} cluster list --format csv | \
+		${ove_cmd2pathname["grep"]:?} ONLINE | \
 		${ove_cmd2pathname["cut"]:?} -d, -f1); do
 		if [ "${s}" != "${h}" ]; then
 			if [ $p -eq 1 ]; then

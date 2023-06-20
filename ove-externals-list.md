@@ -25,7 +25,7 @@
 | getconf       | 2         |
 | git           | 82        |
 | graph-easy    | 2         |
-| grep          | 173       |
+| grep          | 174       |
 | head          | 20        |
 | inotifywait   | 3         |
 | jp2a          | 1         |
@@ -77,4 +77,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1237__  |
+| __sum__       | __1238__  |
