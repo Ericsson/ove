@@ -13533,7 +13533,9 @@ function ove-replicate {
 		# one extra fetch if revtab was changed
 		if [ "x$md5" != "x$(${ove_cmd2pathname["md5sum"]:?} $OVE_OWEL_DIR/revtab)" ] && \
 			[ ${fetch} -eq 1 ]; then
-			ove-fetch &> /dev/null
+			if ove_init; then
+				ove-fetch &> /dev/null
+			fi
 		fi
 
 		if [ ${run_setup} -eq 1 ]; then
@@ -13599,7 +13601,9 @@ function ove-replicate {
 		# one extra fetch if revtab was changed
 		if [ \"x\$md5\" != \"x\$(md5sum \$OVE_OWEL_DIR/revtab)\" ] && \
 			[ ${fetch} -eq 1 ]; then
-			ove-fetch &> /dev/null
+			if ove_init; then
+				ove-fetch &> /dev/null
+			fi
 		fi
 
 		if [ ${run_setup} -eq 1 ]; then
