@@ -46,7 +46,7 @@
 | readlink      | 29        |
 | rev           | 4         |
 | rg            | 1         |
-| rm            | 46        |
+| rm            | 49        |
 | rmdir         | 3         |
 | scp           | 3         |
 | script        | 4         |
@@ -77,4 +77,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1238__  |
+| __sum__       | __1241__  |

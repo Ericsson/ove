@@ -13429,7 +13429,7 @@ function ove-replicate {
 
 	now=$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S%N')
 	q="$(${ove_cmd2pathname["mktemp"]:?} -u -p ${OVE_OWEL_TMP_DIR}).tar.bz2"
-	ove-format-patch ${q} &> /dev/null
+	ove-format-patch "${q}" &> /dev/null
 	if [ -s "${q}" ]; then
 		q_remote="${d}/${now}.tar.bz2"
 		if [ "${host}" != "localhost" ] && ! ${ove_cmd2pathname["scp"]:?} -q ${q} ${host}:${q_remote}; then
@@ -13437,10 +13437,12 @@ function ove-replicate {
 			${ove_cmd2pathname["rm"]:?} ${q}
 			return 1
 		fi
+	else
+		${ove_cmd2pathname["rm"]:?} "${q}"
 	fi
 
 	p=$(${ove_cmd2pathname["mktemp"]:?} -p ${OVE_OWEL_TMP_DIR})
-	ove-diff > ${p}
+	ove-diff > "${p}"
 	if [ -s "${p}" ]; then
 		p_remote="${d}/${now}.diff"
 		if [ "${host}" != "localhost" ] && ! ${ove_cmd2pathname["scp"]:?} -q ${p} ${host}:${p_remote}; then
@@ -13448,10 +13450,12 @@ function ove-replicate {
 			${ove_cmd2pathname["rm"]:?} ${p} ${q} 2> /dev/null
 			return 1
 		fi
+	else
+		${ove_cmd2pathname["rm"]:?} "${p}"
 	fi
 
 	o=$(${ove_cmd2pathname["mktemp"]:?} -p ${OVE_OWEL_TMP_DIR})
-	ove-diff-cached > ${o}
+	ove-diff-cached > "${o}"
 	if [ -s "${o}" ]; then
 		o_remote="${d}/${now}.cached"
 		if [ "${host}" != "localhost" ] && ! ${ove_cmd2pathname["scp"]:?} -q ${o} ${host}:${o_remote}; then
@@ -13459,6 +13463,8 @@ function ove-replicate {
 			${ove_cmd2pathname["rm"]:?} ${p} ${q} ${o} 2> /dev/null
 			return 1
 		fi
+	else
+		${ove_cmd2pathname["rm"]:?} "${o}"
 	fi
 
 	if [ $# -ge 3 ] && [ "$3" = "nofetch" ]; then
@@ -13509,19 +13515,19 @@ function ove-replicate {
 		fi
 
 		md5=$(${ove_cmd2pathname["md5sum"]:?} $OVE_OWEL_DIR/revtab)
-		if [ -e "${q}" ]; then
-			ove-am ${q} &> /dev/null
-			rm ${q}
+		if [ -s "${q}" ]; then
+			ove-am "${q}" &> /dev/null
+			rm "${q}"
 		fi
 
-		if [ -e "${o}" ]; then
-			ove-apply-cached ${o} &> /dev/null
-			rm ${o}
+		if [ -s "${o}" ]; then
+			ove-apply-cached "${o}" &> /dev/null
+			rm "${o}"
 		fi
 
-		if [ -e "${p}" ]; then
-			ove-apply ${p} &> /dev/null
-			rm ${p}
+		if [ -s "${p}" ]; then
+			ove-apply "${p}" &> /dev/null
+			rm "${p}"
 		fi
 
 		# one extra fetch if revtab was changed
