@@ -2396,6 +2396,16 @@ function ove-fzf {
 	done
 }
 
+function ove_project_validate_name {
+	if ! ove_read_config_validate_name "$1"; then
+		return 1
+	elif [ "$1" = "common" ]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 # not really a complete YAML parser
 function ove_parse_yaml {
 	local col
@@ -2421,6 +2431,9 @@ function ove_parse_yaml {
 		elif [ "${line:0:1}" != " " ]; then
 			if [ "${line: -1}" != ":" ]; then
 				echo "error: format error: project name should end with a colon in '$1' at line #${i} '${line}'" 1>&2
+				return 1
+			elif ! ove_project_validate_name ${line::-1}; then
+				echo "error: format error: project name '${line::-1}' is not allowed at line #${i} '${line}'" 1>&2
 				return 1
 			fi
 			project=${line::-1}
@@ -14252,7 +14265,7 @@ function ove-add-project {
 	elif [ $# -ge 2 ]; then
 		name="$1"
 
-		if ! ove_read_config_validate_name ${name}; then
+		if ! ove_project_validate_name ${name}; then
 			ove_echo_error_noprefix "project name '${name}' is not allowed"
 			return 1
 		fi
@@ -14327,7 +14340,7 @@ function ove-add-project {
 					fi
 
 					if [ "${c}" = "name" ]; then
-						if [ $name_check_ok -eq 0 ] && ! ove_read_config_validate_name "${REPLY}"; then
+						if [ $name_check_ok -eq 0 ] && ! ove_project_validate_name "${REPLY}"; then
 							ove_echo_error_noprefix "project name '${REPLY}' is not allowed"
 							continue
 						fi
