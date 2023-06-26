@@ -11535,11 +11535,11 @@ function ove_config_init {
 	OVE_CONFIG_FILES_USER+=" ${HOME}/.oveconfig"
 	export OVE_CONFIG_FILES_USER
 
-	OVE_CONFIG_FILE_INTERNAL="${OVE_GLOBAL_STATE_DIR}/.ove/.oveconfig"
-	export OVE_CONFIG_FILE_INTERNAL
+	OVE_CONFIG_FILE_PRIVATE="${OVE_GLOBAL_STATE_DIR}/.ove/.oveconfig.private"
+	export OVE_CONFIG_FILE_PRIVATE
 
 	OVE_CONFIG_FILES_ALL="${OVE_CONFIG_FILES_USER}"
-	OVE_CONFIG_FILES_ALL+=" ${OVE_CONFIG_FILE_INTERNAL}"
+	OVE_CONFIG_FILES_ALL+=" ${OVE_CONFIG_FILE_PRIVATE}"
 	export OVE_CONFIG_FILES_ALL
 
 	# first set any duplicates
@@ -11898,7 +11898,7 @@ function ove_externals_probe {
 		else
 			OVE_COLUMN_WRAP_BUG=0
 		fi
-		ove_update_config "${OVE_CONFIG_FILE_INTERNAL:?}" "OVE_COLUMN_WRAP_BUG" "$OVE_COLUMN_WRAP_BUG"
+		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_COLUMN_WRAP_BUG" "$OVE_COLUMN_WRAP_BUG"
 	fi
 	export OVE_COLUMN_WRAP_BUG
 
@@ -11908,7 +11908,7 @@ function ove_externals_probe {
 		else
 			OVE_LESS_MORE_OPTIONS=0
 		fi
-		ove_update_config "${OVE_CONFIG_FILE_INTERNAL:?}" "OVE_LESS_MORE_OPTIONS" "$OVE_LESS_MORE_OPTIONS"
+		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_LESS_MORE_OPTIONS" "$OVE_LESS_MORE_OPTIONS"
 	fi
 	export OVE_LESS_MORE_OPTIONS
 
@@ -11921,7 +11921,7 @@ function ove_externals_probe {
 			[[ "${script_help}" == *"-f"* ]] && OVE_SCRIPT_OPTIONS+="-f "
 		fi
 		OVE_SCRIPT_OPTIONS="${OVE_SCRIPT_OPTIONS% *}"
-		ove_update_config "${OVE_CONFIG_FILE_INTERNAL:?}" "OVE_SCRIPT_OPTIONS" "$OVE_SCRIPT_OPTIONS"
+		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_SCRIPT_OPTIONS" "$OVE_SCRIPT_OPTIONS"
 	fi
 	export OVE_SCRIPT_OPTIONS
 
@@ -11929,7 +11929,7 @@ function ove_externals_probe {
 		if ${ove_cmd2pathname["flock"]:?} --help |& ${ove_cmd2pathname["grep"]:?} -q '\--no-fork'; then
 			OVE_FLOCK_OPTIONS="--no-fork"
 		fi
-		ove_update_config "${OVE_CONFIG_FILE_INTERNAL:?}" "OVE_FLOCK_OPTIONS" "$OVE_FLOCK_OPTIONS"
+		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_FLOCK_OPTIONS" "$OVE_FLOCK_OPTIONS"
 	fi
 	export OVE_FLOCK_OPTIONS
 }
