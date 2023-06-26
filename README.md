@@ -399,11 +399,54 @@ Here's a list (not complete) of a few utility commands:
 
 Please find the full command reference [here](ove-cmd-list.md)
 
-### Configuration
+### Invocation
+
+Each OVE command can be invoked using three different methods: normal, quick or queue. The table below tries to explain the differencies on a few aspects.
+
+| method    | performance impact | hooks | log | debug | example                     |
+|-----------|--------------------|-------|-----|-------|-----------------------------|
+| normal    | yes                | yes   | yes | yes   | ove ls-files                |
+| quick     | no                 | no    | no  | no    | ove-ls-files                |
+| queue     | yes                | yes   | yes | no    | OVE_BATCH_IT=1 ove ls-files |
+
+Example:
+
+    # method: normal
+    #
+    # ls-files command can take a while
+    $ time ove ls-files
+    ...
+    real 0m2,011s
+    # the output (and input) of the ls-files command is saved and you can use LOG commands to view or replay the output
+    $ ove list-commands LOG
+    ...
+    # run strace in background and filter on all execve calls
+    # ove loglevel 3
+    $ ove ls-files
+    ...
+
+    # method: quick
+    #
+    # ls-files using the quick invocation method
+    $ time ove-ls-files
+    ...
+    real 0m0,949s
+
+    # method: queue
+    #
+    # queue the ls-files command, the command will silently be run in background
+    $ time OVE_BATCH_IT=1 ove ls-files
+    0
+    real 0m0,193 s
+    # check task spooler status
+    $ ove ts
+    ...
+
+## Configuration
 
 Configurable OVE commands can be found [here](ove-config-list.md)
 
-### Environment variables
+## Environment variables
 
 A list of OVE environment variables that will remain stable across OVE versions can be found [here](ove-variables-list.md).
 
