@@ -60,7 +60,7 @@ Thats it! This is how OVE keeps track of git revisions. There is no intermediate
 
 How does OVE keep track of dependencies? Well, to start with there are (at least) two types of dependencies: First, there are prerequisites for most projects to build, usually installed using a package manager. Secondly, within a top project handled by OVE the sub-projects almost always have dependencies to each other. To specify these two types, you use a YAML file in the OWEL, 'projs', that contains a list of projects with the following syntax:
 
-    name:      name of project, characters allowed: a-z, A-Z, 0-9 and underscore
+    name:      name of project, characters allowed: a-z, A-Z, 0-9 and underscore. 'common' is reserved.
       deps:    list of OVE projects that need to be built before this project
       needs:   list of OS packages that need to be installed before this project can be built. Shell command substitution is allowed.
       path:    path to project work directory. Relative to OVE_BASE_DIR or an absolute path. Variables are allowed.
@@ -121,8 +121,8 @@ Example:
 
 Thats how OVE resolves external and internal dependencies for builds. As you just read above, the 'version:' keyword creates an environment variable that is passed to all build steps. What are those steps exactly? We cover that in the next section:
 
-### The 'projects' folder
-OVE is agnostic when it comes to build systems. Well, not entirely true. You need to be in a UNIX-like environment. That said, there are still a multitude of ways to build and install software that need to be taken care of. OVE handles this by providing a way of defining, for each sub project, how that particular project is built. In the OWEL, there is a folder called 'projects'. Within this projects folder, sub directories need to be present for each sub project containing executables (normally tiny bash scripts) for each build step. The projects structure typically look like this (output from tree):
+### The 'projects' directory
+OVE is agnostic when it comes to build systems. Well, not entirely true. You need to be in a UNIX-like environment. That said, there are still a multitude of ways to build and install software that need to be taken care of. OVE handles this by providing a way of defining, for each sub project, how that particular project is built. In the OWEL, there is a directory called 'projects'. Within this projects directory, sub directories need to be present for each sub project containing executables (normally tiny shell scripts) for each build step. The projects structure typically look like this (output from tree):
 
     ├── projects/
     │   ├── projA/
@@ -135,19 +135,37 @@ OVE is agnostic when it comes to build systems. Well, not entirely true. You nee
     │   │   ├── build
     │   │   ├── configure
     │   │   └── install
-    │   └── projC/
-    │       ├── bootstrap
-    │       ├── build
-    │       ├── configure
-    │       └── install
+    │   ├── projC/
+    │   │   ├── bootstrap
+    │   │   ├── build
+    │   │   ├── configure
+    │   │   └── install
+    │   └── common/
+    │   │   ├── bootstrap
+    │   │   ├── bootstrap.post
+    │   │   └── bootstrap.pre
 
 When OVE builds the top project the following happens: First, OVE sorts out the build order as explained in the previous section. Secondly, each projects' build steps are executed (bootstrap, build, configure, install). When done, you should be able to find the final output of the build in the staging area. In most cases, these are then picked up by an OVE plugin that creates deliverable packages of some kind (.rpm, .deb or similar).
 
 Particularly interesting here are the "configure" and "install" steps. In order for OVE to get intermediate build results into the staging area, this kind of construct is typically used from within the 'configure' script:
 
-	./configure --prefix=$OVE_STAGE_DIR/usr
+	./configure --prefix=${OVE_STAGE_DIR}${OVE_PREFIX}
 
-This way, the install step will install any built items into '$OVE_STAGE_DIR/usr'. Of course the way to do this depends on what build system is used, but the same goes for any project you put into an OVE project: You need to be able to get the build results into the staging area.
+This way, the install step will install any built items into '${OVE_STAGE_DIR}${OVE_PREFIX}'. Of course the way to do this depends on what build system is used, but the same goes for any project you put into an OVE project: You need to be able to get the build results into the staging area.
+
+The 'common' directory is special. In the example above, before each individual project's 'projX/bootstrap' file is executed, the 'common/bootstrap' file is sourced. This will allow you to put common environment flags, checks etc. into that 'common/{bootstrap,configure,build,install,...}' shell script. The pre/post files are sourced before/after the first/last bootstrap command.
+
+Example:
+
+    $ ove bootstrap projA projB projC
+    common/bootstrap.pre
+    A: common/bootstrap
+    A: bootstrap
+    B: common/bootstrap
+    B: bootstrap
+    C: common/bootstrap
+    C: bootstrap
+    common/bootstrap.post
 
 You now know how to build sub projects together, but what about testing from a system perspective? We cover that in the next section:
 
@@ -299,11 +317,13 @@ Done! As simple as that. Lets give a final example of what an OVE project file s
         │   │   ├── build
         │   │   ├── configure
         │   │   └── install
-        │   └── projC/
-        │       ├── bootstrap
-        │       ├── build
-        │       ├── configure
-        │       └── install
+        │   ├── projC/
+        │   │   ├── bootstrap
+        │   │   ├── build
+        │   │   ├── configure
+        │   │   └── install
+        │   └── common/
+        │       └── build
         ├── projs
         ├── revtab
         ├── systests
