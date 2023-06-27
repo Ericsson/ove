@@ -3908,7 +3908,7 @@ function ove_revtab_clone_and_checkout_one {
 	while true; do
 		try=$((try + 1))
 		while true; do
-			if ! ALLOW_OVERRIDE=1 ove_repo_cmd "${OVE_BASE_DIR}/${name}" clone "${fetch_url}" "${OVE_BASE_DIR}/${name}"; then
+			if ! ALLOW_OVERRIDE=1 ove_repo_cmd "${OVE_BASE_DIR}/${name}" "-c advice.detachedHead=false clone" "${fetch_url}" "${OVE_BASE_DIR}/${name}"; then
 				return 1
 			fi
 			break
@@ -4099,15 +4099,16 @@ function ove_repo_cmd {
 	local name
 	local i
 	local repo
+	local rev
 
 	repo=$1
-	if [ "$2" != "clone" ] && [ "$2" != "ls-remote" ] && [ ! -e ${repo}/.git ]; then
+	git_cmd="${2##* }"
+	if [ "${git_cmd}" != "clone" ] && [ "${git_cmd}" != "ls-remote" ] && [ ! -e ${repo}/.git ]; then
 		return 1
 	fi
 
 	i=$(ove_repo2index ${repo})
 	shift
-	git_cmd="${1##* }"
 
 	if [ "x${ALLOW_OVERRIDE}" != "x" ] && [ "${ALLOW_OVERRIDE}" = "1" ]; then
 		if [ "$i" = "${OVE_OWEL_NAME}" ]; then
@@ -4124,6 +4125,12 @@ function ove_repo_cmd {
 				git_cmd_opt="${ove_revtab_git_cmd_opts["*:${git_cmd}"]}"
 			fi
 		fi
+	fi
+
+	if [[ "$git_cmd_opt" == *\$revision* ]]; then
+		rev=${ove_revtab_rev[${i}]}
+		# replace revision
+		git_cmd_opt="${git_cmd_opt/\$revision/$rev}"
 	fi
 
 	# construct the git command
