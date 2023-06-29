@@ -13457,7 +13457,7 @@ function ove-replicate {
 			${ove_cmd2pathname["rm"]:?} ${q}
 			return 1
 		fi
-	else
+	elif [ -e "${q}" ]; then
 		${ove_cmd2pathname["rm"]:?} "${q}"
 	fi
 
@@ -13470,7 +13470,7 @@ function ove-replicate {
 			${ove_cmd2pathname["rm"]:?} ${p} ${q} 2> /dev/null
 			return 1
 		fi
-	else
+	elif [ -e "${p}" ]; then
 		${ove_cmd2pathname["rm"]:?} "${p}"
 	fi
 
@@ -13483,7 +13483,7 @@ function ove-replicate {
 			${ove_cmd2pathname["rm"]:?} ${p} ${q} ${o} 2> /dev/null
 			return 1
 		fi
-	else
+	elif [ -e "${o}" ]; then
 		${ove_cmd2pathname["rm"]:?} "${o}"
 	fi
 
