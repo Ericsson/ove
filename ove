@@ -3284,7 +3284,6 @@ function ove_revtab_status {
 	local repo
 	local repos
 	local o
-	local p
 
 	if [ $# -ge 1 ]; then
 		repos=$(ove_validate_repo_list "$@")
@@ -3305,17 +3304,20 @@ function ove_revtab_status {
 
 	f+="/$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S%N')-revtab-status"
 
+	i=0
 	for repo in ${repos}; do
-		i=${ove_revtab_name2index[${repo/${OVE_BASE_DIR}\//}]}
 		ove_status_one_repo ${repo} > ${f}.${i} &
+		i=$((i + 1))
 	done
 	wait
 
 	files=
+	i=0
 	for repo in ${repos}; do
-		i=${ove_revtab_name2index[${repo/${OVE_BASE_DIR}\//}]}
 		files+="${f}.$i "
+		i=$((i + 1))
 	done
+
 	${ove_cmd2pathname["cat"]:?} ${files} > ${f}
 	${ove_cmd2pathname["rm"]:?} ${files}
 
