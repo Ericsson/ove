@@ -4147,10 +4147,18 @@ function ove_repo_cmd {
 	shift
 
 	# run the git command
-	if [ $# -eq 0 ]; then
-		GIT_CEILING_DIRECTORIES="${OVE_BASE_DIR}" ${ove_cmd2pathname["flock"]:?} ${OVE_FLOCK_OPTIONS} -x "${OVE_OWEL_TMP_DIR}/.${i}.lock" -c "${cmd}"
+	if [ "$OVE_GIT_USE_FLOCK" -eq 1 ]; then
+		if [ $# -eq 0 ]; then
+			GIT_CEILING_DIRECTORIES="${OVE_BASE_DIR}" ${ove_cmd2pathname["flock"]:?} ${OVE_FLOCK_OPTIONS} -x "${OVE_OWEL_TMP_DIR}/.${i}.lock" -c "${cmd}"
+		else
+			GIT_CEILING_DIRECTORIES="${OVE_BASE_DIR}" ${ove_cmd2pathname["flock"]:?} ${OVE_FLOCK_OPTIONS} -x "${OVE_OWEL_TMP_DIR}/.${i}.lock" -c "${cmd} $(printf -- ' "%s"' "${@}")"
+		fi
 	else
-		GIT_CEILING_DIRECTORIES="${OVE_BASE_DIR}" ${ove_cmd2pathname["flock"]:?} ${OVE_FLOCK_OPTIONS} -x "${OVE_OWEL_TMP_DIR}/.${i}.lock" -c "${cmd} $(printf -- ' "%s"' "${@}")"
+		if [ $# -eq 0 ]; then
+			eval "${cmd}"
+		else
+			eval "${cmd} $(printf -- ' "%s"' "${@}")"
+		fi
 	fi
 	return $?
 }
@@ -11815,6 +11823,11 @@ function ove_config_builtins_init {
 	# OVE_GIT_COMMAND_OPTIONS_OVERRIDE:string::all commands:semi-colon separated list of git command options (overrides)
 	if [ -z "${OVE_GIT_COMMAND_OPTIONS_OVERRIDE+x}" ]; then
 		export OVE_GIT_COMMAND_OPTIONS_OVERRIDE=
+	fi
+
+	# OVE_GIT_USE_FLOCK:int::all commands:use flock to serialize multiple git commands within one repository
+	if [ -z "${OVE_GIT_USE_FLOCK+x}" ]; then
+		export OVE_GIT_USE_FLOCK=1
 	fi
 
 	# OVE_ALIAS:int:0|1::enable/disable aliases defined in OVE_ALIAS_LIST
