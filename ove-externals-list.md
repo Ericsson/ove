@@ -1,10 +1,10 @@
 | Command       | Usage     |
 | ---           | ---       |
 | ag            | 3         |
-| awk           | 53        |
+| awk           | 54        |
 | basename      | 1         |
 | bash          | 17        |
-| cat           | 47        |
+| cat           | 49        |
 | chmod         | 7         |
 | column        | 27        |
 | comm          | 15        |
@@ -25,7 +25,7 @@
 | getconf       | 2         |
 | git           | 82        |
 | graph-easy    | 2         |
-| grep          | 174       |
+| grep          | 178       |
 | head          | 20        |
 | inotifywait   | 3         |
 | jp2a          | 1         |
@@ -59,6 +59,7 @@
 | sort          | 115       |
 | ssh           | 7         |
 | stat          | 8         |
+| stty          | 1         |
 | sync          | 1         |
 | tac           | 3         |
 | tail          | 11        |
@@ -78,4 +79,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1242__  |
+| __sum__       | __1250__  |

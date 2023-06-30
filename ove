@@ -13901,7 +13901,14 @@ function ove-unittest {
 	ove_entry || return
 
 	local a
+	local files
+	local i
 	local tests
+
+	if ! command -v shunit2 > /dev/null; then
+		ove_command_not_found "shunit2"
+		return 1
+	fi
 
 	trap ove_unittest_exit EXIT
 	if [ -e "${OVE_GLOBAL_STATE_DIR}/.oveconfig" ]; then
@@ -13911,6 +13918,7 @@ function ove-unittest {
 		mv ${HOME}/.oveconfig ${HOME}/.oveconfig.bak
 	fi
 
+	ove_echo_cyan "unittest: start"
 	if [ $# -eq 0 ]; then
 		tests="tests/t*.test"
 
@@ -13932,15 +13940,20 @@ function ove-unittest {
 		# setup what to test
 		tests=$(${ove_cmd2pathname["cat"]:?} $OVE_TMP/tests_vars)
 
+		# init output files
+		for i in $(seq 1 8); do
+			true > $OVE_TMP/unittest_$i
+		done
+
 		#            files_per_repo | projs | repos | systest
-		ove_unittest       0            0       0        0
-		ove_unittest       0            1       0        0
-		ove_unittest       1            0       1        0
-		ove_unittest       0            0       0        1
-		ove_unittest       1            1       1        1
-		ove_unittest       2            2       2        2
-		ove_unittest       3            3       3        3
-		ove_unittest       3           10      10        3
+		ove_unittest       0            0       0        0 >> $OVE_TMP/unittest_1 2>&1 &
+		ove_unittest       0            1       0        0 >> $OVE_TMP/unittest_2 2>&1 &
+		ove_unittest       1            0       1        0 >> $OVE_TMP/unittest_3 2>&1 &
+		ove_unittest       0            0       0        1 >> $OVE_TMP/unittest_4 2>&1 &
+		ove_unittest       1            1       1        1 >> $OVE_TMP/unittest_5 2>&1 &
+		ove_unittest       2            2       2        2 >> $OVE_TMP/unittest_6 2>&1 &
+		ove_unittest       3            3       3        3 >> $OVE_TMP/unittest_7 2>&1 &
+		ove_unittest       3           10      10        3 >> $OVE_TMP/unittest_8 2>&1 &
 
 		# setup what to test
 		tests=$(${ove_cmd2pathname["cat"]:?} $OVE_TMP/tests_other)
@@ -13959,7 +13972,33 @@ function ove-unittest {
 		fi
 	fi
 
-	ove_unittest 3 3 3 3
+	true > $OVE_TMP/unittest_x
+	ove_unittest 3 3 3 3 >> $OVE_TMP/unittest_x 2>&1 &
+	wait
+
+	# restore terminal
+	${ove_cmd2pathname["stty"]:?} sane
+	if [ $# -eq 0 ]; then
+		${ove_cmd2pathname["cat"]:?} $OVE_TMP/unittest_{1..8}
+		files+="$(echo $OVE_TMP/unittest_{1..8})"
+	fi
+	${ove_cmd2pathname["cat"]:?} $OVE_TMP/unittest_x
+	files+=" $OVE_TMP/unittest_x"
+	echo
+
+	# shellcheck disable=SC2016
+	i="$(${ove_cmd2pathname["grep"]:?} -h '^Ran [0-9]\+ test' $files | \
+			${ove_cmd2pathname["grep"]:?} -o '[0-9]\+' | \
+			${ove_cmd2pathname["awk"]:?} '{s+=$1} END {print s}')"
+
+	if ! ${ove_cmd2pathname["grep"]:?} -q -E 'shunit.*|FAILED.*' $files; then
+		ove_echo_green "all ${i} test(s) ran OK."
+		return 0
+	else
+		ove_echo_red "ran ${i} test(s). Failures:"
+		${ove_cmd2pathname["grep"]:?} --color=always -E -H -n --no-group 'shunit.*|FAILED.*' $files
+		return 1
+	fi
 }
 
 # unittest-parallel:pattern:run all unit tests in parallel (tmux+LXD only):INTERNAL
@@ -14688,6 +14727,7 @@ function ove_externals_init {
 	cmds+=('sort')
 	cmds+=('ssh')
 	cmds+=('stat')
+	cmds+=('stty')
 	cmds+=('sync')
 	cmds+=('tac')
 	cmds+=('tail')
@@ -14989,7 +15029,8 @@ function ove-pre-push {
 
 	if ove_sanity_check_tmux 2> /dev/null; then
 		ove-run-parallel 0 "ove shell-check" 0 "ove generate-doc" 0 "ove blame ${OVE_USER}"
-		ove-unittest
+		# run in separate session
+		ove unittest
 	else
 		ove-shell-check
 		ove-unittest
