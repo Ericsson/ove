@@ -6,8 +6,9 @@ function test_rename_a() {
 }
 
 function test_rename_b() {
-	ove rename git-top
-	assertEquals "0" "$?"
+	owel_name=$(readlink .owel)
+	ove rename "${owel_name}"
+	assertEquals "1" "$?"
 }
 
 function test_rename_c() {

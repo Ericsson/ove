@@ -11,8 +11,9 @@ function test_import_export() {
 	ove export foobar
 	assertEquals "1" "$?"
 
-	sha=$(git -C git-top log -1 --format=%h)
-	f="git-top-${sha}.tar.bz2"
+	owel_name=$(readlink .owel)
+	sha=$(git -C "${owel_name}" log -1 --format=%h)
+	f="${owel_name}-${sha}.tar.bz2"
 
 	ove import "$f"
 	assertEquals "0" "$?"
@@ -20,16 +21,16 @@ function test_import_export() {
 	ove export p1
 	assertEquals "0" "$?"
 
-	sha=$(git -C git-top log -1 --format=%h)
-	f="git-top-${sha}-p1.tar.bz2"
+	sha=$(git -C "${owel_name}" log -1 --format=%h)
+	f="${owel_name}-${sha}.tar.bz2"
 	ove import "$f"
 	assertEquals "0" "$?"
 
 	ove export p1
 	assertEquals "0" "$?"
 
-	sha=$(git -C git-top log -1 --format=%h)
-	f="git-top-${sha}.tar.bz2"
+	sha=$(git -C "${owel_name}" log -1 --format=%h)
+	f="${owel_name}-${sha}.tar.bz2"
 	ove import "$f"
 	assertEquals "0" "$?"
 

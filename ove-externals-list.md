@@ -12,7 +12,7 @@
 | cp            | 6         |
 | csplit        | 1         |
 | cut           | 63        |
-| date          | 17        |
+| date          | 18        |
 | diff          | 1         |
 | dirname       | 5         |
 | dot           | 2         |
@@ -46,7 +46,7 @@
 | readlink      | 29        |
 | rev           | 4         |
 | rg            | 1         |
-| rm            | 49        |
+| rm            | 48        |
 | rmdir         | 3         |
 | scp           | 3         |
 | script        | 4         |
@@ -73,8 +73,9 @@
 | tsp           | 3         |
 | uname         | 4         |
 | uniq          | 7         |
+| uuidgen       | 1         |
 | wc            | 22        |
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1241__  |
+| __sum__       | __1242__  |
