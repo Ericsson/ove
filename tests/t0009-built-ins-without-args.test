@@ -3,6 +3,7 @@
 function test_built_ins_without_args() {
 	ignore+=" digraph"
 	ignore+=" export-logs"
+	ignore+=" generate-doc"
 	ignore+=" image-refresh"
 	ignore+=" locate-all"
 	ignore+=" logo"
