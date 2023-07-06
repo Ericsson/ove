@@ -11,7 +11,7 @@
 | convert       | 1         |
 | cp            | 6         |
 | csplit        | 1         |
-| cut           | 63        |
+| cut           | 62        |
 | date          | 18        |
 | diff          | 1         |
 | dirname       | 5         |
@@ -25,7 +25,7 @@
 | getconf       | 2         |
 | git           | 82        |
 | graph-easy    | 2         |
-| grep          | 178       |
+| grep          | 177       |
 | head          | 20        |
 | inotifywait   | 3         |
 | jp2a          | 1         |
@@ -43,7 +43,7 @@
 | mv            | 7         |
 | pgrep         | 3         |
 | ps            | 1         |
-| readlink      | 29        |
+| readlink      | 31        |
 | rev           | 4         |
 | rg            | 1         |
 | rm            | 48        |

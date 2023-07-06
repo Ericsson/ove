@@ -8621,19 +8621,45 @@ function ove-patch-repo {
 	OVE_PATCH_REPOS=1 ove_patch_repos "$@"
 }
 
+# $1: url
+function ove_get_git_protocol {
+	if [[ "$1" = ssh://* ]]; then
+		echo "ssh://"
+	elif [[ "$1" = git://* ]]; then
+		echo "git://"
+	elif [[ "$1" = http* ]]; then
+		re="^http[s]{0,1}://"
+		if [[ "${1}" =~ ${re} ]]; then
+			echo "${BASH_REMATCH[0]}"
+		fi
+	elif [[ "$1" = ftp* ]]; then
+		re="^ftp[s]{0,1}://"
+		if [[ "${1}" =~ ${re} ]]; then
+			echo "${BASH_REMATCH[0]}"
+		fi
+	else
+		return 1
+	fi
+}
+
 # append revtab with submodules
 function ove_submodule2revtab {
+	local protocol
 	local repo
 	local repos_with_submodules
 	local sha
 	local submodule
+	local url
+	local url_super
 
 	if [ $# -eq 0 ]; then
 		return
 	fi
 
 	for repo in "$@"; do
-		[ -s ${repo}/.gitmodules ] && repos_with_submodules+="${repo} "
+		if [ -s ${repo}/.gitmodules ]; then
+			repos_with_submodules+="${repo} "
+		fi
 	done
 
 	if [ "x${repos_with_submodules}" = "x" ]; then
@@ -8648,11 +8674,25 @@ function ove_submodule2revtab {
 				continue
 			fi
 
-			url=$(ove_repo_cmd ${repo} config --file .gitmodules --list | \
-				${ove_cmd2pathname["grep"]:?} "^submodule.${submodule}.url=" | \
-				${ove_cmd2pathname["cut"]:?} -d= -f2)
+			url=$(ove_repo_cmd ${repo} config --file .gitmodules --get-regex url)
+			url=${url##* }
 			if [ "x${url}" = "x" ]; then
 				continue
+			fi
+
+			# relative to superproject?
+			if [[ "$url" = ./* ]] || [[ "$url" = ../* ]]; then
+				url_super=$(ove_get_fetch_url $repo origin)
+				if [ "$url_super" = "noremote" ]; then
+					continue
+				elif ! protocol=$(ove_get_git_protocol "$url_super"); then
+					url=$(cd /tmp || exit; ${ove_cmd2pathname["readlink"]:?} -m ${url_super}/${url})
+					url=${url/\/tmp\/}
+				else
+					url=$(cd /tmp || exit; ${ove_cmd2pathname["readlink"]:?} -m $PWD/${url_super/$protocol}/${url})
+					url=${url/\/tmp\/}
+					url="${protocol}${url}"
+				fi
 			fi
 
 			# shellcheck disable=SC2016
