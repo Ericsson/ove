@@ -8644,6 +8644,7 @@ function ove_get_git_protocol {
 
 # append revtab with submodules
 function ove_submodule2revtab {
+	local path
 	local protocol
 	local repo
 	local repos_with_submodules
@@ -8667,16 +8668,24 @@ function ove_submodule2revtab {
 	fi
 
 	for repo in ${repos_with_submodules}; do
-		# shellcheck disable=SC2016
-		for submodule in $(ove_repo_cmd ${repo} submodule--helper list | ${ove_cmd2pathname["awk"]:?} '{print $4}'); do
-			# already imported?
-			if [ -v ove_revtab_name2index[${repo//${OVE_BASE_DIR}\/}/${submodule}] ]; then
+		for submodule in $(ove_repo_cmd ${repo} config --file .gitmodules --list | ${ove_cmd2pathname["cut"]:?} -d'.' -f2 | ${ove_cmd2pathname["sort"]} -u); do
+			# get path
+			# shellcheck disable=SC2030
+			path=$(ove_repo_cmd ${repo} config --file .gitmodules --get "submodule.${submodule}.path")
+			if [ "x${path}" = "x" ]; then
+				ove_echo_warning_noprefix "import-submodules: could not get path for submodule '${submodule}'"
 				continue
 			fi
 
-			url=$(ove_repo_cmd ${repo} config --file .gitmodules --get-regex url)
-			url=${url##* }
+			# already imported?
+			if [ -v ove_revtab_name2index[${repo//${OVE_BASE_DIR}\/}/${path}] ]; then
+				continue
+			fi
+
+			# get url
+			url=$(ove_repo_cmd ${repo} config --file .gitmodules --get "submodule.${submodule}.url")
 			if [ "x${url}" = "x" ]; then
+				ove_echo_warning_noprefix "import-submodules: could not get url for submodule '${submodule}'"
 				continue
 			fi
 
@@ -8698,12 +8707,13 @@ function ove_submodule2revtab {
 			# shellcheck disable=SC2016
 			sha=$(ove_repo_cmd ${repo} submodule--helper list | \
 				${ove_cmd2pathname["awk"]:?} '{print $4,$2}' | \
-				${ove_cmd2pathname["grep"]:?} "^${submodule} " | ${ove_cmd2pathname["awk"]:?} '{print $2}')
+				${ove_cmd2pathname["grep"]:?} "^${path} " | ${ove_cmd2pathname["awk"]:?} '{print $2}')
 			if [ "x${sha}" = "x" ]; then
+				ove_echo_warning_noprefix "import-submodules: could not get SHA-1 for submodule '${submodule}'"
 				continue
 			fi
 
-			echo "${repo//${OVE_BASE_DIR}\/}/${submodule} ${url} ${url} ${sha}"
+			echo "${repo//${OVE_BASE_DIR}\/}/${path} ${url} ${url} ${sha}"
 		done
 	done | ${ove_cmd2pathname["tee"]:?} -a ${OVE_OWEL_DIR}/revtab
 

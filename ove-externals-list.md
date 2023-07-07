@@ -1,7 +1,7 @@
 | Command       | Usage     |
 | ---           | ---       |
 | ag            | 3         |
-| awk           | 54        |
+| awk           | 53        |
 | basename      | 1         |
 | bash          | 17        |
 | cat           | 49        |
@@ -11,7 +11,7 @@
 | convert       | 1         |
 | cp            | 6         |
 | csplit        | 1         |
-| cut           | 62        |
+| cut           | 63        |
 | date          | 18        |
 | diff          | 1         |
 | dirname       | 5         |
@@ -56,7 +56,7 @@
 | setsid        | 1         |
 | shellcheck    | 1         |
 | sleep         | 13        |
-| sort          | 115       |
+| sort          | 116       |
 | ssh           | 7         |
 | stat          | 8         |
 | stty          | 1         |
@@ -79,4 +79,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1250__  |
+| __sum__       | __1251__  |
