@@ -8719,14 +8719,16 @@ function ove-import-submodules {
 	local out
 	local repos
 
-	if [ $# -ge 1 ]; then
-		repos=$(ove_validate_repo_list "$@")
-	else
-		repos=${OVE_REPO_LIST}
-	fi
-	[ "${repos}" == "" ] && return
-
 	while true; do
+		if [ $# -ge 1 ]; then
+			repos=$(ove_validate_repo_list "$@")
+		else
+			repos=${OVE_REPO_LIST}
+		fi
+
+		if [ "${repos}" = "" ]; then
+			return
+		fi
 		out=$(ove_submodule2revtab ${repos})
 		# shellcheck disable=SC2016
 		imports=$(printf "%s\n" "${out}" | ${ove_cmd2pathname["awk"]:?} '{print $1}')
