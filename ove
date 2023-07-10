@@ -13957,11 +13957,6 @@ function ove-unittest {
 	local i
 	local tests
 
-	if ! command -v shunit2 > /dev/null; then
-		ove_command_not_found "shunit2"
-		return 1
-	fi
-
 	trap ove_unittest_exit EXIT
 	if [ -e "${OVE_GLOBAL_STATE_DIR}/.oveconfig" ]; then
 		mv ${OVE_GLOBAL_STATE_DIR}/.oveconfig  ${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak
