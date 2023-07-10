@@ -40,13 +40,13 @@
 | md5sum        | 14        |
 | mkdir         | 34        |
 | mktemp        | 8         |
-| mv            | 7         |
+| mv            | 11        |
 | pgrep         | 3         |
 | ps            | 1         |
 | readlink      | 31        |
 | rev           | 4         |
 | rg            | 1         |
-| rm            | 48        |
+| rm            | 53        |
 | rmdir         | 3         |
 | scp           | 3         |
 | script        | 4         |
@@ -79,4 +79,4 @@
 | whoami        | 1         |
 | xargs         | 36        |
 | yamllint      | 1         |
-| __sum__       | __1251__  |
+| __sum__       | __1260__  |

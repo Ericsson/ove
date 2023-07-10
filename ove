@@ -13604,17 +13604,17 @@ function ove-replicate {
 		md5=$(${ove_cmd2pathname["md5sum"]:?} $OVE_OWEL_DIR/revtab)
 		if [ -s "${q}" ]; then
 			ove-am "${q}" &> /dev/null
-			rm "${q}"
+			${ove_cmd2pathname["rm"]:?} "${q}"
 		fi
 
 		if [ -s "${o}" ]; then
 			ove-apply-cached "${o}" &> /dev/null
-			rm "${o}"
+			${ove_cmd2pathname["rm"]:?} "${o}"
 		fi
 
 		if [ -s "${p}" ]; then
 			ove-apply "${p}" &> /dev/null
-			rm "${p}"
+			${ove_cmd2pathname["rm"]:?} "${p}"
 		fi
 
 		# one extra fetch if revtab was changed
@@ -13873,10 +13873,10 @@ function ove_unittest_preparations {
 
 function ove_unittest_exit {
 	if [ -e "${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak" ]; then
-		mv ${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak ${OVE_GLOBAL_STATE_DIR}/.oveconfig
+		${ove_cmd2pathname["mv"]:?} ${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak ${OVE_GLOBAL_STATE_DIR}/.oveconfig
 	fi
 	if [ -e "${HOME}/.oveconfig.bak" ]; then
-		mv ${HOME}/.oveconfig.bak ${HOME}/.oveconfig
+		${ove_cmd2pathname["mv"]:?} ${HOME}/.oveconfig.bak ${HOME}/.oveconfig
 	fi
 }
 
@@ -13945,7 +13945,7 @@ function ove_unittest {
 	done
 
 	# cleanup
-	rm -rf "${unittest_dir:?}"
+	${ove_cmd2pathname["rm"]:?} -rf "${unittest_dir:?}"
 }
 
 # unittest:[test...]:run all/specific unit tests:INTERNAL
@@ -13959,13 +13959,17 @@ function ove-unittest {
 
 	trap ove_unittest_exit EXIT
 	if [ -e "${OVE_GLOBAL_STATE_DIR}/.oveconfig" ]; then
-		mv ${OVE_GLOBAL_STATE_DIR}/.oveconfig  ${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak
+		${ove_cmd2pathname["mv"]:?} ${OVE_GLOBAL_STATE_DIR}/.oveconfig  ${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak
 	fi
 	if [ -e "${HOME}/.oveconfig" ]; then
-		mv ${HOME}/.oveconfig ${HOME}/.oveconfig.bak
+		${ove_cmd2pathname["mv"]:?} ${HOME}/.oveconfig ${HOME}/.oveconfig.bak
+	fi
+	if [ -e "${OVE_CONFIG_FILE_PRIVATE}" ]; then
+		${ove_cmd2pathname["rm"]:?} ${OVE_CONFIG_FILE_PRIVATE}
 	fi
 
 	ove_echo_cyan "unittest: start"
+
 	if [ $# -eq 0 ]; then
 		tests="tests/t*.test"
 
