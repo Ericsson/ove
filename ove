@@ -2014,6 +2014,96 @@ EOF
 	echo $f
 }
 
+function ove_rec_start {
+	if ! command -v recordmydesktop > /dev/null; then
+		ove_command_not_found "recordmydesktop"
+		return 1
+	elif ! command -v xdotool > /dev/null; then
+		ove_command_not_found "xdotool"
+		return 1
+	fi
+
+	# already recording?
+	if ${ove_cmd2pathname["pgrep"]:?} -f recordmydesktop > /dev/null; then
+		rec_pid=0
+		return 0
+	fi
+
+	# turn off monitor mode to get rid of "Done" messages
+	set +m
+
+	# start recording
+	${ove_cmd2pathname["recordmydesktop"]:?} \
+		--no-cursor \
+		--no-frame \
+		--no-sound \
+		-o ${OVE_LAST_COMMAND/.log}.ogv \
+		--windowid $(printf "0x%x\n" $(${ove_cmd2pathname["xdotool"]:?} getactivewindow)) \
+		2> "${OVE_TMP}/rec.err" &
+	rec_pid=$!
+
+	# sanity check recording
+	${ove_cmd2pathname["sleep"]:?} 1
+	if ! kill -0 "${rec_pid}" 2> /dev/null; then
+		set -m
+		ove_echo_red_noprefix "error: recordmydesktop: $(${ove_cmd2pathname["cat"]:?} ${OVE_TMP}/rec.err)"
+		return 1
+	fi
+
+	return 0
+}
+
+function ove_rec_stop {
+	local i
+	local o
+
+	if [ "$rec_pid" -eq 0 ]; then
+		return 0
+	fi
+
+	# turn off monitor mode to get rid of "Done" messages
+	set +m
+
+	${ove_cmd2pathname["sleep"]:?} 1
+
+	# stop recording
+	kill -SIGINT "${rec_pid}" 2> /dev/null
+
+	# wait for recording
+	while true; do
+		if ! kill -0 "${rec_pid}" 2> /dev/null; then
+			break
+		fi
+		${ove_cmd2pathname["sleep"]:?} 1
+	done
+
+	o="${OVE_LAST_COMMAND/.log}.ogv"
+
+	# sanity check
+	if [ ! -s "$o" ]; then
+		ove_echo_red_noprefix "error: recordmydesktop: $(${ove_cmd2pathname["cat"]:?} ${OVE_TMP}/rec.err)"
+		return
+	fi
+
+	if command -v ffmpeg > /dev/null; then
+		i="${OVE_LAST_COMMAND/.log}.ogv"
+		o="${OVE_LAST_COMMAND/.log}.mp4"
+
+		# convert to MPEG-4
+		if ! ${ove_cmd2pathname["ffmpeg"]:?} -i "${i}" "${o}" 2> /dev/null; then
+			o="${OVE_LAST_COMMAND/.log}.ogv"
+		else
+			${ove_cmd2pathname["rm"]:?} "${i}"
+		fi
+	fi
+
+	# display path and size
+	${ove_cmd2pathname["du"]:?} -sh "${o}" 1>&2
+
+	# turn on monitor mode
+	set -m
+}
+
 function ove {
 	local candidates
 	local cmd
@@ -2023,6 +2113,7 @@ function ove {
 	local log_cmd
 	local on_finish
 	local re
+	local rec_pid
 	local ret
 
 	cmd="$1"
@@ -2113,6 +2204,7 @@ function ove {
 		[ "${cmd}" == "lastlog-summary" ] || \
 		[ "${cmd}" == "less-lastlog" ] || \
 		[ "${cmd}" == "loglevel" ] || \
+		[ "${cmd}" == "rec" ] || \
 		[ "${cmd}" == "revtab-check" ] || \
 		[ "${cmd}" == "tail-lastlog" ] || \
 		[ "${cmd}" == "ts" ] || \
@@ -2151,6 +2243,12 @@ function ove {
 		fi
 
 		OVE_BATCH_IT=0
+	fi
+
+	if [ "x$OVE_RECORD_IT" != "x0" ]; then
+		if ! ove_rec_start; then
+			return 1
+		fi
 	fi
 
 	# pre hooks?
@@ -2269,6 +2367,10 @@ function ove {
 				fi
 			fi
 		done
+	fi
+
+	if [ "x$OVE_RECORD_IT" != "x0" ]; then
+		ove_rec_stop
 	fi
 
 	return ${ret}
@@ -10431,6 +10533,24 @@ function ove-dry-run {
 	ove-env ^OVE_DRY_RUN
 }
 
+# rec:[0|1]:toggle or set screen recording
+function ove-rec {
+	ove_entry || return
+
+	if [ $# -eq 1 ] && ! [[ "$1" =~ ^[0-1]$ ]]; then
+		ove_command_usage
+		return 1
+	fi
+
+	if [ $# -eq 0 ]; then
+		OVE_RECORD_IT=$((OVE_RECORD_IT ^= 1))
+	else
+		OVE_RECORD_IT=$1
+	fi
+
+	ove-env ^OVE_RECORD_IT
+}
+
 # lastlog-summary:[pattern]:peek inside OVE logs and make a summary:LOG
 function ove-lastlog-summary {
 	ove_entry || return
@@ -11904,6 +12024,11 @@ function ove_config_builtins_init {
 		export OVE_BATCH_IT=0
 	fi
 
+	# OVE_RECORD_IT:int:0-1:all:screen record commands
+	if [ -z "${OVE_RECORD_IT+x}" ]; then
+		export OVE_RECORD_IT=0
+	fi
+
 	# OVE_COMMAND_SETSID:int:0-1:all:run non-terminal commands in a separate session (SID)
 	if [ -z "${OVE_COMMAND_SETSID+x}" ]; then
 		export OVE_COMMAND_SETSID=0
@@ -12932,6 +13057,7 @@ function ove_deps {
 	optional+=('convert')
 	optional+=('dig')
 	optional+=('dot')
+	optional+=('ffmpeg')
 	optional+=('fzf')
 	optional+=('graph-easy')
 	optional+=('inotifywait')
@@ -12940,6 +13066,7 @@ function ove_deps {
 	optional+=('lxc')
 	optional+=('make')
 	optional+=('md5deep')
+	optional+=('recordmydesktop')
 	optional+=('rg')
 	optional+=('shellcheck')
 	optional+=('strace')
@@ -12948,6 +13075,7 @@ function ove_deps {
 	optional+=('tsp')
 	optional+=('whois')
 	optional+=('yamllint')
+	optional+=('xdotool')
 
 	for dep in "${deps[@]}"; do
 		if ! command -v ${dep} > /dev/null; then
@@ -14736,6 +14864,7 @@ function ove_externals_init {
 	cmds+=('dirname')
 	cmds+=('dot')
 	cmds+=('du')
+	cmds+=('ffmpeg')
 	cmds+=('file')
 	cmds+=('find')
 	cmds+=('flock')
@@ -14763,6 +14892,7 @@ function ove_externals_init {
 	cmds+=('pgrep')
 	cmds+=('ps')
 	cmds+=('readlink')
+	cmds+=('recordmydesktop')
 	cmds+=('rev')
 	cmds+=('rg')
 	cmds+=('rm')
@@ -14787,16 +14917,17 @@ function ove_externals_init {
 	cmds+=('tee')
 	cmds+=('timeout')
 	cmds+=('tmux')
+	cmds+=('touch')
 	cmds+=('tr')
 	cmds+=('tsort')
 	cmds+=('tsp')
-	cmds+=('touch')
 	cmds+=('uname')
 	cmds+=('uniq')
 	cmds+=('uuidgen')
 	cmds+=('wc')
 	cmds+=('whoami')
 	cmds+=('xargs')
+	cmds+=('xdotool')
 	cmds+=('yamllint')
 
 	declare -g -A ove_cmd2pathname
