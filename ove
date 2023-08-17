@@ -511,13 +511,9 @@ function ove_ip2host {
 	local ip
 	local ip_lookup
 
-	if ! command -v dig > /dev/null; then
-		ove_command_not_found "dig"
+	if ! ove_check_command "dig"; then
 		return 1
-	fi
-
-	if ! command -v whois > /dev/null; then
-		ove_command_not_found "whois"
+	elif ! ove_check_command "whois"; then
 		return 1
 	fi
 
@@ -526,7 +522,7 @@ function ove_ip2host {
 	if [[ ${ip} == 127* ]]; then
 		ip_lookup="localhost"
 	else
-		ip_lookup=$(\dig +short -x ${ip} | \
+		ip_lookup=$(${ove_cmd2pathname["dig"]:?} +short -x ${ip} | \
 			${ove_cmd2pathname["tr"]:?} '\n' ' ' | \
 			${ove_cmd2pathname["xargs"]:?})
 
@@ -545,8 +541,7 @@ function ove_ip2org {
 	local ip
 	local org
 
-	if ! command -v whois > /dev/null; then
-		ove_command_not_found "whois"
+	if ! ove_check_command "whois"; then
 		return 1
 	fi
 
@@ -555,9 +550,12 @@ function ove_ip2org {
 	if [[ ${ip} == 127* ]]; then
 		org="NA"
 	else
-		org=$(${ove_cmd2pathname["timeout"]:?} 3 whois ${ip} 2> /dev/null | \
+		org=$(${ove_cmd2pathname["timeout"]:?} 3 \
+			${ove_cmd2pathname["whois"]:?} ${ip} 2> /dev/null | \
 			${ove_cmd2pathname["grep"]:?} -E -i 'netrange:|netname|parent')
-		[ "${org}" == "" ] && return
+		if [ "${org}" = "" ]; then
+			return
+		fi
 	fi
 
 	printf "${org}"
@@ -1784,8 +1782,7 @@ function ove-loop {
 		return 1
 	fi
 
-	if [ "${use_inotify}" -eq 1 ] && ! command -v inotifywait > /dev/null; then
-		ove_command_not_found "inotifywait"
+	if [ "${use_inotify}" -eq 1 ] && ! ove_check_command "inotifywait"; then
 		return 1
 	fi
 
@@ -2015,11 +2012,9 @@ EOF
 }
 
 function ove_rec_start {
-	if ! command -v recordmydesktop > /dev/null; then
-		ove_command_not_found "recordmydesktop"
+	if ! ove_check_command "recordmydesktop"; then
 		return 1
-	elif ! command -v xdotool > /dev/null; then
-		ove_command_not_found "xdotool"
+	elif ! ove_check_command "xdotool"; then
 		return 1
 	fi
 
@@ -2235,8 +2230,7 @@ function ove {
 	# batch the command?
 	if [ "x$OVE_BATCH_IT" != "x0" ]; then
 		log_cmd="tsp"
-		if ! command -v $log_cmd > /dev/null; then
-			ove_command_not_found "$log_cmd"
+		if ! ove_check_command "tsp"; then
 			return 1
 		elif ! on_finish=$(ove_batch_helper $id); then
 			return 1
@@ -2382,8 +2376,7 @@ function ove-task {
 
 	local ret
 
-	if ! command -v task > /dev/null; then
-		ove_command_not_found "task"
+	if ! ove_check_command "task"; then
 		return 1
 	fi
 
@@ -2400,8 +2393,7 @@ function ove-task {
 function ove-ts {
 	ove_entry || return
 
-	if ! command -v tsp > /dev/null; then
-		ove_command_not_found "tsp"
+	if ! ove_check_command "tsp"; then
 		return 1
 	fi
 
@@ -2428,16 +2420,11 @@ function ove-fzf {
 	local cmd
 	local shell
 
-	if ! command -v fzf > /dev/null; then
+	if ! ove_check_command "fzf"; then
 		return 1
-	fi
-
-	# sanity check
-	if ! ove_get_base_dir > /dev/null; then
+	elif ! ove_get_base_dir > /dev/null; then
 		return 1
-	fi
-
-	if [ $# -gt 1 ]; then
+	elif [ $# -gt 1 ]; then
 		ove_command_usage
 		return 1
 	fi
@@ -5231,6 +5218,17 @@ function ove_command_not_found {
 
 	[ $# -eq 2 ] && msg+=". $2"
 	ove_echo_error_noprefix "${msg}"
+}
+
+function ove_check_command {
+	if ! command -v "$1" > /dev/null; then
+		ove_command_not_found "$1"
+		return 1
+	elif [ "${ove_cmd2pathname["$1"]}" = "" ]; then
+		ove_externals_reinit
+	fi
+
+	return 0
 }
 
 function ove_systest_get_exit_status {
@@ -8538,19 +8536,12 @@ function ove-apply {
 	if [ $# -ne 1 ]; then
 		ove_command_usage
 		return 1
-	fi
-
-	if ! command -v csplit > /dev/null; then
-		ove_command_not_found "csplit"
+	elif ! ove_check_command "csplit"; then
 		return 1
-	fi
-
-	if ! [ -e "$1" ]; then
+	elif ! [ -e "$1" ]; then
 		ove_echo_error_noprefix "'$1' patch file not found"
 		return 1
-	fi
-
-	if ! [ -s "$1" ]; then
+	elif ! [ -s "$1" ]; then
 		ove_echo_error_noprefix "'$1' is empty"
 		return 1
 	fi
@@ -9294,8 +9285,7 @@ function ove-rg {
 
 	local cmd
 
-	if ! command -v rg > /dev/null; then
-		ove_command_not_found "rg"
+	if ! ove_check_command "rg"; then
 		return 1
 	fi
 
@@ -9321,8 +9311,7 @@ function ove-ag {
 
 	local cmd
 
-	if ! command -v ag > /dev/null; then
-		ove_command_not_found "ag"
+	if ! ove_check_command "ag"; then
 		return 1
 	fi
 
@@ -9356,13 +9345,10 @@ function ove-grep {
 }
 
 function ove_gf_helper {
-	if ! command -v fzf > /dev/null; then
-		ove_command_not_found "fzf"
+	if ! ove_check_command "fzf"; then
 		echo "duckduckgo.com/?q=fzf"
 		return 1
-	fi
-
-	if [ $# -ne 1 ]; then
+	elif [ $# -ne 1 ]; then
 		echo "error: no pattern"
 		return 1
 	fi
@@ -9377,9 +9363,7 @@ function ove-gfv {
 
 	local out
 
-	if ! command -v vi > /dev/null; then
-		ove_command_not_found "vi"
-		ove_command_usage
+	if ! ove_check_command "vi"; then
 		return 1
 	fi
 
@@ -9402,9 +9386,7 @@ function ove-gfe {
 
 	local out
 
-	if ! command -v emacs > /dev/null; then
-		ove_command_not_found "emacs"
-		ove_command_usage
+	if ! ove_check_command "emacs"; then
 		return 1
 	fi
 
@@ -9773,8 +9755,7 @@ function ove_edit {
 	shift
 
 	# sanity check
-	if ! command -v ${editor} > /dev/null; then
-		ove_command_not_found "${editor}"
+	if ! ove_check_command "${editor}"; then
 		return 1
 	fi
 
@@ -10431,8 +10412,7 @@ function ove-loglevel {
 		return 1
 	elif [ $# -eq 1 ]; then
 		if [ $1 -gt 2 ] && [ $1 -lt 7 ]; then
-			if ! command -v strace > /dev/null; then
-				ove_command_not_found "strace"
+			if ! ove_check_command "strace"; then
 				return 1
 			fi
 
@@ -10463,8 +10443,7 @@ function ove-loglevel {
 				bcc_tool="opensnoop"
 			fi
 
-			if ! command -v python3 > /dev/null; then
-				ove_command_not_found "python3" "Needed by '${bcc_tool}'."
+			if ! ove_check_command "python3"; then
 				return 1
 			fi
 
@@ -13526,8 +13505,7 @@ function ove-replicate-cluster {
 	local p
 	local s
 
-	if ! command -v lxc > /dev/null; then
-		ove_command_not_found "lxc"
+	if ! ove_check_command "lxc"; then
 		return 1
 	elif ! ${ove_cmd2pathname["lxc"]:?} cluster list &> /dev/null; then
 		ove_echo_error_noprefix "not a LXD cluster"
@@ -14785,8 +14763,7 @@ function ove-shell-check {
 	local exclude
 	local sc
 
-	if ! command -v shellcheck > /dev/null; then
-		ove_command_not_found "shellcheck"
+	if ! ove_check_command "shellcheck"; then
 		return 1
 	fi
 
@@ -14837,6 +14814,11 @@ function ove-shell-check {
 	fi
 }
 
+function ove_externals_reinit {
+	unset ove_cmd2pathname
+	ove_externals_init
+}
+
 function ove_externals_init {
 	local cmds=()
 	local cmd
@@ -14861,6 +14843,7 @@ function ove_externals_init {
 	cmds+=('cut')
 	cmds+=('date')
 	cmds+=('diff')
+	cmds+=('dig')
 	cmds+=('dirname')
 	cmds+=('dot')
 	cmds+=('du')
@@ -14926,6 +14909,7 @@ function ove_externals_init {
 	cmds+=('uuidgen')
 	cmds+=('wc')
 	cmds+=('whoami')
+	cmds+=('whois')
 	cmds+=('xargs')
 	cmds+=('xdotool')
 	cmds+=('yamllint')
@@ -15178,8 +15162,7 @@ function ove-distrocheck-all {
 	local cmd
 	local p
 
-	if ! command -v lxc > /dev/null; then
-		ove_command_not_found "lxc"
+	if ! ove_check_command "lxc"; then
 		return 1
 	elif [ $# -eq 0 ]; then
 		ove_command_usage
@@ -15229,8 +15212,7 @@ function ove-image-refresh {
 
 	local arch
 
-	if ! command -v lxc > /dev/null; then
-		ove_command_not_found "lxc"
+	if ! ove_check_command "lxc"; then
 		return 1
 	fi
 
@@ -15301,11 +15283,9 @@ function ove-post-push-parallel {
 function ove-logo {
 	ove_entry || return
 
-	if ! command -v convert > /dev/null; then
-		ove_command_not_found "convert"
+	if ! ove_check_command "convert"; then
 		return 1
-	elif ! command -v jp2a > /dev/null; then
-		ove_command_not_found "jp2a"
+	elif ! ove_check_command "jp2a"; then
 		return 1
 	elif [ ! -s "${OVE_DIR:?}/ove.png" ]; then
 		echo "error: '${OVE_DIR:?}/ove.png' not found"

@@ -14,6 +14,7 @@
 | cut              | 63        |
 | date             | 18        |
 | diff             | 1         |
+| dig              | 1         |
 | dirname          | 5         |
 | dot              | 2         |
 | du               | 6         |
@@ -79,7 +80,8 @@
 | uuidgen          | 1         |
 | wc               | 22        |
 | whoami           | 1         |
+| whois            | 1         |
 | xargs            | 36        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1271__  |
+| __sum__          | __1273__  |
