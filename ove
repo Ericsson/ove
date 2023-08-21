@@ -13695,6 +13695,9 @@ function ove-replicate {
 			if [ $# -eq 4 ] && [ "$4" = "pull" ]; then
 				ove-fetch &> /dev/null
 				ove-pull &> /dev/null
+				ove-stash &> /dev/null
+				ove-revtab-sync &> /dev/null
+				ove-stash pop &> /dev/null
 			fi
 		elif [ $# -ge 3 ] && [ "$3" = "save" ]; then
 			if [ $# -eq 4 ]; then
@@ -13766,6 +13769,9 @@ function ove-replicate {
 			if [ $# -eq 4 ] && [ $4 = pull ]; then
 				ove-fetch &> /dev/null
 				ove-pull &> /dev/null
+				ove-stash &> /dev/null
+				ove-revtab-sync &> /dev/null
+				ove-stash pop &> /dev/null
 			fi
 		elif [ $# -ge 3 ] && [ $3 = save ]; then
 			if [ $# -eq 4 ]; then
