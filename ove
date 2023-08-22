@@ -3339,6 +3339,10 @@ function ove_status_one_repo {
 			s="${s:0:${m}} $(ove_echo_yellow_noprefix ...truncated $((len-m*2)) chars...) ${s: -${m}}"
 		fi
 	fi
+
+	if [[ "${OVE_STATUS_TRUNC_REVISION}" =~ ^[0-9]+$ ]] && [ ${OVE_STATUS_TRUNC_REVISION} -ne 0 ]; then
+		revision=${revision:0:${OVE_STATUS_TRUNC_REVISION}}
+	fi
 	printf "$(printf "%-$((OVE_REPO_LIST_WIDTH-2))s" ${repo_shortpath}):${revision}:$(printf "%s " $s)\n"
 }
 
@@ -11941,6 +11945,11 @@ function ove_config_builtins_init {
 	# OVE_STATUS_TRUNC:int:0|1:status:truncate output to fit terminal
 	if [ -z "${OVE_STATUS_TRUNC+x}" ]; then
 		export OVE_STATUS_TRUNC=1
+	fi
+
+	# OVE_STATUS_TRUNC_REVISION:int::status:truncate (>0) revision column, no truncation (=0)
+	if [ -z "${OVE_STATUS_TRUNC_REVISION+x}" ]; then
+		export OVE_STATUS_TRUNC_REVISION=0
 	fi
 
 	# OVE_INSTALL_PKG:int:0-2:buildme buildme-parallel install-pkg install-pkg-os:skip (=0), install (=1) or prompt user (=2) packages
