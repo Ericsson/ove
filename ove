@@ -9361,7 +9361,7 @@ function ove_gf_helper {
 		${ove_cmd2pathname["sed"]:?} -e "s,^\([^:]*\):\([0-9]\+\):,\1 +\2 ,"
 }
 
-# gfv:pattern:git grep+fzf+vi combo:UTIL
+# gfv:pattern:git grep+fzf+vi combo:SEARCH
 function ove-gfv {
 	ove_entry || return
 
@@ -9384,7 +9384,7 @@ function ove-gfv {
 		     --bind "left-click:execute(< /dev/tty eval \$(echo vi {} | ${ove_cmd2pathname["cut"]:?} -d' ' -f1-3))"
 }
 
-# gfe:pattern:git grep+fzf+emacs combo:UTIL
+# gfe:pattern:git grep+fzf+emacs combo:SEARCH
 function ove-gfe {
 	ove_entry || return
 
