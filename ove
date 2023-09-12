@@ -11382,7 +11382,7 @@ function ove_bash_complete {
 		elif [ ${size} -eq 4 ]; then
 			wordlist="force save nofetch"
 		elif [ ${size} -eq 5 ] && [ "${COMP_WORDS[4]}" = "force" ]; then
-			wordlist="pull"
+			wordlist="pull nofetch"
 		fi
 	elif [ "${subcommand}" == "replicate-cluster" ] ||
 		[ "${subcommand}" == "replicate-cluster-parallel" ]; then
@@ -13555,7 +13555,7 @@ function ove-replicate-cluster {
 	return 0
 }
 
-# replicate:host [path [force [pull]|save [msg]|nofetch]]:replicate OVE workspace on 'host':UTIL
+# replicate:host [path [force [pull|nofetch]|save [msg]|nofetch]]:replicate OVE workspace on 'host':UTIL
 function ove-replicate {
 	ove_entry || return
 
@@ -13670,6 +13670,8 @@ function ove-replicate {
 	fi
 
 	if [ $# -ge 3 ] && [ "$3" = "nofetch" ]; then
+		fetch=0
+	elif [ $# -eq 4 ] && [ "$3" = "force" ] && [ "$4" = "nofetch" ]; then
 		fetch=0
 	elif [ ${OVE_REPOS_FETCHED} -lt $(${ove_cmd2pathname["wc"]:?} -w <<<"${OVE_REPO_LIST}") ]; then
 		# shellcheck disable=SC2016
