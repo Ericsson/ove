@@ -5054,39 +5054,80 @@ function ove_list_scripts_directories {
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u
 }
 
+# $1: str
+# $2: len
+# $3: res
+function ove_echo_pad {
+	local i=0
+	local o="$1"
+	local -n res="$3"
+	local z
+
+	z=$(($2 - ${#1}))
+	while [ $i -lt $z ]; do
+		o="0$o"
+		i=$((i + 1))
+	done
+	res="$o"
+}
+
 function ove_echo {
+	local a
+	local b
+	local decimal_point
 	local diff
-	local diff_ns
+	local diff_f
 	local diff_s
 	local now
-	local now_ns
+	local now_f
 	local now_s
+	local pad
 
 	diff="00:00:00"
-	diff_ns="000000000"
 
-	now=$(${ove_cmd2pathname["date"]:?} +%s:%N)
-	now_s=${now%:*}
-	now_ns=${now#*:}
-	# remove leading zeros
-	now_ns=$((10#${now_ns}))
-
-	if [ "${OVE_PREV_S}" != "" ]; then
-		diff_ns="$((now_ns - OVE_PREV_NS))"
-		diff_s=$((now_s - OVE_PREV_S))
-		if [ "${diff_ns}" -lt 0 ]; then
-			(( diff_s-=1 )) || true
-			diff_ns="$((1000000000 + diff_ns))"
-		fi
-
-		# shellcheck disable=SC2016
-		diff="$(${ove_cmd2pathname["awk"]:?} '{printf "%02d:%02d:%02d\n", int($1/3600),int(($1%3600)/60),int($1%60)}' <<<"${diff_s}")"
+	if [ "x${EPOCHREALTIME}" != "x" ]; then
+		decimal_point=${EPOCHREALTIME//[0-9]}
+		diff_f="000000"
+		now=${EPOCHREALTIME}
+		now_s=${now%${decimal_point}*}
+		now_f=${now#*${decimal_point}}
+		pad="6"
+	else
+		diff_f="0000000000"
+		now=$(${ove_cmd2pathname["date"]:?} +%s:%N)
+		now_s=${now%:*}
+		now_f=${now#*:}
+		pad="9"
 	fi
 
-	echo -e "$(${ove_cmd2pathname["date"]:?} -d @${now_s} +'%Y-%m-%d %H:%M:%S').$(printf "%09d" ${now_ns}) (+${diff}:$(printf "%09d" ${diff_ns})):$*"
+	# remove leading zeros
+	now_f=$((10#${now_f}))
+
+	if [ "${OVE_PREV_S}" != "" ]; then
+		diff_f="$((now_f - OVE_PREV_F))"
+		diff_s=$((now_s - OVE_PREV_S))
+		if [ "${diff_f}" -lt 0 ]; then
+			(( diff_s-=1 )) || true
+			diff_f="$((10**pad + diff_f))"
+		fi
+
+		if [ $diff_s -lt 10 ]; then
+			diff="00:00:0$diff_s"
+		elif [ $diff_s -lt 60 ]; then
+			diff="00:00:$diff_s"
+		else
+			# shellcheck disable=SC2016
+			diff="$(${ove_cmd2pathname["awk"]:?} '{printf "%02d:%02d:%02d\n", int($1/3600),int(($1%3600)/60),int($1%60)}' <<<"${diff_s}")"
+		fi
+	fi
+
+	ove_echo_pad "${now_f}" "${pad}" a
+	ove_echo_pad "${diff_f}" "${pad}" b
+
+	printf "%(%Y-%m-%d %H:%M:%S)T.%s (+%s:%s) %s\n" "$now_s" "${a}" "${diff}" "${b}" "$(echo -e "$*")"
 
 	OVE_PREV_S=${now_s}
-	OVE_PREV_NS=${now_ns}
+	OVE_PREV_F=${now_f}
 }
 
 # echo:[green|cyan|yellow|red|error] txt:prefix echo with date and time diff:CORE
