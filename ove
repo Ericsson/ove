@@ -11098,7 +11098,7 @@ function ove_bash_complete {
 	elif [ "${subcommand}" == "distrocheck" ] ||
 		[ "${subcommand}" == "distrocheck-parallel" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects/*/ -name 'distcheck' -exec dirname {} \;)
+			wordlist=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects/*/ -name 'distcheck' -exec dirname {} \; 2> /dev/null)
 			if [ "x${wordlist}" != "x" ]; then
 				wordlist=${wordlist//${OVE_OWEL_DIR}\/projects\/}
 			else
