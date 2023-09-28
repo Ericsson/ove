@@ -137,17 +137,26 @@ function ove_read_config {
 	local p
 	local p_arr
 	local re
+	local restore
 	local val
 	local var
 	declare -A c
 
 	[ -s "$1" ] || return 1
 
+	restore=0
+	if [[ $- != *f* ]]; then
+		restore=1
+	fi
+	# disable pathname expansion
+	set -o noglob
+
 	while read -r p; do
 		# ignore comments and empty lines
 		if [[ ${p} == \#* ]] || [[ ${p} == '' ]]; then
 			continue
 		fi
+
 		p_arr=( ${p} )
 		var=${p_arr[0]}
 
@@ -195,6 +204,11 @@ function ove_read_config {
 		fi
 		export OVE_CONFIG_ALL
 	done <$1
+
+	if [ $restore -eq 1 ]; then
+		# restore pathname expansion
+		set +o noglob
+	fi
 }
 
 function ove_unsource_user_env {
@@ -2998,6 +3012,13 @@ function ove_projects_cmd {
 	proj_name=$1
 	proj_command=$2
 	ret=0
+
+	if [ "x${OVE_PROJECT_DISABLE}" != "x" ]; then
+		re=${OVE_PROJECT_DISABLE}
+		if [[ "${proj_name}" =~ ${re} ]]; then
+			return 0
+		fi
+	fi
 
 	# sanity check
 	if ! ove_project_has_step "${proj_name}" "${proj_command}"; then
@@ -12101,6 +12122,11 @@ function ove_config_builtins_init {
 	# OVE_HEADS2REVTAB_MODE:int:0|1:heads2revtab:include detached repos (=0), exclude detached repos (=1)
 	if [ -z "${OVE_HEADS2REVTAB_MODE+x}" ]; then
 		export OVE_HEADS2REVTAB_MODE=0
+	fi
+
+	# OVE_PROJECT_DISABLE:string::all-build-commands:disable specified projects (regex)
+	if [ -z "${OVE_PROJECT_DISABLE+x}" ]; then
+		export OVE_PROJECT_DISABLE=""
 	fi
 }
 
