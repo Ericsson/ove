@@ -9570,7 +9570,7 @@ function ove_update_config {
 	value="$3"
 
 	if ${ove_cmd2pathname["grep"]:?} -q "^${config} " ${file} &> /dev/null; then
-		${ove_cmd2pathname["sed"]:?} -i "s|^${config}.*|${config} ${value}|g" ${file}
+		${ove_cmd2pathname["sed"]:?} -i "s|^${config} .*|${config} ${value}|g" ${file}
 	else
 		echo "${config} ${value}" >> ${file}
 	fi
