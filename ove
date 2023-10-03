@@ -5145,7 +5145,7 @@ function ove_echo {
 	ove_echo_pad "${now_f}" "${pad}" a
 	ove_echo_pad "${diff_f}" "${pad}" b
 
-	printf "%(%Y-%m-%d %H:%M:%S)T.%s (+%s:%s) %s\n" "$now_s" "${a}" "${diff}" "${b}" "$(echo -e "$*")"
+	printf "%(%Y-%m-%d %H:%M:%S)T.%s (+%s:%s):%s\n" "$now_s" "${a}" "${diff}" "${b}" "$(echo -e "$*")"
 
 	OVE_PREV_S=${now_s}
 	OVE_PREV_F=${now_f}
