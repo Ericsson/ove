@@ -263,16 +263,23 @@ function ove_unsource {
 		fi
 	done
 
-	# unset old ove[-_] functions
+	# unset any ove[-_] functions
 	unset -f $(compgen -A function | \
 		\grep -E '^ove($|[-_])' | \
 		\grep -E -v "ove_read_config|ove-unsource|${FUNCNAME[0]}|ove_version_check_early" | \
 		\awk '{print $1}')
 
-	# unset old ove_/OVE_ variables
+	# unset any ove_/OVE_ variables
 	unset $(set -o posix ; set | \
 		\grep -i ^ove_ | \
 		\cut -d= -f1)
+
+	# unalias any ove[-_] alias
+	f=$(compgen -A alias | \
+		\grep -E '^ove($|[-_])')
+	if [ "$f" != "" ]; then
+		unalias $f
+	fi
 
 	# unset completion for ove
 	if complete -p | \grep -q ' ove$'; then
