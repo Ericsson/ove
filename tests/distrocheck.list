@@ -1,5 +1,4 @@
 almalinux/9
-alpine/3.14
 alpine/3.15
 alpine/3.16
 alpine/3.17
@@ -11,6 +10,7 @@ debian/11
 debian/12
 devuan/beowulf
 devuan/chimaera
+devuan/daedalus
 fedora/36
 fedora/37
 fedora/38
@@ -19,10 +19,12 @@ mint/uma
 mint/una
 mint/vanessa
 mint/vera
+mint/victoria
 opensuse/tumbleweed
 ubuntu/16.04
 ubuntu/18.04
 ubuntu/20.04
 ubuntu/22.04
 ubuntu/23.04
+ubuntu/23.10
 voidlinux
