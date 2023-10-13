@@ -9183,17 +9183,16 @@ function ove-list-commands-by-category {
 
 function ove_help {
 	local f
-	local g
 	local h
 
 	ove_echo_cyan_noprefix "commands"
-	echo "--------"
+	echo
 	ove-list-commands
 	echo
 	${ove_cmd2pathname["cat"]:?} <<EOF
 
 $(ove_echo_cyan_noprefix "high level git commands")
------------------------
+
 # status of all git repositories
 $ ove status
 
@@ -9219,7 +9218,7 @@ $ ove format-patch featY.tar.bz2
 $ ove am featY.tar.bz2
 
 $(ove_echo_cyan_noprefix "build related commands")
-----------------------
+
 # list build order
 $ ove build-order
 
@@ -9247,12 +9246,12 @@ $ ove clean
 $ ove mrproper
 
 $(ove_echo_cyan_noprefix "utility commands")
-----------------
+
 # list patches your friends have upstreamed since your last pull
 $ ove news
 
 # show new patches
-$ ove show-news (or show-behind)
+$ ove show-news # (or show-behind)
 
 # run 'ls -l' for all repos
 $ ove forall ls -l
@@ -9280,8 +9279,28 @@ $ ove clean projX && ove loop 0 1 0 build projX
 # open a few tmux panes that runs the following OVE commands: news, ahead, fetch
 $ ove ide
 
-# distrocheck
-#
+$(ove_echo_cyan_noprefix "log commands")
+
+# run one command
+$ ove fetch
+
+# check the output of the last command in less
+$ ove l
+
+# re-run the last command with proper timing
+$ ove lr
+
+# re-run the last command at 10x speed
+$ ove lr 10
+
+# re-run all commands from yesterday at 10x speed
+$ ove lastlog-replay $(date -d @$(($(date +"%s")-86400)) +"%Y%m%d")- 10
+
+# run htop for 5 seconds, replay the command immediately after
+$ ove do . timeout --foreground 5 htop -d 0.1 || ove lr
+
+$(ove_echo_cyan_noprefix "distrocheck")
+
 # steps:
 #   ove        use the OVE workspace (map it or by running the oneliner) within the container
 #   running    leave the container running
@@ -9305,8 +9324,8 @@ $ ove distrocheck test.sh ubuntu/22.04/amd64
 $ export OVE_DISTROCHECK_STEPS="ove running"
 $ ove distrocheck-parallel ag alpine/edge/amd64 fedora/37/amd64 ubuntu/22.04/amd64
 
-# replicate
-#
+$(ove_echo_cyan_noprefix "replicate")
+
 # replicate OVE workspace to a tmp directory on localhost
 $ ove replicate localhost
 
@@ -9320,7 +9339,7 @@ $ ove replicate host /var/tmp/backup save
 $ ove replicate host /var/tmp/backup force
 
 $(ove_echo_cyan_noprefix "configuration")
--------------
+
 # OVE tries to keep all repos in-sync with whatever is stated in the '\${OVE_OWEL_DIR}/revtab' file.
 # If you don't want this behaviour set the 'OVE_REVTAB_CHECK' config to '0'. Choose one of:
 $ ove add-config \${OVE_OWEL_DIR}/.oveconfig OVE_REVTAB_CHECK 0
@@ -9340,16 +9359,14 @@ EOF
 	for h in "${OVE_OWEL_DIR}/help" ${f}; do
 		[ -s "${h}" ] || continue
 		echo
-		g=${h//${OVE_BASE_DIR}\/}
-		ove_echo_cyan_noprefix "${g}"
-		printf "%0.s-" $(eval echo {1..$((${#g}))})
-		echo
 		if [ -x "${h}" ]; then
 			source "${h}"
 		else
 			${ove_cmd2pathname["cat"]:?} "${h}"
 		fi
 	done
+
+	return 0
 }
 
 # rg:pattern:search OVE workspace using rg [duckduckgo.com/?q=ripgrep]:SEARCH
