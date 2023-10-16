@@ -46,6 +46,12 @@ function test_import_export() {
 	ove import foobar
 	assertEquals "1" "$?"
 
+	touch a
+	tar -cjf a.tar.bz2 a
+	ove import a.tar.bz2
+	assertEquals "1" "$?"
+	rm a
+
 	find . -maxdepth 1 -name '*.bz2' -exec rm -v {} \;
 	assertEquals "0" "$?"
 }

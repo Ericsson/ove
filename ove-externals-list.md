@@ -27,7 +27,7 @@
 | getconf          | 2         |
 | git              | 82        |
 | graph-easy       | 2         |
-| grep             | 177       |
+| grep             | 179       |
 | head             | 20        |
 | inotifywait      | 3         |
 | jp2a             | 1         |
@@ -66,12 +66,12 @@
 | sync             | 1         |
 | tac              | 3         |
 | tail             | 11        |
-| tar              | 6         |
+| tar              | 8         |
 | task             | 2         |
 | tee              | 11        |
 | timeout          | 4         |
 | tmux             | 13        |
-| touch            | 3         |
+| touch            | 5         |
 | tr               | 22        |
 | tsort            | 2         |
 | tsp              | 3         |
@@ -84,4 +84,4 @@
 | xargs            | 36        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1272__  |
+| __sum__          | __1278__  |

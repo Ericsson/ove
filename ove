@@ -7384,7 +7384,11 @@ function ove-export {
 		name+="-${args}"
 	fi
 	name+=".tar.bz2"
-	${ove_cmd2pathname["tar"]:?} -C "${OVE_OWEL_TMP_DIR}/export" -cjf "${name}" --owner=0 --group=0 .
+	if ! ${ove_cmd2pathname["touch"]:?} ${OVE_OWEL_TMP_DIR}/export/${OVE_SHA:?}-export; then
+		return 1
+	elif ! ${ove_cmd2pathname["tar"]:?} -C "${OVE_OWEL_TMP_DIR}/export" -cjf "${name}" --owner=0 --group=0 .; then
+		return 1
+	fi
 	echo "${name}"
 
 	return 0
@@ -7436,11 +7440,20 @@ function ove-import {
 	elif ! ${ove_cmd2pathname["file"]:?} "${f}" | ${ove_cmd2pathname["grep"]:?} -q "bzip2 compressed data"; then
 		echo "error: '${f}' is not a bzip2 compressed data file"
 		return 1
+	# sanity check archive
+	elif ! ${ove_cmd2pathname["tar"]:?} -tf "$f" | ${ove_cmd2pathname["grep"]:?} -q '\.\/[0-9a-f]\+\-export$'; then
+		ove_echo_error_noprefix "archive '$f' was not created with 'ove export'"
+		return 1
+	elif ! ${ove_cmd2pathname["mkdir"]:?} -p "${OVE_OWEL_TMP_DIR}/import"; then
+		return 1
 	fi
 
-	${ove_cmd2pathname["mkdir"]:?} -p "${OVE_OWEL_TMP_DIR}/import"
+	# clean up
 	${ove_cmd2pathname["find"]:?} "${OVE_OWEL_TMP_DIR}/import" -maxdepth 1 -name '*.patch' -exec rm {} \;
-	${ove_cmd2pathname["tar"]:?} -C "${OVE_OWEL_TMP_DIR}/import" -xf "${f}" --no-same-owner
+
+	if ! ${ove_cmd2pathname["tar"]:?} -C "${OVE_OWEL_TMP_DIR}/import" --exclude './*-export' -xf "${f}" --no-same-owner; then
+		return 1
+	fi
 
 	n=0
 	if [ ! -s ${OVE_OWEL_DIR}/projs ]; then
@@ -8426,7 +8439,9 @@ function ove-format-patch {
 		f="${PWD}/${OVE_OWEL_NAME}-patches-$(${ove_cmd2pathname["date"]:?} '+%Y%m%d-%H%M%S').tar.bz2"
 	fi
 
-	if ! ${ove_cmd2pathname["tar"]:?} -C "${d}" -cjf "${f}" --owner=0 --group=0 .; then
+	if ! ${ove_cmd2pathname["touch"]:?} "${d}"/${OVE_SHA:?}-format-patch; then
+		return 1
+	elif ! ${ove_cmd2pathname["tar"]:?} -C "${d}" -cjf "${f}" --owner=0 --group=0 .; then
 		ove_echo_error_noprefix "format-patch: tar failed"
 		return 1
 	fi
@@ -8438,29 +8453,41 @@ function ove-am {
 	ove_entry || return
 
 	local d
+	local f
 	local r
 	local repos
 	local ret=0
 
-	if [ $# -ne 1 ]; then
-		ove_command_usage
-		return 1
-	fi
-
-	if ! [ -e $1 ]; then
+	if [ $# -ne 1 ] || ! [ -e $1 ]; then
 		ove_command_usage
 		return 1
 	fi
 
 	d="${OVE_OWEL_TMP_DIR}/am"
-	${ove_cmd2pathname["mkdir"]:?} -p ${d}
+	f="$1"
+	if ! ${ove_cmd2pathname["mkdir"]:?} -p ${d}; then
+		return 1
+	fi
+
+	# clean up any directories
 	${ove_cmd2pathname["find"]:?} ${d} -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
 
+	# sanity check archive
+	if ! ${ove_cmd2pathname["tar"]:?} -tf "$f" | ${ove_cmd2pathname["grep"]:?} -q '\.\/[0-9a-f]\+\-format-patch$'; then
+		ove_echo_error_noprefix "archive '$f' was not created with 'ove format-patch'"
+		return 1
+	fi
+
 	# unpack
-	${ove_cmd2pathname["tar"]:?} -C "${d}" -xf "$1" --no-same-owner || return 1
+	if ! ${ove_cmd2pathname["tar"]:?} -C "${d}" --exclude './*-format-patch' -xf "$f" --no-same-owner; then
+		return 1
+	fi
 
 	repos=$(${ove_cmd2pathname["find"]:?} ${d} -type f -print0 | ${ove_cmd2pathname["xargs"]:?} -0 dirname | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u)
-	[ "${repos}" == "" ] && return 1
+	if [ "${repos}" = "" ]; then
+		return 1
+	fi
+
 	for r in ${repos}; do
 		r=${r/${d}\/}
 		if [ "x$r" = "x.owel" ]; then
