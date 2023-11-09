@@ -7086,6 +7086,18 @@ function ove_validate_self {
 			${ove_cmd2pathname["xargs"]:?}
 		return 1
 	fi
+
+	if ${ove_cmd2pathname["grep"]:?} -q -P '^\t+ ' ${OVE_SELF}; then
+		ove_echo_error_noprefix "tab followed by space:"
+		${ove_cmd2pathname["grep"]:?} -n -P '^\t+ ' ${OVE_SELF} | \
+			${ove_cmd2pathname["sed"]:?} -n 'l'
+		return 1
+	elif ${ove_cmd2pathname["grep"]:?} -q -P '^ +\t+' ${OVE_SELF}; then
+		ove_echo_error_noprefix "space followed by tab:"
+		${ove_cmd2pathname["grep"]:?} -n -P '^ +\t+' ${OVE_SELF} | \
+			${ove_cmd2pathname["sed"]:?} -n 'l'
+		return 1
+	fi
 }
 
 function ove_validate_projs {

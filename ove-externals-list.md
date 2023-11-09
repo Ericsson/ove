@@ -27,7 +27,7 @@
 | getconf          | 2         |
 | git              | 82        |
 | graph-easy       | 2         |
-| grep             | 179       |
+| grep             | 183       |
 | head             | 20        |
 | inotifywait      | 3         |
 | jp2a             | 1         |
@@ -45,7 +45,7 @@
 | mv               | 11        |
 | pgrep            | 4         |
 | ps               | 1         |
-| readlink         | 31        |
+| readlink         | 29        |
 | recordmydesktop  | 1         |
 | rev              | 4         |
 | rg               | 1         |
@@ -54,7 +54,7 @@
 | scp              | 3         |
 | script           | 4         |
 | scriptreplay     | 1         |
-| sed              | 85        |
+| sed              | 87        |
 | seq              | 11        |
 | setsid           | 1         |
 | shellcheck       | 1         |
@@ -84,4 +84,4 @@
 | xargs            | 36        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1280__  |
+| __sum__          | __1284__  |
