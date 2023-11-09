@@ -17,7 +17,7 @@
 | dig              | 1         |
 | dirname          | 5         |
 | dot              | 2         |
-| du               | 6         |
+| du               | 7         |
 | ffmpeg           | 1         |
 | file             | 3         |
 | find             | 81        |
@@ -72,7 +72,7 @@
 | timeout          | 4         |
 | tmux             | 13        |
 | touch            | 5         |
-| tr               | 22        |
+| tr               | 23        |
 | tsort            | 2         |
 | tsp              | 3         |
 | uname            | 4         |
@@ -84,4 +84,4 @@
 | xargs            | 36        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1278__  |
+| __sum__          | __1280__  |

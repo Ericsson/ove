@@ -534,8 +534,6 @@ function ove_ip2host {
 
 	if ! ove_check_command "dig"; then
 		return 1
-	elif ! ove_check_command "whois"; then
-		return 1
 	fi
 
 	ip=${1}
@@ -567,13 +565,13 @@ function ove_ip2org {
 	fi
 
 	ip=${1}
-
 	if [[ ${ip} == 127* ]]; then
 		org="NA"
 	else
 		org=$(${ove_cmd2pathname["timeout"]:?} 3 \
 			${ove_cmd2pathname["whois"]:?} ${ip} 2> /dev/null | \
-			${ove_cmd2pathname["grep"]:?} -E -i 'netrange:|netname|parent')
+			${ove_cmd2pathname["grep"]:?} -E -i 'netrange:|netname|parent' | \
+			${ove_cmd2pathname["tr"]:?} -s ' ')
 		if [ "${org}" = "" ]; then
 			return
 		fi
@@ -595,7 +593,9 @@ function ove_port2service {
 			${ove_cmd2pathname["awk"]:?} '{print $1}')
 	fi
 
-	[ "${port_service}" == "" ] && port_service="NA"
+	if [ "${port_service}" = "" ]; then
+		port_service="NA"
+	fi
 	echo "${port_service}"
 }
 
@@ -911,13 +911,13 @@ function ove_strace_one_pid {
 	t=$(ove_strace_get_t0 ${pid})
 
 	# label START
-	out_1="    ${pid} [label=\"p: ${pid}\l\nt: ${t}\l\nd: ${duration_ms} ms (${duration_s} s)\l\n"
+	out_1="    ${pid} [label=\"\lp: ${pid}\lt: ${t}\ld: ${duration_ms} ms (${duration_s} s)\l"
 
 	# exit code
 	exit_code=$(ove_strace_get_exit_code ${pid})
 	if [[ "${exit_code}" =~ ^[0-9]+$ ]]; then
 		if [ ${exit_code} -ne 0 ]; then
-			out_1+="e: ${exit_code}\l\n"
+			out_1+="e: ${exit_code}\l"
 			border_color='"red"'
 		else
 			border_color='"green"'
@@ -925,7 +925,7 @@ function ove_strace_one_pid {
 	elif [ "${exit_code}" == "alive" ]; then
 		border_color='"blue"'
 	else
-		out_1+="e: ${exit_code}\l\n"
+		out_1+="e: ${exit_code}\l"
 		border_color='"black"'
 	fi
 
@@ -979,16 +979,22 @@ function ove_strace_one_pid {
 				sun_path=${sun_path%\"*}
 
 				# abstract sockets
-				[[ "${line}" == *"=@"* ]] && sun_path="@${sun_path}"
+				if [[ "${line}" == *"=@"* ]]; then
+				       sun_path="@${sun_path}"
+				fi
 
-				out_2+="    \"${sun_path}\" [label=\"${sun_path}\l\n\" shape=box3d,fontsize=20,style=filled,fillcolor=\"cyan\"];"
+				out_2+="    \"${sun_path}\" [label=\"${sun_path}\l\" shape=box3d,fontsize=10,style=filled,fillcolor=\"cyan\"];"
 				out_2+="    ${pid} -> \"${sun_path}\" [label=\"${syscall}\"];"
 			elif [ "${sa_family}" == "AF_INET" ]; then
 				ip=$(ove_line2ipv4 ${line})
-				[ "${ip}" == "" ] && continue
+				if [ "${ip}" = "" ]; then
+					continue
+				fi
 				port=$(${ove_cmd2pathname["cut"]:?} -d'(' -f3- <<<"${line}" | \
 					${ove_cmd2pathname["cut"]:?} -d')' -f1)
-				[ "${port}" == "" ] && continue
+				if [ "${port}" = "" ]; then
+				       continue
+				fi
 
 				if test "${ip_port_cnt["${ip}:${port}"]+isset}"; then
 					ip_port_cnt["${ip}:${port}"]=$((${ip_port_cnt["${ip}:${port}"]} + 1))
@@ -1000,11 +1006,11 @@ function ove_strace_one_pid {
 				ip_org=${ove_ip2org_db["${ip}"]}
 				port_service=${ove_port2service_db["${port}"]}
 
-				org=$(${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l\\n/g' <<<"${ip_org}" | \
-					${ove_cmd2pathname["tr"]:?} '\n' ' ' | \
+				org=$(${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l/g' <<<"${ip_org}" | \
+					${ove_cmd2pathname["tr"]:?} -d '\n' | \
 					${ove_cmd2pathname["tr"]:?} \" \')
 
-				out_2+="    \"${ip}\" [label=\"t: ${t}\l\nIP: ${ip}\l\n${ip_lookup}\l\n${org}\l\n\" shape=box3d,fontsize=20,style=filled, fillcolor=\"yellow\"];"
+				out_2+="    \"${ip}\" [label=\"\lt: ${t}\lIPv4: ${ip}\lhost: ${ip_lookup}\lorg: ${org}\l\" shape=box3d,fontsize=10,style=filled, fillcolor=\"yellow\"];"
 				out_2+="    ${pid} -> \"${ip}\" [label=\"${syscall} ${port} ${port_service["${port}"]}\"];"
 			else
 				continue
@@ -1020,29 +1026,33 @@ function ove_strace_one_pid {
 		if [ ${ip_port_cnt[${ip}:${port}]} -gt 1 ]; then
 			suffix="(repeated ${ip_port_cnt[${ip}:${port}]} time(s))"
 		fi
-		out_1+="c: ${ip}|${ip_lookup}|${port}|${port_service} ${suffix}\l\n"
+		out_1+="c: ${ip}|${ip_lookup}|${port}|${port_service} ${suffix}\l"
 	done
 
 	# penwidth based on duration
-	penwidth=${duration_ms}
 	if [ ${duration_ms} -gt 20 ]; then
-		penwidth=20
-	elif [ ${duration_ms} -eq 0 ]; then
+		penwidth=3
+	elif [ ${duration_ms} -gt 0 ]; then
+		penwidth=2
+	else
 		penwidth=1
 	fi
 
-	[ "${cmd}" != "" ] && \
+	if [ "${cmd}" != "" ]; then
 		out_1+="x: $(echo -e ${cmd} | \
-		${ove_cmd2pathname["fold"]:?} -w 80 -s | \
-		${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l\\n/g' | \
-		${ove_cmd2pathname["tr"]:?} '\n' ' ' | \
-		${ove_cmd2pathname["tr"]:?} \" \')"
+			${ove_cmd2pathname["fold"]:?} -w 80 -s | \
+			${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l/g' | \
+			${ove_cmd2pathname["tr"]:?} '\n' ' ' | \
+			${ove_cmd2pathname["tr"]:?} \" \')"
+	fi
 
 	# label END
-	out_1+="\",color=${border_color},penwidth=${penwidth},fontsize=14,fontcolor=black];"
+	out_1+="\",color=${border_color},penwidth=${penwidth},fontsize=10,fontcolor=black];"
 
 	echo "${out_1}"
-	[ "${out_2}" != "" ] && echo "${out_2}"
+	if [ "${out_2}" != "" ]; then
+		echo "${out_2}"
+	fi
 }
 
 function ove_command_usage {
@@ -1128,9 +1138,7 @@ function ove_strace_create_graph {
 
 	echo "strict digraph $(${ove_cmd2pathname["tr"]:?} '-' '_' <<<"${OVE_OWEL_NAME}" | \
 		${ove_cmd2pathname["tr"]:?} -d '.') {" > ${o_dot}
-	echo "    nodesep=2" >> ${o_dot}
-	echo "    ranksep=5" >> ${o_dot}
-	echo "    node [margin=1,shape=octagon,nodesep=10];" >> ${o_dot}
+	echo "    node [shape=box];" >> ${o_dot}
 
 	# remove leftovers
 	${ove_cmd2pathname["find"]:?} ${OVE_OWEL_TMP_DIR} -name "strace-${2}.dot.*" -print0 | \
@@ -1159,20 +1167,24 @@ function ove_strace_create_graph {
 
 	${ove_cmd2pathname["du"]:?} -sh ${o_dot}
 	if command -v dot > /dev/null; then
-		if ! ${ove_cmd2pathname["dot"]:?} -Tsvg ${o_dot} > ${o_svg}; then
-			return 1
-		fi
-		${ove_cmd2pathname["du"]:?} -sh ${o_svg}
+		for f in svg pdf png; do
+			if ! ${ove_cmd2pathname["dot"]:?} -T${f} ${o_dot} > ${o_base:?}.$f; then
+				return 1
+			fi
+			${ove_cmd2pathname["du"]:?} -sh ${o_base:?}.$f
+		done
 	fi
 
 	if command -v graph-easy > /dev/null; then
-		if ! ${ove_cmd2pathname["graph-easy"]:?} \
-			--from=dot \
-			--as=boxart \
-			< ${o_dot} 2> /dev/null; then
-			return 1
-		fi
-		echo
+		for f in html boxart ascii; do
+			if ! ${ove_cmd2pathname["graph-easy"]:?} \
+				--from=dot \
+				--as="$f" \
+				< ${o_dot} > ${o_base:?}.$f 2> /dev/null; then
+				return 1
+			fi
+			${ove_cmd2pathname["du"]:?} -sh ${o_base:?}.$f
+		done
 	fi
 }
 
