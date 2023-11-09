@@ -1039,7 +1039,7 @@ function ove_strace_one_pid {
 	fi
 
 	if [ "${cmd}" != "" ]; then
-		out_1+="x: $(echo -e ${cmd} | \
+		out_1+="x: $(set -f; echo -e ${cmd} | \
 			${ove_cmd2pathname["fold"]:?} -w 80 -s | \
 			${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l/g' | \
 			${ove_cmd2pathname["tr"]:?} '\n' ' ' | \
