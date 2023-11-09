@@ -980,7 +980,7 @@ function ove_strace_one_pid {
 
 				# abstract sockets
 				if [[ "${line}" == *"=@"* ]]; then
-				       sun_path="@${sun_path}"
+					sun_path="@${sun_path}"
 				fi
 
 				out_2+="    \"${sun_path}\" [label=\"${sun_path}\l\" shape=box3d,fontsize=10,style=filled,fillcolor=\"cyan\"];"
@@ -993,7 +993,7 @@ function ove_strace_one_pid {
 				port=$(${ove_cmd2pathname["cut"]:?} -d'(' -f3- <<<"${line}" | \
 					${ove_cmd2pathname["cut"]:?} -d')' -f1)
 				if [ "${port}" = "" ]; then
-				       continue
+					continue
 				fi
 
 				if test "${ip_port_cnt["${ip}:${port}"]+isset}"; then
@@ -2836,7 +2836,7 @@ function ove_projects_init {
 			if [ "x${t}" = "x" ]; then
 				ove_projects_path[${i}]="${OVE_BASE_DIR}"
 			else
-				v="$(${ove_cmd2pathname["readlink"]:?} -f ${t})"
+				v="$(${ove_cmd2pathname["readlink"]:?} -f -- ${t})"
 				if [ "x${v}" = "x" ]; then
 					ove_projects_path[${i}]="${OVE_BASE_DIR}/${t}"
 				else
@@ -6441,9 +6441,9 @@ function ove-branch {
 		# shellcheck disable=SC2016
 		cmd='ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} "--no-pager branch" | ${ove_cmd2pathname["sed"]:?} "s|^|$(printf "%-${OVE_REPO_LIST_WIDTH}s" ${repo_basename})|g"'
 		if [ $# -eq 0 ]; then
-		        ove_revtab_forall "${cmd}"
+			ove_revtab_forall "${cmd}"
 		else
-		        ove_revtab_forsome "${cmd}" "$@"
+			ove_revtab_forsome "${cmd}" "$@"
 		fi
 
 		return 0
@@ -9506,7 +9506,7 @@ function ove-gfv {
 	printf "%s\n" "${out}" | \
 		SHELL=${ove_cmd2pathname["bash"]:?} \
 		${ove_cmd2pathname["fzf"]:?} --bind "enter:execute(< /dev/tty eval \$(echo vi {} | ${ove_cmd2pathname["cut"]:?} -d' ' -f1-3))" \
-		     --bind "left-click:execute(< /dev/tty eval \$(echo vi {} | ${ove_cmd2pathname["cut"]:?} -d' ' -f1-3))"
+		--bind "left-click:execute(< /dev/tty eval \$(echo vi {} | ${ove_cmd2pathname["cut"]:?} -d' ' -f1-3))"
 }
 
 # gfe:pattern:git grep+fzf+emacs combo:SEARCH
@@ -9530,7 +9530,7 @@ function ove-gfe {
 	printf "%s\n" "${out}" | \
 		SHELL=${ove_cmd2pathname["bash"]:?} \
 		${ove_cmd2pathname["fzf"]:?} --bind "enter:execute(eval \$(echo emacs {} | ${ove_cmd2pathname["awk"]:?} '{print \$1,\$3,\$2}'))" \
-		     --bind "left-click:execute(eval \$(echo emacs {} | ${ove_cmd2pathname["awk"]:?} '{print \$1,\$3,\$2}'))"
+		--bind "left-click:execute(eval \$(echo emacs {} | ${ove_cmd2pathname["awk"]:?} '{print \$1,\$3,\$2}'))"
 }
 
 # blame-history:pattern:git log -G -p pattern for all git repositories:SEARCH
@@ -10821,12 +10821,12 @@ function ove-demo {
 		demo_list=$(${ove_cmd2pathname["find"]:?} -L ${p} -name '*.log' -type f | LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
 		for d in ${demo_list}; do
 			if [ "${re}" != "x" ]; then
-			       if [[ $d =~ $re ]]; then
-				       demos+=("${d/.log/}")
-			       fi
-			       continue
-		       fi
-		       demos+=("${d/.log/}")
+				if [[ $d =~ $re ]]; then
+					demos+=("${d/.log/}")
+				fi
+				continue
+			fi
+			demos+=("${d/.log/}")
 		done
 	done
 
@@ -11772,11 +11772,13 @@ function ove_scripts_init {
 }
 
 function ove_dirs_init {
-	local OVE_STATE_LINK_NAME
-	local OVE_TMP_LINK_NAME
+	local s
+	local s_link_name
+	local t
+	local t_link_name
 
-	OVE_STATE_LINK_NAME="${OVE_BASE_DIR}/.ove.state"
-	OVE_TMP_LINK_NAME="${OVE_BASE_DIR}/.ove.tmp"
+	s_link_name="${OVE_BASE_DIR}/.ove.state"
+	t_link_name="${OVE_BASE_DIR}/.ove.tmp"
 
 	# OVE_GLOBAL_STATE_DIR:shared directory for all OVE workspaces (per user)
 	OVE_GLOBAL_STATE_DIR=
@@ -11789,43 +11791,61 @@ function ove_dirs_init {
 
 	# OVE_OWEL_STATE_DIR:state directory for one OVE workspace
 	OVE_OWEL_STATE_DIR=
-	if ! [ -h ${OVE_STATE_LINK_NAME} ] || [ "$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_STATE_LINK_NAME})" == "" ]; then
-		[ -h ${OVE_STATE_LINK_NAME} ] && ${ove_cmd2pathname["rm"]:?} ${OVE_STATE_LINK_NAME}
+	if [ -h ${s_link_name} ]; then
+		s="$(${ove_cmd2pathname["readlink"]:?} -f -- ${s_link_name})"
+	fi
+
+	if [ ! -h ${s_link_name} ] || [ "${s}" = "" ]; then
+		if [ -h ${s_link_name} ]; then
+			${ove_cmd2pathname["rm"]:?} ${s_link_name}
+		fi
 		OVE_OWEL_STATE_DIR=$(${ove_cmd2pathname["mktemp"]:?} -u -d -p ${OVE_GLOBAL_STATE_DIR}/${OVE_OWEL_NAME} state-XXXXXXXXXX)
 
 		${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_STATE_DIR}
-		${ove_cmd2pathname["ln"]:?} -s ${OVE_OWEL_STATE_DIR} ${OVE_STATE_LINK_NAME}
+		${ove_cmd2pathname["ln"]:?} -s ${OVE_OWEL_STATE_DIR} ${s_link_name}
 
 		# always re-create tmp link
-		[ -h ${OVE_TMP_LINK_NAME} ] && ${ove_cmd2pathname["rm"]:?} ${OVE_TMP_LINK_NAME}
+		if [ -h ${t_link_name} ]; then
+			${ove_cmd2pathname["rm"]:?} ${t_link_name}
+		fi
 	else
-		OVE_OWEL_STATE_DIR=$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_STATE_LINK_NAME})
-		! [ -e "${OVE_STATE_LINK_NAME}" ] && ${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_STATE_DIR}
+		OVE_OWEL_STATE_DIR=${s}
+		if [ ! -e "${s_link_name}" ]; then
+			${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_STATE_DIR}
+		fi
 	fi
 	export OVE_OWEL_STATE_DIR
 
+	if [ -h ${t_link_name} ]; then
+		t="$(${ove_cmd2pathname["readlink"]:?} -f -- ${t_link_name})"
+	fi
+
 	# OVE_OWEL_TMP_DIR:temporary directory for one OVE workspace
 	OVE_OWEL_TMP_DIR=
-	if ! [ -h ${OVE_TMP_LINK_NAME} ] || [ "$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_TMP_LINK_NAME})" == "" ]; then
-		[ -h ${OVE_TMP_LINK_NAME} ] && ${ove_cmd2pathname["rm"]:?} ${OVE_TMP_LINK_NAME}
+	if [ ! -h ${t_link_name} ] || [ "${t}" = "" ]; then
+		if [ -h ${t_link_name} ]; then
+			${ove_cmd2pathname["rm"]:?} ${t_link_name}
+		fi
 		# re-use last 10 characters from OVE_OWEL_STATE_DIR
 		OVE_OWEL_TMP_DIR="${OVE_TMP}/${OVE_OWEL_NAME}/tmp-${OVE_OWEL_STATE_DIR: -10}"
 		${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR}
-		${ove_cmd2pathname["ln"]:?} -s ${OVE_OWEL_TMP_DIR} ${OVE_TMP_LINK_NAME}
+		${ove_cmd2pathname["ln"]:?} -s ${OVE_OWEL_TMP_DIR} ${t_link_name}
 	else
-		OVE_OWEL_TMP_DIR=$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_TMP_LINK_NAME})
-		! [ -e "${OVE_TMP_LINK_NAME}" ] && ${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR}
+		OVE_OWEL_TMP_DIR=${t}
+		if [ ! -e "${t_link_name}" ]; then
+			${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR}
+		fi
 	fi
 	export OVE_OWEL_TMP_DIR
 
 	OVE_LOG_DIR="${OVE_GLOBAL_STATE_DIR}/logs"
 	export OVE_LOG_DIR
 
-	if ! [ -d "${OVE_LOG_DIR}" ]; then
+	if [ ! -d "${OVE_LOG_DIR}" ]; then
 		${ove_cmd2pathname["mkdir"]:?} -p "${OVE_LOG_DIR}"
 	fi
 
-	if ! [ -d "${OVE_GLOBAL_STATE_DIR}/.ove" ]; then
+	if [ ! -d "${OVE_GLOBAL_STATE_DIR}/.ove" ]; then
 		${ove_cmd2pathname["mkdir"]:?} -p "${OVE_GLOBAL_STATE_DIR}/.ove"
 	fi
 }
@@ -12633,7 +12653,7 @@ function ove_buildable_projects {
 
 	for q in ${OVE_REPO_LIST}; do
 		if ove_dir_is_repo "${q}"; then
-		       continue
+			continue
 		fi
 		repos_not_fetched+="${q} "
 	done
