@@ -15254,7 +15254,7 @@ function ove-distrocheck {
 	fi
 
 	for d in "${distro_list[@]}"; do
-		${OVE_DIR}/tests/distrocheck.sh "${1}" "$d"
+		${OVE_DIR}/distrocheck "${1}" "$d"
 	done
 }
 
@@ -15296,7 +15296,7 @@ function ove-distrocheck-parallel {
 	fi
 
 	for d in "${distro_list[@]}"; do
-		args+=" 0 '$env ${OVE_DIR}/tests/distrocheck.sh $1 $d'"
+		args+=" 0 '$env ${OVE_DIR}/distrocheck $1 $d'"
 	done
 
 	eval ove-run-parallel $args
@@ -15399,7 +15399,7 @@ function ove-post-push {
 	mapfile -t distro_list <"${OVE_DIR}/tests/distrocheck.list"
 	for d in "${distro_list[@]}"; do
 		OVE_DISTROCHECK_CONTAINER_PREFIX=ove-ut \
-			${OVE_DIR}/tests/distrocheck.sh "unittest" "${d}"
+			${OVE_DIR}/distrocheck "unittest" "${d}"
 	done
 }
 
@@ -15420,7 +15420,7 @@ function ove-post-push-parallel {
 	fi
 
 	while read -r d; do
-		args+=" 0 'OVE_DISTROCHECK_CONTAINER_PREFIX=ove-ut ${OVE_DIR}/tests/distrocheck.sh unittest $d'"
+		args+=" 0 'OVE_DISTROCHECK_CONTAINER_PREFIX=ove-ut ${OVE_DIR}/distrocheck unittest $d'"
 	done <"${OVE_DIR}/tests/distrocheck.list"
 
 	eval ove-run-parallel $args

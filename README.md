@@ -472,7 +472,7 @@ A list of OVE environment variables that will remain stable across OVE versions 
 
 ## Supported Linux distributions
 
-OVE has been tested ([distrocheck.sh](tests/distrocheck.sh)) for the following Linux distributions:
+OVE has been tested for the following Linux distributions:
 
 | Distribution        | Release(s)                        |
 |---------------------|-----------------------------------|
