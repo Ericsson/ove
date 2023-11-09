@@ -481,7 +481,7 @@ OVE has been tested ([distrocheck.sh](tests/distrocheck.sh)) for the following L
 | Arch Linux          | N/A                               |
 | Debian              | Buster, Bullseye, Bookworm        |
 | Devuan              | Beowulf, Chimaera, Daedalus       |
-| Fedora              | 36, 37, 38                        |
+| Fedora              | 36, 37, 38, 39                    |
 | Kali                | N/A                               |
 | Linux Mint          | Uma, Una, Vanessa, Vera, Victoria |
 | openSUSE Tumbleweed | N/A                               |
