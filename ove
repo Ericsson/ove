@@ -5047,14 +5047,9 @@ function ove-list-scripts {
 	local repo
 
 	while true; do
-		# project scripts
+		# OWEL scripts
 		if [ -d "${OVE_OWEL_DIR}/scripts" ]; then
 			${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/scripts -perm -u=x -not -name '*.help' -type f
-		fi
-
-		# OVE scripts
-		if [ -d "${OVE_DIR}/scripts" ]; then
-			${ove_cmd2pathname["find"]:?} ${OVE_DIR}/scripts -perm -u=x -not -name '*.help' -type f
 		fi
 
 		# repo scripts
@@ -5075,10 +5070,10 @@ function ove_list_scripts_directories {
 	local d
 	local repo
 
-	# project scripts
-	[ -d "${OVE_OWEL_DIR}/scripts" ] && d+="${OVE_OWEL_DIR}/scripts "
-	# OVE scripts
-	[ -d "${OVE_DIR}/scripts" ] && d+="${OVE_DIR}/scripts "
+	# OWEL scripts
+	if [ -d "${OVE_OWEL_DIR}/scripts" ]; then
+		d+="${OVE_OWEL_DIR}/scripts "
+	fi
 	# repo scripts
 	for repo in ${OVE_REPO_LIST}; do
 		[ -d "${repo}/.ove/scripts" ] || continue
@@ -11728,6 +11723,7 @@ function ove_hooks_init {
 function ove_scripts_init {
 	local array
 	local oldIFS
+	local r_list
 	local prev_scripts
 	local repo
 	local s
@@ -11745,10 +11741,12 @@ function ove_scripts_init {
 	if prev_scripts=$(set | ${ove_cmd2pathname["grep"]:?} '^    local __scriptname=.*'); then
 		prev_scripts=${prev_scripts//    local __scriptname=}
 		prev_scripts=${prev_scripts//;}
-		[ "${prev_scripts}" != "" ] && unset -f ${prev_scripts}
+		if [ "${prev_scripts}" != "" ]; then
+			unset -f ${prev_scripts}
+		fi
 	fi
 
-	# project scripts
+	# OWEL scripts
 	if [ -d "${OVE_OWEL_DIR}/scripts" ]; then
 		s_list=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
 		for s in ${s_list}; do
@@ -11757,24 +11755,21 @@ function ove_scripts_init {
 		done
 	fi
 
-	# OVE scripts
-	if [ -d "${OVE_DIR}/scripts" ]; then
-		s_list=$(${ove_cmd2pathname["find"]:?} ${OVE_DIR}/scripts -perm -u=x -not -name '*.help' -type f)
+	# repo scripts
+	for repo in $(ove_revtab_list_fullpath); do
+		if [ ! -d "${repo}/.ove/scripts" ]; then
+			continue
+		fi
+		r_list+="${repo}/.ove/scripts "
+	done
+
+	if [ "${r_list}" != "" ]; then
+		s_list=$(${ove_cmd2pathname["find"]:?} -L ${r_list} -perm -u=x -not -name '*.help' -type f)
 		for s in ${s_list}; do
 			ove_add_script_func ${s%/*} ${s##*/}
 			OVE_SCRIPTS_LIST+="${s##*/} "
 		done
 	fi
-
-	# repo scripts
-	for repo in $(ove_revtab_list_fullpath); do
-		! [ -d "${repo}/.ove/scripts" ] && continue
-		s_list=$(${ove_cmd2pathname["find"]:?} -L ${repo}/.ove/scripts -perm -u=x -not -name '*.help' -type f)
-		for s in ${s_list}; do
-			ove_add_script_func ${s%/*} ${s##*/}
-			OVE_SCRIPTS_LIST+="${s##*/} "
-		done
-	done
 
 	array=(${OVE_SCRIPTS_LIST})
 	oldIFS=${IFS}

@@ -20,7 +20,7 @@
 | du               | 7         |
 | ffmpeg           | 1         |
 | file             | 3         |
-| find             | 81        |
+| find             | 79        |
 | flock            | 10        |
 | fold             | 2         |
 | fzf              | 5         |
@@ -84,4 +84,4 @@
 | xargs            | 36        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1284__  |
+| __sum__          | __1282__  |
