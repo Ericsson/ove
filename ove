@@ -586,10 +586,15 @@ function ove_port2service {
 	local port_service
 
 	port=${1}
+	if [ "${port}" -eq 0 ]; then
+		return 0
+	fi
 
 	if [ -e /etc/services ]; then
 		# shellcheck disable=SC2016
-		port_service=$(${ove_cmd2pathname["grep"]:?} -m1 -w ${port} /etc/services | \
+		port_service=$(${ove_cmd2pathname["grep"]:?} -E -v '^#|^$' /etc/services | \
+			${ove_cmd2pathname["awk"]:?} '{print $1, $2}' | \
+			${ove_cmd2pathname["grep"]:?} -m1 -w ${port} | \
 			${ove_cmd2pathname["awk"]:?} '{print $1}')
 	fi
 
@@ -911,7 +916,7 @@ function ove_strace_one_pid {
 	t=$(ove_strace_get_t0 ${pid})
 
 	# label START
-	out_1="    ${pid} [label=\"\lp: ${pid}\lt: ${t}\ld: ${duration_ms} ms (${duration_s} s)\l"
+	out_1="    ${pid} [label=\"\lt: ${t}\lp: ${pid}\ld: ${duration_ms} ms (${duration_s} s)\l"
 
 	# exit code
 	exit_code=$(ove_strace_get_exit_code ${pid})
@@ -932,11 +937,16 @@ function ove_strace_one_pid {
 	cmd=
 	out_2=
 	declare -A ip_port_cnt
+	declare -A ip_hash
 	while read -r line; do
-		[ "${line}" == "" ] && continue
+		if [ "${line}" = "" ]; then
+			continue
+		fi
 		syscall=${line#* }
 		syscall=${syscall%%(*}
-		! [[ "${syscall}" =~ ^[a-z]+$ ]] && continue
+		if ! [[ "${syscall}" =~ ^[a-z]+$ ]]; then
+			continue
+		fi
 
 		echo "${t}:${syscall}:${pid}:${duration_ms}:${duration_s}" >> ${OVE_OWEL_TMP_DIR}/timing
 		if [ "${syscall}" == "clone" ] ||
@@ -944,11 +954,15 @@ function ove_strace_one_pid {
 			[ "${syscall}" == "vfork" ]; then
 			p=${line##* = }
 			p=${p%% *}
-			! [[ "${p}" =~ ^[0-9]+$ ]] && continue
-			out_2+="    ${pid} -> ${p} [label=${syscall}];"
+			if ! [[ "${p}" =~ ^[0-9]+$ ]]; then
+				continue
+			fi
+			out_2+="\n    ${pid} -> ${p} [label=${syscall} fontsize=10,fontcolor=black];"
 			continue
 		elif [ "${syscall}" == "execve" ]; then
-			[[ "${line}" == *"ENOENT"* ]] && continue
+			if [[ "${line}" == *"ENOENT"* ]]; then
+				continue
+			fi
 			# for slow string substitution in bash
 			if [ ${#line} -gt 1000 ]; then
 				cmd=$(echo $line | \
@@ -983,8 +997,8 @@ function ove_strace_one_pid {
 					sun_path="@${sun_path}"
 				fi
 
-				out_2+="    \"${sun_path}\" [label=\"${sun_path}\l\" shape=box3d,fontsize=10,style=filled,fillcolor=\"cyan\"];"
-				out_2+="    ${pid} -> \"${sun_path}\" [label=\"${syscall}\"];"
+				out_2+="\n    \"${sun_path}\" [label=\"\ls: ${sun_path}\" shape=box3d,fontsize=10,fontcolor=black,style=filled,fillcolor=\"cyan\"];"
+				out_2+="\n    ${pid} -> \"${sun_path}\" [label=\"${syscall}\" fontsize=10,fontcolor=black];"
 			elif [ "${sa_family}" == "AF_INET" ]; then
 				ip=$(ove_line2ipv4 ${line})
 				if [ "${ip}" = "" ]; then
@@ -1004,14 +1018,21 @@ function ove_strace_one_pid {
 
 				ip_lookup=${ove_ip2host_db["${ip}"]}
 				ip_org=${ove_ip2org_db["${ip}"]}
-				port_service=${ove_port2service_db["${port}"]}
 
 				org=$(${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l/g' <<<"${ip_org}" | \
 					${ove_cmd2pathname["tr"]:?} -d '\n' | \
 					${ove_cmd2pathname["tr"]:?} \" \')
 
-				out_2+="    \"${ip}\" [label=\"\lt: ${t}\lIPv4: ${ip}\lhost: ${ip_lookup}\lorg: ${org}\l\" shape=box3d,fontsize=10,style=filled, fillcolor=\"yellow\"];"
-				out_2+="    ${pid} -> \"${ip}\" [label=\"${syscall} ${port} ${port_service["${port}"]}\"];"
+				if ! test "${ip_hash["${ip}"]+isset}"; then
+					out_2+="\n    \"${ip}\" [label=\"\lIPv4: ${ip}\lhost: ${ip_lookup}\lorg: ${org}\l\" shape=box3d,fontsize=10,fontcolor=black,style=filled,fillcolor=\"yellow\"];"
+					ip_hash["${ip}"]=1
+				fi
+				if [ ${port} -eq 0 ]; then
+					out_2+="\n    ${pid} -> \"${ip}\" [label=\"${syscall}\" fontsize=10,fontcolor=black];"
+				else
+					port_service=${ove_port2service_db["${port}"]}
+					out_2+="\n    ${pid} -> \"${ip}\" [label=\"${syscall} ${port}/${port_service}\" fontsize=10,fontcolor=black];"
+				fi
 			else
 				continue
 			fi
@@ -1051,7 +1072,7 @@ function ove_strace_one_pid {
 
 	echo "${out_1}"
 	if [ "${out_2}" != "" ]; then
-		echo "${out_2}"
+		echo -e "${out_2}"
 	fi
 }
 
@@ -1122,6 +1143,7 @@ function ove-strace-connect {
 function ove_strace_create_graph {
 	local all_files
 	local f
+	local i
 	local o_base
 	local o_dot
 	local o_svg
@@ -1161,6 +1183,30 @@ function ove_strace_create_graph {
 		${ove_cmd2pathname["xargs"]:?} -0 rm
 
 	echo "}" >> ${o_dot}
+
+	# sequence numbers
+	i=0
+	true > "$OVE_TMP"/sed-script-file
+	# shellcheck disable=SC1003
+	${ove_cmd2pathname["grep"]:?} \
+		-n \
+		-E  \
+		'^.*\[label=".*lt:' \
+		${o_dot} | \
+		${ove_cmd2pathname["tr"]:?} '\\' ' ' | \
+		LC_ALL=C ${ove_cmd2pathname["sort"]:?} -k5 -n | \
+		${ove_cmd2pathname["cut"]:?} -d: -f1 | \
+		while read -r no; do
+			i=$((i + 1))
+			printf "%s\n" "${no}s/\(.*\[label=\"\)\(.*\];\)/\1\\\l\i: ${i}\2/g" >> "$OVE_TMP"/sed-script-file
+		done
+	if [ -s "$OVE_TMP"/sed-script-file ]; then
+		${ove_cmd2pathname["sed"]:?} \
+			-i \
+			-f "$OVE_TMP"/sed-script-file \
+			${o_dot}
+	fi
+	${ove_cmd2pathname["rm"]:?} "$OVE_TMP"/sed-script-file
 
 	LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u ${OVE_OWEL_TMP_DIR}/timing > ${o_timing}
 	${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/timing

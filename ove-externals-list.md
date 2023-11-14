@@ -1,7 +1,7 @@
 | Command          | Usage     |
 | ---              | ---       |
 | ag               | 3         |
-| awk              | 53        |
+| awk              | 54        |
 | basename         | 1         |
 | bash             | 17        |
 | cat              | 51        |
@@ -11,7 +11,7 @@
 | convert          | 1         |
 | cp               | 6         |
 | csplit           | 1         |
-| cut              | 63        |
+| cut              | 64        |
 | date             | 17        |
 | diff             | 1         |
 | dig              | 1         |
@@ -27,7 +27,7 @@
 | getconf          | 2         |
 | git              | 82        |
 | graph-easy       | 2         |
-| grep             | 183       |
+| grep             | 185       |
 | head             | 20        |
 | inotifywait      | 3         |
 | jp2a             | 1         |
@@ -49,17 +49,17 @@
 | recordmydesktop  | 1         |
 | rev              | 4         |
 | rg               | 1         |
-| rm               | 54        |
+| rm               | 55        |
 | rmdir            | 3         |
 | scp              | 3         |
 | script           | 4         |
 | scriptreplay     | 1         |
-| sed              | 87        |
+| sed              | 88        |
 | seq              | 11        |
 | setsid           | 1         |
 | shellcheck       | 1         |
 | sleep            | 16        |
-| sort             | 116       |
+| sort             | 117       |
 | ssh              | 7         |
 | stat             | 8         |
 | stty             | 1         |
@@ -74,7 +74,7 @@
 | timeout          | 4         |
 | tmux             | 13        |
 | touch            | 5         |
-| tr               | 23        |
+| tr               | 24        |
 | tsort            | 2         |
 | tsp              | 3         |
 | uname            | 4         |
@@ -86,4 +86,4 @@
 | xargs            | 36        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1291__  |
+| __sum__          | __1299__  |
