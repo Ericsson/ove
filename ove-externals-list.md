@@ -63,6 +63,8 @@
 | ssh              | 7         |
 | stat             | 8         |
 | stty             | 1         |
+| su               | 1         |
+| sudo             | 8         |
 | sync             | 1         |
 | tac              | 3         |
 | tail             | 11        |
@@ -84,4 +86,4 @@
 | xargs            | 36        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1282__  |
+| __sum__          | __1291__  |

@@ -1312,7 +1312,9 @@ function ove_loop_command {
 			if [ -e /proc/sys/fs/inotify/max_user_watches ] && [ $(${ove_cmd2pathname["cat"]:?} /proc/sys/fs/inotify/max_user_watches) -lt $(${ove_cmd2pathname["wc"]:?} -l < ${all_files}) ]; then
 				ove_echo_error_noprefix "you need to increase the number of inotify user watches. Try:"
 				echo
-				[ ${EUID} != 0 ] && prefix="sudo"
+				if [ ${EUID} != 0 ]; then
+					prefix="${ove_cmd2pathname["sudo"]:?}"
+				fi
 				echo "$ ${prefix} ${ove_cmd2pathname["bash"]:?} -c 'echo $(${ove_cmd2pathname["wc"]:?} -l < ${all_files}) > /proc/sys/fs/inotify/max_user_watches'"
 				if ove_sanity_check_tmux 2> /dev/null; then
 					read -r -p ""
@@ -1720,7 +1722,7 @@ function ove_kill_procs {
 	[ $# -lt 3 ] && return 1
 
 	if [ $1 -eq 0 ] && [ ${EUID} -ne 0 ]; then
-		prefix="sudo"
+		prefix="${ove_cmd2pathname["sudo"]:?}"
 	fi
 
 	n="$2"
@@ -1896,13 +1898,13 @@ function ove_setup_trace {
 		fi
 
 		if [ ${EUID} != 0 ]; then
-			if ! sudo -n true; then
-				if ! sudo true; then
+			if ! ${ove_cmd2pathname["sudo"]:?} -n true; then
+				if ! ${ove_cmd2pathname["sudo"]:?} true; then
 					ove_echo_error_noprefix "'${bcc_tool}' need non-interactive 'sudo'"
 					return 1
 				fi
 			fi
-			OVE_TRACE_CMD="sudo "
+			OVE_TRACE_CMD="${ove_cmd2pathname["sudo"]:?} "
 		fi
 		OVE_TRACE_CMD+="python3 /usr/share/bcc/tools/${bcc_tool} "
 		if [ ${OVE_LOGLEVEL} -eq 9 ]; then
@@ -7187,9 +7189,9 @@ function ove_install_packages {
 	cmd="${OVE_OS_PACKAGE_MANAGER} ${OVE_OS_PACKAGE_MANAGER_ARGS} ${missing_packages_sorted}"
 	if [ ${EUID} != 0 ]; then
 		if [ "${OVE_INSTALL_PKG_ELEVATE_METHOD:?}" = "sudo" ]; then
-			cmd="sudo ${cmd}"
+			cmd="${ove_cmd2pathname["sudo"]:?} ${cmd}"
 		elif [ "${OVE_INSTALL_PKG_ELEVATE_METHOD:?}" = "su" ]; then
-			cmd="su -c \"${cmd}\""
+			cmd="${ove_cmd2pathname["su"]:?} -c \"${cmd}\""
 		else
 			ove_echo_fatal_noprefix "unknown elevate method '${OVE_INSTALL_PKG_ELEVATE_METHOD:?}'"
 			return 1
@@ -10556,7 +10558,9 @@ function ove-loglevel {
 				ove_echo_error_noprefix "the kernel does not allow you to trace all processes"
 				echo
 				echo "To fix this for now:"
-				[ ${EUID} != 0 ] && prefix="sudo"
+				if [ ${EUID} != 0 ]; then
+					prefix="sudo"
+				fi
 				echo " ${prefix} ${ove_cmd2pathname["bash"]:?} -c 'echo 0 > /proc/sys/kernel/yama/ptrace_scope'"
 				echo
 				echo "To fix this permanently:"
@@ -10589,8 +10593,8 @@ function ove-loglevel {
 			fi
 
 			if [ ${EUID} != 0 ]; then
-				if ! sudo -n true; then
-					if ! sudo true; then
+				if ! ${ove_cmd2pathname["sudo"]:?} -n true; then
+					if ! ${ove_cmd2pathname["sudo"]:?} true; then
 						ove_echo_error_noprefix "'${bcc_tool}' need non-interactive 'sudo'"
 						return 1
 					fi
@@ -15066,6 +15070,8 @@ function ove_externals_init {
 	cmds+=('ssh')
 	cmds+=('stat')
 	cmds+=('stty')
+	cmds+=('su')
+	cmds+=('sudo')
 	cmds+=('sync')
 	cmds+=('tac')
 	cmds+=('tail')
