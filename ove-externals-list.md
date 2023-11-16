@@ -15,7 +15,7 @@
 | date             | 17        |
 | diff             | 1         |
 | dig              | 1         |
-| dirname          | 5         |
+| dirname          | 4         |
 | dot              | 2         |
 | du               | 7         |
 | ffmpeg           | 1         |
@@ -86,4 +86,4 @@
 | xargs            | 36        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1299__  |
+| __sum__          | __1298__  |

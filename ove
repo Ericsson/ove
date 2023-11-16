@@ -12445,7 +12445,7 @@ function ove_init {
 
 	resolved="$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_BASE_DIR}/ove)"
 	# OVE_DIR:OVE source code directory
-	if ! OVE_DIR="$(cd "$(${ove_cmd2pathname["dirname"]:?} "${resolved}")" || exit 1; pwd -P)"; then
+	if ! OVE_DIR="$(cd "${resolved%/*}" || exit 1; pwd -P)"; then
 		return 1
 	fi
 	export OVE_DIR
