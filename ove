@@ -4750,14 +4750,18 @@ function ove-list-projects {
 function ove-digraph {
 	ove_entry || return
 
+	local f
 	local i
+	local n
 
 	if [ ${ove_number_of_projects} -eq 0 ]; then
 		return 0
 	fi
 
 	{
-		echo "digraph $(${ove_cmd2pathname["tr"]:?} '-' '_' <<<"${OVE_OWEL_NAME}") {"
+		n="${OVE_OWEL_NAME//-/_}"
+		n="${n//.}"
+		echo "digraph ${n} {"
 
 		i=0
 		while ((i < ove_number_of_projects)); do
@@ -4774,25 +4778,37 @@ function ove-digraph {
 		echo "}"
 	} > ${OVE_OWEL_TMP_DIR}/digraph.dot
 
-	if command -v graph-easy > /dev/null; then
-		if ! ${ove_cmd2pathname["graph-easy"]:?} \
-			--from=dot \
-			--as=boxart \
-			< ${OVE_OWEL_TMP_DIR}/digraph.dot 2> /dev/null; then
-			return 1
-		fi
-		echo
+	if command -v dot > /dev/null; then
+		for f in svg pdf png; do
+			if ! ${ove_cmd2pathname["dot"]:?} \
+				-T${f} \
+				${OVE_OWEL_TMP_DIR}/digraph.dot > ${OVE_OWEL_TMP_DIR}/digraph.${f}; then
+				return 1
+			fi
+		done
 	fi
 
-	${ove_cmd2pathname["du"]:?} -sh "${OVE_OWEL_TMP_DIR}/digraph.dot"
-	if command -v dot > /dev/null; then
-		if ! ${ove_cmd2pathname["dot"]:?} \
-			-Tsvg \
-			${OVE_OWEL_TMP_DIR}/digraph.dot > ${OVE_OWEL_TMP_DIR}/digraph.svg; then
-			return 1
-		fi
-		${ove_cmd2pathname["du"]:?} -sh "${OVE_OWEL_TMP_DIR}/digraph.svg" 1>&2
+	if command -v graph-easy > /dev/null; then
+		for f in html boxart ascii; do
+			if ! ${ove_cmd2pathname["graph-easy"]:?} \
+				--from=dot \
+				--as=${f} \
+				< ${OVE_OWEL_TMP_DIR}/digraph.dot > ${OVE_OWEL_TMP_DIR}/digraph.${f} 2> /dev/null; then
+				return 1
+			fi
+		done
 	fi
+
+	if [ -s "${OVE_OWEL_TMP_DIR}/digraph.ascii" ]; then
+		${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_TMP_DIR}/digraph.ascii
+	fi
+
+	for f in dot svg pdf png html boxart ascii; do
+		if [ ! -e "${OVE_OWEL_TMP_DIR}/digraph.${f}" ]; then
+			continue
+		fi
+		${ove_cmd2pathname["du"]:?} -sh "${OVE_OWEL_TMP_DIR}/digraph.${f}" 1>&2
+	done
 
 	return 0
 }

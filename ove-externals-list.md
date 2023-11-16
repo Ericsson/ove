@@ -4,7 +4,7 @@
 | awk              | 54        |
 | basename         | 1         |
 | bash             | 17        |
-| cat              | 51        |
+| cat              | 52        |
 | chmod            | 7         |
 | column           | 27        |
 | comm             | 15        |
@@ -17,7 +17,7 @@
 | dig              | 1         |
 | dirname          | 4         |
 | dot              | 2         |
-| du               | 7         |
+| du               | 6         |
 | ffmpeg           | 1         |
 | file             | 3         |
 | find             | 79        |
@@ -74,7 +74,7 @@
 | timeout          | 4         |
 | tmux             | 13        |
 | touch            | 5         |
-| tr               | 23        |
+| tr               | 22        |
 | tsort            | 2         |
 | tsp              | 3         |
 | uname            | 4         |
@@ -86,4 +86,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1296__  |
+| __sum__          | __1295__  |
