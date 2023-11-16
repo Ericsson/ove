@@ -1922,8 +1922,9 @@ function ove_setup_trace {
 		return 0
 	fi
 
-	[ -e ${OVE_OWEL_TMP_DIR}/trace-${cmd} ] && \
+	if [ -e ${OVE_OWEL_TMP_DIR}/trace-${cmd} ]; then
 		${ove_cmd2pathname["rm"]:?} -rf ${OVE_OWEL_TMP_DIR}/trace-${cmd}
+	fi
 	${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR}/trace-${cmd}
 
 	if [ ${OVE_LOGLEVEL} -eq 5 ]; then
@@ -1973,29 +1974,48 @@ function ove_setup_trace {
 		OVE_TRACE_CMD+="-ttt "
 	fi
 	export OVE_TRACE_CMD
-	[ -e ${OVE_OWEL_TMP_DIR}/bash.pid ] && \
+	if [ -e ${OVE_OWEL_TMP_DIR}/bash.pid ]; then
 		${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/bash.pid
-	[ -e ${OVE_OWEL_TMP_DIR}/trace.pid ] && \
+	fi
+	if [ -e ${OVE_OWEL_TMP_DIR}/trace.pid ]; then
 		${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/trace.pid
-	[ -e ${OVE_OWEL_TMP_DIR}/trace.cont ] && \
+	fi
+	if [ -e ${OVE_OWEL_TMP_DIR}/trace.cont ]; then
 		${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/trace.cont
+	fi
 
 	{
+		local s=${SECONDS}
+
 		while true; do
 			if [ -e ${OVE_OWEL_TMP_DIR}/bash.pid ]; then
 				break
 			fi
+
+			if [ $((SECONDS - s)) -gt 5 ]; then
+				break
+			fi
 		done
+
+		if [ ! -e ${OVE_OWEL_TMP_DIR}/bash.pid ]; then
+			exit 1
+		fi
 
 		# launch trace in background and let it start up
 		if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
 			(eval ${OVE_TRACE_CMD})
 			${ove_cmd2pathname["sleep"]:?} 2
+			true > ${OVE_OWEL_TMP_DIR}/trace.cont
 		else
 			(${OVE_TRACE_CMD} -p $(${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_TMP_DIR}/bash.pid) & echo $! > ${OVE_OWEL_TMP_DIR}/trace.pid)
 			${ove_cmd2pathname["sleep"]:?} 1
+			if [ -s ${OVE_OWEL_TMP_DIR}/trace.pid ] && \
+				! kill -0 $(cat ${OVE_OWEL_TMP_DIR}/trace.pid) 2> /dev/null; then
+				echo "0" > ${OVE_OWEL_TMP_DIR}/trace.cont
+			else
+				echo "1" > ${OVE_OWEL_TMP_DIR}/trace.cont
+			fi
 		fi
-		true > ${OVE_OWEL_TMP_DIR}/trace.cont
 	} &
 }
 
@@ -2003,32 +2023,42 @@ function ove_setup_trace_post {
 	local pid
 
 	if [ -n "${OVE_TRACE_CMD+x}" ]; then
-		pid=$(${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_TMP_DIR}/trace.pid)
-		if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
-			ove_kill_procs 0 1 ${pid}
+		if [ ! -e ${OVE_OWEL_TMP_DIR}/trace.pid ]; then
+			pid=0
 		else
-			ove_kill_procs 1 1 ${pid}
+			pid=$(${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_TMP_DIR}/trace.pid)
+			if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
+				ove_kill_procs 0 1 ${pid}
+			else
+				ove_kill_procs 1 1 ${pid}
+			fi
+
 		fi
 
-		[ -e ${OVE_OWEL_TMP_DIR}/bash.pid ] && \
+		if [ -e ${OVE_OWEL_TMP_DIR}/bash.pid ]; then
 			${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/bash.pid
-		[ -e ${OVE_OWEL_TMP_DIR}/trace.cont ] && \
+		fi
+		if [ -e ${OVE_OWEL_TMP_DIR}/trace.cont ]; then
 			${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/trace.cont
-		[ -e ${OVE_OWEL_TMP_DIR}/trace.pid ] && \
+		fi
+		if [ -e ${OVE_OWEL_TMP_DIR}/trace.pid ]; then
 			${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/trace.pid
+		fi
 
-		while true; do
-			if [ ${OVE_LOGLEVEL} -eq 3 ] || [ ${OVE_LOGLEVEL} -eq 4 ]; then
-				ove_analyze_strace_execve_timing ${OVE_OWEL_TMP_DIR}/trace-${cmd}
-			elif [ ${OVE_LOGLEVEL} -eq 5 ]; then
-				ove_analyze_strace_connect ${OVE_OWEL_TMP_DIR}/trace-${cmd}
-			elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
-				ove_strace_create_graph ${OVE_OWEL_TMP_DIR}/trace-${cmd} ${cmd}
-			elif [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
-				${ove_cmd2pathname["head"]:?} -n -1 ${OVE_OWEL_TMP_DIR}/trace-${cmd}/trace-${cmd}
-			fi
-			break
-		done | ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
+
+		if [ $pid -ne 0 ]; then
+			{
+				if [ ${OVE_LOGLEVEL} -eq 3 ] || [ ${OVE_LOGLEVEL} -eq 4 ]; then
+					ove_analyze_strace_execve_timing ${OVE_OWEL_TMP_DIR}/trace-${cmd}
+				elif [ ${OVE_LOGLEVEL} -eq 5 ]; then
+					ove_analyze_strace_connect ${OVE_OWEL_TMP_DIR}/trace-${cmd}
+				elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
+					ove_strace_create_graph ${OVE_OWEL_TMP_DIR}/trace-${cmd} ${cmd}
+				elif [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
+					${ove_cmd2pathname["head"]:?} -n -1 ${OVE_OWEL_TMP_DIR}/trace-${cmd}/trace-${cmd}
+				fi
+			} | ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
+		fi
 
 		unset OVE_TRACE_CMD
 	fi
@@ -2362,7 +2392,9 @@ function ove {
 
 		# run the command
 		SHELL=${ove_cmd2pathname["bash"]:?} \
-			${ove_cmd2pathname["script"]:?} ${OVE_SCRIPT_OPTIONS} -t${OVE_LAST_COMMAND/.log}.timing -c "source ${OVE_BASE_DIR}/ove; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
+			${ove_cmd2pathname["script"]:?} ${OVE_SCRIPT_OPTIONS} \
+			-t${OVE_LAST_COMMAND/.log}.timing \
+			-c "source ${OVE_BASE_DIR}/ove || exit 1; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
 			${OVE_LAST_COMMAND}
 		ret=$?
 
@@ -12342,12 +12374,27 @@ function ove_externals_probe {
 }
 
 function ove_trace_barrier {
-	echo ${BASHPID} > ${OVE_OWEL_TMP_DIR}/bash.pid
+	local s="${SECONDS}"
+
+	echo "${BASHPID}" > "${OVE_OWEL_TMP_DIR}"/bash.pid
 	while true; do
-		if [ -e ${OVE_OWEL_TMP_DIR}/trace.cont ]; then
+		if [ -e "${OVE_OWEL_TMP_DIR}"/trace.cont ]; then
+			break
+		elif [ $((SECONDS - s)) -gt 5 ]; then
 			break
 		fi
 	done
+
+	if [ ! -e "${OVE_OWEL_TMP_DIR}"/trace.cont ]; then
+		return 1
+	fi
+
+	read -r s < "${OVE_OWEL_TMP_DIR}"/trace.cont
+	if [ "$s" -eq 0 ]; then
+		return 1
+	fi
+
+	return 0
 }
 
 # init:initialize OVE workspace
@@ -12359,7 +12406,9 @@ function ove_init {
 	local script_help
 
 	if [ -n "${OVE_TRACE_CMD+x}" ] && [ "${OVE_TRACE_MODE}" -eq 1 ]; then
-		ove_trace_barrier
+		if ! ove_trace_barrier; then
+			return 1
+		fi
 	fi
 
 	if ! dir=$(ove_get_base_dir); then
@@ -12565,7 +12614,9 @@ function ove_init {
 
 	# keep this last
 	if [ -n "${OVE_TRACE_CMD+x}" ] && [ "${OVE_TRACE_MODE}" -eq 0 ]; then
-		ove_trace_barrier
+		if ! ove_trace_barrier; then
+			return 1
+		fi
 	fi
 
 	return 0
