@@ -2554,7 +2554,7 @@ function ove-fzf {
 		)
 		[ "${cmd}" == "" ] && break
 
-		if ${ove_cmd2pathname["tr"]:?} ' ' '\n' <<<"${OVE_BUILT_INS_WITHOUT_ARGS}" | \
+		if ${ove_cmd2pathname["tr"]:?} ' ' '\n' <<<"${OVE_BUILT_INS_WITHOUT_ARGS:?}" | \
 			${ove_cmd2pathname["grep"]:?} -q ^${cmd}$; then
 			if [ "$1" == "loop" ]; then
 				echo "$ ove-loop x x x ${cmd}"
@@ -7123,22 +7123,6 @@ function ove_revtab_validate {
 	done <"${OVE_OWEL_DIR}/revtab"
 }
 
-function ove_set_built_ins {
-	local funcs
-
-	OVE_BUILT_INS=$(ove_get_built_ins)
-	export OVE_BUILT_INS
-
-	funcs=$(${ove_cmd2pathname["grep"]:?} -B1 '^function ove-' ${OVE_SELF})
-
-	OVE_BUILT_INS_WITHOUT_ARGS=$(${ove_cmd2pathname["grep"]:?} ': :' <<< "${funcs}" | \
-		${ove_cmd2pathname["cut"]:?} -b3- | \
-		${ove_cmd2pathname["cut"]:?} -d: -f1 | \
-		LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
-	OVE_BUILT_INS_WITHOUT_ARGS=${OVE_BUILT_INS_WITHOUT_ARGS//$'\n'/ }
-	export OVE_BUILT_INS_WITHOUT_ARGS
-}
-
 function ove_validate_self {
 	local funcs
 
@@ -11234,7 +11218,7 @@ function ove_bash_complete {
 			if [ "$line" = "${subcommand}" ]; then
 				return
 			fi
-		done <<<$(printf "%s\n" ${OVE_BUILT_INS_WITHOUT_ARGS})
+		done <<<$(printf "%s\n" ${OVE_BUILT_INS_WITHOUT_ARGS:?})
 	fi
 
 	wordlist=""
@@ -12479,8 +12463,8 @@ function ove_init {
 		set -x
 	fi
 
-	if ! ove_set_built_ins; then
-		return 1
+	if [ -s ${OVE_DIR}/ove.static ]; then
+		source ${OVE_DIR}/ove.static
 	fi
 
 	# remove broken README symlink
@@ -14942,6 +14926,7 @@ function ove-generate-doc {
 	local b
 	local c
 	local d
+	local funcs
 	local header
 	local sorted
 	local str
@@ -14996,6 +14981,18 @@ function ove-generate-doc {
 
 	# ove.bash
 	${ove_cmd2pathname["sed"]:?} -i "s/^ove_built_ins=.*/ove_built_ins=\"$(ove_get_built_ins)\"/g" ${OVE_DIR}/ove.bash
+
+	# ove.static
+	echo "OVE_BUILT_INS=\"$(ove_get_built_ins)\"" >${OVE_DIR}/ove.static
+	echo "export OVE_BUILT_INS" >>${OVE_DIR}/ove.static
+	funcs=$(${ove_cmd2pathname["grep"]:?} -B1 '^function ove-' ${OVE_SELF})
+	str=$(${ove_cmd2pathname["grep"]:?} ': :' <<< "${funcs}" | \
+		${ove_cmd2pathname["cut"]:?} -b3- | \
+		${ove_cmd2pathname["cut"]:?} -d: -f1 | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
+	str=${str//$'\n'/ }
+	echo "OVE_BUILT_INS_WITHOUT_ARGS=\"${str}\"" >>${OVE_DIR}/ove.static
+	echo "export OVE_BUILT_INS_WITHOUT_ARGS" >>${OVE_DIR}/ove.static
 
 	# ove-variables-list.md (variables with descriptions)
 	# shellcheck disable=SC2016
