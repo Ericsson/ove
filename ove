@@ -4798,18 +4798,18 @@ function ove-digraph {
 }
 
 function ove_build_topology {
-	local i
-
-	i=0
-	while ((i < ove_number_of_projects)); do
-		if [ "${ove_projects_deps[${i}]}" != "" ]; then
-			for d in ${ove_projects_deps[${i}]}; do
-				[[ -v ove_projects_name2index[${d}] ]] || continue
-				echo "${ove_projects_name[${i}]} ${d}"
-			done
+	for (( i=0; i < ove_number_of_projects; i++ )) do
+		if [ "${ove_projects_deps[${i}]}" = "" ]; then
+			continue
 		fi
-		(( i+=1 ))
-	done | ${ove_cmd2pathname["tsort"]:?} | ${ove_cmd2pathname["tac"]:?} | ${ove_cmd2pathname["xargs"]:?}
+
+		for d in ${ove_projects_deps[${i}]}; do
+			if [[ ! -v ove_projects_name2index[${d}] ]]; then
+				continue
+			fi
+			echo "${ove_projects_name[${i}]} ${d}"
+		done
+	done | ${ove_cmd2pathname["tsort"]:?} | ${ove_cmd2pathname["tac"]:?}
 }
 
 # build-order: :show build order:BUILD
@@ -4819,10 +4819,12 @@ function ove-build-order {
 	local autonomous_projs
 	local topology
 
-	[ ${ove_number_of_projects} -eq 0 ] && return
+	if [ ${ove_number_of_projects} -eq 0 ]; then
+		return
+	fi
 
 	# just a bunch of projects without deps?
-	if [ "$(ove_list_projects_with_deps)" == "" ]; then
+	if [ "$(ove_list_projects_with_deps)" = "" ]; then
 		ove_list_projects_without_deps
 		return
 	fi
@@ -4830,7 +4832,7 @@ function ove-build-order {
 	topology=$(ove_build_topology)
 	autonomous_projs=$(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -3 \
 		<(printf "%s\n" ${OVE_PROJECT_LIST}) \
-		<(${ove_cmd2pathname["tr"]:?} ' ' '\n' <<<"${topology}" | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}))
+		<(printf "%s\n" ${topology} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}))
 
 	echo ${autonomous_projs} ${topology}
 }

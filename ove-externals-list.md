@@ -74,7 +74,7 @@
 | timeout          | 4         |
 | tmux             | 13        |
 | touch            | 5         |
-| tr               | 24        |
+| tr               | 23        |
 | tsort            | 2         |
 | tsp              | 3         |
 | uname            | 4         |
@@ -83,7 +83,7 @@
 | wc               | 22        |
 | whoami           | 1         |
 | whois            | 1         |
-| xargs            | 36        |
+| xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1298__  |
+| __sum__          | __1296__  |
