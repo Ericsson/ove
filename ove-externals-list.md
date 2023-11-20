@@ -11,7 +11,7 @@
 | convert          | 1         |
 | cp               | 6         |
 | csplit           | 1         |
-| cut              | 64        |
+| cut              | 62        |
 | date             | 17        |
 | diff             | 1         |
 | dig              | 1         |
@@ -27,7 +27,7 @@
 | getconf          | 2         |
 | git              | 82        |
 | graph-easy       | 2         |
-| grep             | 185       |
+| grep             | 180       |
 | head             | 20        |
 | inotifywait      | 3         |
 | jp2a             | 1         |
@@ -86,4 +86,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1295__  |
+| __sum__          | __1288__  |

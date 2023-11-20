@@ -2982,14 +2982,16 @@ function ove_projects_init {
 	done
 
 	# unset any distro needs laying around
-	unset $(set -o posix; set | \
-		${ove_cmd2pathname["grep"]:?} '^ove_YaMl_.*_needs.*=' | \
-		${ove_cmd2pathname["cut"]:?} -d= -f1)
+	unset $(compgen -A variable ove_YaMl_ | \
+		while read -r v; do
+			if [[ $v != *_needs_* ]]; then
+				continue
+			fi
+			echo $v
+		done)
 
 	# re-define any leftovers
-	for v in $(set -o posix; set | \
-		${ove_cmd2pathname["grep"]:?} '^ove_YaMl_.*' | \
-		${ove_cmd2pathname["cut"]:?} -d= -f1); do
+	for v in $(compgen -A variable ove_YaMl_); do
 		eval ${v/_YaMl}='${!v}'
 		unset ${v}
 	done
@@ -8285,11 +8287,9 @@ function ove-env {
 	local v
 
 	if [ $# -eq 0 ]; then
-		v=$(compgen -A variable | \
-			${ove_cmd2pathname["grep"]:?} OVE_)
+		v=$(compgen -A variable OVE_)
 	else
-		v=$(compgen -A variable | \
-			${ove_cmd2pathname["grep"]:?} OVE_ | \
+		v=$(compgen -A variable OVE_ | \
 			${ove_cmd2pathname["grep"]:?} -i $1)
 	fi
 
@@ -11558,7 +11558,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "env" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist=$(compgen -A variable | ${ove_cmd2pathname["grep"]:?} OVE_)
+			wordlist=$(compgen -A variable OVE_)
 		else
 			return
 		fi
