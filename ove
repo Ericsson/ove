@@ -12401,7 +12401,6 @@ function ove_trace_barrier {
 
 # init:initialize OVE workspace
 function ove_init {
-	local broken_link
 	local dir
 	local func
 	local resolved
@@ -12475,25 +12474,24 @@ function ove_init {
 
 	ove_sanitise_vars
 
-	if [ "${OVE_LOGLEVEL}" == "2" ]; then
+	if [ "${OVE_LOGLEVEL}" = "2" ]; then
 		set -x
 	fi
 
-	if [ -s ${OVE_DIR}/ove.static ]; then
-		source ${OVE_DIR}/ove.static
+	if [ -s "${OVE_DIR}"/ove.static ]; then
+		source "${OVE_DIR}"/ove.static
 	fi
 
 	# remove broken README symlink
-	broken_link=$(${ove_cmd2pathname["find"]:?} ${OVE_BASE_DIR} -maxdepth 1 -name 'README' -type l ! -exec test -e {} \; -print)
-	if [ "x${broken_link}" != "x" ]; then
-		${ove_cmd2pathname["rm"]:?} "${broken_link}"
+	if [ -L "${OVE_BASE_DIR}"/README ] && [ ! -e "${OVE_BASE_DIR}"/README ]; then
+		${ove_cmd2pathname["rm"]:?} "${OVE_BASE_DIR}"/README
 	fi
 
-	if ! [ -L ${OVE_BASE_DIR}/README ]; then
-		if [ -s ${OVE_OWEL_DIR}/README ]; then
-			( cd ${OVE_BASE_DIR} && ${ove_cmd2pathname["ln"]:?} -s -r ${OVE_OWEL_DIR}/README .)
-		elif [ -s ${OVE_OWEL_DIR}/README.md ]; then
-			( cd ${OVE_BASE_DIR} && ${ove_cmd2pathname["ln"]:?} -s -r ${OVE_OWEL_DIR}/README.md README )
+	if [ ! -L "${OVE_BASE_DIR}"/README ]; then
+		if [ -s "${OVE_OWEL_DIR}"/README ]; then
+			( cd "${OVE_BASE_DIR}" && ${ove_cmd2pathname["ln"]:?} -s -r "${OVE_OWEL_DIR}"/README .)
+		elif [ -s "${OVE_OWEL_DIR}"/README.md ]; then
+			( cd "${OVE_BASE_DIR}" && ${ove_cmd2pathname["ln"]:?} -s -r "${OVE_OWEL_DIR}"/README.md README )
 		fi
 	fi
 
