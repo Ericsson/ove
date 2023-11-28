@@ -9061,9 +9061,12 @@ function ove-do {
 	if ! [ -d "${OVE_BASE_DIR}/${dir}" ]; then
 		ove_echo_error_noprefix "'${OVE_BASE_DIR}/${dir}' is not a directory"
 		return 1
+	elif ! cd ${OVE_BASE_DIR}/${dir} 2> /dev/null; then
+		ove_echo_error_noprefix "'cd ${OVE_BASE_DIR}/${dir}' failed"
+		return 1
 	fi
 
-	cd ${OVE_BASE_DIR}/${dir} && eval "${cmd}"
+	eval "${cmd}"
 }
 
 # fetch-fetched: :git fetch for already fetched repositories, ends with ove status:CORE
