@@ -5185,7 +5185,7 @@ function ove_list_scripts_directories {
 	fi
 
 	${ove_cmd2pathname["find"]:?} -L ${d} -perm -u=x -not -name '*.help' -type f -print0 | \
-		${ove_cmd2pathname["xargs"]:?} -0 dirname | \
+		${ove_cmd2pathname["xargs"]:?} -0 dirname 2> /dev/null | \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u
 }
 
