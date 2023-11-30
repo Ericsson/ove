@@ -1894,7 +1894,6 @@ function ove-loop {
 	fi
 }
 
-# fix broken vars
 function ove_sanitise_vars {
 	local corrupt
 
@@ -1907,13 +1906,15 @@ function ove_sanitise_vars {
 			corrupt=1
 		fi
 
-		[ ${corrupt} -eq 1 ] && ove-loglevel 1 > /dev/null
+		if [ ${corrupt} -eq 1 ]; then
+			ove-loglevel 1 > /dev/null
+		fi
 	fi
 
 	return 0
 }
 
-function ove_setup_trace {
+function ove_trace_setup {
 	local bcc_tool
 	local strace_expression
 
@@ -2019,7 +2020,17 @@ function ove_setup_trace {
 	} &
 }
 
-function ove_setup_trace_post {
+function ove_trace_cleanup {
+	local f
+
+	for f in bash.pid trace.cont trace.pid; do
+		if [ -e "${OVE_OWEL_TMP_DIR}/${f}" ]; then
+			${ove_cmd2pathname["rm"]:?} "${OVE_OWEL_TMP_DIR}/${f}"
+		fi
+	done
+}
+
+function ove_trace_post {
 	local pid
 
 	if [ -n "${OVE_TRACE_CMD+x}" ]; then
@@ -2035,16 +2046,7 @@ function ove_setup_trace_post {
 
 		fi
 
-		if [ -e ${OVE_OWEL_TMP_DIR}/bash.pid ]; then
-			${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/bash.pid
-		fi
-		if [ -e ${OVE_OWEL_TMP_DIR}/trace.cont ]; then
-			${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/trace.cont
-		fi
-		if [ -e ${OVE_OWEL_TMP_DIR}/trace.pid ]; then
-			${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/trace.pid
-		fi
-
+		ove_trace_cleanup
 
 		if [ $pid -ne 0 ]; then
 			{
@@ -2239,6 +2241,10 @@ function ove {
 		return 1
 	fi
 
+	# clean up any trace leftovers
+	ove_trace_cleanup
+
+	# fix broken vars
 	ove_sanitise_vars
 
 	if ! ove_verify_checksums && ! ove_reinit; then
@@ -2383,7 +2389,7 @@ function ove {
 
 	if [ "x${log_cmd}" = "xscript" ]; then
 		# trace hook
-		if ! ove_setup_trace; then
+		if ! ove_trace_setup; then
 			return 1
 		fi
 
@@ -2399,7 +2405,7 @@ function ove {
 		ret=$?
 
 		# trace post hook
-		ove_setup_trace_post
+		ove_trace_post
 
 		# remove NULL bytes and insert command+args at line 2
 		${ove_cmd2pathname["sed"]:?} -i -e 's/\x0//' -e "2i${cmd_and_args}\r" ${OVE_LAST_COMMAND}
