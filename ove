@@ -12317,14 +12317,14 @@ function ove_config_builtins_init {
 function ove_config_get_allowed {
 	if [ $# -ne 1 ]; then
 		return
-	elif [ ! -s ${OVE_DIR}/ove-config-list.md ]; then
+	elif [ ! -s ${OVE_DIR}/doc/ove-config-list.md ]; then
 		return
-	elif ! ${ove_cmd2pathname["grep"]:?} -q "^| $1 " ${OVE_DIR}/ove-config-list.md; then
+	elif ! ${ove_cmd2pathname["grep"]:?} -q "^| $1 " ${OVE_DIR}/doc/ove-config-list.md; then
 		return
 	fi
 
 	# shellcheck disable=SC2016
-	${ove_cmd2pathname["grep"]:?} "^| $1 " ${OVE_DIR}/ove-config-list.md | \
+	${ove_cmd2pathname["grep"]:?} "^| $1 " ${OVE_DIR}/doc/ove-config-list.md | \
 		${ove_cmd2pathname["awk"]:?} '{print $6}' | \
 		${ove_cmd2pathname["sed"]:?} -e 's,\\|, ,g' -e 's,|,,g'
 }
@@ -14941,7 +14941,7 @@ function ove-add-project {
 	fi
 }
 
-# generate-doc: :generate OVE documentation (ove-cmd-list.md/ove.bash):INTERNAL
+# generate-doc: :generate OVE documentation:INTERNAL
 function ove-generate-doc {
 	ove_entry || return
 
@@ -14978,7 +14978,7 @@ function ove-generate-doc {
 	printf "${header}\n|-|-|-|-|\n${sorted}\n" | \
 		${ove_cmd2pathname["sed"]:?} -e 's/\#/\\|/g' | \
 		${ove_cmd2pathname["column"]:?} -s: -t \
-		> ${OVE_DIR}/ove-cmd-list.md
+		> ${OVE_DIR}/doc/ove-cmd-list.md
 
 	# ove-config-list.md (configuration list)
 	for c in $(type ove_config_builtins_init | ${ove_cmd2pathname["grep"]:?} -o 'OVE_[A-Z_0-9]\+'| LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u); do
@@ -15000,7 +15000,7 @@ function ove-generate-doc {
 	printf "${header}\n|-|-|-|-|-|-|\n${sorted}\n" | \
 		${ove_cmd2pathname["sed"]:?} -e 's/\#/\\|/g' | \
 		${ove_cmd2pathname["column"]:?} -s: -t \
-		> ${OVE_DIR}/ove-config-list.md
+		> ${OVE_DIR}/doc/ove-config-list.md
 
 	# ove.bash
 	${ove_cmd2pathname["sed"]:?} -i "s/^ove_built_ins=.*/ove_built_ins=\"$(ove_get_built_ins)\"/g" ${OVE_DIR}/ove.bash
@@ -15021,7 +15021,7 @@ function ove-generate-doc {
 	# shellcheck disable=SC2016
 	a=$(ove-env | ${ove_cmd2pathname["awk"]:?} '{print $1}')
 	# shellcheck disable=SC2016
-	b=$(${ove_cmd2pathname["grep"]:?} OVE_ ${OVE_DIR}/ove-config-list.md | ${ove_cmd2pathname["awk"]:?} '{print $2}')
+	b=$(${ove_cmd2pathname["grep"]:?} OVE_ ${OVE_DIR}/doc/ove-config-list.md | ${ove_cmd2pathname["awk"]:?} '{print $2}')
 	str=
 	header="| Variable:| Description:"
 	for c in $(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -3 \
@@ -15035,7 +15035,7 @@ function ove-generate-doc {
 
 	# shellcheck disable=SC2059
 	printf "$header\n|-|-|\n$str" | \
-		${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-variables-list.md
+		${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/doc/ove-variables-list.md
 
 	# ove-externals-list.md (external commands and usage)
 	header="| Command:| Usage:|"
@@ -15048,7 +15048,7 @@ function ove-generate-doc {
 	done <<<"$(ove-list-externals | \
 		${ove_cmd2pathname["awk"]:?} '{print $1,$5}')"
 	printf "$header\n| ---:| ---:|\n$str| __sum__:| __${sum}__:|\n" | \
-	${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/ove-externals-list.md
+	${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/doc/ove-externals-list.md
 
 	return 0
 }
