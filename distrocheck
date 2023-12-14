@@ -490,6 +490,7 @@ function main {
 	local prefix="true"
 	local _uid=0
 	local _gid=0
+	local sul
 
 	init "$@"
 
@@ -668,7 +669,7 @@ EOF
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
 		lxc_exec "${package_manager} bash"
 		if [[ ${distro} == *alpine* ]]; then
-			lxc_exec "${package_manager} shadow sudo"
+			lxc_exec "${package_manager} shadow shadow-login sudo"
 		fi
 
 		lxc_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${OVE_USER:?}"
@@ -688,9 +689,24 @@ EOF
 		printf "uid %s ${_uid}\ngid %s ${_gid}" "$(id -u)" "$(id -g)" | \
 			lxc ${lxc_global_flags} config set "${lxc_name}" raw.idmap -
 
-		_echo "user and sudo"
+		_echo "user: sudo"
 		echo "${OVE_USER} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
 		run "lxc ${lxc_global_flags} file push --uid 0 --gid 0 ${OVE_TMP}/${tag}-sudoers ${lxc_name}/etc/sudoers.d/91-ove"
+
+		if lxc_exec_no_exit "[ -s /etc/pam.d/su ]"; then
+			sul=$(lxc_exec_no_exit "grep -n '^auth.*sufficient.*pam_rootok.so' /etc/pam.d/su" | cut -d: -f1)
+			if [ "${sul}" = "" ]; then
+				_echo "warning: user: could not get auth line number from '/etc/pam.d/su'"
+			else
+				_echo "user: su: update '/etc/pam.d/su' to allow su without passwd"
+				sul=$((sul + 1))
+				use_ssh=0 _user=root lxc_exec_no_exit "sed -i '${sul}iauth  [success=ignore default=1] pam_succeed_if.so user = root' /etc/pam.d/su"
+				sul=$((sul + 1))
+				use_ssh=0 _user=root lxc_exec_no_exit "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${OVE_USER}' /etc/pam.d/su"
+				_echo "user: su: add '${OVE_USER}' to 'root' group"
+				use_ssh=0 _user=root lxc_exec_no_exit "usermod -a -G root ${OVE_USER}"
+			fi
+		fi
 
 		run "lxc ${lxc_global_flags} restart ${lxc_name}"
 		use_ssh=0 lxc_exec "sh /var/tmp/${tag}-bootcheck.sh"
