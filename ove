@@ -2311,6 +2311,7 @@ function ove {
 		[ "${cmd}" == "dry-run" ] || \
 		[ "${cmd}" == "echo" ] || \
 		[ "${cmd}" == "emacs" ] || \
+		[ "${cmd}" == "gvim" ] || \
 		[ "${cmd}" == "lastlog" ] || \
 		[ "${cmd}" == "lastlog-replay" ] || \
 		[ "${cmd}" == "lastlog-summary" ] || \
@@ -10105,28 +10106,35 @@ function ove_edit {
 	fi
 
 	editor_opt=
-	if [ "x$editor" = "xvi" ]; then
-		# vim or vi?
-		if ! command -v vim > /dev/null; then
+	if [ "$editor" = "vi" ] || [ "$editor" = "gvim" ]; then
+		if [ "$editor" = "gvim" ]; then
+			editor_cmd="gvim"
+		elif ! command -v vim > /dev/null; then
 			editor_cmd="vi"
 		else
 			editor_cmd="vim"
+		fi
 
-			# get rid of "N files to edit" msg
-			if [ "${#files[@]}" -gt 1 ]; then
-				editor_opt+=" --not-a-term"
-			fi
+		# sanity check
+		if ! command -v ${editor_cmd} > /dev/null; then
+			ove_command_not_found "${editor_cmd}"
+			return 1
+		fi
 
-			if [ $ls_files -eq 0 ]; then
-				if [ "${#files[@]}" -gt 2 ]; then
-					editor_opt+=" -c 'wincmd H'"
-					editor_opt+=" -o"
-				elif [ "${#files[@]}" -eq 2 ]; then
-					editor_opt+=" -O"
-				fi
-			elif [ "${#files[@]}" -gt 1 ] && [ "${#files[@]}" -lt 20 ]; then
+		# get rid of "N files to edit" msg
+		if [ "${#files[@]}" -gt 1 ]; then
+			editor_opt+=" --not-a-term"
+		fi
+
+		if [ $ls_files -eq 0 ]; then
+			if [ "${#files[@]}" -gt 2 ]; then
+				editor_opt+=" -c 'wincmd H'"
+				editor_opt+=" -o"
+			elif [ "${#files[@]}" -eq 2 ]; then
 				editor_opt+=" -O"
 			fi
+		elif [ "${#files[@]}" -gt 1 ] && [ "${#files[@]}" -lt 20 ]; then
+			editor_opt+=" -O"
 		fi
 	else
 		editor_cmd="$editor"
@@ -10164,6 +10172,13 @@ function ove-vi {
 	ove_entry || return
 
 	ove_edit vi "$@"
+}
+
+# gvim:[pattern|file...]:open files in gvim:UTIL
+function ove-gvim {
+	ove_entry || return
+
+	ove_edit gvim "$@"
 }
 
 # edit:[pattern|file...]:open files in $EDITOR:UTIL
@@ -11415,7 +11430,8 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" == "vi" ] ||
 		[ "${subcommand}" == "edit" ] ||
-		[ "${subcommand}" == "emacs" ]; then
+		[ "${subcommand}" == "emacs" ] ||
+		[ "${subcommand}" == "gvim" ]; then
 		if [ ${size} -lt 2 ]; then
 			return
 		fi
