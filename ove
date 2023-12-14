@@ -11901,7 +11901,9 @@ function ove_dirs_init {
 		fi
 		OVE_OWEL_STATE_DIR=$(${ove_cmd2pathname["mktemp"]:?} -u -d -p ${OVE_GLOBAL_STATE_DIR}/${OVE_OWEL_NAME} state-XXXXXXXXXX)
 
-		${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_STATE_DIR}
+		if ! ${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_STATE_DIR} 2> /dev/null; then
+			OVE_OWEL_STATE_DIR=$(${ove_cmd2pathname["mktemp"]:?} -d)
+		fi
 		${ove_cmd2pathname["ln"]:?} -s ${OVE_OWEL_STATE_DIR} ${s_link_name}
 
 		# always re-create tmp link
@@ -11911,7 +11913,9 @@ function ove_dirs_init {
 	else
 		OVE_OWEL_STATE_DIR=${s}
 		if [ ! -e "${s_link_name}" ]; then
-			${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_STATE_DIR}
+			if ! ${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_STATE_DIR} 2> /dev/null; then
+				OVE_OWEL_STATE_DIR=$(${ove_cmd2pathname["mktemp"]:?} -d)
+			fi
 		fi
 	fi
 	export OVE_OWEL_STATE_DIR
@@ -11928,12 +11932,16 @@ function ove_dirs_init {
 		fi
 		# re-use last 10 characters from OVE_OWEL_STATE_DIR
 		OVE_OWEL_TMP_DIR="${OVE_TMP}/${OVE_OWEL_NAME}/tmp-${OVE_OWEL_STATE_DIR: -10}"
-		${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR}
+		if ! ${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR} 2> /dev/null; then
+			OVE_OWEL_TMP_DIR=$(${ove_cmd2pathname["mktemp"]:?} -d)
+		fi
 		${ove_cmd2pathname["ln"]:?} -s ${OVE_OWEL_TMP_DIR} ${t_link_name}
 	else
 		OVE_OWEL_TMP_DIR=${t}
 		if [ ! -e "${t_link_name}" ]; then
-			${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR}
+			if ! ${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR} 2> /dev/null; then
+				OVE_OWEL_TMP_DIR=$(${ove_cmd2pathname["mktemp"]:?} -d)
+			fi
 		fi
 	fi
 	export OVE_OWEL_TMP_DIR
@@ -11942,12 +11950,19 @@ function ove_dirs_init {
 	export OVE_LOG_DIR
 
 	if [ ! -d "${OVE_LOG_DIR}" ]; then
-		${ove_cmd2pathname["mkdir"]:?} -p "${OVE_LOG_DIR}"
+		if ! ${ove_cmd2pathname["mkdir"]:?} -p "${OVE_LOG_DIR}" 2> /dev/null; then
+			OVE_LOG_DIR=$(${ove_cmd2pathname["mktemp"]:?} -d -p ${OVE_GLOBAL_STATE_DIR})
+		fi
 	fi
 
 	if [ ! -d "${OVE_GLOBAL_STATE_DIR}/.ove" ]; then
-		${ove_cmd2pathname["mkdir"]:?} -p "${OVE_GLOBAL_STATE_DIR}/.ove"
+		if ! ${ove_cmd2pathname["mkdir"]:?} -p "${OVE_GLOBAL_STATE_DIR}/.ove" 2> /dev/null; then
+			ove_echo_fatal_noprefix "could not create '${OVE_GLOBAL_STATE_DIR}/.ove'"
+			return 1
+		fi
 	fi
+
+	return 0
 }
 
 function ove_config_init {
@@ -12469,7 +12484,9 @@ function ove_init {
 	: "${OVE_PREFIX:=/usr}"
 	export OVE_PREFIX
 
-	ove_dirs_init
+	if ! ove_dirs_init; then
+		return 1
+	fi
 	ove_config_init
 	if ! ove_revtab_init; then
 		return 1
