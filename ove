@@ -9442,7 +9442,7 @@ $(ove_echo_cyan_noprefix "distrocheck")
 # steps:
 #   ove        use the OVE workspace (map it or by running the oneliner) within the container
 #   running    leave the container running
-#   ssh        install sshd within the container and use ssh instead of lxc exec
+#   ssh        install sshd within the container and use ssh instead of 'incus|lxc exec'
 #   ssh_config update \$HOME/.ssh/config with host entries
 #   stopped    leave the container in stopped state
 #   user       run jobs as user
@@ -13350,6 +13350,7 @@ function ove_deps {
 	optional+=('graph-easy')
 	optional+=('inotifywait')
 	optional+=('jp2a')
+	optional+=('incus')
 	optional+=('locate')
 	optional+=('lxc')
 	optional+=('make')
@@ -13803,21 +13804,35 @@ function ove-worktree {
 	return 0
 }
 
-# replicate-cluster-parallel:[force [pull]|save [msg]|nofetch]:replicate-cluster in parallel (LXD only):UTIL
+# replicate-cluster-parallel:[force [pull]|save [msg]|nofetch]:replicate-cluster in parallel (incus|LXD only):UTIL
 function ove-replicate-cluster-parallel {
 	ove-replicate-cluster "$@"
 }
 
-# replicate-cluster:[force [pull]|save [msg]|nofetch]:replicate OVE workspace on all cluster members (LXD only):UTIL
+function ove_container_command {
+	if command -v "incus" > /dev/null; then
+		echo "incus"
+	elif command -v "lxc" > /dev/null; then
+		echo "lxc"
+	else
+		ove_echo_fatal_noprefix "no container runtime found"
+		return 1
+	fi
+
+	return 0
+}
+
+# replicate-cluster:[force [pull]|save [msg]|nofetch]:replicate OVE workspace on all cluster members (incus|LXD only):UTIL
 function ove-replicate-cluster {
+	local c
 	local h
 	local p
 	local s
 
-	if ! ove_check_command "lxc"; then
+	if ! c=$(ove_container_command); then
 		return 1
-	elif ! ${ove_cmd2pathname["lxc"]:?} cluster list &> /dev/null; then
-		ove_echo_error_noprefix "not a LXD cluster"
+	elif ! ${ove_cmd2pathname[$c]:?} cluster list &> /dev/null; then
+		ove_echo_error_noprefix "this host is not part of a $c cluster"
 		return 1
 	fi
 
@@ -13828,7 +13843,7 @@ function ove-replicate-cluster {
 	fi
 
 	# shellcheck disable=SC2016
-	s=$(${ove_cmd2pathname["lxc"]:?} info | \
+	s=$(${ove_cmd2pathname["$c"]:?} info | \
 		${ove_cmd2pathname["grep"]:?} server_name | \
 		${ove_cmd2pathname["awk"]:?} '{print $2}')
 	if [ "x${s}" = "x" ]; then
@@ -13836,7 +13851,7 @@ function ove-replicate-cluster {
 		return 0
 	fi
 
-	for h in $(${ove_cmd2pathname["lxc"]:?} cluster list --format csv | \
+	for h in $(${ove_cmd2pathname["$c"]:?} cluster list --format csv | \
 		${ove_cmd2pathname["grep"]:?} ONLINE | \
 		${ove_cmd2pathname["cut"]:?} -d, -f1); do
 		if [ "${s}" != "${h}" ]; then
@@ -14473,26 +14488,6 @@ function ove-unittest {
 		${ove_cmd2pathname["grep"]:?} --color=always -E -H -n --no-group 'shunit.*|FAILED.*' $files
 		return 1
 	fi
-}
-
-# unittest-parallel:pattern:run all unit tests in parallel (tmux+LXD only):INTERNAL
-function ove-unittest-parallel {
-	ove_entry || return
-
-	local t
-
-	if [ $# -ne 1 ] || ! ove_sanity_check_tmux; then
-		ove_command_usage
-		return 1
-	elif ! ove-replicate-cluster-parallel force pull; then
-		return 1
-	fi
-
-	for t in $(${ove_cmd2pathname["find"]:?} ${OVE_DIR:?}/tests -maxdepth 1 -mindepth 1 -name "t*.test" -type f -exec basename {} .test \; | LC_ALL=C ${ove_cmd2pathname["sort"]:?}); do
-		OVE_DISTROCHECK_STEPS="user verbose worktree" \
-			OVE_UNITTEST_TC=$t \
-			ove-distrocheck-parallel unittest "$1"
-	done
 }
 
 # less-lastlog:[user...]:peek into user(s) last OVE log using less:LOG
@@ -15188,6 +15183,7 @@ function ove_externals_init {
 	cmds+=('graph-easy')
 	cmds+=('grep')
 	cmds+=('head')
+	cmds+=('incus')
 	cmds+=('inotifywait')
 	cmds+=('jp2a')
 	cmds+=('ld')
@@ -15426,7 +15422,7 @@ function ove_distrocheck_helper {
 	fi
 }
 
-# distrocheck:file|project pattern...:verify a project within multiple Linux distributions (LXD only):UTIL
+# distrocheck:file|project pattern...:verify a project within multiple Linux distributions (incus|LXD only):UTIL
 function ove-distrocheck {
 	ove_entry || return
 
@@ -15443,7 +15439,7 @@ function ove-distrocheck {
 	done
 }
 
-# distrocheck-parallel:file|project pattern...:distrocheck in parallel (tmux+LXD only):UTIL
+# distrocheck-parallel:file|project pattern...:distrocheck in parallel (tmux and incus|LXD only):UTIL
 function ove-distrocheck-parallel {
 	ove_entry || return
 
@@ -15487,14 +15483,15 @@ function ove-distrocheck-parallel {
 	eval ove-run-parallel $args
 }
 
-# distrocheck-all:pattern...:distrocheck ALL projects within one or multiple Linux distributions (LXD only):UTIL
+# distrocheck-all:pattern...:distrocheck ALL projects within one or multiple Linux distributions (incus|LXD only):UTIL
 function ove-distrocheck-all {
 	ove_entry || return
 
+	local c
 	local cmd
 	local p
 
-	if ! ove_check_command "lxc"; then
+	if ! c=$(ove_container_command); then
 		return 1
 	elif [ $# -eq 0 ]; then
 		ove_command_usage
@@ -15538,13 +15535,14 @@ function ove-pre-push {
 	ove-status .ove
 }
 
-# image-refresh: :refresh list of available Linux distributions (LXD only):UTIL
+# image-refresh: :refresh list of available Linux distributions (incus|LXD only):UTIL
 function ove-image-refresh {
 	ove_entry || return
 
 	local arch
+	local c
 
-	if ! ove_check_command "lxc"; then
+	if ! c=$(ove_container_command); then
 		return 1
 	fi
 
@@ -15553,9 +15551,9 @@ function ove-image-refresh {
 		arch="amd64"
 	fi
 
-	if ! ${ove_cmd2pathname["lxc"]:?} image list --format csv -cL images: arch=${arch} | \
+	if ! ${ove_cmd2pathname["$c"]:?} image list --format csv -cL images: arch=${arch} | \
 		${ove_cmd2pathname["sed"]:?} -e 's,",,g' -e '/^$/d' > "${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images"; then
-		ove_echo_error_noprefix "'lxc image list images:' failed"
+		ove_echo_error_noprefix "'$c image list images:' failed"
 		return 1
 	elif [ ! -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
 		ove_echo_error_noprefix "weird - empty image list"
@@ -15568,7 +15566,7 @@ function ove-image-refresh {
 		"${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images"
 }
 
-# post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/distrocheck.list (LXD only):INTERNAL
+# post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/distrocheck.list (incus|LXD only):INTERNAL
 function ove-post-push {
 	ove_entry || return
 
@@ -15588,7 +15586,7 @@ function ove-post-push {
 	done
 }
 
-# post-push-parallel: :post-push in parallel (tmux+LXD only):INTERNAL
+# post-push-parallel: :post-push in parallel (tmux and incus|LXD only):INTERNAL
 function ove-post-push-parallel {
 	ove_entry || return
 

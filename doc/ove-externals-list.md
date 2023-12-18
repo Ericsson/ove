@@ -20,7 +20,7 @@
 | du               | 6         |
 | ffmpeg           | 1         |
 | file             | 3         |
-| find             | 78        |
+| find             | 77        |
 | flock            | 10        |
 | fold             | 2         |
 | fzf              | 5         |
@@ -29,6 +29,7 @@
 | graph-easy       | 2         |
 | grep             | 180       |
 | head             | 20        |
+| incus            | 0         |
 | inotifywait      | 3         |
 | jp2a             | 1         |
 | ld               | 1         |
@@ -36,7 +37,7 @@
 | ln               | 18        |
 | locate           | 1         |
 | lsb_release      | 2         |
-| lxc              | 4         |
+| lxc              | 0         |
 | make             | 1         |
 | md5deep          | 1         |
 | md5sum           | 14        |
@@ -59,7 +60,7 @@
 | setsid           | 1         |
 | shellcheck       | 1         |
 | sleep            | 16        |
-| sort             | 117       |
+| sort             | 116       |
 | ssh              | 7         |
 | stat             | 8         |
 | stty             | 1         |
@@ -86,4 +87,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1290__  |
+| __sum__          | __1284__  |
