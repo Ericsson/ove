@@ -153,7 +153,7 @@ function init {
 	echo "a) logout and login"
 	echo "b) exec sg incus-admin \"newgrp \$(id -gn)\""
 	echo
-	echo "After a or b, re-run the same 'ove distrocheck' command that got you here."
+	echo "After a or b, enjoy incus!"
 	echo "---"
 	exit 42
 }

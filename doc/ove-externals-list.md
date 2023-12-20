@@ -3,7 +3,7 @@
 | ag               | 3         |
 | awk              | 54        |
 | basename         | 1         |
-| bash             | 17        |
+| bash             | 18        |
 | cat              | 52        |
 | chmod            | 7         |
 | column           | 27        |
@@ -87,4 +87,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1284__  |
+| __sum__          | __1285__  |

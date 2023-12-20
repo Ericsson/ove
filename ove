@@ -12342,6 +12342,11 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_PROJECT_DISABLE+x}" ]; then
 		export OVE_PROJECT_DISABLE=""
 	fi
+
+	# OVE_AUTO_INSTALL_INCUS:int:0|1:all:automatically install incus on this host
+	if [ -z "${OVE_AUTO_INSTALL_INCUS+x}" ]; then
+		export OVE_AUTO_INSTALL_INCUS=0
+	fi
 }
 
 # $1: a built in OVE config
@@ -12785,6 +12790,12 @@ function ove_post_checks {
 	ove_aliases
 
 	ove_update_terminal_stats
+
+	# incus
+	if [ "${OVE_AUTO_INSTALL_INCUS}" = "1" ] && ! command -v incus > /dev/null; then
+		${ove_cmd2pathname["bash"]:?} \
+			"${OVE_DIR}"/hooks/incus/pre-distrocheck || true
+	fi
 
 	return 0
 }
