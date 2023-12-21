@@ -25,18 +25,23 @@
 
 set -e
 
-function _debian {
-	if [ "${OVE_OS_ID_LIKE,,}" = "debian" ]; then
-		return 0
-	elif [ "${OVE_OS_ID_LIKE,,}" = "ubuntu" ]; then
-		return 0
-	elif [[ ${OVE_OS} == *"Debian"* ]]; then
-		return 0
-	elif [[ ${OVE_OS} == *"Ubuntu"* ]]; then
-		return 0
-	else
-		return 1
+function supported {
+	if [ "${OVE_OS_ID:?}" = "ubuntu" ]; then
+		case "${OVE_OS_VER:?}" in
+			20.04|22.04)
+				return 0
+				;;
+		esac
+	elif [ "${OVE_OS_ID:?}" = "debian" ]; then
+		case "${OVE_OS_VER:?}" in
+			11|12)
+				return 0
+				;;
+		esac
 	fi
+
+	echo "error: ${OVE_OS:?} ${OVE_OS_VER} is not yet supported" 1>&2
+	return 1
 }
 
 function pre {
@@ -45,7 +50,7 @@ function pre {
 
 	if command -v incus > /dev/null; then
 		exit 0
-	elif ! _debian; then
+	elif ! supported; then
 		exit 0
 	elif [ "$EUID" -ne 0 ]; then
 		prefix="sudo"
