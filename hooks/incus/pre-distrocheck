@@ -46,11 +46,17 @@ function pre {
 	if command -v incus > /dev/null; then
 		exit 0
 	elif ! _debian; then
-		echo "info: ${OVE_OS} is not supported"
+		exit 0
+	elif [ "$EUID" -ne 0 ]; then
+		prefix="sudo"
+	fi
+
+	if ${prefix} sh -c "[ -e /proc/1/environ ]" && \
+		${prefix} sh -c "tr '\0' '\n' < /proc/1/environ | grep -q 'container='"; then
+		# inside container => skip
 		exit 0
 	fi
 
-	set -x
 	deps+=" adduser"
 	deps+=" curl"
 	deps+=" dpkg"
@@ -64,10 +70,6 @@ function pre {
 			exit 1
 		fi
 	done
-
-	if [ "$EUID" -ne 0 ]; then
-		prefix="sudo"
-	fi
 }
 
 function verify {
@@ -82,18 +84,18 @@ function verify {
 }
 
 function key {
-	${prefix:?} mkdir \
+	${prefix} mkdir \
 		-p \
 		-v \
 		/etc/apt/keyrings
-	${prefix:?} bash \
+	${prefix} bash \
 		-c \
 		"cp -a ${OVE_TMP:?}/incus-key.asc /etc/apt/keyrings/zabbly.asc"
 }
 
 function sources {
 	# shellcheck disable=SC2016
-	${prefix:?} sh -c 'cat <<EOF > /etc/apt/sources.list.d/zabbly-incus-stable.sources
+	${prefix} sh -c 'cat <<EOF > /etc/apt/sources.list.d/zabbly-incus-stable.sources
 Enabled: yes
 Types: deb
 URIs: https://pkgs.zabbly.com/incus/stable
@@ -107,11 +109,11 @@ EOF'
 
 function install {
 	export DEBIAN_FRONTEND=noninteractive
-	${prefix:?} \
+	${prefix} \
 		apt-get \
 		-qq \
 		update
-	${prefix:?} \
+	${prefix} \
 		apt-get \
 		-qq \
 		-y \
@@ -127,7 +129,7 @@ function init {
 
 	ret=0
 
-	${prefix:?} adduser --quiet "${OVE_USER:?}" incus-admin
+	${prefix} adduser --quiet "${OVE_USER:?}" incus-admin
 	set +x
 	set +e
 	read \
@@ -140,7 +142,7 @@ function init {
 		suffix="--minimal"
 	fi
 	sg incus-admin -c "incus admin init ${suffix}"
-	${prefix:?} usermod -aG incus-admin "${OVE_USER:?}"
+	${prefix} usermod -aG incus-admin "${OVE_USER:?}"
 	if ! sg incus-admin -c "incus list" > /dev/null; then
 		echo "error: not possible to run 'incus list'" 1>&2
 		exit 1
@@ -159,6 +161,7 @@ function init {
 }
 
 pre
+set -x
 verify
 key
 sources
