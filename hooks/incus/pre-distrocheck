@@ -122,6 +122,7 @@ function install {
 		install \
 		incus
 	incus --version
+	${prefix} adduser --quiet "${OVE_USER:?}" incus-admin
 }
 
 function init {
@@ -129,7 +130,6 @@ function init {
 
 	ret=0
 
-	${prefix} adduser --quiet "${OVE_USER:?}" incus-admin
 	set +x
 	set +e
 	read \
@@ -166,4 +166,7 @@ verify
 key
 sources
 install
+if [[ "$*" == *--no-init* ]]; then
+	exit 0
+fi
 init
