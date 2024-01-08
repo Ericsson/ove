@@ -15013,7 +15013,7 @@ function ove-generate-doc {
 		-e 's/$/: |/g' | \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
 
-
+	${ove_cmd2pathname["mkdir"]:?} -p "${OVE_DIR}"/doc
 	printf "${header}\n|-|-|-|-|\n${sorted}\n" | \
 		${ove_cmd2pathname["sed"]:?} -e 's/\#/\\|/g' | \
 		${ove_cmd2pathname["column"]:?} -s: -t \
