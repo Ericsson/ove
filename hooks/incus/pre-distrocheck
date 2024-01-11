@@ -50,8 +50,6 @@ function pre {
 
 	if command -v incus > /dev/null; then
 		exit 0
-	elif ! supported; then
-		exit 0
 	elif [ "$EUID" -ne 0 ]; then
 		prefix="sudo"
 	fi
@@ -59,6 +57,8 @@ function pre {
 	if ${prefix} sh -c "[ -e /proc/1/environ ]" && \
 		${prefix} sh -c "tr '\0' '\n' < /proc/1/environ | grep -q 'container='"; then
 		# inside container => skip
+		exit 0
+	elif ! supported; then
 		exit 0
 	fi
 
