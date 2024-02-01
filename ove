@@ -11243,6 +11243,11 @@ function ove-lastlog-replay {
 	if [ $# -ne 0 ] && [ -s "$1" ]; then
 		echo "$1" > $OVE_TMP/ove-${self}
 		if [ $# -eq 2 ]; then
+			if [[ ! "${2}" =~ ^[0-9]+$ ]]; then
+				echo "error: just numbers"
+				ove_command_usage
+				return 1
+			fi
 			divisor=$2
 		fi
 	else
