@@ -10572,12 +10572,25 @@ function ove-wipe-base-dir {
 	return 0
 }
 
+function ove_set_lastlog {
+	# shellcheck disable=SC2016
+	OVE_LAST_COMMAND=$(ove-lastlog "${OVE_OWEL_NAME}" | \
+		${ove_cmd2pathname["grep"]:?} "^${OVE_OWEL_NAME} " | \
+		${ove_cmd2pathname["head"]:?} -1 | \
+		${ove_cmd2pathname["awk"]:?} '{print $3}')
+	if [ "${OVE_LAST_COMMAND}" = "" ]; then
+		return 1
+	fi
+
+	return 0
+}
+
 # l:[pattern]:view last command output in pager (=${OVE_PAGER}) or print lines matching pattern:LOG
 function ove-l {
 	ove_entry || return
 
-	if [ ! -f "${OVE_LAST_COMMAND}" ]; then
-		return
+	if [ "$OVE_LAST_COMMAND" = "" ] && ! ove_set_lastlog; then
+		return 1
 	elif [ $# -eq 0 ]; then
 		${OVE_PAGER} ${OVE_LAST_COMMAND}
 		return $?
@@ -10593,12 +10606,14 @@ function ove-l {
 
 # lr:[divisor]:short for 'ove-lastlog-replay $OVE_LAST_COMMAND':LOG
 function ove-lr {
-	if [ "$OVE_LAST_COMMAND" != "" ]; then
-		ove-lastlog-replay $OVE_LAST_COMMAND $1
-		return $?
+	ove_entry || return
+
+	if [ "$OVE_LAST_COMMAND" = "" ] && ! ove_set_lastlog; then
+		return 1
 	fi
 
-	return 0
+	ove-lastlog-replay $OVE_LAST_COMMAND $1
+	return $?
 }
 
 # describe:[git...]:git describe+log+status combo for all/specified git repositories:CORE
