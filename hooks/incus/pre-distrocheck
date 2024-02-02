@@ -62,15 +62,21 @@ function pre {
 		exit 0
 	fi
 
-	deps+=" adduser"
 	deps+=" curl"
 	deps+=" dpkg"
 	deps+=" gpg"
 	deps+=" sg"
-	deps+=" usermod"
-
 	for c in ${deps}; do
 		if ! command -v "${c}" > /dev/null; then
+			echo "error: command '${c}' is missing" 1>&2
+			exit 1
+		fi
+	done
+
+	deps=" adduser"
+	deps+=" usermod"
+	for c in ${deps}; do
+		if ! ${prefix} bash -c "command -v ${c}" > /dev/null; then
 			echo "error: command '${c}' is missing" 1>&2
 			exit 1
 		fi
