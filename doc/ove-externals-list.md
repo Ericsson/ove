@@ -36,7 +36,7 @@
 | less             | 3         |
 | ln               | 18        |
 | locate           | 1         |
-| lsb_release      | 2         |
+| lsb_release      | 3         |
 | lxc              | 0         |
 | make             | 1         |
 | md5deep          | 1         |
@@ -87,4 +87,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1289__  |
+| __sum__          | __1290__  |

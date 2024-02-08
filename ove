@@ -13767,19 +13767,23 @@ function ove_determine_dist_version_and_pack_manager {
 	OVE_OS=
 	# OVE_OS_ID:Linux distribution ID
 	OVE_OS_ID=
-	# OVE_OS_VER:Linux distribution VERSION_ID
+	# OVE_OS_VER:Linux distribution version
 	OVE_OS_VER=
 	# OVE_OS_ID_LIKE:Linux distribution ID_LIKE
 	OVE_OS_ID_LIKE=
+	# OVE_OS_CODENAME:Linux distribution code name
+	OVE_OS_CODENAME=
 	if [ -e /etc/os-release ]; then
 		OVE_OS=$(source /etc/os-release; echo ${NAME})
 		OVE_OS_ID=$(source /etc/os-release; echo ${ID})
-		OVE_OS_ID_LIKE=$(source /etc/os-release; echo ${ID_LIKE:-$ID})
 		OVE_OS_VER=$(source /etc/os-release; echo ${VERSION_ID})
+		OVE_OS_ID_LIKE=$(source /etc/os-release; echo ${ID_LIKE:-$ID})
+		OVE_OS_CODENAME=$(source /etc/os-release; echo ${VERSION_CODENAME:-$ID})
 	elif command -v lsb_release > /dev/null; then
 		OVE_OS=$(${ove_cmd2pathname["lsb_release"]:?} --id --short)
 		OVE_OS_ID=${OVE_OS}
 		OVE_OS_VER=$(${ove_cmd2pathname["lsb_release"]:?} --release --short)
+		OVE_OS_CODENAME=$(${ove_cmd2pathname["lsb_release"]:?} --codename --short)
 	else
 		OVE_OS=$(${ove_cmd2pathname["uname"]:?} -s)
 		OVE_OS_ID=${OVE_OS}
@@ -13824,8 +13828,9 @@ function ove_determine_dist_version_and_pack_manager {
 
 	export OVE_OS
 	export OVE_OS_ID
-	export OVE_OS_ID_LIKE
 	export OVE_OS_VER
+	export OVE_OS_ID_LIKE
+	export OVE_OS_CODENAME
 	export OVE_OS_PACKAGE_MANAGER
 	export OVE_OS_PACKAGE_MANAGER_ARGS
 }
