@@ -9658,6 +9658,7 @@ $(ove_echo_cyan_noprefix "distrocheck")
 #   user       run jobs as user
 #   verbose    debug printouts
 #   worktree   run distcheck within an OVE worktree
+#   X          Xpra+Xfce
 #
 # run 'ove distcheck foo' within a Ubuntu 22.04 container, run the job as user, delete the container when done
 $ export OVE_DISTROCHECK_STEPS="user ove"

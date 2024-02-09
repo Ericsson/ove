@@ -39,9 +39,9 @@ function _echo {
 }
 
 function container_command {
-	if command -v "incus" > /dev/null; then
+	if command -v incus > /dev/null; then
 		echo "incus"
-	elif command -v "lxc" > /dev/null; then
+	elif command -v lxc > /dev/null; then
 		echo "lxc"
 	else
 		echo "error: no supported container runtime found" 1>&2
@@ -67,7 +67,7 @@ function init {
 		OVE_DISTROCHECK_STEPS="ove verbose user"
 
 		if ! command -v shunit2 > /dev/null; then
-			echo "error: shunit2 missing" 1>&2
+			echo "error: command 'shunit2' not found" 1>&2
 			exit 1
 		fi
 	else
@@ -77,6 +77,15 @@ function init {
 
 	bash_opt=""
 	distro="$2"
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]]; then
+		if ! command -v xpra > /dev/null; then
+			echo "error: command 'xpra' not found" 1>&2
+			exit 1
+		fi
+		OVE_DISTROCHECK_STEPS+=" ssh"
+		OVE_DISTROCHECK_STEPS+=" ssh_config"
+	fi
 
 	if [ ! -v OVE_DISTROCHECK_STEPS ]; then
 		OVE_DISTROCHECK_STEPS=""
@@ -93,7 +102,7 @@ function init {
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
 		if ! command -v sshpass > /dev/null; then
-			echo "error: command sshpass missing" 1>&2
+			echo "error: command 'sshpass' not found" 1>&2
 			exit 1
 		fi
 		ssh_opts=""
@@ -325,7 +334,6 @@ EOF
 
 	cat > "${OVE_TMP}/${tag}-packman" <<EOF
 #!/usr/bin/env sh
-set -x
 ${package_manager} "\$@"
 EOF
 	container_file_push_root \
@@ -403,16 +411,102 @@ EOF
 	sed -i -e "1i#!/usr/bin/env sh" "${OVE_TMP}/${tag}-services.sh"
 }
 
+function setup_X_apk {
+	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
+# install packages
+packman xpra xfce4 xfce4-terminal lightdm-gtk-greeter 2> /dev/null
+EOF
+}
+
+function setup_X_deb {
+	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
+# install wget
+packman wget
+
+# xpra keyring
+wget -q -O /usr/share/keyrings/xpra.asc https://xpra.org/xpra.asc
+
+# xpra.sources
+codename=\$(. /etc/os-release; echo \${VERSION_CODENAME})
+wget -q -O /etc/apt/sources.list.d/xpra.sources https://raw.githubusercontent.com/Xpra-org/xpra/master/packaging/repos/\${codename:?}/xpra.sources
+
+# refresh package manager
+apt-get update
+
+# install packages
+packman cron xfce4-session xfce4-terminal xpra
+EOF
+}
+
+function setup_X_rpm {
+	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
+# install wget
+packman wget
+
+# xpra.sources
+id=\$(. /etc/os-release; echo \${ID})
+echo "id=\$id"
+
+if [ "\${id,,}" = "fedora" ]; then
+	id="Fedora"
+elif [[ "\${id,,}" == *centos* ]]; then
+	id="CentOS-Stream"
+elif [[ "\${id,,}" == *almalinux* ]]; then
+	id="almalinux"
+elif [[ "\${id,,}" == *rocky* ]]; then
+	id="rockylinux"
+else
+	id="almalinux"
+fi
+wget -O /etc/yum.repos.d/xpra.repo https://raw.githubusercontent.com/Xpra-org/xpra/master/packaging/repos/\${id}/xpra.repo
+
+# install config-manager plugin
+packman dnf-plugins-core
+
+# enable CRB
+dnf config-manager --set-enabled crb
+
+# EPEL
+packman epel-release
+
+# refresh package manager
+dnf update -y
+
+# packages
+packs=""
+packs+=" cronie"
+packs+=" xpra"
+
+# install packages
+packman \${packs}
+
+# install xfce
+dnf groupinstall -y xfce
+EOF
+}
+
 function update_ssh_config {
+	local n
+
 	if ! mkdir -p "${HOME}/.ssh"; then
 		echo "error: mkdir ${HOME}/.ssh failed" 1>&2
 		exit 1
-	fi
-	cat >> "${HOME}/.ssh/config" <<EOF
+	elif grep -q "^Host ${container_name}$" "${HOME}/.ssh/config"; then
+		# insert on top of existing host
+		n=$(grep -m 1 -n "^Host ${container_name}$" "${HOME}/.ssh/config" | cut -d: -f1)
+		if ! sed -i -e "${n}iHost ${container_name}\n\tHostName ${container_ip}\n\tStrictHostKeyChecking no\n" "${HOME}/.ssh/config"; then
+			echo "error: not possible to update ${HOME}/.ssh/config" 1>&2
+			exit 1
+		fi
+	else
+		# append
+		cat >> "${HOME}/.ssh/config" <<EOF
 Host ${container_name}
 	HostName ${container_ip}
 	StrictHostKeyChecking no
 EOF
+	fi
+
 	if [[ ( ${OVE_DISTROCHECK_STEPS} == *ssh* ) && \
 		( ${OVE_DISTROCHECK_STEPS} != *user* ) ]]; then
 		echo -e "\tUser root" >> "${HOME}/.ssh/config"
@@ -440,11 +534,19 @@ EOF
 		use_ssh=0 _user=root container_exec "usermod -p '$(openssl passwd -1 ${pass})' ${_user}"
 	fi
 
+	CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}" \
+		use_ssh=0 \
+		container_exec "mkdir -p .ssh"
+
+	CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}" \
+		use_ssh=0 \
+		container_exec "chmod 700 .ssh"
+
 	_echo "copy public key to container"
 	i=0
 	while true; do
 		((i++))
-		if [ ${i} -gt 3 ]; then
+		if [ ${i} -gt 100 ]; then
 			echo "error: not possible to copy public key to ${container_name} ${container_ip}" 1>&2
 			exit 1
 		fi
@@ -474,7 +576,6 @@ EOF
 	done
 
 	if [ -s "${OVE_TMP}/${tag}-sshenv" ]; then
-		container_exec "mkdir -vp .ssh"
 		# shellcheck disable=SC2086
 		scp ${ssh_opts} -p -q "${OVE_TMP}/${tag}-sshenv" "${_user}"@"${container_ip}":.ssh/environment
 	fi
@@ -555,7 +656,9 @@ function main {
 	local _gid=0
 	local sul
 
-	init "$@"
+	if ! init "$@"; then
+		exit 1
+	fi
 
 	if [ "x${OVE_LAST_COMMAND}" != "x" ]; then
 		# re-use date+time (ignore micro/nano) from OVE_LAST_COMMAND
@@ -630,23 +733,25 @@ function main {
 	cat > "${OVE_TMP}/${tag}-bootcheck.sh" <<EOF
 #!/usr/bin/env sh
 
-if command -v apk > /dev/null; then
-	packman="apk"
-elif command -v pacman > /dev/null; then
-	packman="pacman"
-elif command -v apt-get > /dev/null; then
-	packman="apt-get"
-elif command -v dnf > /dev/null; then
-	packman="dnf"
-elif command -v zypper > /dev/null; then
-	packman="zypper"
-elif command -v xbps-install > /dev/null; then
-	packman="xbps"
-else
-	echo "bootcheck: unknown package manager for ${distro}"
-	packman="unknown"
+if [ ! -s /var/tmp/${tag}-packman ]; then
+	if command -v apk > /dev/null; then
+		packman="apk"
+	elif command -v pacman > /dev/null; then
+		packman="pacman"
+	elif command -v apt-get > /dev/null; then
+		packman="apt-get"
+	elif command -v dnf > /dev/null; then
+		packman="dnf"
+	elif command -v zypper > /dev/null; then
+		packman="zypper"
+	elif command -v xbps-install > /dev/null; then
+		packman="xbps"
+	else
+		echo "bootcheck: unknown package manager for ${distro}"
+		packman="unknown"
+	fi
+	echo "\$packman" > /var/tmp/${tag}-packman
 fi
-echo "\$packman" > /var/tmp/${tag}-packman
 
 if command -v systemctl > /dev/null; then
 	cmd="systemctl is-system-running"
@@ -695,6 +800,18 @@ EOF
 		setup_package_manager
 		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
 			setup_sshd
+		fi
+		if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]]; then
+			if [[ ${package_manager:?} == apt-get* ]];  then
+				setup_X_deb
+			elif [[ ${package_manager:?} == dnf* ]];  then
+				setup_X_rpm
+			elif [[ ${package_manager:?} == apk* ]];  then
+				setup_X_apk
+			else
+				echo "error: X for distro '${distro}' is not supported" 1>&2
+				exit 1
+			fi
 		fi
 	fi
 
@@ -801,7 +918,7 @@ done
 EOF
 
 			if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
-				sed -i -e "1iset -x" "${OVE_TMP}/${tag}-wait-for-sshd.sh"
+				sed -i -e "2iset -x" "${OVE_TMP}/${tag}-wait-for-sshd.sh"
 			fi
 
 			container_file_push_root \
@@ -827,6 +944,48 @@ EOF
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
 		# from now on, run all exec commands as user
 		export CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
+	fi
+
+	if [ "${OVE_DISTROCHECK_XPRA_SERVER_ARGS}" = "" ]; then
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS=""
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" start-desktop"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" :100"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --exit-with-children"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --microphone=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --opengl=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --printing=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --resize-display=FHD"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --speaker=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --start-child=xfce4-session"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --webcam=no"
+	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]]; then
+		# let cron start Xpra on reboot
+		container_exec "echo @reboot xpra ${OVE_DISTROCHECK_XPRA_SERVER_ARGS:?} | crontab -"
+		run "$(container_command)${container_global_flags} restart ${container_name}"
+		use_ssh=0 _user=root container_exec "sh /var/tmp/${tag}-bootcheck.sh"
+
+		if [ "${OVE_DISTROCHECK_XPRA_CLIENT_ARGS}" != "" ]; then
+			i=0
+			while true; do
+				((i++))
+				if [ $i -ge 10 ]; then
+					echo "error: xpra server not alive" 1>&2
+					exit 1
+				elif ! xpra info --ssh="ssh" ssh:"${container_name}" &> /dev/null; then
+					sleep $((RANDOM % 3 + 1))
+					continue
+				fi
+				break
+			done
+
+			# shellcheck disable=SC2086
+			xpra ${OVE_DISTROCHECK_XPRA_CLIENT_ARGS:?} \
+				--ssh="ssh" ssh:"${container_name}" \
+				--title "${container_name} ${container_ip}" &
+			xpra_pid="$!"
+		fi
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
@@ -967,6 +1126,10 @@ EOF
 				"${container_name}/var/tmp/${tag}.cmd"
 			container_exec "/var/tmp/${tag}.cmd"
 		fi
+	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]] && kill -0 ${xpra_pid} 2> /dev/null; then
+		wait ${xpra_pid}
 	fi
 }
 
