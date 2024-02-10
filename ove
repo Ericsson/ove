@@ -9673,6 +9673,20 @@ $ ove distrocheck test.sh ubuntu/22.04/amd64
 $ export OVE_DISTROCHECK_STEPS="ove running"
 $ ove distrocheck-parallel ag alpine/edge/amd64 fedora/37/amd64 ubuntu/22.04/amd64
 
+# install Xpra
+$ bash \${OVE_DIR:?}/hooks/xpra/pre-distrocheck
+
+# install incus
+$ bash \${OVE_DIR:?}/hooks/incus/pre-distrocheck
+
+# attach to a Xfce desktop running within an Alpine Edge container 'alice', enable debug prints, leave the container running
+$ export OVE_DISTROCHECK_CONTAINER_NAME="alice"
+$ export OVE_DISTROCHECK_STEPS="running verbose X"
+$ export OVE_DISTROCHECK_XPRA_CLIENT_ARGS="attach"
+$ ove distrocheck true alpine/edge/amd64
+# re-attach
+$ xpra attach --ssh=ssh ssh:alice
+
 $(ove_echo_cyan_noprefix "replicate")
 
 # replicate OVE workspace to a tmp directory on localhost

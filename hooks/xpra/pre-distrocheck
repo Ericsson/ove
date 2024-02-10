@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+#
+# MIT License
+#
+# Copyright (c) 2024 Ericsson
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is furnished
+# to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice (including the next
+# paragraph) shall be included in all copies or substantial portions of the
+# Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+# OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+# OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+true "${OVE_OS:?}"
+
+function _deb {
+	if [ "${OVE_OS_ID_LIKE,,}" = "debian" ]; then
+		return 0
+	elif [ "${OVE_OS_ID_LIKE,,}" = "ubuntu" ]; then
+		return 0
+	elif [[ ${OVE_OS} == *"Debian"* ]]; then
+		return 0
+	elif [[ ${OVE_OS} == *"Ubuntu"* ]]; then
+		return 0
+	elif command -v apt-get > /dev/null; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+function _rpm {
+	if [[ "${OVE_OS_ID_LIKE,,}" == *"rhel"* ]]; then
+		return 0
+	elif [[ "${OVE_OS_ID_LIKE,,}" == *"centos"* ]]; then
+		return 0
+	elif [[ "${OVE_OS_ID_LIKE,,}" == *"fedora"* ]]; then
+		return 0
+	elif [ "${OVE_OS_ID,,}" = "almalinux" ]; then
+		return 0
+	elif [ "${OVE_OS_ID,,}" = "centos" ]; then
+		return 0
+	elif [ "${OVE_OS_ID,,}" = "rocky" ]; then
+		return 0
+	elif command -v dnf > /dev/null; then
+		return 0
+	elif command -v yum > /dev/null; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+function _apk {
+	if [[ "${OVE_OS_ID_LIKE,,}" == *"alpine"* ]]; then
+		return 0
+	elif [ "${OVE_OS_ID,,}" = "alpine" ]; then
+		return 0
+	elif command -v apk > /dev/null; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+function xpra_deb() {
+	sudo -s -- <<EOF
+# install wget
+apt install wget
+
+# keyring
+wget -q -O /usr/share/keyrings/xpra.asc https://xpra.org/xpra.asc
+
+# xpra.sources
+codename=\$(source /etc/os-release; echo \${VERSION_CODENAME})
+wget -q -O /etc/apt/sources.list.d/xpra.sources https://raw.githubusercontent.com/Xpra-org/xpra/master/packaging/repos/\${codename:?}/xpra.sources
+
+# install xpra
+apt install -y xpra
+EOF
+}
+
+function xpra_rpm() {
+	local id
+
+	if [ "${OVE_OS_ID,,}" = "fedora" ]; then
+		id="Fedora"
+	elif [[ "${OVE_OS_ID,,}" == *centos* ]]; then
+		id="CentOS-Stream"
+	elif [[ "${OVE_OS_ID,,}" == *almalinux* ]]; then
+		id="almalinux"
+	elif [[ "${OVE_OS_ID,,}" == *rocky* ]]; then
+		id="rockylinux"
+	else
+		id="almalinux"
+	fi
+
+	sudo -s -- <<EOF
+# install wget
+dnf install -y wget
+
+# xpra.sources
+wget \
+	-O /etc/yum.repos.d/xpra.repo \
+	https://raw.githubusercontent.com/Xpra-org/xpra/master/packaging/repos/${id}/xpra.repo
+
+# install config-manager plugin
+dnf install -y dnf-plugins-core
+
+# enable CRB
+dnf config-manager --set-enabled crb
+
+# EPEL
+dnf install -y epel-release
+
+# refresh
+dnf update -y
+
+# install xpra
+dnf install -y xpra
+EOF
+}
+
+function xpra_apk() {
+	sudo /sbin/apk add xpra
+}
+
+if _deb; then
+	xpra_deb
+elif _rpm; then
+	xpra_rpm
+elif _apk; then
+	xpra_apk
+else
+	echo "error: OS: ${OVE_OS:?} ID: ${OVE_OS_ID} ID_LIKE: ${OVE_OS_ID_LIKE} is not supported" 1>&2
+	exit 1
+fi
