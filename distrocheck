@@ -196,7 +196,7 @@ function container_exec {
 	fi
 
 	container_exec_options=""
-	if [[ ${package_manager:?} == apt-get* ]];  then
+	if [[ ${package_manager} == apt-get* ]];  then
 		container_exec_options+=" --env DEBIAN_FRONTEND=noninteractive"
 	fi
 
