@@ -28,7 +28,7 @@ set -e
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
 	cat 1>&2 << EOF
 USAGE
-	setup <path> <url> [<rev>]
+	setup path url [<rev>]
 
 	path = workspace path
 	url  = OWEL url
@@ -102,6 +102,6 @@ if [ -e "${owel_cache}" ]; then
 fi
 
 echo
-echo "Please run: "
-echo "$ cd ${path}"
-echo "$ source ove"
+echo "Please run:"
+echo "${prompt} cd ${path}"
+echo "${prompt} source ove"

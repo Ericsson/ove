@@ -1027,7 +1027,7 @@ EOF
 					"${container_name}${_home}/SETUP"
 				container_exec "bash ${_home}/SETUP"
 			else
-				container_exec "bash -c '$(ove-setup)'"
+				container_exec "bash -c '$(ove-oneliner)'"
 			fi
 			ws_name=$(container_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
 			ws_name=${ws_name//[$'\t\r\n']/}

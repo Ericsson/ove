@@ -2335,7 +2335,7 @@ function ove {
 		|| [ "${cmd}" = "init" ] \
 		|| [ "${cmd}" = "l" ] \
 		|| [ "${cmd}" = "lr" ] \
-		|| [ "${cmd}" = "setup" ]; then
+		|| [ "${cmd}" = "oneliner" ]; then
 		ove-${cmd} "${@:2}"
 		return $?
 	fi
@@ -6333,8 +6333,123 @@ function ove_locate_print {
 	echo
 }
 
-# setup:[dir]:print or execute ${OVE_OWEL_DIR}/SETUP:CORE
+function ove_resolve_url {
+	local n
+	local url
+
+	if [ ! -d $OVE_GLOBAL_STATE_DIR/hub ]; then
+		return 1
+	fi
+
+	url="$1"
+	mapfile -t urls < <(ove-list-hub | ${ove_cmd2pathname["grep"]:?} "/$url$")
+	n="${#urls[@]}"
+	if [ "$n" -eq 0 ]; then
+		return 1
+	elif [ "$n" -eq 1 ]; then
+		url="${urls[*]}"
+	else
+		printf "%s\n" "${urls[@]}" | ${ove_cmd2pathname["cat"]:?} -n 1>&2
+		read -r -p "nbr: "
+		if [[ ! "${REPLY}" =~ ^[0-9]+$ ]]; then
+			if [ "${REPLY}" != "" ]; then
+				ove_echo_error_noprefix "error: just numbers" 1>&2
+			fi
+			return 1
+		elif [ "${REPLY}" -gt ${#urls[@]} ] || [ "${REPLY}" -eq 0 ]; then
+			ove_echo_error_noprefix "0 < x <= ${#urls[@]}"
+			return 1
+		fi
+		url=$(printf "%s\n" "${urls[@]}" | ${ove_cmd2pathname["head"]:?} -$REPLY | \
+			${ove_cmd2pathname["tail"]:?} -1)
+	fi
+
+	if [ "$url" = "" ]; then
+		return 1
+	fi
+
+	echo "$url"
+}
+
+# setup:[dir url [rev]]:setup OVE workspace:CORE
 function ove-setup {
+	local a
+	local dir
+	local n
+	local url
+
+	if [ $# -eq 1 ] || [ $# -gt 3 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	# dir
+	if [ $# -eq 2 ] || [ $# -eq 3 ]; then
+		dir="$1"
+	else
+		read -r -p "dir: "
+		if [ "${REPLY}" = "" ]; then
+			return 1
+		fi
+		dir="${REPLY}"
+	fi
+
+	if [ -e "$dir" ]; then
+		ove_echo_error_noprefix "'$dir' exists"
+		return 1
+	fi
+
+	# url
+	if [ $# -eq 2 ] || [ $# -eq 3 ]; then
+		url="$2"
+		if [[ "$url" != *"/"* ]]; then
+			if ! url=$(ove_resolve_url "$url"); then
+				return 1
+			fi
+		fi
+	else
+		mapfile -t hub < <(ove-list-hub)
+		if [ "${#hub[@]}" -eq 0 ]; then
+			read -r -p "url: "
+			if [ "${REPLY}" = "" ]; then
+				return 1
+			fi
+			url="${REPLY}"
+		else
+			for a in "${hub[@]}"; do
+				echo "${a##*/} ; $a"
+			done | ${ove_cmd2pathname["column"]:?} -t -s';' | ${ove_cmd2pathname["cat"]:?} -n
+			read -r -p "nbr: "
+			if [[ ! "${REPLY}" =~ ^[0-9]+$ ]]; then
+				if [ "${REPLY}" != "" ]; then
+					ove_echo_error_noprefix "just numbers"
+				fi
+				return 1
+			elif [ "${REPLY}" -gt ${#hub[@]} ] || [ "${REPLY}" -eq 0 ]; then
+				ove_echo_error_noprefix "0 < x <= ${#hub[@]}"
+				return 1
+			fi
+			url="${hub[$((REPLY - 1))]}"
+		fi
+	fi
+
+	# rev
+	if [ $# -eq 3 ]; then
+		rev="$3"
+	elif [ $# -eq 0 ]; then
+		read -r -p "rev: "
+		if [ "${REPLY}" != "" ]; then
+			rev="${REPLY}"
+		fi
+	fi
+
+	if ! eval "${OVE_DIR}"/setup "$dir" "$url" "$rev"; then
+		return 1
+	fi
+}
+
+# oneliner:[dir]:print or execute ${OVE_OWEL_DIR}/SETUP:CORE
+function ove-oneliner {
 	ove_entry || return
 
 	local p
@@ -11595,7 +11710,7 @@ function ove_bash_complete {
 		elif [ ${size} -ge 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
 			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 		elif [ ${size} -eq 3 ]; then
-			if ove-image-refresh &> /dev/null; then
+			if ove-refresh-image &> /dev/null; then
 				wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 			fi
 		else
@@ -11605,7 +11720,7 @@ function ove_bash_complete {
 		if [ ${size} -ge 2 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
 			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 		elif [ ${size} -eq 2 ]; then
-			if ove-image-refresh &> /dev/null; then
+			if ove-refresh-image &> /dev/null; then
 				wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 			fi
 		else
@@ -11618,6 +11733,11 @@ function ove_bash_complete {
 			wordlist="${OVE_ALL_COMMANDS}"
 		else
 			return
+		fi
+	elif [ "${subcommand}" = "setup" ]; then
+		if [ ${size} -eq 3 ] && [ -d $OVE_GLOBAL_STATE_DIR/hub ]; then
+			# shellcheck disable=SC2016
+			wordlist=$(ove-list-hub | ${ove_cmd2pathname["sed"]:?} -e 's,.*\/,,g')
 		fi
 	elif [ "${subcommand}" = "run-parallel" ]; then
 		if [ $((size%2)) -eq 0 ]; then
@@ -12639,6 +12759,11 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_AUTO_INSTALL_INCUS+x}" ]; then
 		export OVE_AUTO_INSTALL_INCUS=0
 	fi
+
+	# OVE_HUB_URL_LIST:string::list-hub refresh-hub setup:semi-colon separated list of hub URLs
+	if [ -z "${OVE_HUB_URL_LIST+x}" ]; then
+		export OVE_HUB_URL_LIST=
+	fi
 }
 
 # $1: a built in OVE config
@@ -13048,6 +13173,90 @@ function ove_update_terminal_stats {
 	export OVE_LINES
 }
 
+function ove_setup_hub {
+	local i
+	local u
+	local urls
+
+	if [ "$OVE_HUB_URL_LIST" = "" ]; then
+		return 1
+	elif [ -d "${OVE_GLOBAL_STATE_DIR:?}"/hub ]; then
+		return 0
+	fi
+
+	mapfile -t urls <<<"$(echo -e "${OVE_HUB_URL_LIST//;/\\n}")"
+	i=0
+
+	mkdir -p "${OVE_GLOBAL_STATE_DIR:?}"/hub
+	while ((i < ${#urls[@]})); do
+		u="${urls[$i]}"
+		(( i+=1 ))
+		if ! ${ove_cmd2pathname["git"]:?} clone -q "${u}" "${OVE_GLOBAL_STATE_DIR:?}"/hub/$i 2> /dev/null; then
+			rm -rf "${OVE_GLOBAL_STATE_DIR:?}"/hub/$i
+			ove_echo_error_noprefix "hub: 'git clone ${u}' failed"
+		fi
+	done
+}
+
+# refresh-hub: :refresh hub:CORE
+function ove-refresh-hub {
+	ove_entry || return
+
+	local repo
+
+	if ! ove_setup_hub; then
+		return 0
+	fi
+
+	find "${OVE_GLOBAL_STATE_DIR:?}"/hub/ \
+		-maxdepth 1 \
+		-mindepth 1 \
+		-type d |
+		while read -r repo; do
+			${ove_cmd2pathname["git"]:?} \
+				-C "${repo:?}"/ \
+				pull \
+				--rebase \
+				-q \
+				|| true
+		done
+}
+
+# purge-hub: :purge hub:CORE
+function ove-purge-hub {
+	ove_entry || return
+
+	if [ ! -d "${OVE_GLOBAL_STATE_DIR:?}"/hub ]; then
+		return 0
+	fi
+
+	${ove_cmd2pathname["rm"]:?} -rf "${OVE_GLOBAL_STATE_DIR:?}"/hub
+}
+
+# list-hub: :list hub:CORE
+function ove-list-hub {
+	ove_entry || return
+
+	local repo
+
+	if [ ! -d "${OVE_GLOBAL_STATE_DIR:?}"/hub ]; then
+		return 0
+	fi
+
+	find "${OVE_GLOBAL_STATE_DIR:?}"/hub/ \
+		-maxdepth 1 \
+		-mindepth 1 \
+		-type d |
+		while read -r repo; do
+			if [ ! -s "${repo}"/revtab ]; then
+				continue
+			fi
+
+			# shellcheck disable=SC2016
+			${ove_cmd2pathname["awk"]:?} '{print $2}' "${repo}"/revtab
+		done | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u
+}
+
 function ove_post_checks {
 	local c
 	local doublets
@@ -13093,6 +13302,10 @@ function ove_post_checks {
 	if [ "${OVE_AUTO_INSTALL_INCUS}" = "1" ] && ! command -v incus > /dev/null; then
 		${ove_cmd2pathname["bash"]:?} \
 			"${OVE_DIR}"/hooks/incus/pre-distrocheck || true
+	fi
+
+	if [ "$OVE_HUB_URL_LIST" != "" ]; then
+		ove_setup_hub
 	fi
 
 	return 0
@@ -15747,7 +15960,7 @@ function ove_distrocheck_helper {
 
 	if [ $# -lt 2 ]; then
 		return 1
-	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images ] && ! ove-image-refresh; then
+	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images ] && ! ove-refresh-image; then
 		return 1
 	fi
 
@@ -15904,8 +16117,8 @@ function ove-pre-push {
 	ove-status .ove
 }
 
-# image-refresh: :refresh list of available Linux distributions (incus|LXD only):UTIL
-function ove-image-refresh {
+# refresh-image: :refresh list of available Linux distributions (incus|LXD only):UTIL
+function ove-refresh-image {
 	ove_entry || return
 
 	local arch
@@ -15944,7 +16157,7 @@ function ove-post-push {
 
 	if [ ! -s "${OVE_DIR}/tests/distrocheck.list" ]; then
 		return 1
-	elif ! ove-image-refresh; then
+	elif ! ove-refresh-image; then
 		return 1
 	fi
 
@@ -15967,7 +16180,7 @@ function ove-post-push-parallel {
 	elif ! ove_sanity_check_tmux; then
 		ove_command_usage
 		return 1
-	elif ! ove-image-refresh; then
+	elif ! ove-refresh-image; then
 		return 1
 	fi
 
