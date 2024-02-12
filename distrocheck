@@ -87,6 +87,12 @@ function init {
 		OVE_DISTROCHECK_STEPS+=" ssh_config"
 	fi
 
+	if [ "${OVE_DISTROCHECK_CONTAINER_USER}" != "" ]; then
+		container_user="${OVE_DISTROCHECK_CONTAINER_USER}"
+	else
+		container_user="${OVE_USER}"
+	fi
+
 	if [ ! -v OVE_DISTROCHECK_STEPS ]; then
 		OVE_DISTROCHECK_STEPS=""
 	fi
@@ -487,6 +493,13 @@ EOF
 
 function update_ssh_config {
 	local n
+	local _user
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
+		_user="${container_user}"
+	else
+		_user="root"
+	fi
 
 	if ! mkdir -p "${HOME}/.ssh"; then
 		echo "error: mkdir ${HOME}/.ssh failed" 1>&2
@@ -494,7 +507,7 @@ function update_ssh_config {
 	elif grep -q "^Host ${container_name}$" "${HOME}/.ssh/config"; then
 		# insert on top of existing host
 		n=$(grep -m 1 -n "^Host ${container_name}$" "${HOME}/.ssh/config" | cut -d: -f1)
-		if ! sed -i -e "${n}iHost ${container_name}\n\tHostName ${container_ip}\n\tStrictHostKeyChecking no\n" "${HOME}/.ssh/config"; then
+		if ! sed -i -e "${n}iHost ${container_name}\n\tUser ${_user}\n\tHostName ${container_ip}\n\tStrictHostKeyChecking no\n" "${HOME}/.ssh/config"; then
 			echo "error: not possible to update ${HOME}/.ssh/config" 1>&2
 			exit 1
 		fi
@@ -502,6 +515,7 @@ function update_ssh_config {
 		# append
 		cat >> "${HOME}/.ssh/config" <<EOF
 Host ${container_name}
+	User ${_user}
 	HostName ${container_ip}
 	StrictHostKeyChecking no
 EOF
@@ -516,8 +530,21 @@ EOF
 # $1: user
 function setup_ssh {
 	local pass="${RANDOM}${RANDOM}${RANDOM}"
+	local _home
 
 	_user="$1"
+
+	if [ "${_user}" = "root" ]; then
+		_home="/root"
+		if [ "${OVE_DISTROCHECK_CONTAINER_ROOT_PASS}" != "" ]; then
+			pass="${OVE_DISTROCHECK_CONTAINER_ROOT_PASS}"
+		fi
+	else
+		_home="${HOME}"
+		if [ "${OVE_DISTROCHECK_CONTAINER_USER_PASS}" != "" ]; then
+			pass="${OVE_DISTROCHECK_CONTAINER_USER_PASS}"
+		fi
+	fi
 
 	if [[ ${distro} == *alpine* ]]; then
 		cat > "${OVE_TMP}/${tag}-passwd-${_user}" <<EOF
@@ -531,14 +558,14 @@ EOF
 		use_ssh=0 _user=root container_exec "sh /var/tmp/${tag}-passwd-${_user}"
 	else
 		# shellcheck disable=SC2097,SC2098
-		use_ssh=0 _user=root container_exec "usermod -p '$(openssl passwd -1 ${pass})' ${_user}"
+		use_ssh=0 _user=root container_exec "usermod -p '$(openssl passwd -1 "${pass}")' ${_user}"
 	fi
 
-	CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}" \
+	CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${_home}" \
 		use_ssh=0 \
 		container_exec "mkdir -p .ssh"
 
-	CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}" \
+	CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${_home}" \
 		use_ssh=0 \
 		container_exec "chmod 700 .ssh"
 
@@ -591,10 +618,10 @@ function get_id {
 	while true; do
 		((i++))
 		if [ $i -ge 30 ]; then
-			echo "error: could not retreive $1 for ${OVE_USER} for ${container_name}" 1>&2
+			echo "error: could not retreive $1 for ${container_user} for ${container_name}" 1>&2
 			return 1
 		fi
-		_id=$(container_exec "id -${1::1} ${OVE_USER}")
+		_id=$(container_exec "id -${1::1} ${container_user}")
 		if [ "x${_id}" = "x" ]; then
 			sleep_s=$((RANDOM%10))
 			echo "warning: empty $1, retry in ${sleep_s}s ($i)" 1>&2
@@ -856,7 +883,7 @@ EOF
 			container_exec "${package_manager} shadow shadow-login sudo"
 		fi
 
-		container_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${OVE_USER:?}"
+		container_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${container_user:?}"
 
 		if ! _uid=$(get_id "uid"); then
 			exit 1
@@ -874,7 +901,7 @@ EOF
 			"$(container_command)"${container_global_flags} config set "${container_name}" raw.idmap -
 
 		_echo "user: sudo"
-		echo "${OVE_USER} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
+		echo "${container_user} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
 		container_file_push_root \
 			"${OVE_TMP}/${tag}-sudoers" \
 			"${container_name}/etc/sudoers.d/91-ove"
@@ -888,9 +915,9 @@ EOF
 				sul=$((sul + 1))
 				use_ssh=0 _user=root container_exec_no_exit "sed -i '${sul}iauth  [success=ignore default=1] pam_succeed_if.so user = root' /etc/pam.d/su"
 				sul=$((sul + 1))
-				use_ssh=0 _user=root container_exec_no_exit "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${OVE_USER}' /etc/pam.d/su"
-				_echo "user: su: add '${OVE_USER}' to 'root' group"
-				use_ssh=0 _user=root container_exec_no_exit "usermod -a -G root ${OVE_USER}"
+				use_ssh=0 _user=root container_exec_no_exit "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${container_user}' /etc/pam.d/su"
+				_echo "user: su: add '${container_user}' to 'root' group"
+				use_ssh=0 _user=root container_exec_no_exit "usermod -a -G root ${container_user}"
 			fi
 		fi
 
@@ -925,7 +952,7 @@ EOF
 				"${OVE_TMP}/${tag}-wait-for-sshd.sh" \
 				"${container_name}/var/tmp/${tag}-wait-for-sshd.sh"
 			use_ssh=0 container_exec "sh /var/tmp/${tag}-wait-for-sshd.sh"
-			setup_ssh "${OVE_USER}"
+			setup_ssh "${container_user}"
 		fi
 	fi
 
