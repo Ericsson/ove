@@ -983,21 +983,21 @@ EOF
 		export CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
 	fi
 
-	if [ "${OVE_DISTROCHECK_XPRA_SERVER_ARGS}" = "" ]; then
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS=""
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" start-desktop"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" :100"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --exit-with-children"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --microphone=no"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --opengl=no"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --printing=no"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --resize-display=FHD"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --speaker=no"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --webcam=no"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --start-child=${OVE_DISTROCHECK_XPRA_DE_CMD:?}"
-	fi
-
 	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]]; then
+		if [ "${OVE_DISTROCHECK_XPRA_SERVER_ARGS}" = "" ]; then
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS=""
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" start-desktop"
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" :100"
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --exit-with-children"
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --microphone=no"
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --opengl=no"
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --printing=no"
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --resize-display=FHD"
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --speaker=no"
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --webcam=no"
+			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --start-child=${OVE_DISTROCHECK_XPRA_DE_CMD:?}"
+		fi
+
 		# let cron start Xpra on reboot
 		container_exec "echo @reboot xpra ${OVE_DISTROCHECK_XPRA_SERVER_ARGS:?} | crontab -"
 		run "$(container_command)${container_global_flags} restart ${container_name}"
