@@ -15672,6 +15672,7 @@ function ove-shell-check {
 		return 1
 	fi
 
+	cd "${OVE_DIR:?}" || return 1
 	# first, run shellcheck on some random scripts
 	while read -r f; do
 		(cd "${OVE_DIR}" && ${ove_cmd2pathname["shellcheck"]:?} "${f}")
