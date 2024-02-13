@@ -85,6 +85,13 @@ function init {
 		fi
 		OVE_DISTROCHECK_STEPS+=" ssh"
 		OVE_DISTROCHECK_STEPS+=" ssh_config"
+		if [ "${OVE_DISTROCHECK_XPRA_DE}" = "" ]; then
+			OVE_DISTROCHECK_XPRA_DE="xfce"
+			OVE_DISTROCHECK_XPRA_DE_CMD="xfce4-session"
+		elif [ "${OVE_DISTROCHECK_XPRA_DE_CMD}" = "" ]; then
+			echo "error: specify how to start '${OVE_DISTROCHECK_XPRA_DE}' in OVE_DISTROCHECK_XPRA_DE_CMD" 1>&2
+			exit 1
+		fi
 	fi
 
 	if [ "${OVE_DISTROCHECK_CONTAINER_USER}" != "" ]; then
@@ -419,8 +426,11 @@ EOF
 
 function setup_X_apk {
 	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
-# install packages
-packman xpra xfce4 xfce4-terminal lightdm-gtk-greeter 2> /dev/null
+# install Xpra
+packman xpra
+
+# install Desktop Environment
+setup-desktop ${OVE_DISTROCHECK_XPRA_DE}
 EOF
 }
 
@@ -983,8 +993,8 @@ EOF
 		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --printing=no"
 		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --resize-display=FHD"
 		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --speaker=no"
-		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --start-child=xfce4-session"
 		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --webcam=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --start-child=${OVE_DISTROCHECK_XPRA_DE_CMD:?}"
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]]; then
