@@ -122,6 +122,10 @@ function init {
 	        ssh_opts+=" -o GlobalKnownHostsFile=/dev/null"
 		ssh_opts+=" -o StrictHostKeyChecking=no"
 		ssh_opts+=" -o UserKnownHostsFile=/dev/null"
+		ssh_copy_id_opts="${ssh_opts}"
+		if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+			ssh_opts+=" -v"
+		fi
 	fi
 }
 
@@ -183,14 +187,14 @@ function run_no_exit {
 function ssh_exec {
        local prefix
 
-       _echo "ssh ${_user}@${container_ip} $*"
+       _echo "ssh -F /dev/null -t -q ${ssh_opts:?} ${_user:?}@${container_ip:?} $*"
        # shellcheck disable=SC2086
        if ! ssh \
 	       -F /dev/null \
 	       -t \
 	       -q \
 	       ${ssh_opts} \
-	       ${_user:?}@${container_ip} "$@"; then
+	       ${_user}@${container_ip} "$@"; then
                return 1
        fi
 
@@ -571,15 +575,15 @@ EOF
 		use_ssh=0 _user=root container_exec "usermod -p '$(openssl passwd -1 "${pass}")' ${_user}"
 	fi
 
-	CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${_home}" \
+	CONTAINER_EXEC_EXTRA="--user ${_uid} --group ${_gid} --env HOME=${_home}" \
 		use_ssh=0 \
 		container_exec "mkdir -p .ssh"
 
-	CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${_home}" \
+	CONTAINER_EXEC_EXTRA="--user ${_uid} --group ${_gid} --env HOME=${_home}" \
 		use_ssh=0 \
 		container_exec "chmod 700 .ssh"
 
-	_echo "copy public key to container"
+	_echo "copy public key to container for user: ${_user}"
 	i=0
 	while true; do
 		((i++))
@@ -592,7 +596,7 @@ EOF
 		if ! sshpass -p${pass} \
 			ssh-copy-id \
 			-f \
-			${ssh_opts} \
+			${ssh_copy_id_opts} \
 			"${_user}"@"${container_ip}" &> /dev/null; then
 			_echo "copy public key to ${container_name} ${container_ip} failed - retry in 1 sec"
 			sleep 1
@@ -888,7 +892,7 @@ EOF
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
-		container_exec "${package_manager} bash"
+		container_exec "${package_manager} bash >/dev/null 2>&1"
 		if [[ ${distro} == *alpine* ]]; then
 			container_exec "${package_manager} shadow shadow-login sudo"
 		fi
@@ -944,12 +948,11 @@ while true; do
 	if [ \$i -gt 100 ]; then
 		echo "error: sshd did not start"
 		exit 1
-	elif pgrep -f sshd > /dev/null; then
+	elif pgrep -f sshd > /dev/null 2>&1; then
 		sleep 1
 		break
 	fi
 
-	echo "waiting for sshd \$i"
 	sleep 0.1
 done
 EOF
