@@ -16231,8 +16231,7 @@ function ove-ps {
 		mapfile -d '' -t cmdline < "/proc/${p}/cmdline"
 		c=${cmdline[-1]}
 		c=${c%%-${HOSTNAME}*}
-		c=${c//2*ove-}
-		c=${c##*/}
+		c=${c##*ove-}
 		echo -n "$c:"
 		${ove_cmd2pathname["pstree"]:?} -a -l -p $p
 	done
