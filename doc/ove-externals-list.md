@@ -44,8 +44,9 @@
 | mkdir            | 35        |
 | mktemp           | 13        |
 | mv               | 11        |
-| pgrep            | 4         |
+| pgrep            | 5         |
 | ps               | 1         |
+| pstree           | 1         |
 | readlink         | 29        |
 | recordmydesktop  | 1         |
 | rev              | 4         |
@@ -53,7 +54,7 @@
 | rm               | 54        |
 | rmdir            | 3         |
 | scp              | 3         |
-| script           | 4         |
+| script           | 5         |
 | scriptreplay     | 1         |
 | sed              | 89        |
 | seq              | 11        |
@@ -87,4 +88,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1302__  |
+| __sum__          | __1305__  |

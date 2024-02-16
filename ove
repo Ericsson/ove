@@ -2335,6 +2335,7 @@ function ove {
 		|| [ "${cmd}" = "init" ] \
 		|| [ "${cmd}" = "l" ] \
 		|| [ "${cmd}" = "lr" ] \
+		|| [ "${cmd}" = "ps" ] \
 		|| [ "${cmd}" = "oneliner" ]; then
 		ove-${cmd} "${@:2}"
 		return $?
@@ -15781,6 +15782,7 @@ function ove_externals_init {
 	cmds+=('mv')
 	cmds+=('pgrep')
 	cmds+=('ps')
+	cmds+=('pstree')
 	cmds+=('readlink')
 	cmds+=('recordmydesktop')
 	cmds+=('rev')
@@ -16207,6 +16209,33 @@ function ove-logo {
 
 	${ove_cmd2pathname["convert"]:?} "${OVE_DIR:?}/ove.png" jpg:- | \
 		${ove_cmd2pathname["jp2a"]:?} --colors --fill -
+}
+
+# ps: :list current OVE processes:DEBUG
+function ove-ps {
+	ove_entry || return
+
+	local c
+	local cmdline
+	local p
+
+	if ! ove_check_command "pstree"; then
+		ove_command_not_found "pstree"
+		return 1
+	elif [ ! -d /proc ]; then
+		ove_echo_error_noprefix "directory '/proc' is not available"
+		return 1
+	fi
+
+	for p in $(${ove_cmd2pathname["pgrep"]:?} -f ${ove_cmd2pathname["script"]:?}); do
+		mapfile -d '' -t cmdline < "/proc/${p}/cmdline"
+		c=${cmdline[-1]}
+		c=${c%%-${HOSTNAME}*}
+		c=${c//2*ove-}
+		c=${c##*/}
+		echo -n "$c:"
+		${ove_cmd2pathname["pstree"]:?} -a -l -p $p
+	done
 }
 
 ove_main "$@"
