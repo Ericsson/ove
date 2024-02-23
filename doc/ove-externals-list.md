@@ -4,7 +4,7 @@
 | awk              | 56        |
 | basename         | 1         |
 | bash             | 18        |
-| cat              | 54        |
+| cat              | 53        |
 | chmod            | 7         |
 | column           | 28        |
 | comm             | 15        |
@@ -88,4 +88,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1305__  |
+| __sum__          | __1304__  |

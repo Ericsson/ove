@@ -6654,7 +6654,8 @@ function ove_locate_owels {
 	if command -v locate > /dev/null; then
 		owels=$(${ove_cmd2pathname["locate"]:?} -e -r '\.owel$')
 	else
-		owels=$(${ove_cmd2pathname["find"]:?} ${OVE_LOCATE_SEARCH_DIR} -type l -name .owel 2> /dev/null)
+		ove_echo_warning_noprefix "command 'locate' is missing, this could take some time"
+		owels=$(${ove_cmd2pathname["find"]:?} ${OVE_LOCATE_SEARCH_DIR} -xdev -type l -name .owel 2> /dev/null)
 	fi
 
 	if [ "${owels}" = "" ]; then
