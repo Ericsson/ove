@@ -6309,6 +6309,7 @@ function ove_locate_print {
 	local num_projs
 	local num_repos
 	local ove_dir
+	local url
 
 	ove_dir="$1/.owel"
 
@@ -6323,8 +6324,8 @@ function ove_locate_print {
 	OVE_OWEL_DIR=${ove_dir} num_projs=$(ove_list_projects | \
 		${ove_cmd2pathname["wc"]:?} -w)
 	${ove_cmd2pathname["dirname"]:?} ${ove_dir}
-	if [ -e "${ove_dir}/SETUP" ]; then
-		echo "  $(${ove_cmd2pathname["cat"]:?} ${ove_dir}/SETUP)"
+	if url=$(ove_repo_cmd "${ove_dir}" "config" --get remote.origin.url); then
+		echo "  url: $url"
 	fi
 	# shellcheck disable=SC2016
 	echo "  repos [${num_repos}]: $(${ove_cmd2pathname["awk"]:?} '{print $1}' ${ove_dir}/revtab | \
