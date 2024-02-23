@@ -1038,7 +1038,7 @@ EOF
 		fi
 
 		# oveconfig
-		if [ -s "${HOME}"/.oveconfig ]; then
+		if [ -s "${HOME}"/.oveconfig ] && [ ${unittest} -eq 0 ]; then
 			cp -a "${HOME}"/.oveconfig "${OVE_TMP}/${tag}-oveconfig"
 			container_file_push_user \
 				"${OVE_TMP}/${tag}-oveconfig" \
