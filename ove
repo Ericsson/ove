@@ -15060,7 +15060,7 @@ function ove-unittest {
 		return 0
 	else
 		ove_echo_red "ran ${i} test(s). Failures:"
-		${ove_cmd2pathname["grep"]:?} --color=always -E -H -n --no-group 'shunit.*|FAILED.*' $files
+		${ove_cmd2pathname["grep"]:?} --color=always -E -H -n 'shunit.*|FAILED.*' $files
 		return 1
 	fi
 }
