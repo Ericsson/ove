@@ -137,7 +137,9 @@ function xpra_apk() {
 	sudo /sbin/apk add xpra
 }
 
-if _deb; then
+if command -v xpra > /dev/null; then
+	exit 0
+elif _deb; then
 	xpra_deb
 elif _rpm; then
 	xpra_rpm
