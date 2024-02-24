@@ -14052,6 +14052,9 @@ function ove_determine_dist_version_and_pack_manager {
 	elif [[ ${OVE_OS} == *"void"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="xbps-install"
 		OVE_OS_PACKAGE_MANAGER_ARGS=""
+	elif [[ ${OVE_OS} == *"openwrt"* ]]; then
+		OVE_OS_PACKAGE_MANAGER="opkg"
+		OVE_OS_PACKAGE_MANAGER_ARGS="install"
 	else
 		OVE_OS_PACKAGE_MANAGER="unknown"
 		OVE_OS_PACKAGE_MANAGER_ARGS=""
@@ -16034,6 +16037,8 @@ function ove-distrocheck-parallel {
 	local d
 	local distro_list
 	local env
+	local v
+	local val
 
 	if ! ove_sanity_check_tmux; then
 		ove_command_usage
@@ -16047,21 +16052,10 @@ function ove-distrocheck-parallel {
 		env+=" OVE_UNITTEST_TC=${OVE_UNITTEST_TC}"
 	fi
 
-	if [ -v OVE_DISTROCHECK_STEPS ]; then
-		env+=" OVE_DISTROCHECK_STEPS=${OVE_DISTROCHECK_STEPS// /:}"
-	fi
-
-	if [ -v OVE_DISTROCHECK_CONTAINER_PREFIX ]; then
-		env+=" OVE_DISTROCHECK_CONTAINER_PREFIX=${OVE_DISTROCHECK_CONTAINER_PREFIX}"
-	fi
-
-	if [ -v OVE_DISTROCHECK_CONTAINER_NAME ]; then
-		env+=" OVE_DISTROCHECK_CONTAINER_NAME=${OVE_DISTROCHECK_CONTAINER_NAME}"
-	fi
-
-	if [ -v OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS ]; then
-		env+=" OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS=${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS// /\#}"
-	fi
+	for v in $(compgen -A variable OVE_DISTROCHECK_); do
+		val=${!v}
+		env+=" $v=${val// /:}"
+	done
 
 	for d in "${distro_list[@]}"; do
 		args+=" 0 '$env ${OVE_DIR}/distrocheck $1 $d'"

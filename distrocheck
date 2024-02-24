@@ -23,10 +23,18 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-ephemeral=0
+container_global_flags=""
 container_ip=""
 container_name=""
+container_user=""
+ephemeral=0
+_gid=0
+_home="/root"
+package_manager=""
+packman=""
+prefix="true"
 tag=""
+_uid=0
 _user=
 use_ssh=0
 
@@ -44,7 +52,6 @@ function container_command {
 	elif command -v lxc > /dev/null; then
 		echo "lxc"
 	else
-		echo "error: no supported container runtime found" 1>&2
 		return 1
 	fi
 
@@ -56,7 +63,8 @@ function init {
 	local s
 
 	if ! c=$(container_command); then
-		return 1
+		echo "error: no supported container runtime found" 1>&2
+		exit 1
 	elif [ $# -ne 2 ]; then
 		echo "usage: $(basename "$0") file|project|unittest distro"
 		exit 1
@@ -149,19 +157,19 @@ function run {
 
 		sleep_s=$((RANDOM%10))
 		if grep "^Error:.*i/o timeout" "${OVE_TMP}/${tag}.err"; then
-			_echo "lxd: i/o timeout. Retry in ${sleep_s} sec"
+			_echo "$(container_command): i/o timeout. Retry in ${sleep_s} sec"
 			sleep ${sleep_s}
 			continue
 		elif grep "^Error: websocket:" "${OVE_TMP}/${tag}.err"; then
-			_echo "lxd: websocket error. Retry in ${sleep_s} sec"
+			_echo "$(container_command): websocket error. Retry in ${sleep_s} sec"
 			sleep ${sleep_s}
 			continue
 		elif grep "^Error: Missing event connection with target cluster member" "${OVE_TMP}/${tag}.err"; then
-			_echo "lxd: cluster error. Retry in ${sleep_s} sec"
+			_echo "$(container_command): cluster error. Retry in ${sleep_s} sec"
 			sleep ${sleep_s}
 			continue
 		elif grep "^Error: Operation not found" "${OVE_TMP}/${tag}.err"; then
-			_echo "lxd: operation not found error. Retry in ${sleep_s} sec"
+			_echo "$(container_command): operation not found error. Retry in ${sleep_s} sec"
 			sleep ${sleep_s}
 			continue
 		elif grep -q "^Error: Command not found" "${OVE_TMP}/${tag}.err"; then
@@ -205,7 +213,7 @@ function container_exec {
 	local e
 	local container_exec_options
 
-	if [ ${use_ssh} -eq 1 ]; then
+	if [ "${use_ssh}" -eq 1 ]; then
 		if ! ssh_exec "$@"; then
 			return 1
 		fi
@@ -235,7 +243,7 @@ function container_exec_no_exit {
 	local e
 	local container_exec_options
 
-	if [ ${use_ssh} -eq 1 ]; then
+	if [ "${use_ssh}" -eq 1 ]; then
 		if ! ssh_exec "$@"; then
 			return 1
 		fi
@@ -287,23 +295,21 @@ function remove_tmp {
 }
 
 function cleanup {
-	if [[ ${OVE_DISTROCHECK_STEPS} == *running* ]]; then
+	if [[ ${OVE_DISTROCHECK_STEPS:?} == *running* ]]; then
 		remove_tmp
 		return
 	fi
-	run_no_exit "$(container_command)${container_global_flags} stop ${container_name}"
-	if [[ ${OVE_DISTROCHECK_STEPS} == *stopped* ]]; then
+	run_no_exit "$(container_command)${container_global_flags} stop ${container_name:?}"
+	if [[ ${OVE_DISTROCHECK_STEPS:?} == *stopped* ]]; then
 		remove_tmp
 		return
 	fi
-	run_no_exit "$(container_command)${container_global_flags} delete ${container_name} --force"
+	run_no_exit "$(container_command)${container_global_flags} delete ${container_name:?} --force"
 	remove_tmp
 }
 
 function setup_package_manager {
-	local packman
-
-	run "$(container_command)${container_global_flags} file pull ${container_name}/var/tmp/${tag}-packman ${OVE_TMP}/${tag}-packman"
+	run "$(container_command)${container_global_flags} file pull ${container_name}/root/${tag}-packman ${OVE_TMP}/${tag}-packman"
 	if [ ! -s "${OVE_TMP}/${tag}-packman" ]; then
 		echo "error: could not determine package manager for ${distro}" 1>&2
 		exit 1
@@ -327,9 +333,6 @@ pacman -Syu --noconfirm -q --noprogressbar
 EOF
 		package_manager="pacman -S --noconfirm -q --noprogressbar"
 	elif [ "${packman}" = "apt-get" ]; then
-		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
-			ove_packs="bsdmainutils procps "
-		fi
 		package_manager="apt-get -y -qq -o=Dpkg::Progress=0 -o=Dpkg::Progress-Fancy=false install"
 		if [ -s "/etc/apt/apt.conf" ]; then
 			cp -a "/etc/apt/apt.conf" "${OVE_TMP}/${tag}-apt.conf"
@@ -344,6 +347,8 @@ EOF
 		package_manager="dnf install -y"
 	elif [ "${packman}" = "zypper" ]; then
 		package_manager="zypper install -y"
+	elif [ "${packman}" = "opkg" ]; then
+		package_manager="opkg install"
 	else
 		echo "error: unknown package manager for '${distro}'" 1>&2
 		exit 1
@@ -359,7 +364,7 @@ EOF
 		"--mode 0755"
 }
 
-function lxd_cluster {
+function is_cluster {
 	# shellcheck disable=SC2086
 	if "$(container_command)"${container_global_flags} cluster list &> /dev/null; then
 		return 0
@@ -368,7 +373,7 @@ function lxd_cluster {
 	fi
 }
 
-function setup_sshd {
+function _setup_sshd {
 	echo "${package_manager:?} openssh-server >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 	echo "${package_manager} openssh >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 
@@ -380,7 +385,7 @@ function setup_sshd {
 
 	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
 if [ ! -s /etc/ssh/sshd_config ]; then
-	echo 'error: could not find /etc/ssh/sshd_config' >&2
+	echo 'error: ${container_name:?}: could not find /etc/ssh/sshd_config' >&2
 	exit 1
 fi
 if ! sed -i \
@@ -394,6 +399,16 @@ EOF
 	if [[ ${distro} == *alpine* ]]; then
 		echo "rc-update add sshd >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 		echo "/etc/init.d/sshd start >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
+	elif [[ ${distro} == *openwrt* ]]; then
+		{
+			echo "uci set dropbear.@dropbear[0].Port=2222"
+			echo "uci commit dropbear"
+			echo "/etc/init.d/dropbear restart"
+			echo "/etc/init.d/firewall stop"
+			echo "/etc/init.d/firewall disable"
+			echo "/etc/init.d/sshd enable"
+			echo "/etc/init.d/sshd start"
+		} >> "${OVE_TMP}/${tag}-services.sh"
 	else
 		for s in ssh sshd; do
 			echo "systemctl -q restart $s >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
@@ -509,6 +524,11 @@ function update_ssh_config {
 	local n
 	local _user
 
+	if command -v flock > /dev/null; then
+		exec {fd}>"${OVE_TMP}"/distrocheck.lock
+		flock ${fd}
+	fi
+
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
 		_user="${container_user}"
 	else
@@ -539,6 +559,10 @@ EOF
 		( ${OVE_DISTROCHECK_STEPS} != *user* ) ]]; then
 		echo -e "\tUser root" >> "${HOME}/.ssh/config"
 	fi
+
+	if command -v flock > /dev/null; then
+		flock -u ${fd}
+	fi
 }
 
 # $1: user
@@ -566,11 +590,15 @@ echo -e "${pass}\n${pass}" | passwd ${_user} &> /dev/null
 EOF
 		container_file_push_root \
 			"${OVE_TMP}/${tag}-passwd-${_user}" \
-			"${container_name}/var/tmp/${tag}-passwd-${_user}"
+			"${container_name}/root/${tag}-passwd-${_user}"
 
 		# shellcheck disable=SC2097,SC2098
-		use_ssh=0 _user=root container_exec "sh /var/tmp/${tag}-passwd-${_user}"
+		use_ssh=0 _user=root container_exec "sh /root/${tag}-passwd-${_user}"
 	else
+		if [[ ${distro} == *openwrt* ]]; then
+			use_ssh=0 _user=root container_exec "${package_manager} shadow-usermod shadow-useradd" > /dev/null
+		fi
+
 		# shellcheck disable=SC2097,SC2098
 		use_ssh=0 _user=root container_exec "usermod -p '$(openssl passwd -1 "${pass}")' ${_user}"
 	fi
@@ -687,20 +715,235 @@ function container_file_push_user {
 	container_file_push_helper "$@"
 }
 
-function main {
-	local _cmd
-	local _home="/root"
-	local ove_packs
-	local package_manager
-	local prefix="true"
-	local _uid=0
-	local _gid=0
-	local sul
+function launch_container {
+	_echo "$(container_command)${container_global_flags} launch images:${distro} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ }"
 
-	if ! init "$@"; then
+	# shellcheck disable=SC2086
+	if ! "$(container_command)"${container_global_flags} launch images:${distro} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
 		exit 1
 	fi
+	trap cleanup EXIT
 
+	if ! container_exec_no_exit "test -d /var/tmp"; then
+		# create /var/tmp
+		container_exec "mkdir -p -v /var/tmp"
+	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]] && is_cluster; then
+		# shellcheck disable=SC2086
+		_echo "location:$("$(container_command)"${container_global_flags} list --format csv -cL "${container_name}")"
+	fi
+}
+
+function prepare_bootcheck {
+	cat > "${OVE_TMP}/${tag}-bootcheck.sh" <<EOF
+#!/usr/bin/env sh
+
+if [ ! -s /root/${tag}-packman ]; then
+	if command -v apk > /dev/null; then
+		packman="apk"
+	elif command -v pacman > /dev/null; then
+		packman="pacman"
+	elif command -v apt-get > /dev/null; then
+		packman="apt-get"
+	elif command -v dnf > /dev/null; then
+		packman="dnf"
+	elif command -v zypper > /dev/null; then
+		packman="zypper"
+	elif command -v xbps-install > /dev/null; then
+		packman="xbps"
+	elif command -v opkg > /dev/null; then
+		packman="opkg"
+	else
+		echo "bootcheck: unknown package manager for ${distro}"
+		packman="unknown"
+	fi
+	echo "\$packman" > /root/${tag}-packman
+fi
+
+if command -v systemctl > /dev/null; then
+	cmd="systemctl is-system-running"
+	exp="running"
+elif command -v rc-status > /dev/null; then
+	cmd="rc-status -r"
+	exp="default"
+elif command -v sv > /dev/null; then
+	cmd="readlink -f /etc/runit/runsvdir/current"
+	exp="/etc/runit/runsvdir/default"
+elif command -v runlevel > /dev/null; then
+	cmd="runlevel"
+	exp="N 2"
+elif command -v procd > /dev/null; then
+	cmd="sleep 1"
+	exp=""
+else
+	echo "bootcheck: unknown init system for ${distro}"
+	sleep 1
+	exit 0
+fi
+
+i=0
+while true; do
+	i=\$((i+1))
+	if [ \$i -ge 100 ]; then
+		exit 0
+	fi
+	s=\$(\$cmd 2> /dev/null);
+	if [ "x\$s" = "x\$exp" ]; then
+		break
+	fi
+	sleep 0.1
+done
+exit 0
+EOF
+	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+		sed -i -e "2iset -x" "${OVE_TMP}/${tag}-bootcheck.sh"
+	fi
+
+	container_file_push_root \
+		"${OVE_TMP}/${tag}-bootcheck.sh" \
+		"${container_name}/root/${tag}-bootcheck.sh"
+}
+
+function run_bootcheck {
+	container_exec_no_exit "sh /root/${tag}-bootcheck.sh"
+}
+
+function prepare_package_manager {
+	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ssh* ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
+		setup_package_manager
+	fi
+}
+
+function wait_for_ip {
+	local i
+
+	if [[ ${distro} == *openwrt* ]]; then
+		_echo "openwrt: sleep 5: wait for real IPv4 address"
+		sleep 5
+	fi
+
+	i=0
+	while true; do
+		((i++))
+		if [ $i -ge 100 ]; then
+			echo "error: no IPv4 address for ${container_name}" 1>&2
+			exit 1
+		fi
+
+		# shellcheck disable=SC2086
+		container_ip=$("$(container_command)"${container_global_flags} list -c4 --format csv ${container_name})
+		container_ip=${container_ip% *}
+		if [ "x${container_ip}" = "x" ]; then
+			_echo "waiting for IPv4 address for ${container_name} ($i)"
+			sleep 1
+			continue
+		fi
+		_echo "${container_name}=${container_ip}"
+		break
+	done
+}
+
+function run_X {
+	if [[ ${OVE_DISTROCHECK_STEPS} != *X* ]]; then
+		return 0
+	elif [ "${OVE_DISTROCHECK_XPRA_SERVER_ARGS}" = "" ]; then
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS=""
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" start-desktop"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" :100"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --exit-with-children"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --microphone=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --opengl=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --printing=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --resize-display=FHD"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --speaker=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --webcam=no"
+		OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --start-child=${OVE_DISTROCHECK_XPRA_DE_CMD:?}"
+	fi
+
+	# let cron start Xpra on reboot
+	container_exec "echo @reboot xpra ${OVE_DISTROCHECK_XPRA_SERVER_ARGS:?} | crontab -"
+
+	# restart
+	restart_container
+
+	if [ "${OVE_DISTROCHECK_XPRA_CLIENT_ARGS}" != "" ]; then
+		i=0
+		while true; do
+			((i++))
+			if [ $i -ge 10 ]; then
+				echo "error: xpra server not alive" 1>&2
+				exit 1
+			elif ! xpra info --ssh="ssh" ssh:"${container_name}" &> /dev/null; then
+				sleep $((RANDOM % 3 + 1))
+				continue
+			fi
+			break
+		done
+
+		# shellcheck disable=SC2086
+		xpra ${OVE_DISTROCHECK_XPRA_CLIENT_ARGS:?} \
+			--ssh="ssh" ssh:"${container_name}" \
+			--title "${container_name} ${container_ip}" &
+		xpra_pid="$!"
+	fi
+}
+
+function wait_X {
+	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]] && kill -0 ${xpra_pid} 2> /dev/null; then
+		wait ${xpra_pid}
+	fi
+}
+
+function prepare_X {
+	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ssh* ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
+		if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]]; then
+			if [[ ${package_manager:?} == apt-get* ]];  then
+				setup_X_deb
+			elif [[ ${package_manager:?} == dnf* ]];  then
+				setup_X_rpm
+			elif [[ ${package_manager:?} == apk* ]];  then
+				setup_X_apk
+			else
+				echo "error: X for distro '${distro}' is not supported" 1>&2
+				exit 1
+			fi
+		fi
+	fi
+}
+
+function setup_sshd {
+	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ssh* ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
+		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
+			_setup_sshd
+		fi
+	fi
+}
+
+function update_package_manager {
+	local i
+
+	i=0
+	while true; do
+		((i++))
+		if [ $i -ge 100 ]; then
+			echo "error: update packages failed for ${container_name}" 1>&2
+			exit 1
+		elif ! use_ssh=0 _user=root container_exec_no_exit "${package_manager%% *} update" > /dev/null; then
+			sleep $((RANDOM % 5))
+			continue
+		fi
+		break
+	done
+}
+
+function prepare {
 	if [ "x${OVE_LAST_COMMAND}" != "x" ]; then
 		# re-use date+time (ignore micro/nano) from OVE_LAST_COMMAND
 		tag="${OVE_LAST_COMMAND##*/}"
@@ -758,419 +1001,419 @@ function main {
 	if [[ ${distro} == *archlinux* ]] || [[ ${distro} == *fedora* ]]; then
 		OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS+=" -c security.nesting=true"
 	fi
+}
 
-	_echo "$(container_command)${container_global_flags} launch images:${distro} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ }"
-	# shellcheck disable=SC2086
-	if ! "$(container_command)"${container_global_flags} launch images:${distro} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
-		exit 1
-	fi
-	trap cleanup EXIT
-
-	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]] && lxd_cluster; then
-		# shellcheck disable=SC2086
-		_echo "location:$("$(container_command)"${container_global_flags} list --format csv -cL "${container_name}")"
+function prepare_ssh_config {
+	if [[ ${OVE_DISTROCHECK_STEPS} != *ssh* ]]; then
+		return 0
+	elif [[ ${OVE_DISTROCHECK_STEPS} != *ssh_config* ]]; then
+		return 0
 	fi
 
-	cat > "${OVE_TMP}/${tag}-bootcheck.sh" <<EOF
-#!/usr/bin/env sh
+	update_ssh_config
+}
 
-if [ ! -s /var/tmp/${tag}-packman ]; then
-	if command -v apk > /dev/null; then
-		packman="apk"
-	elif command -v pacman > /dev/null; then
-		packman="pacman"
-	elif command -v apt-get > /dev/null; then
-		packman="apt-get"
-	elif command -v dnf > /dev/null; then
-		packman="dnf"
-	elif command -v zypper > /dev/null; then
-		packman="zypper"
-	elif command -v xbps-install > /dev/null; then
-		packman="xbps"
-	else
-		echo "bootcheck: unknown package manager for ${distro}"
-		packman="unknown"
-	fi
-	echo "\$packman" > /var/tmp/${tag}-packman
-fi
-
-if command -v systemctl > /dev/null; then
-	cmd="systemctl is-system-running"
-	exp="running"
-elif command -v rc-status > /dev/null; then
-	cmd="rc-status -r"
-	exp="default"
-elif command -v sv > /dev/null; then
-	cmd="readlink -f /etc/runit/runsvdir/current"
-	exp="/etc/runit/runsvdir/default"
-elif command -v runlevel > /dev/null; then
-	cmd="runlevel"
-	exp="N 2"
-else
-	echo "bootcheck: unknown init system for ${distro} - sleep 1 sec"
-	sleep 1
-	exit 0
-fi
-
-i=0
-while true; do
-	i=\$((i+1))
-	if [ \$i -ge 100 ]; then
-		exit 0
-	fi
-	s=\$(\$cmd 2> /dev/null);
-	if [ "x\$s" = "x\$exp" ]; then
-		break
-	fi
-	sleep 0.1
-done
-exit 0
-EOF
-	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
-		sed -i -e "2iset -x" "${OVE_TMP}/${tag}-bootcheck.sh"
+function run_services {
+	if [ ! -s "${OVE_TMP}/${tag}-services.sh" ]; then
+		return
 	fi
 
 	container_file_push_root \
-		"${OVE_TMP}/${tag}-bootcheck.sh" \
-		"${container_name}/var/tmp/${tag}-bootcheck.sh"
-	container_exec_no_exit "sh /var/tmp/${tag}-bootcheck.sh"
+		"${OVE_TMP}/${tag}-services.sh" \
+		"${container_name}/root/${tag}-services.sh"
+	container_exec_no_exit "sh /root/${tag}-services.sh"
+}
 
-	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || \
-		( ${OVE_DISTROCHECK_STEPS} == *ssh* ) || \
-		( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
-		setup_package_manager
-		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
-			setup_sshd
-		fi
-		if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]]; then
-			if [[ ${package_manager:?} == apt-get* ]];  then
-				setup_X_deb
-			elif [[ ${package_manager:?} == dnf* ]];  then
-				setup_X_rpm
-			elif [[ ${package_manager:?} == apk* ]];  then
-				setup_X_apk
-			else
-				echo "error: X for distro '${distro}' is not supported" 1>&2
-				exit 1
-			fi
+function prepare_ssh {
+	if [[ ${OVE_DISTROCHECK_STEPS} != *ssh* ]]; then
+		return 0
+	elif [ "$1" != "root" ]; then
+		if [ ${EUID} -eq 0 ]; then
+			return 0
+		elif [[ ${OVE_DISTROCHECK_STEPS} != *user* ]]; then
+			return 0
 		fi
 	fi
 
-	if [ -s "${OVE_TMP}/${tag}-services.sh" ]; then
-		container_file_push_root \
-			"${OVE_TMP}/${tag}-services.sh" \
-			"${container_name}/var/tmp/${tag}-services.sh"
-		container_exec_no_exit "sh /var/tmp/${tag}-services.sh"
-	fi
+	setup_ssh "$1"
+}
+
+function restart_container {
+	run "$(container_command)${container_global_flags} restart ${container_name}"
+	use_ssh=0 _user=root run_bootcheck
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
-		i=0
-		while true; do
-			((i++))
-			if [ $i -ge 100 ]; then
-				echo "error: no IPv4 address for ${container_name}" 1>&2
-				exit 1
-			fi
-
-			# shellcheck disable=SC2086
-			container_ip=$("$(container_command)"${container_global_flags} list -c4 --format csv ${container_name})
-			container_ip=${container_ip% *}
-			if [ "x${container_ip}" = "x" ]; then
-				echo "waiting for IPv4 address for ${container_name} ($i)"
-				sleep 1
-				continue
-			fi
-			_echo "${container_name}=${container_ip}"
-
-			if [[ ${OVE_DISTROCHECK_STEPS} == *ssh_config* ]]; then
-				update_ssh_config
-			fi
-			break
-		done
-
-		setup_ssh "root"
-	fi
-
-	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
-		container_exec "${package_manager} bash >/dev/null 2>&1"
-		if [[ ${distro} == *alpine* ]]; then
-			container_exec "${package_manager} shadow shadow-login sudo"
-		fi
-
-		container_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${container_user:?}"
-
-		if ! _uid=$(get_id "uid"); then
-			exit 1
-		elif ! _gid=$(get_id "gid"); then
-			exit 1
-		fi
-		_home=${HOME}
-
-		_echo "user: idmap"
-		run "$(container_command)${container_global_flags} config set ${container_name} security.idmap.isolated true"
-		run "$(container_command)${container_global_flags} config set ${container_name} security.idmap.base 200000000"
-
-		# shellcheck disable=SC2086
-		printf "uid %s ${_uid}\ngid %s ${_gid}" "$(id -u)" "$(id -g)" | \
-			"$(container_command)"${container_global_flags} config set "${container_name}" raw.idmap -
-
-		_echo "user: sudo"
-		echo "${container_user} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
-		container_file_push_root \
-			"${OVE_TMP}/${tag}-sudoers" \
-			"${container_name}/etc/sudoers.d/91-ove"
-
-		if container_exec_no_exit "[ -s /etc/pam.d/su ]"; then
-			sul=$(container_exec_no_exit "grep -n '^auth.*sufficient.*pam_rootok.so' /etc/pam.d/su" | cut -d: -f1)
-			if [ "${sul}" = "" ]; then
-				_echo "warning: user: could not get auth line number from '/etc/pam.d/su'"
-			else
-				_echo "user: su: update '/etc/pam.d/su' to allow su without passwd"
-				sul=$((sul + 1))
-				use_ssh=0 _user=root container_exec_no_exit "sed -i '${sul}iauth  [success=ignore default=1] pam_succeed_if.so user = root' /etc/pam.d/su"
-				sul=$((sul + 1))
-				use_ssh=0 _user=root container_exec_no_exit "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${container_user}' /etc/pam.d/su"
-				_echo "user: su: add '${container_user}' to 'root' group"
-				use_ssh=0 _user=root container_exec_no_exit "usermod -a -G root ${container_user}"
-			fi
-		fi
-
-		run "$(container_command)${container_global_flags} restart ${container_name}"
-		use_ssh=0 container_exec "sh /var/tmp/${tag}-bootcheck.sh"
-
-		if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
-			cat > "${OVE_TMP}/${tag}-wait-for-sshd.sh" <<EOF
+		cat > "${OVE_TMP}/${tag}-wait-for-sshd.sh" <<EOF
 #!/usr/bin/env sh
 
 i=0
 while true; do
-	i=\$((i+1))
-	if [ \$i -gt 100 ]; then
-		echo "error: sshd did not start"
-		exit 1
-	elif pgrep -f sshd > /dev/null 2>&1; then
-		sleep 1
-		break
-	fi
+i=\$((i+1))
+if [ \$i -gt 100 ]; then
+	echo "error: sshd did not start"
+	exit 1
+elif pgrep -f sshd > /dev/null 2>&1; then
+	sleep 1
+	break
+fi
 
-	sleep 0.1
+sleep 0.1
 done
 EOF
 
-			if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
-				sed -i -e "2iset -x" "${OVE_TMP}/${tag}-wait-for-sshd.sh"
-			fi
-
-			container_file_push_root \
-				"${OVE_TMP}/${tag}-wait-for-sshd.sh" \
-				"${container_name}/var/tmp/${tag}-wait-for-sshd.sh"
-			use_ssh=0 container_exec "sh /var/tmp/${tag}-wait-for-sshd.sh"
-			setup_ssh "${container_user}"
+		if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+			sed -i -e "2iset -x" "${OVE_TMP}/${tag}-wait-for-sshd.sh"
 		fi
+
+		container_file_push_root \
+			"${OVE_TMP}/${tag}-wait-for-sshd.sh" \
+			"${container_name}/root/${tag}-wait-for-sshd.sh"
+		use_ssh=0 container_exec "sh /root/${tag}-wait-for-sshd.sh"
+	fi
+}
+
+function expose_user {
+	local sul
+
+	if [ ${EUID} -eq 0 ]; then
+		return 0
+	elif [[ ${OVE_DISTROCHECK_STEPS} != *user* ]]; then
+		return 0
 	fi
 
-	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
-		ove_packs+="bash bzip2 git curl file binutils util-linux coreutils tar make"
-
-		# install OVE packages
-		_user=root container_exec "${package_manager} ${ove_packs} >/dev/null 2>&1"
-
-		if [[ ${distro} == *archlinux* ]]; then
-			container_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
-			container_exec "locale-gen"
-		fi
+	container_exec "${package_manager} bash >/dev/null 2>&1"
+	if [[ ${distro} == *alpine* ]]; then
+		container_exec "${package_manager} shadow shadow-login sudo" > /dev/null
+	elif [[ ${distro} == *openwrt* ]]; then
+		container_exec "${package_manager} shadow-useradd" > /dev/null
 	fi
 
-	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
-		# from now on, run all exec commands as user
-		export CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
+	container_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${container_user:?}"
+
+	if ! _uid=$(get_id "uid"); then
+		exit 1
+	elif ! _gid=$(get_id "gid"); then
+		exit 1
 	fi
+	_home=${HOME}
 
-	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]]; then
-		if [ "${OVE_DISTROCHECK_XPRA_SERVER_ARGS}" = "" ]; then
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS=""
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" start-desktop"
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" :100"
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --exit-with-children"
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --microphone=no"
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --opengl=no"
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --printing=no"
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --resize-display=FHD"
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --speaker=no"
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --webcam=no"
-			OVE_DISTROCHECK_XPRA_SERVER_ARGS+=" --start-child=${OVE_DISTROCHECK_XPRA_DE_CMD:?}"
-		fi
+	_echo "user: idmap"
+	run "$(container_command)${container_global_flags} config set ${container_name} security.idmap.isolated true"
+	run "$(container_command)${container_global_flags} config set ${container_name} security.idmap.base 200000000"
 
-		# let cron start Xpra on reboot
-		container_exec "echo @reboot xpra ${OVE_DISTROCHECK_XPRA_SERVER_ARGS:?} | crontab -"
-		run "$(container_command)${container_global_flags} restart ${container_name}"
-		use_ssh=0 _user=root container_exec "sh /var/tmp/${tag}-bootcheck.sh"
+	# shellcheck disable=SC2086
+	printf "uid %s ${_uid}\ngid %s ${_gid}" "$(id -u)" "$(id -g)" | \
+		"$(container_command)"${container_global_flags} config set "${container_name}" raw.idmap -
 
-		if [ "${OVE_DISTROCHECK_XPRA_CLIENT_ARGS}" != "" ]; then
-			i=0
-			while true; do
-				((i++))
-				if [ $i -ge 10 ]; then
-					echo "error: xpra server not alive" 1>&2
-					exit 1
-				elif ! xpra info --ssh="ssh" ssh:"${container_name}" &> /dev/null; then
-					sleep $((RANDOM % 3 + 1))
-					continue
-				fi
-				break
-			done
+	_echo "user: sudo"
+	echo "${container_user} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
+	container_file_push_root \
+		"${OVE_TMP}/${tag}-sudoers" \
+		"${container_name}/etc/sudoers.d/91-ove"
 
-			# shellcheck disable=SC2086
-			xpra ${OVE_DISTROCHECK_XPRA_CLIENT_ARGS:?} \
-				--ssh="ssh" ssh:"${container_name}" \
-				--title "${container_name} ${container_ip}" &
-			xpra_pid="$!"
-		fi
-	fi
-
-	if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
-		# gitconfig
-		if [ -s "${HOME}"/.gitconfig ]; then
-			cp -a "${HOME}"/.gitconfig "${OVE_TMP}/${tag}-gitconfig"
-			container_file_push_user \
-				"${OVE_TMP}/${tag}-gitconfig" \
-				"${container_name}${_home}/.gitconfig"
-		fi
-
-		# oveconfig
-		if [ -s "${HOME}"/.oveconfig ] && [ ${unittest} -eq 0 ]; then
-			cp -a "${HOME}"/.oveconfig "${OVE_TMP}/${tag}-oveconfig"
-			container_file_push_user \
-				"${OVE_TMP}/${tag}-oveconfig" \
-				"${container_name}${_home}/.oveconfig"
-		fi
-
-		# ove.bash
-		if [ -s "${HOME}"/.ove.bash ]; then
-			cp -a "${HOME}"/.ove.bash "${OVE_TMP}/${tag}-ove.bash"
-			container_file_push_user \
-				"${OVE_TMP}/${tag}-ove.bash" \
-				"${container_name}${_home}/.ove.bash"
-		fi
-
-		if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
-			# expose OVE workspace
-			run "$(container_command)${container_global_flags} config device add ${container_name} ove-base disk source=${OVE_BASE_DIR} path=${OVE_BASE_DIR}"
-			run "$(container_command)${container_global_flags} config device add ${container_name} ove-tmp disk source=${OVE_TMP} path=${OVE_TMP}"
-			run "$(container_command)${container_global_flags} config device add ${container_name} ove-state disk source=${OVE_GLOBAL_STATE_DIR} path=${OVE_GLOBAL_STATE_DIR}"
-			ws_name="${OVE_BASE_DIR}"
-			prefix="cd ${ws_name}; source ove hush"
+	if container_exec_no_exit "[ -s /etc/pam.d/su ]"; then
+		sul=$(container_exec_no_exit "grep -n '^auth.*sufficient.*pam_rootok.so' /etc/pam.d/su" | cut -d: -f1)
+		if [ "${sul}" = "" ]; then
+			_echo "warning: user: could not get auth line number from '/etc/pam.d/su'"
 		else
-			if [ -x "${OVE_OWEL_DIR}/SETUP" ]; then
-				container_file_push_user \
-					"${OVE_OWEL_DIR}/SETUP" \
-					"${container_name}${_home}/SETUP"
-				container_exec "bash ${_home}/SETUP"
-			else
-				container_exec "bash -c '$(ove-oneliner)'"
+			_echo "user: su: update '/etc/pam.d/su' to allow su without passwd"
+			sul=$((sul + 1))
+			use_ssh=0 _user=root container_exec_no_exit "sed -i '${sul}iauth  [success=ignore default=1] pam_succeed_if.so user = root' /etc/pam.d/su"
+			sul=$((sul + 1))
+			use_ssh=0 _user=root container_exec_no_exit "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${container_user}' /etc/pam.d/su"
+			_echo "user: su: add '${container_user}' to 'root' group"
+			if [[ ${distro} == *openwrt* ]]; then
+				use_ssh=0 _user=root container_exec "${package_manager} shadow-usermod" > /dev/null
 			fi
-			ws_name=$(container_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
-			ws_name=${ws_name//[$'\t\r\n']/}
-			if [ "x${ws_name}" = "x" ]; then
-				ws_name="ove-tutorial"
-				_echo "using ${ws_name} as OVE workspace (fallback)"
-				container_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/${ws_name}'"
-			fi
-			prefix="cd ${ws_name}; source ove hush"
-		fi
 
-		if [ ${unittest} -eq 1 ]; then
-			container_exec "bash ${bash_opt} -c 'cd ${ws_name}; source ove'"
-			container_exec "bash ${bash_opt} -c '${prefix}; ove-env'"
-			container_exec "bash ${bash_opt} -c '${prefix}; ove-list-externals'"
-			container_exec "bash ${bash_opt} -c '${prefix}; ove-status'"
+			use_ssh=0 _user=root container_exec_no_exit "usermod -a -G root ${container_user}"
 		fi
+	fi
 
-		package_manager_noconfirm
-		if [ ${unittest} -eq 0 ] && [[ ${distro} == *opensuse* ]]; then
-			container_exec "sudo zypper install -y -t pattern devel_basis"
+	restart_container
+}
+
+function prepare_ove {
+	local ove_packs
+
+	if [[ ${OVE_DISTROCHECK_STEPS} != *ove* ]]; then
+		return 0
+	elif [ "${packman}" = "apt-get" ]; then
+		ove_packs="bsdmainutils procps "
+	fi
+
+	ove_packs+="bash bzip2 git curl file binutils coreutils tar make"
+	if [[ ${distro} != *openwrt* ]]; then
+		ove_packs+=" util-linux"
+	else
+		ove_packs+=" coreutils-comm"
+		ove_packs+=" coreutils-difftils"
+		ove_packs+=" coreutils-du"
+		ove_packs+=" coreutils-nproc"
+		ove_packs+=" coreutils-readlink"
+		ove_packs+=" coreutils-sort"
+		ove_packs+=" coreutils-stat"
+		ove_packs+=" coreutils-stty"
+		ove_packs+=" coreutils-tac"
+		ove_packs+=" coreutils-timeout"
+		ove_packs+=" coreutils-tsort"
+		ove_packs+=" diffutils"
+		ove_packs+=" findutils"
+		ove_packs+=" less"
+		ove_packs+=" script-utils"
+		ove_packs+=" sed"
+
+		use_ssh=0 container_exec "sh -c '
+		opkg update
+		opkg install gcc grep make libtool-bin
+		wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.40/util-linux-2.40-rc1.tar.gz
+		wget https://ftp.gnu.org/pub/gnu/gettext/gettext-0.22.5.tar.gz
+		tar xvzf gettext-0.22.5.tar.gz
+		cd gettext-0.22.5
+		cd libtextstyle
+		./configure
+		make -j
+		make install
+		cd ../gettext-runtime
+		./configure
+		make -j
+		make install
+		cd ..
+		cp -a /usr/local/include/textstyle* gettext-tools/src
+		cp -a /usr/local/lib/libtextstyle.* libtextstyle/lib
+		cd gettext-tools
+		./configure
+		make -j
+		make install
+		cd ../..
+		tar xvzf util-linux-2.40-rc1.tar.gz
+		cd util-linux-2.40-rc1
+		opkg install flex bison automake
+		./configure
+		make -j
+		make install || true'"
+	fi
+
+	# refresh packages
+	update_package_manager
+
+	# install OVE packages
+	_user=root container_exec "${package_manager} ${ove_packs}"
+
+	if [[ ${distro} == *archlinux* ]]; then
+		container_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
+		container_exec "locale-gen"
+	elif [[ ${distro} == *openwrt* ]]; then
+		use_ssh=0 container_exec "sh -c '
+		rm /usr/bin/xargs
+		echo exec busybox xargs \$\@ > /usr/bin/xargs
+		chmod +x /usr/bin/xargs'"
+	fi
+}
+
+function user_exec {
+	if [[ ${OVE_DISTROCHECK_STEPS} != *user* ]]; then
+		return 0
+	elif [ ${EUID} -eq 0 ]; then
+		return 0
+	fi
+
+	# from now on, run all exec commands as user
+	export CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
+}
+
+function run_ove {
+	if [[ ${OVE_DISTROCHECK_STEPS} != *ove* ]]; then
+		return 0
+	fi
+
+	# gitconfig
+	if [ -s "${HOME}"/.gitconfig ]; then
+		cp -a "${HOME}"/.gitconfig "${OVE_TMP}/${tag}-gitconfig"
+		container_file_push_user \
+			"${OVE_TMP}/${tag}-gitconfig" \
+			"${container_name}${_home}/.gitconfig"
+	fi
+
+	# oveconfig
+	if [ -s "${HOME}"/.oveconfig ] && [ ${unittest} -eq 0 ]; then
+		cp -a "${HOME}"/.oveconfig "${OVE_TMP}/${tag}-oveconfig"
+		container_file_push_user \
+			"${OVE_TMP}/${tag}-oveconfig" \
+			"${container_name}${_home}/.oveconfig"
+	fi
+
+	# ove.bash
+	if [ -s "${HOME}"/.ove.bash ]; then
+		cp -a "${HOME}"/.ove.bash "${OVE_TMP}/${tag}-ove.bash"
+		container_file_push_user \
+			"${OVE_TMP}/${tag}-ove.bash" \
+			"${container_name}${_home}/.ove.bash"
+	fi
+
+	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
+		# expose OVE workspace
+		run "$(container_command)${container_global_flags} config device add ${container_name} ove-base disk source=${OVE_BASE_DIR} path=${OVE_BASE_DIR}"
+		run "$(container_command)${container_global_flags} config device add ${container_name} ove-tmp disk source=${OVE_TMP} path=${OVE_TMP}"
+		run "$(container_command)${container_global_flags} config device add ${container_name} ove-state disk source=${OVE_GLOBAL_STATE_DIR} path=${OVE_GLOBAL_STATE_DIR}"
+		ws_name="${OVE_BASE_DIR}"
+		prefix="cd ${ws_name}; source ove hush"
+	else
+		if [ -x "${OVE_OWEL_DIR}/SETUP" ]; then
+			container_file_push_user \
+				"${OVE_OWEL_DIR}/SETUP" \
+				"${container_name}${_home}/SETUP"
+			container_exec "bash ${_home}/SETUP"
+		else
+			container_exec "bash -c '$(ove-oneliner)'"
 		fi
+		ws_name=$(container_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
+		ws_name=${ws_name//[$'\t\r\n']/}
+		if [ "x${ws_name}" = "x" ]; then
+			ws_name="ove-tutorial"
+			_echo "using ${ws_name} as OVE workspace (fallback)"
+			container_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/${ws_name}'"
+		fi
+		prefix="cd ${ws_name}; source ove hush"
 	fi
 
 	if [ ${unittest} -eq 1 ]; then
-		export CONTAINER_EXEC_EXTRA="--user 0 --env HOME=${HOME}"
+		container_exec "bash ${bash_opt} -c 'cd ${ws_name}; source ove'"
+		container_exec "bash ${bash_opt} -c '${prefix}; ove-env'"
+		container_exec "bash ${bash_opt} -c '${prefix}; ove-list-externals'"
+		container_exec "bash ${bash_opt} -c '${prefix}; ove-status'"
+	fi
 
-		container_exec "${package_manager} python3"
-		if [[ ${distro} == *alpine* ]]; then
-			container_exec "${package_manager} py3-yaml"
-		elif [[ ${distro} == *archlinux* ]]; then
-			container_exec "${package_manager} python-yaml"
-		elif [[ ${distro} == *opensuse* ]]; then
-			container_exec "${package_manager} python3-PyYAML"
+	package_manager_noconfirm
+	if [ ${unittest} -eq 0 ] && [[ ${distro} == *opensuse* ]]; then
+		container_exec "sudo zypper install -y -t pattern devel_basis"
+	fi
+}
+
+function prepare_unittest {
+	if [ ${unittest} -eq 0 ]; then
+		return 0
+	fi
+
+	export CONTAINER_EXEC_EXTRA="--user 0 --env HOME=${HOME}"
+
+	container_exec "${package_manager} python3"
+	if [[ ${distro} == *alpine* ]]; then
+		container_exec "${package_manager} py3-yaml"
+	elif [[ ${distro} == *archlinux* ]]; then
+		container_exec "${package_manager} python-yaml"
+	elif [[ ${distro} == *opensuse* ]]; then
+		container_exec "${package_manager} python3-PyYAML"
+	else
+		container_exec "${package_manager} python3-yaml"
+	fi
+
+	# run all exec commands as user
+	export CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
+
+	# push shunit2 to container
+	container_file_push_user \
+		"$(command -v shunit2)" \
+		"${container_name}/var/tmp/shunit2"
+}
+
+function run_unittest {
+	if [ ${unittest} -eq 0 ]; then
+		return 0
+	fi
+	container_exec "bash ${bash_opt} -c '${prefix}; ove-unittest $OVE_UNITTEST_TC'"
+}
+
+function run_distcheck_ove {
+	if [ "x${distcheck}" = "x" ]; then
+		return 0
+	elif [[ ${OVE_DISTROCHECK_STEPS} != *ove* ]]; then
+		return 0
+	fi
+
+	# sanity check project
+	if ! container_exec_no_exit "bash ${bash_opt} -c '${prefix}; ove-list-projects ${distcheck} > /dev/null'"; then
+		exit 1
+	fi
+
+	packs=$(container_exec "bash ${bash_opt} -c '${prefix}; DEBIAN_FRONTEND=noninteractive ove-list-needs ${distcheck}'")
+	packs=${packs//[$'\t\r\n']/ }
+	if [ "${packs}" != "" ]; then
+		_user=root CONTAINER_EXEC_EXTRA="--user 0" container_exec "${package_manager} ${packs}"
+	fi
+
+	# worktree?
+	if [[ ${OVE_DISTROCHECK_STEPS} == *worktree* ]]; then
+		container_exec "bash ${bash_opt} -c '${prefix}; ove-add-config ${_home}/.oveconfig OVE_REVTAB_CHECK 0'"
+		if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
+			worktree_dir="${OVE_TMP}/${tag}"
 		else
-			container_exec "${package_manager} python3-yaml"
+			worktree_dir="/var/tmp/${tag}"
 		fi
 
-		# from now on, run all exec commands as user
-		export CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
-		container_file_push_user \
-			"$(command -v shunit2)" \
-			"${container_name}/var/tmp/shunit2"
-
-		container_exec "bash ${bash_opt} -c '${prefix}; ove-unittest $OVE_UNITTEST_TC'"
+		container_exec "bash ${bash_opt} -c '${prefix}; ove-worktree add ${worktree_dir}'"
+		# configurable?
+		container_exec "bash ${bash_opt} -c '${prefix}; ove-replicate localhost ${worktree_dir}'"
+		prev_prefix="${prefix}"
+		prefix="cd ${worktree_dir}; source ove hush"
 	fi
 
-	if [ "x${distcheck}" != "x" ]; then
-		if [[ ${OVE_DISTROCHECK_STEPS} == *ove* ]]; then
-			# sanity check project
-			if ! container_exec_no_exit "bash ${bash_opt} -c '${prefix}; ove-list-projects ${distcheck} > /dev/null'"; then
-				exit 1
-			fi
+	container_exec "bash ${bash_opt} -c '${prefix}; OVE_AUTO_CLONE=1 ove distcheck ${distcheck}'"
 
-			packs=$(container_exec "bash ${bash_opt} -c '${prefix}; DEBIAN_FRONTEND=noninteractive ove-list-needs ${distcheck}'")
-			packs=${packs//[$'\t\r\n']/ }
-			if [ "${packs}" != "" ]; then
-				_user=root CONTAINER_EXEC_EXTRA="--user 0" container_exec "${package_manager} ${packs}"
-			fi
-
-			# worktree?
-			if [[ ${OVE_DISTROCHECK_STEPS} == *worktree* ]]; then
-				container_exec "bash ${bash_opt} -c '${prefix}; ove-add-config ${_home}/.oveconfig OVE_REVTAB_CHECK 0'"
-				if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
-					worktree_dir="${OVE_TMP}/${tag}"
-				else
-					worktree_dir="/var/tmp/${tag}"
-				fi
-
-				container_exec "bash ${bash_opt} -c '${prefix}; ove-worktree add ${worktree_dir}'"
-				# configurable?
-				container_exec "bash ${bash_opt} -c '${prefix}; ove-replicate localhost ${worktree_dir}'"
-				prev_prefix="${prefix}"
-				prefix="cd ${worktree_dir}; source ove hush"
-			fi
-
-			container_exec "bash ${bash_opt} -c '${prefix}; OVE_AUTO_CLONE=1 ove distcheck ${distcheck}'"
-
-			# remove the worktree if ephemeral
-			if [[ ${OVE_DISTROCHECK_STEPS} == *worktree* ]]; then
-				if [ ${ephemeral} -eq 0 ]; then
-					_echo "the worktree '${worktree_dir}' is kept intact"
-				else
-					container_exec "bash ${bash_opt} -c '${prev_prefix}; ove-worktree remove ${worktree_dir}'"
-				fi
-			fi
+	# remove the worktree if ephemeral
+	if [[ ${OVE_DISTROCHECK_STEPS} == *worktree* ]]; then
+		if [ ${ephemeral} -eq 0 ]; then
+			_echo "the worktree '${worktree_dir}' is kept intact"
 		else
-			if [ -s "${distcheck}" ]; then
-				cp -a "${distcheck}" "${OVE_TMP}/${tag}.cmd"
-			else
-				echo "${distcheck}" > "${OVE_TMP}/${tag}.cmd"
-			fi
-			chmod +x "${OVE_TMP}/${tag}.cmd"
-			container_file_push_root \
-				"${OVE_TMP}/${tag}.cmd" \
-				"${container_name}/var/tmp/${tag}.cmd"
-			container_exec "/var/tmp/${tag}.cmd"
+			container_exec "bash ${bash_opt} -c '${prev_prefix}; ove-worktree remove ${worktree_dir}'"
 		fi
 	fi
+}
 
-	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]] && kill -0 ${xpra_pid} 2> /dev/null; then
-		wait ${xpra_pid}
+function run_distcheck_cmd {
+	if [ "x${distcheck}" = "x" ]; then
+		return 0
+	elif [[ ${OVE_DISTROCHECK_STEPS} = *ove* ]]; then
+		return 0
+	elif [ -s "${distcheck}" ]; then
+		cp -a "${distcheck}" "${OVE_TMP}/${tag}.cmd"
+	else
+		echo "${distcheck}" > "${OVE_TMP}/${tag}.cmd"
 	fi
+
+	chmod +x "${OVE_TMP}/${tag}.cmd"
+
+	container_file_push_root \
+		"${OVE_TMP}/${tag}.cmd" \
+		"${container_name}/var/tmp/${tag}.cmd"
+	container_exec "/var/tmp/${tag}.cmd"
+}
+
+function main {
+	init "$@"
+	prepare
+	launch_container
+	prepare_bootcheck
+	run_bootcheck
+	prepare_package_manager
+	wait_for_ip
+	update_package_manager
+	setup_sshd
+	prepare_X
+	run_services
+	prepare_ssh_config
+	prepare_ssh "root"
+	expose_user
+	prepare_ssh "${container_user}"
+	prepare_ove
+	user_exec
+	run_X
+	run_ove
+	prepare_unittest
+	run_unittest
+	run_distcheck_ove
+	run_distcheck_cmd
+	wait_X
 }
 
 main "$@"
