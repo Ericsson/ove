@@ -5375,19 +5375,19 @@ function ove_echo_pad {
 	res="$o"
 }
 
-function ove_echo {
-	local a
-	local b
+function ove_time_helper {
 	local decimal_point
-	local diff
-	local diff_f
 	local diff_s
+	local f
 	local now
-	local now_f
-	local now_s
-	local pad
+	local s
 
 	diff="00:00:00"
+
+	if [ "${1}" != "" ]; then
+		s=$1
+		f=$2
+	fi
 
 	if [ "${EPOCHREALTIME}" != "" ]; then
 		decimal_point=${EPOCHREALTIME//[0-9]}
@@ -5407,31 +5407,69 @@ function ove_echo {
 	# remove leading zeros
 	now_f=$((10#${now_f}))
 
-	if [ "${OVE_PREV_S}" != "" ]; then
-		diff_f="$((now_f - OVE_PREV_F))"
-		diff_s=$((now_s - OVE_PREV_S))
-		if [ "${diff_f}" -lt 0 ]; then
-			(( diff_s-=1 )) || true
-			diff_f="$((10**pad + diff_f))"
-		fi
-
-		if [ $diff_s -lt 10 ]; then
-			diff="00:00:0$diff_s"
-		elif [ $diff_s -lt 60 ]; then
-			diff="00:00:$diff_s"
-		else
-			# shellcheck disable=SC2016
-			diff="$(${ove_cmd2pathname["awk"]:?} '{printf "%02d:%02d:%02d\n", int($1/3600),int(($1%3600)/60),int($1%60)}' <<<"${diff_s}")"
-		fi
+	if [ "${s}" = "" ]; then
+		# no prev values stored
+		return 0
 	fi
+
+	diff_f="$((now_f - f))"
+	diff_s=$((now_s - s))
+	if [ "${diff_f}" -lt 0 ]; then
+		(( diff_s-=1 )) || true
+		diff_f="$((10**pad + diff_f))"
+	fi
+
+	if [ $diff_s -lt 10 ]; then
+		diff="00:00:0$diff_s"
+	elif [ $diff_s -lt 60 ]; then
+		diff="00:00:$diff_s"
+	else
+		# shellcheck disable=SC2016
+		diff="$(${ove_cmd2pathname["awk"]:?} '{printf "%02d:%02d:%02d\n", int($1/3600),int(($1%3600)/60),int($1%60)}' <<<"${diff_s}")"
+	fi
+}
+
+function ove_echo {
+	local a
+	local b
+	local diff
+	local diff_f
+	local now_f
+	local now_s
+	local pad
+
+	ove_time_helper "${OVE_PREV_S}" "${OVE_PREV_F}"
 
 	ove_echo_pad "${now_f}" "${pad}" a
 	ove_echo_pad "${diff_f}" "${pad}" b
 
-	printf "%(%Y-%m-%d %H:%M:%S)T.%s (+%s:%s):%s\n" "$now_s" "${a}" "${diff}" "${b}" "$(echo -e "$*")"
+	printf "%(%Y-%m-%d %H:%M:%S)T.%s (+%s:%s):%s\n" \
+		"$now_s" \
+		"${a}" \
+		"${diff}" \
+		"${b}" \
+		"$(echo -e "$*")"
 
 	OVE_PREV_S=${now_s}
 	OVE_PREV_F=${now_f}
+}
+
+function ove_time {
+	local b
+	local diff
+	local diff_f
+	local now_f
+	local now_s
+	local pad
+
+	ove_time_helper "${OVE_TIME_S}" "${OVE_TIME_F}"
+
+	ove_echo_pad "${diff_f}" "${pad}" b
+
+	OVE_TIME_S=${now_s}
+	OVE_TIME_F=${now_f}
+
+	echo "$diff:$b"
 }
 
 # echo:[green|cyan|yellow|red|error] txt:prefix echo with date and time diff:CORE
@@ -5627,16 +5665,18 @@ function ove_systest_print_summary {
 
 	for t in ${!systest2exit[*]}; do
 		if [ ${systest2exit[$t]} -eq -3 ]; then
-			printf "ove-systest:[%03d/%03d ${OVE_COLOR_RED}ABT${OVE_COLOR_BLANK}]:${systest2name[$t]}\n" ${t} ${nbr_of_systests}
+			printf "ove-systest:%03d:%03d:${OVE_COLOR_RED}AB${OVE_COLOR_BLANK}:${systest2duration[$t]}:${systest2name[$t]}:ABORT\n" ${t} ${nbr_of_systests}
 		elif [ ${systest2exit[$t]} -eq -2 ]; then
-			printf "ove-systest:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ENV]:${systest2name[$t]}\n" ${t} ${nbr_of_systests}
+			printf "ove-systest:%03d:%03d:${OVE_COLOR_YELLOW}KO${OVE_COLOR_BLANK}:${systest2duration[$t]}:${systest2name[$t]}:ENV\n" ${t} ${nbr_of_systests}
 		elif [ ${systest2exit[$t]} -eq -1 ]; then
-			printf "ove-systest:[%03d/%03d ${OVE_COLOR_BLUE}BG${OVE_COLOR_BLANK}]:${systest2name[$t]}\n" ${t} ${nbr_of_systests}
+			s=${systest2duration[$t]%%:*}
+			f=${systest2duration[$t]##*:}
+			printf "ove-systest:%03d:%03d:${OVE_COLOR_BLUE}BG${OVE_COLOR_BLANK}:$(OVE_TIME_S=$s OVE_TIME_F=$f ove_time):${systest2name[$t]}:?\n" ${t} ${nbr_of_systests}
 		elif [ ${systest2exit[$t]} -eq 0 ]; then
-			printf "ove-systest:[%03d/%03d ${OVE_COLOR_GREEN}OK${OVE_COLOR_BLANK}]:${systest2name[$t]}\n" ${t} ${nbr_of_systests}
+			printf "ove-systest:%03d:%03d:${OVE_COLOR_GREEN}OK${OVE_COLOR_BLANK}:${systest2duration[$t]}:${systest2name[$t]}:0\n" ${t} ${nbr_of_systests}
 		else
 			str=$(ove_systest_get_exit_status ${systest2exit[$t]})
-			printf "ove-systest:[%03d/%03d ${OVE_COLOR_YELLOW}NOK${OVE_COLOR_BLANK} ${str}]:${systest2name[$t]}\n" ${t} ${nbr_of_systests}
+			printf "ove-systest:%03d:%03d:${OVE_COLOR_YELLOW}KO${OVE_COLOR_BLANK}:${systest2duration[$t]}:${systest2name[$t]}:${str}\n" ${t} ${nbr_of_systests}
 		fi
 	done | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -n
 	echo
@@ -5745,7 +5785,7 @@ function ove-systest {
 		i=0
 		for systest_name in ${systest_list}; do
 			(( i=i+1 ))
-			printf "${FUNCNAME[0]}:[%03d/%03d   ]:${systest_name}\n" ${i} ${nbr_of_systests}
+			printf "${FUNCNAME[0]}:%03d:%03d:${systest_name}\n" ${i} ${nbr_of_systests}
 		done
 		echo
 	fi
@@ -5758,6 +5798,7 @@ function ove-systest {
 	declare -a systest2name=()
 	declare -a systest2abort=()
 	declare -A systest2exit=()
+	declare -A systest2duration=()
 	for systest_name in ${systest_list}; do
 		(( i=i+1 ))
 
@@ -5829,9 +5870,9 @@ function ove-systest {
 		fi
 
 		if [ "${OVE_SYSTEST_HEADER}" = "short" ]; then
-			printf "${FUNCNAME[0]}:[%03d/%03d   ]:${systest_name}\n" ${i} ${nbr_of_systests}
+			printf "${FUNCNAME[0]}:%03d:%03d:${systest_name}\n" ${i} ${nbr_of_systests}
 		elif [ "${OVE_SYSTEST_HEADER}" = "detailed" ]; then
-			printf "%s:[%03d/%03d   ]:name: %s timeout: %s type: %s path: %s cmd: %s\n" \
+			printf "%s:%03d:%03d:name: %s timeout: %s type: %s path: %s cmd: %s\n" \
 				"${FUNCNAME[0]}" \
 				"${i}" \
 				"${nbr_of_systests}" \
@@ -5859,6 +5900,7 @@ function ove-systest {
 		if [ "${OVE_DRY_RUN}" -eq 1 ]; then
 			# dry run
 			systest2exit[$i]=0
+			systest2duration[$i]="00:00:00"
 		else
 			if [ ${systest_timeout} -eq 0 ]; then
 				timeout_cmd=""
@@ -5866,17 +5908,21 @@ function ove-systest {
 				timeout_cmd="timeout --foreground --kill-after 30s ${systest_timeout}"
 			fi
 
+			ove_time > /dev/null
 			# run the systest as a background job
 			if [ ${systest_bg} -eq 1 ]; then
 				${timeout_cmd} ${ove_cmd2pathname["bash"]:?} -c "{ ${systest_cmd}; }" &
 				pids_db[${i}]=${!}
 				systest2exit[$i]=-1
+				systest2duration[$i]="${OVE_TIME_S}:${OVE_TIME_F}"
 			# run in fg
 			elif ${timeout_cmd} ${ove_cmd2pathname["bash"]:?} -c "{ ${systest_cmd}; }"; then
 				# test passed
 				systest2exit[$i]=0
+				systest2duration[$i]="$(ove_time)"
 			else
 				systest2exit[$i]=${?}
+				systest2duration[$i]="$(ove_time)"
 				# type 1 systest or SIGINT => stop loop
 				if [ ${systest_type} -eq 1 ] || [ ${systest2exit[$i]} -eq 130 ]; then
 					if ! popd &> /dev/null; then
@@ -5910,6 +5956,9 @@ function ove-systest {
 				# get and remember the exit status
 				wait ${pids_db[$t]}
 				systest2exit[$t]=${?}
+				s=${systest2duration[$t]%%:*}
+				f=${systest2duration[$t]##*:}
+				systest2duration[$t]="$(OVE_TIME_S=$s OVE_TIME_F=$f ove_time)"
 
 				# abort on errors?
 				if [ ${systest2exit[$t]} -ne 0 ] && [ ${systest2abort[$t]} -eq 1 ]; then
@@ -5920,6 +5969,9 @@ function ove-systest {
 						# mark BG jobs as ABT
 						if [ ${systest2exit[$u]} -eq -1 ]; then
 							systest2exit[$u]=-3
+							s=${systest2duration[$u]%%:*}
+							f=${systest2duration[$u]##*:}
+							systest2duration[$u]="$(OVE_TIME_S=$s OVE_TIME_F=$f ove_time)"
 						fi
 					done
 					break 2
