@@ -239,6 +239,19 @@ function container_exec {
 	run "$(container_command)${container_global_flags} exec${container_exec_options} ${container_name} -- $*"
 }
 
+function container_exec_as_root {
+	CONTAINER_EXEC_EXTRA="--user 0 --group 0" \
+		use_ssh=0 \
+		_user=root \
+		container_exec "$@"
+}
+
+function container_exec_as_user {
+	CONTAINER_EXEC_EXTRA="--user ${_uid:?} --group ${_gid:?} --env HOME=${HOME:?}" \
+		use_ssh=0 \
+		container_exec "$@"
+}
+
 function container_exec_no_exit {
 	local e
 	local container_exec_options
@@ -269,6 +282,13 @@ function container_exec_no_exit {
 	if ! run_no_exit "$(container_command)${container_global_flags} exec${container_exec_options} ${container_name} -- $*"; then
 		return 1
 	fi
+}
+
+function container_exec_no_exit_as_root {
+	CONTAINER_EXEC_EXTRA="--user 0 --group 0" \
+		use_ssh=0 \
+		_user=root \
+		container_exec_no_exit "$@"
 }
 
 function package_manager_noconfirm {
@@ -593,23 +613,18 @@ EOF
 			"${container_name}/root/${tag}-passwd-${_user}"
 
 		# shellcheck disable=SC2097,SC2098
-		use_ssh=0 _user=root container_exec "sh /root/${tag}-passwd-${_user}"
+		container_exec_as_root "sh /root/${tag}-passwd-${_user}"
 	else
 		if [[ ${distro} == *openwrt* ]]; then
-			use_ssh=0 _user=root container_exec "${package_manager} shadow-usermod shadow-useradd" > /dev/null
+			container_exec_as_root "${package_manager} shadow-usermod shadow-useradd" > /dev/null
 		fi
 
 		# shellcheck disable=SC2097,SC2098
-		use_ssh=0 _user=root container_exec "usermod -p '$(openssl passwd -1 "${pass}")' ${_user}"
+		container_exec_as_root "usermod -p '$(openssl passwd -1 "${pass}")' ${_user}"
 	fi
 
-	CONTAINER_EXEC_EXTRA="--user ${_uid} --group ${_gid} --env HOME=${_home}" \
-		use_ssh=0 \
-		container_exec "mkdir -p .ssh"
-
-	CONTAINER_EXEC_EXTRA="--user ${_uid} --group ${_gid} --env HOME=${_home}" \
-		use_ssh=0 \
-		container_exec "chmod 700 .ssh"
+	container_exec_as_user "mkdir -p .ssh"
+	container_exec_as_user "chmod 700 .ssh"
 
 	_echo "copy public key to container for user: ${_user}"
 	i=0
@@ -806,7 +821,7 @@ EOF
 }
 
 function run_bootcheck {
-	container_exec_no_exit "sh /root/${tag}-bootcheck.sh"
+	container_exec_no_exit_as_root "sh /root/${tag}-bootcheck.sh"
 }
 
 function prepare_package_manager {
@@ -929,13 +944,21 @@ function setup_sshd {
 function update_package_manager {
 	local i
 
+	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ssh* ) || \
+		( ${OVE_DISTROCHECK_STEPS} == *ove* ) ]]; then
+		true "${package_manager:?}"
+	else
+		return 0
+	fi
+
 	i=0
 	while true; do
 		((i++))
 		if [ $i -ge 100 ]; then
 			echo "error: update packages failed for ${container_name}" 1>&2
 			exit 1
-		elif ! use_ssh=0 _user=root container_exec_no_exit "${package_manager%% *} update" > /dev/null; then
+		elif ! container_exec_no_exit_as_root "${package_manager%% *} update"; then
 			sleep $((RANDOM % 5))
 			continue
 		fi
@@ -1021,7 +1044,7 @@ function run_services {
 	container_file_push_root \
 		"${OVE_TMP}/${tag}-services.sh" \
 		"${container_name}/root/${tag}-services.sh"
-	container_exec_no_exit "sh /root/${tag}-services.sh"
+	container_exec_no_exit_as_root "sh /root/${tag}-services.sh"
 }
 
 function prepare_ssh {
@@ -1040,7 +1063,7 @@ function prepare_ssh {
 
 function restart_container {
 	run "$(container_command)${container_global_flags} restart ${container_name}"
-	use_ssh=0 _user=root run_bootcheck
+	run_bootcheck
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *ssh* ]]; then
 		cat > "${OVE_TMP}/${tag}-wait-for-sshd.sh" <<EOF
@@ -1068,7 +1091,7 @@ EOF
 		container_file_push_root \
 			"${OVE_TMP}/${tag}-wait-for-sshd.sh" \
 			"${container_name}/root/${tag}-wait-for-sshd.sh"
-		use_ssh=0 container_exec "sh /root/${tag}-wait-for-sshd.sh"
+		container_exec_as_root "sh /root/${tag}-wait-for-sshd.sh"
 	fi
 }
 
@@ -1118,15 +1141,15 @@ function expose_user {
 		else
 			_echo "user: su: update '/etc/pam.d/su' to allow su without passwd"
 			sul=$((sul + 1))
-			use_ssh=0 _user=root container_exec_no_exit "sed -i '${sul}iauth  [success=ignore default=1] pam_succeed_if.so user = root' /etc/pam.d/su"
+			container_exec_no_exit_as_root "sed -i '${sul}iauth  [success=ignore default=1] pam_succeed_if.so user = root' /etc/pam.d/su"
 			sul=$((sul + 1))
-			use_ssh=0 _user=root container_exec_no_exit "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${container_user}' /etc/pam.d/su"
+			container_exec_no_exit_as_root "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${container_user}' /etc/pam.d/su"
 			_echo "user: su: add '${container_user}' to 'root' group"
 			if [[ ${distro} == *openwrt* ]]; then
-				use_ssh=0 _user=root container_exec "${package_manager} shadow-usermod" > /dev/null
+				container_exec_no_exit_as_root "${package_manager} shadow-usermod" > /dev/null
 			fi
 
-			use_ssh=0 _user=root container_exec_no_exit "usermod -a -G root ${container_user}"
+			container_exec_no_exit_as_root "usermod -a -G root ${container_user}"
 		fi
 	fi
 
@@ -1163,7 +1186,7 @@ function prepare_ove {
 		ove_packs+=" script-utils"
 		ove_packs+=" sed"
 
-		use_ssh=0 container_exec "sh -c '
+		container_exec_as_root "sh -c '
 		opkg update
 		opkg install gcc grep make libtool-bin
 		wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.40/util-linux-2.40-rc1.tar.gz
@@ -1198,13 +1221,13 @@ function prepare_ove {
 	update_package_manager
 
 	# install OVE packages
-	_user=root container_exec "${package_manager} ${ove_packs}"
+	container_exec_as_root "${package_manager} ${ove_packs}"
 
 	if [[ ${distro} == *archlinux* ]]; then
 		container_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
 		container_exec "locale-gen"
 	elif [[ ${distro} == *openwrt* ]]; then
-		use_ssh=0 container_exec "sh -c '
+		container_exec_as_root "sh -c '
 		rm /usr/bin/xargs
 		echo exec busybox xargs \$\@ > /usr/bin/xargs
 		chmod +x /usr/bin/xargs'"
@@ -1219,7 +1242,7 @@ function user_exec {
 	fi
 
 	# from now on, run all exec commands as user
-	export CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
+	export CONTAINER_EXEC_EXTRA="--user ${_uid} --group ${_gid} --env HOME=${HOME}"
 }
 
 function run_ove {
@@ -1295,21 +1318,16 @@ function prepare_unittest {
 		return 0
 	fi
 
-	export CONTAINER_EXEC_EXTRA="--user 0 --env HOME=${HOME}"
-
-	container_exec "${package_manager} python3"
+	container_exec_as_root "${package_manager} python3"
 	if [[ ${distro} == *alpine* ]]; then
-		container_exec "${package_manager} py3-yaml"
+		container_exec_as_root "${package_manager} py3-yaml"
 	elif [[ ${distro} == *archlinux* ]]; then
-		container_exec "${package_manager} python-yaml"
+		container_exec_as_root "${package_manager} python-yaml"
 	elif [[ ${distro} == *opensuse* ]]; then
-		container_exec "${package_manager} python3-PyYAML"
+		container_exec_as_root "${package_manager} python3-PyYAML"
 	else
-		container_exec "${package_manager} python3-yaml"
+		container_exec_as_root "${package_manager} python3-yaml"
 	fi
-
-	# run all exec commands as user
-	export CONTAINER_EXEC_EXTRA="--user ${_uid} --env HOME=${HOME}"
 
 	# push shunit2 to container
 	container_file_push_user \
@@ -1321,7 +1339,8 @@ function run_unittest {
 	if [ ${unittest} -eq 0 ]; then
 		return 0
 	fi
-	container_exec "bash ${bash_opt} -c '${prefix}; ove-unittest $OVE_UNITTEST_TC'"
+
+	container_exec_as_user "bash ${bash_opt} -c '${prefix}; ove-unittest $OVE_UNITTEST_TC'"
 }
 
 function run_distcheck_ove {
@@ -1339,7 +1358,7 @@ function run_distcheck_ove {
 	packs=$(container_exec "bash ${bash_opt} -c '${prefix}; DEBIAN_FRONTEND=noninteractive ove-list-needs ${distcheck}'")
 	packs=${packs//[$'\t\r\n']/ }
 	if [ "${packs}" != "" ]; then
-		_user=root CONTAINER_EXEC_EXTRA="--user 0" container_exec "${package_manager} ${packs}"
+		container_exec_as_root "${package_manager} ${packs}"
 	fi
 
 	# worktree?
