@@ -730,6 +730,24 @@ function container_file_push_user {
 	container_file_push_helper "$@"
 }
 
+
+function mkdir_var_tmp {
+	local i
+
+	i=0
+	while true; do
+		((i++))
+		if [ $i -ge 100 ]; then
+			echo "error: could not create /var/tmp for ${container_name}" 1>&2
+			exit 1
+		elif ! container_exec_no_exit "mkdir -p -v /var/tmp"; then
+			sleep 0.1
+			continue
+		fi
+		break
+	done
+}
+
 function launch_container {
 	_echo "$(container_command)${container_global_flags} launch images:${distro} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ }"
 
@@ -739,9 +757,9 @@ function launch_container {
 	fi
 	trap cleanup EXIT
 
+
 	if ! container_exec_no_exit "test -d /var/tmp"; then
-		# create /var/tmp
-		container_exec "mkdir -p -v /var/tmp"
+		mkdir_var_tmp
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]] && is_cluster; then
