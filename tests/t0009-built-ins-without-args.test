@@ -19,7 +19,7 @@ function test_built_ins_without_args() {
 
 	for a in ${OVE_BUILT_INS_WITHOUT_ARGS}; do
 		if [[ $ignore == *$a* ]]; then
-		       continue
+			continue
 		fi
 		ove "$a"
 		assertEquals "ove $a FAILED" "0" "$?"

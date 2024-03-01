@@ -7495,6 +7495,25 @@ function ove_revtab_validate {
 	done <"${OVE_OWEL_DIR}/revtab"
 }
 
+# $1: file
+function ove_validate_tabs_and_space {
+	local f
+
+	f="$1"
+
+	if ${ove_cmd2pathname["grep"]:?} -q -P '^\t+ ' ${f}; then
+		ove_echo_error_noprefix "tab followed by space:"
+		${ove_cmd2pathname["grep"]:?} -H -n -P '^\t+ ' ${f} | \
+			${ove_cmd2pathname["sed"]:?} -n 'l'
+		return 1
+	elif ${ove_cmd2pathname["grep"]:?} -q -P '^ +\t+' ${f}; then
+		ove_echo_error_noprefix "space followed by tab:"
+		${ove_cmd2pathname["grep"]:?} -H -n -P '^ +\t+' ${f} | \
+			${ove_cmd2pathname["sed"]:?} -n 'l'
+		return 1
+	fi
+}
+
 function ove_validate_self {
 	local funcs
 
@@ -7520,17 +7539,7 @@ function ove_validate_self {
 		return 1
 	fi
 
-	if ${ove_cmd2pathname["grep"]:?} -q -P '^\t+ ' ${OVE_SELF}; then
-		ove_echo_error_noprefix "tab followed by space:"
-		${ove_cmd2pathname["grep"]:?} -n -P '^\t+ ' ${OVE_SELF} | \
-			${ove_cmd2pathname["sed"]:?} -n 'l'
-		return 1
-	elif ${ove_cmd2pathname["grep"]:?} -q -P '^ +\t+' ${OVE_SELF}; then
-		ove_echo_error_noprefix "space followed by tab:"
-		${ove_cmd2pathname["grep"]:?} -n -P '^ +\t+' ${OVE_SELF} | \
-			${ove_cmd2pathname["sed"]:?} -n 'l'
-		return 1
-	fi
+	ove_validate_tabs_and_space "${OVE_SELF}"
 }
 
 function ove_validate_projs {
@@ -15730,9 +15739,11 @@ function ove-shell-check {
 	fi
 
 	cd "${OVE_DIR:?}" || return 1
-	# first, run shellcheck on some random scripts
 	while read -r f; do
+		# run shellcheck
 		(cd "${OVE_DIR}" && ${ove_cmd2pathname["shellcheck"]:?} "${f}")
+		# tabs and spaces
+		ove_validate_tabs_and_space "${f}"
 	done < <(${ove_cmd2pathname["git"]:?} -C ${OVE_DIR} ls-files -- ":(exclude)${OVE_BASENAME}" | ${ove_cmd2pathname["xargs"]:?} file | ${ove_cmd2pathname["grep"]:?} 'shell script' | ${ove_cmd2pathname["cut"]:?} -d: -f1)
 
 	# then, run shellcheck on self

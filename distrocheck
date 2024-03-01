@@ -127,7 +127,7 @@ function init {
 			exit 1
 		fi
 		ssh_opts=""
-	        ssh_opts+=" -o GlobalKnownHostsFile=/dev/null"
+		ssh_opts+=" -o GlobalKnownHostsFile=/dev/null"
 		ssh_opts+=" -o StrictHostKeyChecking=no"
 		ssh_opts+=" -o UserKnownHostsFile=/dev/null"
 		ssh_copy_id_opts="${ssh_opts}"
@@ -198,12 +198,12 @@ function ssh_exec {
        _echo "ssh -F /dev/null -t -q ${ssh_opts:?} ${_user:?}@${container_ip:?} $*"
        # shellcheck disable=SC2086
        if ! ssh \
-	       -F /dev/null \
-	       -t \
-	       -q \
-	       ${ssh_opts} \
-	       ${_user}@${container_ip} "$@"; then
-               return 1
+		-F /dev/null \
+		-t \
+		-q \
+		${ssh_opts} \
+		${_user}@${container_ip} "$@"; then
+		return 1
        fi
 
        return 0
