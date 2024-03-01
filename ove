@@ -56,7 +56,7 @@ function ove_version_check_early {
 	fi
 
 	if [ ${ret} -ne 0 ]; then
-		echo "error: bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} is too old. I need bash>=4.3"
+		echo "error: bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} is too old. I need bash>=4.3" 1>&2
 	fi
 
 	return ${ret}
@@ -177,8 +177,8 @@ function ove_read_config {
 
 		# duplicates within one config file
 		if [ -v c[${var}] ]; then
-			ove_echo_yellow_noprefix "warning: found config '$var' duplicate in '$1'"
-			echo "$var=${p_arr[*]:1} (ignored)"
+			ove_echo_warning_noprefix "found config '$var' duplicate in '$1'"
+			echo "$var=${p_arr[*]:1} (ignored)" 1>&2
 			continue
 		fi
 		c[$var]=1
@@ -193,7 +193,7 @@ function ove_read_config {
 		# escape all "
 		val=${val//\"/\\\"}
 		if ! eval ${var}=\"${val}\" 2> /dev/null; then
-			echo "warning: config '${var}' could not be set:" 1>&2
+			ove_echo_warning_noprefix "config '${var}' could not be set:" 1>&2
 			${ove_cmd2pathname["grep"]:?} -w ^${var} -H -n ${1} 1>&2
 			continue
 		fi
@@ -1745,7 +1745,7 @@ function ove-run {
 
 	if ! ove_validate_int_float "${_timeout}"; then
 		ove_command_usage
-		echo "error: format issues '${_timeout}'"
+		echo "error: format issues '${_timeout}'" 1>&2
 		return 1
 	fi
 
@@ -1768,7 +1768,7 @@ function ove-run {
 		tmux_opt="-h"
 		target_window=
 		if ! [[ "${OVE_TMUX_PANE_PER_WINDOW}" =~ ^[0-9]+$ ]]; then
-			ove_echo_warning "invalid value for OVE_TMUX_PANE_PER_WINDOW: $OVE_TMUX_PANE_PER_WINDOW"
+			ove_echo_warning_noprefix "invalid value for OVE_TMUX_PANE_PER_WINDOW: $OVE_TMUX_PANE_PER_WINDOW"
 		elif [ ${OVE_TMUX_PANE_PER_WINDOW} -gt 0 ]; then
 			num_panes=$(${ove_cmd2pathname["tmux"]:?} list-panes | ${ove_cmd2pathname["wc"]:?} -l)
 			if [ $num_panes -ge ${OVE_TMUX_PANE_PER_WINDOW} ]; then
@@ -1957,12 +1957,12 @@ function ove-loop {
 
 	if ! ove_validate_int_float "${_timeout}"; then
 		ove_command_usage
-		echo "error: format issues '${_timeout}'"
+		echo "error: format issues '${_timeout}'" 1>&2
 		return 1
 	fi
 
 	if ! [[ "${use_inotify}" =~ ^[0-1]$ ]]; then
-		echo "error: inotify: 0 or 1"
+		echo "error: inotify: 0 or 1" 1>&2
 		ove_command_usage
 		return 1
 	fi
@@ -1972,7 +1972,7 @@ function ove-loop {
 	fi
 
 	if ! [[ "${max_count}" =~ ^[0-9]+$ ]]; then
-		echo "error: max count: just numbers"
+		echo "error: max count: just numbers" 1>&2
 		ove_command_usage
 		return 1
 	fi
@@ -1981,7 +1981,7 @@ function ove-loop {
 	cmd=${cmd#ove-}
 	_cmd=$(${ove_cmd2pathname["cut"]:?} -d' ' -f1 <<<"${cmd}")
 	if [ "$(type -t ove-"${_cmd}")" != "function" ]; then
-		ove_echo_red_noprefix "error: '${_cmd}' unknown command"
+		ove_echo_error_noprefix "'${_cmd}' unknown command"
 		return 1
 	fi
 
@@ -2258,7 +2258,7 @@ function ove_rec_start {
 	${ove_cmd2pathname["sleep"]:?} 1
 	if ! kill -0 "${rec_pid}" 2> /dev/null; then
 		set -m
-		ove_echo_red_noprefix "error: recordmydesktop: $(${ove_cmd2pathname["cat"]:?} ${OVE_TMP}/rec.err)"
+		ove_echo_error_noprefix "recordmydesktop: $(${ove_cmd2pathname["cat"]:?} ${OVE_TMP}/rec.err)"
 		return 1
 	fi
 
@@ -2293,7 +2293,7 @@ function ove_rec_stop {
 
 	# sanity check
 	if [ ! -s "$o" ]; then
-		ove_echo_red_noprefix "error: recordmydesktop: $(${ove_cmd2pathname["cat"]:?} ${OVE_TMP}/rec.err)"
+		ove_echo_error_noprefix "recordmydesktop: $(${ove_cmd2pathname["cat"]:?} ${OVE_TMP}/rec.err)"
 		return
 	fi
 
@@ -2364,7 +2364,7 @@ function ove {
 	elif [ "$(type -t ove-"${cmd}")" != "function" ]; then
 		re=\\b${cmd}
 		if ! [[ "${OVE_ALL_COMMANDS}" =~ ${re} ]]; then
-			ove_echo_red_noprefix "error: '${cmd}' unknown command"
+			ove_echo_error_noprefix "'${cmd}' unknown command"
 			return 1
 		fi
 
@@ -2379,7 +2379,7 @@ function ove {
 			return $?
 		fi
 
-		ove_echo_red_noprefix "error: '${cmd}' unknown command"
+		ove_echo_error_noprefix "'${cmd}' unknown command"
 		if [ "${candidates}" != "" ]; then
 			echo
 			echo "Did you mean?"
@@ -2481,7 +2481,7 @@ function ove {
 				fi
 
 				if [ $ret -ne 0 ]; then
-					ove_echo_red_noprefix "error: pre hook '$h' failed with exit code $ret"
+					ove_echo_error_noprefix "pre hook '$h' failed with exit code $ret"
 					return $ret
 				fi
 			fi
@@ -2581,7 +2581,7 @@ function ove {
 				fi
 
 				if [ $ret -ne 0 ]; then
-					ove_echo_red_noprefix "error: post hook '$h' failed with exit code $ret"
+					ove_echo_error_noprefix "post hook '$h' failed with exit code $ret"
 					return $ret
 				fi
 			fi
@@ -4056,7 +4056,7 @@ function ove-revtab-sync {
 	else
 		repos=$(ove_validate_repo_list "$@")
 		if [ "${repos}" = "" ]; then
-			echo "error: invalid repo name: '${*}'"
+			echo "error: invalid repo name: '${*}'" 1>&2
 			return 1
 		fi
 	fi
@@ -4815,7 +4815,7 @@ function ove-make {
 
 		for dep in ${ove_projects_deps[${i}]}; do
 			if ! [[ -v ove_projects_name2index[${dep}] ]]; then
-				ove_echo_yellow_noprefix "warning: project '${dep}' not found, skipping"
+				ove_echo_warning_noprefix "project '${dep}' not found, skipping"
 				continue
 			fi
 
@@ -5715,7 +5715,7 @@ function ove-systest {
 	fi
 
 	if [ "${systest_list}" = "" ]; then
-		echo "error: no tests found"
+		echo "error: no tests found" 1>&2
 		return 1
 	fi
 
@@ -5752,7 +5752,7 @@ function ove-systest {
 			systest_list=$(printf "%s\n" ${systest_list} | \
 				${ove_cmd2pathname["grep"]:?} -v -f <(printf "%s\n" $OVE_SYSTEST_SKIP))
 			if [ "${systest_list}" = "" ]; then
-				echo "error: everything skipped, check config 'OVE_SYSTEST_SKIP'"
+				echo "error: everything skipped, check config 'OVE_SYSTEST_SKIP'" 1>&2
 				return 1
 			fi
 		fi
@@ -6794,13 +6794,13 @@ function ove_set_workspace {
 		read -r -p "Workspace#: "
 		if [[ ! "${REPLY}" =~ ^[0-9]+$ ]]; then
 			if [ "${REPLY}" != "" ]; then
-				echo "error: just numbers"
+				echo "error: just numbers" 1>&2
 			fi
 			return 1
 		fi
 
 		if [ ${REPLY} -gt ${#projs[@]} ] || [ ${REPLY} -eq 0 ]; then
-			echo "error: out of bounds"
+			echo "error: out of bounds" 1>&2
 			return 1
 		fi
 
@@ -6815,7 +6815,7 @@ function ove_set_workspace {
 			(( i+=1 ))
 		done
 
-		echo "error: workspace '$1' not found"
+		echo "error: workspace '$1' not found" 1>&2
 		echo "Your OVE workspace(s) on this host:"
 		ove_set_workspaces_helper
 		return 1
@@ -6893,13 +6893,13 @@ function ove-branch {
 	branch_name=${a[*]: -1}
 	repos=$(ove_validate_repo_list ${args})
 	if [ "${repos}" = "" ]; then
-		echo "error: invalid repo name: '${args}'"
+		echo "error: invalid repo name: '${args}'" 1>&2
 		return 1
 	fi
 
 	for r in ${repos}; do
 		if ! ove_dir_is_repo "${OVE_BASE_DIR}/${r}"; then
-			echo "error: repo '${r}' is not yet fetched"
+			echo "error: repo '${r}' is not yet fetched" 1>&2
 			continue
 		fi
 
@@ -7652,10 +7652,10 @@ function ove_install_packages {
 		fi
 		return 0
 	elif [ ${OVE_INSTALL_PKG:?} -eq 2 ]; then
-		echo "error: missing package(s): '${missing_packages_sorted}'. To fix this, run the following command:"
-		echo
-		echo -e "\t${cmd}"
-		echo
+		echo "error: missing package(s): '${missing_packages_sorted}'. To fix this, run the following command:" 1>&2
+		echo 1>&2
+		echo -e "\t${cmd}" 1>&2
+		echo 1>&2
 		return 1
 	fi
 }
@@ -7900,13 +7900,13 @@ function ove-import {
 
 	f="$1"
 	if [ ! -e "${f}" ]; then
-		echo "error: '${f}' not found"
+		ove_echo_error_noprefix "'${f}' not found"
 		return 1
 	elif [ ! -s "${f}" ]; then
-		echo "error: '${f}' file size is 0"
+		ove_echo_error_noprefix "'${f}' file size is 0"
 		return 1
 	elif ! ${ove_cmd2pathname["file"]:?} "${f}" | ${ove_cmd2pathname["grep"]:?} -q "bzip2 compressed data"; then
-		echo "error: '${f}' is not a bzip2 compressed data file"
+		ove_echo_error_noprefix "'${f}' is not a bzip2 compressed data file"
 		return 1
 	# sanity check archive
 	elif ! ${ove_cmd2pathname["tar"]:?} -tf "$f" | ${ove_cmd2pathname["grep"]:?} -q '\.\/[0-9a-f]\+\-export$'; then
@@ -9542,8 +9542,8 @@ function ove-checkout {
 		fi
 
 		if [ ${OVE_REVTAB_CHECK} -eq 0 ]; then
-			ove_echo_yellow_noprefix "WARNING: revtab check (=OVE_REVTAB_CHECK) is DISABLED for this workspace"
-			ove_echo_yellow_noprefix "WARNING: all repos (except '${OVE_OWEL_NAME}') will stay on their current revisions"
+			ove_echo_warning_noprefix "revtab check (=OVE_REVTAB_CHECK) is DISABLED for this workspace"
+			ove_echo_warning_noprefix "all repos (except '${OVE_OWEL_NAME}') will stay on their current revisions"
 			echo
 		fi
 
@@ -9904,7 +9904,7 @@ function ove-rg {
 
 	if [ $# -ne 1 ]; then
 		if [ $# -eq 0 ]; then
-			echo "error: no pattern"
+			echo "error: no pattern" 1>&2
 		fi
 		ove_command_usage
 		return 1
@@ -9930,7 +9930,7 @@ function ove-ag {
 
 	if [ $# -ne 1 ]; then
 		if [ $# -eq 0 ]; then
-			echo "error: no pattern"
+			echo "error: no pattern" 1>&2
 		fi
 		ove_command_usage
 		return 1
@@ -9949,7 +9949,7 @@ function ove-grep {
 	ove_entry || return
 
 	if [ $# -eq 0 ]; then
-		echo "error: no pattern"
+		echo "error: no pattern" 1>&2
 		ove_command_usage
 		return 1
 	fi
@@ -9962,7 +9962,7 @@ function ove_gf_helper {
 		echo "duckduckgo.com/?q=fzf"
 		return 1
 	elif [ $# -ne 1 ]; then
-		echo "error: no pattern"
+		echo "error: no pattern" 1>&2
 		return 1
 	fi
 
@@ -10022,7 +10022,7 @@ function ove-blame-history {
 	ove_entry || return
 
 	if [ $# -eq 0 ]; then
-		echo "error: no pattern"
+		echo "error: no pattern" 1>&2
 		ove_command_usage
 		return 1
 	fi
@@ -10274,7 +10274,7 @@ function ove-config {
 					break 2
 				fi
 			done
-			echo "error: try again, specify one of these files:"
+			echo "error: try again, specify one of these files:" 1>&2
 		done
 	fi
 
@@ -11231,7 +11231,7 @@ function ove-lastlog-summary {
 	${ove_cmd2pathname["find"]:?} /var/tmp/*/ove/logs -type f -name '2*.log' -newer $OVE_TMP/ove-${self}-ref -print  > $OVE_TMP/ove-${self}
 	${ove_cmd2pathname["rm"]:?} $OVE_TMP/ove-${self}-ref
 	if [ ! -s $OVE_TMP/ove-${self} ]; then
-		echo "error: no logs found"
+		echo "error: no logs found" 1>&2
 		if [ -e $OVE_TMP/ove-${self} ]; then
 			${ove_cmd2pathname["rm"]:?} $OVE_TMP/ove-${self}
 		fi
@@ -11239,7 +11239,7 @@ function ove-lastlog-summary {
 	elif [ $# -ne 0 ]; then
 		${ove_cmd2pathname["grep"]:?} -E -i ".*$1.*" $OVE_TMP/ove-${self} > $OVE_TMP/ove-${self}.filter
 		if [ ! -s $OVE_TMP/ove-${self}.filter ]; then
-			echo "error: no logs found after filter"
+			echo "error: no logs found after filter" 1>&2
 			if [ -e $OVE_TMP/ove-${self}.filter ]; then
 				${ove_cmd2pathname["rm"]:?} $OVE_TMP/ove-${self}.filter
 			fi
@@ -11417,7 +11417,7 @@ function ove-lastlog-replay {
 		echo "$1" > $OVE_TMP/ove-${self}
 		if [ $# -eq 2 ]; then
 			if [[ ! "${2}" =~ ^[0-9]+$ ]]; then
-				echo "error: just numbers"
+				echo "error: just numbers" 1>&2
 				ove_command_usage
 				return 1
 			fi
@@ -11429,7 +11429,7 @@ function ove-lastlog-replay {
 		${ove_cmd2pathname["find"]:?} /var/tmp/*/ove/logs -type f -name '2*' -newer $OVE_TMP/ove-${self}-ref -not -name '*.timing' -print  > $OVE_TMP/ove-${self}
 		${ove_cmd2pathname["rm"]:?} $OVE_TMP/ove-${self}-ref
 		if [ ! -s $OVE_TMP/ove-${self} ]; then
-			echo "error: no logs found"
+			echo "error: no logs found" 1>&2
 			if [ -e $OVE_TMP/ove-${self} ]; then
 				${ove_cmd2pathname["rm"]:?} $OVE_TMP/ove-${self}
 			fi
@@ -11437,7 +11437,7 @@ function ove-lastlog-replay {
 		elif [ $# -ne 0 ]; then
 			${ove_cmd2pathname["grep"]:?} -E -i ".*$1.*" $OVE_TMP/ove-${self} > $OVE_TMP/ove-${self}.filter
 			if [ ! -s $OVE_TMP/ove-${self}.filter ]; then
-				echo "error: no logs found after filter"
+				echo "error: no logs found after filter" 1>&2
 				if [ -e $OVE_TMP/ove-${self}.filter ]; then
 					${ove_cmd2pathname["rm"]:?} $OVE_TMP/ove-${self}.filter
 				fi
@@ -11484,7 +11484,7 @@ function ove-lastlog {
 
 	${ove_cmd2pathname["find"]:?} ${OVE_LOG_DIR} -name "2*$HOSTNAME*.log" -type f ${find_opt} -print > $OVE_TMP/ove-${self}
 	if [ ! -s $OVE_TMP/ove-${self} ]; then
-		echo "error: no logs found"
+		echo "error: no logs found" 1>&2
 		return 1
 	elif [ $# -eq 0 ]; then
 		pattern=$(${ove_cmd2pathname["date"]:?} '+%Y%m%d')
@@ -11494,7 +11494,7 @@ function ove-lastlog {
 
 	${ove_cmd2pathname["grep"]:?} -E -i ".*$pattern.*" $OVE_TMP/ove-${self} > $OVE_TMP/ove-${self}.filter
 	if [ ! -s $OVE_TMP/ove-${self}.filter ]; then
-		echo "error: no logs found after filter"
+		echo "error: no logs found after filter" 1>&2
 		return 1
 	fi
 	${ove_cmd2pathname["mv"]:?} $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
@@ -11529,7 +11529,7 @@ function ove-rm-logs {
 
 	if [ $# -gt 0 ]; then
 		if ! [[ "${1}" =~ ^[0-9]+$ ]]; then
-			echo "error: just numbers"
+			echo "error: just numbers" 1>&2
 			ove_command_usage
 			return 1
 		fi
@@ -12203,9 +12203,9 @@ function ove_add_script_func {
 	r_dir=${r_dir%\/*}
 
 	if [ -v ove_scripts_name2path[${s}] ]; then
-		ove_echo_yellow_noprefix "warning: found script duplicate:"
-		echo "$s_dir/$s (ignored)"
-		echo "${ove_scripts_name2path[${s}]}/$s"
+		ove_echo_warning_noprefix "found script duplicate:"
+		echo "$s_dir/$s (ignored)" 1>&2
+		echo "${ove_scripts_name2path[${s}]}/$s" 1>&2
 		return 1
 	fi
 	ove_scripts_name2path[${s}]=${s_dir}
@@ -13335,9 +13335,9 @@ function ove_post_checks {
 			${ove_cmd2pathname["uniq"]:?} -d)
 		if [ "${doublets[*]}" != "" ]; then
 			echo
-			ove_echo_yellow_noprefix "warning: found ${#doublets[*]} systest duplicate(s):"
+			ove_echo_warning_noprefix "found ${#doublets[*]} systest duplicate(s):"
 			for c in ${doublets[*]}; do
-				${ove_cmd2pathname["grep"]:?} -H -n -w ^${c} ${OVE_OWEL_DIR}/systests
+				${ove_cmd2pathname["grep"]:?} -H -n -w ^${c} ${OVE_OWEL_DIR}/systests 1>&2
 			done
 		fi
 	fi
@@ -15093,7 +15093,7 @@ function ove-unittest {
 		done
 
 		if [ "${tests}" = "" ]; then
-			echo "error: select test(s) from:"
+			echo "error: select test(s) from:" 1>&2
 			${ove_cmd2pathname["find"]:?} ${OVE_DIR}/tests -name 't*.test' -type f -exec basename {} .test \; | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 			return 1
 		fi
@@ -15405,7 +15405,6 @@ function ove-add-repo {
 	if [ "${OVE_IMPORT_PROJECTS}" != "0" ] && [ -d ${OVE_BASE_DIR}/${name}/.ove ]; then
 		if [ "${OVE_IMPORT_PROJECTS}" != "1" ] && [ "${OVE_IMPORT_PROJECTS}" != "2" ]; then
 			ove_echo_warning_noprefix "invalid value '${OVE_IMPORT_PROJECTS}' for config 'OVE_IMPORT_PROJECTS'"
-			true
 		else
 			for p in $(${ove_cmd2pathname["find"]:?} ${OVE_BASE_DIR}/${name}/.ove -maxdepth 1 -mindepth 1 -type f -name '*.tar.bz2'); do
 				if [ "${OVE_IMPORT_PROJECTS}" = "2" ]; then
@@ -16261,7 +16260,7 @@ function ove-logo {
 	elif ! ove_check_command "jp2a"; then
 		return 1
 	elif [ ! -s "${OVE_DIR:?}/ove.png" ]; then
-		echo "error: '${OVE_DIR:?}/ove.png' not found"
+		echo "error: '${OVE_DIR:?}/ove.png' not found" 1>&2
 		return 1
 	fi
 
