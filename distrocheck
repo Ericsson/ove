@@ -960,6 +960,7 @@ function setup_sshd {
 }
 
 function update_package_manager {
+	local args
 	local i
 
 	if [[ ( ${OVE_DISTROCHECK_STEPS} == *user* && ${EUID} -ne 0 ) || \
@@ -976,7 +977,20 @@ function update_package_manager {
 		if [ $i -ge 100 ]; then
 			echo "error: update packages failed for ${container_name}" 1>&2
 			exit 1
-		elif ! container_exec_no_exit_as_root "${package_manager%% *} update"; then
+		fi
+
+		args="update"
+		if [ "${packman}" = "apt-get" ]; then
+			args+=" -y"
+		elif [ "${packman}" = "xbps" ]; then
+			args+=" -y"
+		elif [ "${packman}" = "dnf" ]; then
+			args+=" -y"
+		elif [ "${packman}" = "zypper" ]; then
+			args+=" -y"
+		fi
+
+		if ! container_exec_no_exit_as_root "${package_manager%% *} $args"; then
 			sleep $((RANDOM % 5))
 			continue
 		fi
