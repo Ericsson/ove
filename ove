@@ -12884,26 +12884,6 @@ function ove_externals_probe {
 		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_FLOCK_OPTIONS" "$OVE_FLOCK_OPTIONS"
 	fi
 	export OVE_FLOCK_OPTIONS
-
-	if [ -z "${OVE_TIME_SEPARATOR}" ]; then
-		if [ "${EPOCHREALTIME}" != "" ]; then
-			OVE_TIME_SEPARATOR=${EPOCHREALTIME//[0-9]}
-		else
-			OVE_TIME_SEPARATOR=","
-		fi
-		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_TIME_SEPARATOR" "$OVE_TIME_SEPARATOR"
-	fi
-	export OVE_TIME_SEPARATOR
-
-	if [ -z "${OVE_TIME_GRANULARITY}" ]; then
-		if [ "${EPOCHREALTIME}" != "" ]; then
-			OVE_TIME_GRANULARITY=6
-		else
-			OVE_TIME_GRANULARITY=9
-		fi
-		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_TIME_GRANULARITY" "$OVE_TIME_GRANULARITY"
-	fi
-	export OVE_TIME_GRANULARITY
 }
 
 function ove_trace_barrier {
@@ -12928,6 +12908,18 @@ function ove_trace_barrier {
 	fi
 
 	return 0
+}
+
+function ove_time_init {
+	if [ "${EPOCHREALTIME}" != "" ]; then
+		OVE_TIME_SEPARATOR=${EPOCHREALTIME//[0-9]}
+		OVE_TIME_GRANULARITY=6
+	else
+		OVE_TIME_SEPARATOR=","
+		OVE_TIME_GRANULARITY=9
+	fi
+	export OVE_TIME_SEPARATOR
+	export OVE_TIME_GRANULARITY
 }
 
 # init:initialize OVE workspace
@@ -13144,6 +13136,9 @@ function ove_init {
 
 	# setup git command options
 	ove_git_command_options_init
+
+	# time
+	ove_time_init
 
 	# keep this last
 	if [ -n "${OVE_TRACE_CMD+x}" ] && [ "${OVE_TRACE_MODE}" -eq 0 ]; then

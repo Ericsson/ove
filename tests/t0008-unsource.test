@@ -12,7 +12,14 @@ function test_unsource() {
 	ove unsource
 	set > unsource
 
-	sed -i -e '/^BASH.*/d' -e '/^PIPESTATUS=.*/d' -e '/^OLDPWD=.*/d' -e '/^_=.*/d' -e '/TIMEFORMAT=.*/d' before unsource
+	sed -i \
+		-e '/^BASH.*/d' \
+		-e '/^PIPESTATUS=.*/d' \
+		-e '/^OLDPWD=.*/d' \
+		-e '/^_=.*/d' \
+		-e '/TIMEFORMAT=.*/d' \
+		-e '/EPOCHREALTIME=.*/d' \
+		before unsource
 	assertEquals "0" "$(diff -U0 before unsource | wc -l)"
 	rm after before unsource
 	assertEquals "0" "$?"
