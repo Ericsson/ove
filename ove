@@ -15029,6 +15029,7 @@ function ove-unittest {
 	ove_entry || return
 
 	local a
+	local d
 	local files
 	local i
 	local tests
@@ -15047,6 +15048,7 @@ function ove-unittest {
 	ove_echo_cyan "unittest: start"
 
 	if [ $# -eq 0 ]; then
+		d="$(${ove_cmd2pathname["mktemp"]:?} -p "${OVE_TMP}" -d)"
 		tests="tests/t*.test"
 
 		# tests that depends on nbr_of_systests, nbr_of_projs, nbr_of_repos or nbr_of_files
@@ -15056,35 +15058,36 @@ function ove-unittest {
 			-E \
 			'nbr_of_systests|nbr_of_projs|nbr_of_repos|nbr_of_files' $OVE_DIR/tests/*.test | \
 			${ove_cmd2pathname["cut"]:?} -d':' -f1 | \
-			LC_ALL=1 ${ove_cmd2pathname["sort"]:?} -u > $OVE_TMP/tests_vars
+			LC_ALL=1 ${ove_cmd2pathname["sort"]:?} -u > "$d"/tests_vars
 
 		# all tests
-		${ove_cmd2pathname["find"]:?} ${OVE_DIR}/tests -name '*.test' -exec basename {} \; | LC_ALL=1 ${ove_cmd2pathname["sort"]:?} > $OVE_TMP/tests_all
+		${ove_cmd2pathname["find"]:?} ${OVE_DIR}/tests -name '*.test' -exec basename {} \; | LC_ALL=1 ${ove_cmd2pathname["sort"]:?} > $d/tests_all
 
 		# other tests
-		LC_ALL=1 ${ove_cmd2pathname["comm"]:?} -1 -3 $OVE_TMP/tests_vars $OVE_TMP/tests_all > $OVE_TMP/tests_other
+		LC_ALL=1 ${ove_cmd2pathname["comm"]:?} -1 -3 $d/tests_vars $d/tests_all > $d/tests_other
 
 		# setup what to test
-		tests=$(${ove_cmd2pathname["cat"]:?} $OVE_TMP/tests_vars)
+		tests=$(${ove_cmd2pathname["cat"]:?} $d/tests_vars)
 
 		# init output files
 		for i in $(seq 1 8); do
-			true > $OVE_TMP/unittest_$i
+			true > $d/unittest_$i
 		done
 
 		#            files_per_repo | projs | repos | systest
-		ove_unittest       0            0       0        0 >> $OVE_TMP/unittest_1 2>&1 &
-		ove_unittest       0            1       0        0 >> $OVE_TMP/unittest_2 2>&1 &
-		ove_unittest       1            0       1        0 >> $OVE_TMP/unittest_3 2>&1 &
-		ove_unittest       0            0       0        1 >> $OVE_TMP/unittest_4 2>&1 &
-		ove_unittest       1            1       1        1 >> $OVE_TMP/unittest_5 2>&1 &
-		ove_unittest       2            2       2        2 >> $OVE_TMP/unittest_6 2>&1 &
-		ove_unittest       3            3       3        3 >> $OVE_TMP/unittest_7 2>&1 &
-		ove_unittest       3           10      10        3 >> $OVE_TMP/unittest_8 2>&1 &
+		ove_unittest       0            0       0        0 >> $d/unittest_1 2>&1 &
+		ove_unittest       0            1       0        0 >> $d/unittest_2 2>&1 &
+		ove_unittest       1            0       1        0 >> $d/unittest_3 2>&1 &
+		ove_unittest       0            0       0        1 >> $d/unittest_4 2>&1 &
+		ove_unittest       1            1       1        1 >> $d/unittest_5 2>&1 &
+		ove_unittest       2            2       2        2 >> $d/unittest_6 2>&1 &
+		ove_unittest       3            3       3        3 >> $d/unittest_7 2>&1 &
+		ove_unittest       3           10      10        3 >> $d/unittest_8 2>&1 &
 
 		# setup what to test
-		tests=$(${ove_cmd2pathname["cat"]:?} $OVE_TMP/tests_other)
+		tests=$(${ove_cmd2pathname["cat"]:?} $d/tests_other)
 	else
+		d="${OVE_TMP}"
 		for a in "$@"; do
 			if ! [ -e "${OVE_DIR}/tests/${a}.test" ]; then
 				continue
@@ -15099,18 +15102,18 @@ function ove-unittest {
 		fi
 	fi
 
-	true > $OVE_TMP/unittest_x
-	ove_unittest 3 3 3 3 >> $OVE_TMP/unittest_x 2>&1 &
+	true > $d/unittest_x
+	ove_unittest 3 3 3 3 >> $d/unittest_x 2>&1 &
 	wait
 
 	# restore terminal
 	${ove_cmd2pathname["stty"]:?} sane
 	if [ $# -eq 0 ]; then
-		${ove_cmd2pathname["cat"]:?} $OVE_TMP/unittest_{1..8}
-		files+="$(echo $OVE_TMP/unittest_{1..8})"
+		${ove_cmd2pathname["cat"]:?} $d/unittest_{1..8}
+		files+="$(echo $d/unittest_{1..8})"
 	fi
-	${ove_cmd2pathname["cat"]:?} $OVE_TMP/unittest_x
-	files+=" $OVE_TMP/unittest_x"
+	${ove_cmd2pathname["cat"]:?} $d/unittest_x
+	files+=" $d/unittest_x"
 	echo
 
 	# shellcheck disable=SC2016

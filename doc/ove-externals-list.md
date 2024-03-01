@@ -42,7 +42,7 @@
 | md5deep          | 1         |
 | md5sum           | 14        |
 | mkdir            | 35        |
-| mktemp           | 13        |
+| mktemp           | 14        |
 | mv               | 11        |
 | pgrep            | 5         |
 | ps               | 1         |
@@ -88,4 +88,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1304__  |
+| __sum__          | __1305__  |
