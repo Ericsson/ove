@@ -5359,15 +5359,14 @@ function ove_list_scripts_directories {
 }
 
 # $1: str
-# $2: len
-# $3: res
-function ove_echo_pad {
+# $2: res
+function ove_time_pad {
 	local i=0
 	local o="$1"
-	local -n res="$3"
+	local -n res="$2"
 	local z
 
-	z=$(($2 - ${#1}))
+	z=$((OVE_TIME_GRANULARITY - ${#1}))
 	while [ $i -lt $z ]; do
 		o="0$o"
 		i=$((i + 1))
@@ -5375,48 +5374,32 @@ function ove_echo_pad {
 	res="$o"
 }
 
-function ove_time_helper {
-	local decimal_point
-	local diff_s
-	local f
-	local now
-	local s
+# $1: sec
+# $2: frac
+function ove_time_diff {
+	local now="${EPOCHREALTIME}"
 
-	diff="00:00:00"
-
-	if [ "${1}" != "" ]; then
-		s=$1
-		f=$2
+	if [ "${now}" = "" ]; then
+		now=$(${ove_cmd2pathname["date"]:?} +%s${OVE_TIME_SEPARATOR}%N)
 	fi
-
-	if [ "${EPOCHREALTIME}" != "" ]; then
-		decimal_point=${EPOCHREALTIME//[0-9]}
-		diff_f="000000"
-		now=${EPOCHREALTIME}
-		now_s=${now%${decimal_point}*}
-		now_f=${now#*${decimal_point}}
-		pad="6"
-	else
-		diff_f="0000000000"
-		now=$(${ove_cmd2pathname["date"]:?} +%s:%N)
-		now_s=${now%:*}
-		now_f=${now#*:}
-		pad="9"
-	fi
+	now_s=${now%${OVE_TIME_SEPARATOR}*}
+	now_f=${now#*${OVE_TIME_SEPARATOR}}
 
 	# remove leading zeros
 	now_f=$((10#${now_f}))
 
-	if [ "${s}" = "" ]; then
-		# no prev values stored
-		return 0
+	# exit early?
+	if [ "${1}" = "" ]; then
+		diff="00:00:00"
+		diff_f=$(eval printf '0%.0s' "{1..$OVE_TIME_GRANULARITY}")
+		return
 	fi
 
-	diff_f="$((now_f - f))"
-	diff_s=$((now_s - s))
+	local diff_s=$((now_s - $1))
+	diff_f="$((now_f - $2))"
 	if [ "${diff_f}" -lt 0 ]; then
 		(( diff_s-=1 )) || true
-		diff_f="$((10**pad + diff_f))"
+		diff_f="$((10**OVE_TIME_GRANULARITY + diff_f))"
 	fi
 
 	if [ $diff_s -lt 10 ]; then
@@ -5436,12 +5419,13 @@ function ove_echo {
 	local diff_f
 	local now_f
 	local now_s
-	local pad
 
-	ove_time_helper "${OVE_PREV_S}" "${OVE_PREV_F}"
+	ove_time_diff "${OVE_PREV_S}" "${OVE_PREV_F}"
+	ove_time_pad "${now_f}" a
+	ove_time_pad "${diff_f}" b
 
-	ove_echo_pad "${now_f}" "${pad}" a
-	ove_echo_pad "${diff_f}" "${pad}" b
+	OVE_PREV_S=${now_s}
+	OVE_PREV_F=${now_f}
 
 	printf "%(%Y-%m-%d %H:%M:%S)T.%s (+%s:%s):%s\n" \
 		"$now_s" \
@@ -5449,9 +5433,6 @@ function ove_echo {
 		"${diff}" \
 		"${b}" \
 		"$(echo -e "$*")"
-
-	OVE_PREV_S=${now_s}
-	OVE_PREV_F=${now_f}
 }
 
 function ove_time {
@@ -5460,16 +5441,14 @@ function ove_time {
 	local diff_f
 	local now_f
 	local now_s
-	local pad
 
-	ove_time_helper "${OVE_TIME_S}" "${OVE_TIME_F}"
-
-	ove_echo_pad "${diff_f}" "${pad}" b
+	ove_time_diff "${OVE_TIME_S}" "${OVE_TIME_F}"
+	ove_time_pad "${diff_f}" b
 
 	OVE_TIME_S=${now_s}
 	OVE_TIME_F=${now_f}
 
-	echo "$diff:$b"
+	printf "%s:%s\n" "$diff" "$b"
 }
 
 # echo:[green|cyan|yellow|red|error] txt:prefix echo with date and time diff:CORE
@@ -12896,6 +12875,26 @@ function ove_externals_probe {
 		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_FLOCK_OPTIONS" "$OVE_FLOCK_OPTIONS"
 	fi
 	export OVE_FLOCK_OPTIONS
+
+	if [ -z "${OVE_TIME_SEPARATOR}" ]; then
+		if [ "${EPOCHREALTIME}" != "" ]; then
+			OVE_TIME_SEPARATOR=${EPOCHREALTIME//[0-9]}
+		else
+			OVE_TIME_SEPARATOR=","
+		fi
+		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_TIME_SEPARATOR" "$OVE_TIME_SEPARATOR"
+	fi
+	export OVE_TIME_SEPARATOR
+
+	if [ -z "${OVE_TIME_GRANULARITY}" ]; then
+		if [ "${EPOCHREALTIME}" != "" ]; then
+			OVE_TIME_GRANULARITY=6
+		else
+			OVE_TIME_GRANULARITY=9
+		fi
+		ove_update_config "${OVE_CONFIG_FILE_PRIVATE:?}" "OVE_TIME_GRANULARITY" "$OVE_TIME_GRANULARITY"
+	fi
+	export OVE_TIME_GRANULARITY
 }
 
 function ove_trace_barrier {
