@@ -13644,11 +13644,6 @@ function ove-init {
 		str+="${name} ${fetch_url} ${push_url} ${revision}\n"
 	done
 
-	if [ ${i} -eq 0 ]; then
-		ove_echo_error_noprefix "no git repositories found here: '${dir}'"
-		return 1
-	fi
-
 	echo
 	${ove_cmd2pathname["mkdir"]:?} -p ${dir}/${owel_name}
 
@@ -13686,20 +13681,22 @@ function ove-init {
 		(cd ${dir} && ${ove_cmd2pathname["ln"]:?} -s ${ove_link} ove)
 	fi
 
-	# create a revtab file
-	revtab_file="${dir}/${owel_name}/revtab"
-	printf "${str}" | \
-		${ove_cmd2pathname["column"]:?} -t | \
-		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u > ${revtab_file}
+	if [ ${i} -ne 0 ]; then
+		# create a revtab file
+		revtab_file="${dir}/${owel_name}/revtab"
+		printf "${str}" | \
+			${ove_cmd2pathname["column"]:?} -t | \
+			LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u > ${revtab_file}
 
-	# inform user on repos with same fetch url
-	# shellcheck disable=SC2016
-	mapfile -t doublets < <(${ove_cmd2pathname["awk"]:?} '{print $2}' ${revtab_file} | ${ove_cmd2pathname["grep"]:?} -v noremote | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["uniq"]:?} -d)
-	if [ "${doublets[*]}" != "" ]; then
-		ove_echo_note_noprefix "found a few repos with the same fetch url:"
-		for d in ${doublets[*]}; do
-			${ove_cmd2pathname["grep"]:?} -H -n "${d}" ${revtab_file}
-		done | ${ove_cmd2pathname["column"]:?} -t
+		# inform user on repos with same fetch url
+		# shellcheck disable=SC2016
+		mapfile -t doublets < <(${ove_cmd2pathname["awk"]:?} '{print $2}' ${revtab_file} | ${ove_cmd2pathname["grep"]:?} -v noremote | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["uniq"]:?} -d)
+		if [ "${doublets[*]}" != "" ]; then
+			ove_echo_note_noprefix "found a few repos with the same fetch url:"
+			for d in ${doublets[*]}; do
+				${ove_cmd2pathname["grep"]:?} -H -n "${d}" ${revtab_file}
+			done | ${ove_cmd2pathname["column"]:?} -t
+		fi
 	fi
 
 	skeleton=0
@@ -13774,7 +13771,9 @@ EOF
 
 	echo
 	echo "Summary:"
-	echo "* created/updated '${revtab_file}' with ${i} repositories"
+	if [ ${i} -ne 0 ]; then
+		echo "* created/updated '${revtab_file}' with ${i} repositories"
+	fi
 	if [ "${ove_link}" != "" ]; then
 		echo "* created a symbolic link '${dir}/ove' -> '${ove_link}'"
 	fi
