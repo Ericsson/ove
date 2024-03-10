@@ -23,6 +23,7 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 # OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+_args="$*"
 container_global_flags=""
 container_ip=""
 container_name=""
@@ -86,6 +87,10 @@ function init {
 	bash_opt=""
 	distro="$2"
 
+	if [[ ${OVE_DISTROCHECK_STEPS} == *debug* ]]; then
+		set -x
+	fi
+
 	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]]; then
 		if ! command -v xpra > /dev/null; then
 			echo "error: command 'xpra' not found" 1>&2
@@ -116,7 +121,7 @@ function init {
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
 		for s in ${OVE_DISTROCHECK_STEPS//:/ };do
 			echo ${s}
-		done
+		done | LC_ALL=C sort -u
 	elif "${c}" -h | grep -q '\-q'; then
 		container_global_flags+=" -q"
 	fi
@@ -131,7 +136,7 @@ function init {
 		ssh_opts+=" -o StrictHostKeyChecking=no"
 		ssh_opts+=" -o UserKnownHostsFile=/dev/null"
 		ssh_copy_id_opts="${ssh_opts}"
-		if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
+		if [[ ${OVE_DISTROCHECK_STEPS} == *debug* ]]; then
 			ssh_opts+=" -v"
 		fi
 	fi
@@ -310,12 +315,19 @@ function package_manager_noconfirm {
 }
 
 function remove_tmp {
-	find "${OVE_TMP:?}" -maxdepth 1 -type f -name "${tag:?}*" -exec rm {} \;
+	if [[ ${OVE_DISTROCHECK_STEPS:?} != *debug* ]]; then
+		find "${OVE_TMP:?}" -maxdepth 1 -type f -name "${tag:?}*" -exec rm {} \;
+	fi
 	return 0
 }
 
 function cleanup {
-	if [[ ${OVE_DISTROCHECK_STEPS:?} == *running* ]]; then
+	local f
+
+	f="${OVE_TMP}/${tag}-$(container_command)-config-exit"
+	if ! save_instance_config "$f"; then
+		exit 1
+	elif [[ ${OVE_DISTROCHECK_STEPS:?} == *running* ]]; then
 		remove_tmp
 		return
 	fi
@@ -748,6 +760,68 @@ function mkdir_var_tmp {
 	done
 }
 
+function _uniq {
+	if [ $# -eq 1 ]; then
+		echo "${1}"
+		return
+	fi
+
+	declare -A a_hash
+	while [ $# -ne 0 ]; do
+		if test "${a_hash["${1}"]+isset}"; then
+			shift
+			continue
+		fi
+		a_hash["${1}"]=1
+		echo "${1}"
+	done
+}
+
+function print_vars {
+	local v
+
+	for v in $(compgen -A variable OVE_DISTROCHECK_); do
+		if [ "${!v}" != "" ]; then
+			# shellcheck disable=SC2086
+			echo "${v/OVE_DISTROCHECK_}=$(_uniq ${!v})"
+		fi
+	done | xargs
+}
+
+# $1: file
+function save_instance_config {
+	# shellcheck disable=SC2086
+	if ! "$(container_command)"${container_global_flags} config show ${container_name} > "$1"; then
+		return 1
+	fi
+}
+
+# $1: file
+function set_instance_config {
+	# shellcheck disable=SC2086
+	if ! "$(container_command)"${container_global_flags} config edit ${container_name} < "$1"; then
+		return 1
+	fi
+}
+
+function set_instance_description {
+	local f
+
+	f="${OVE_TMP}/${tag}-$(container_command)-config-init"
+	g="${OVE_TMP}/${tag}-$(container_command)-config-desc"
+	if ! save_instance_config "$f"; then
+		exit 1
+	elif ! cp -a "$f" "$g"; then
+		exit 1
+	elif ! sed -i "s,^description:.*,description: \"${_args:?} $(print_vars)\"," "$g"; then
+		exit 1
+	elif ! set_instance_config "$g"; then
+		exit 1
+	fi
+
+	rm "$g"
+}
+
 function launch_container {
 	_echo "$(container_command)${container_global_flags} launch images:${distro} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ }"
 
@@ -757,6 +831,8 @@ function launch_container {
 	fi
 	trap cleanup EXIT
 
+	# use instance description for args and env vars
+	set_instance_description
 
 	if ! container_exec_no_exit "test -d /var/tmp"; then
 		mkdir_var_tmp
