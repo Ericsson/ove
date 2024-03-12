@@ -28,7 +28,7 @@
 | git              | 84        |
 | graph-easy       | 2         |
 | grep             | 182       |
-| head             | 22        |
+| head             | 21        |
 | incus            | 0         |
 | inotifywait      | 3         |
 | jp2a             | 1         |
@@ -60,13 +60,13 @@
 | seq              | 11        |
 | setsid           | 1         |
 | shellcheck       | 1         |
-| sleep            | 16        |
+| sleep            | 15        |
 | sort             | 117       |
 | ssh              | 7         |
 | stat             | 8         |
 | stty             | 1         |
 | su               | 1         |
-| sudo             | 8         |
+| sudo             | 3         |
 | sync             | 1         |
 | tac              | 3         |
 | tail             | 12        |
@@ -88,4 +88,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1305__  |
+| __sum__          | __1298__  |

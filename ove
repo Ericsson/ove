@@ -2019,7 +2019,6 @@ function ove_sanitise_vars {
 }
 
 function ove_trace_setup {
-	local bcc_tool
 	local strace_expression
 
 	if [ ${OVE_LOGLEVEL} -lt 3 ]; then
@@ -2040,44 +2039,14 @@ function ove_trace_setup {
 		strace_expression="execve"
 	fi
 
-	if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
-		if [ ${OVE_LOGLEVEL} -eq 7 ]; then
-			bcc_tool="execsnoop"
-		elif [ ${OVE_LOGLEVEL} -eq 8 ]; then
-			bcc_tool="tcpconnect"
-		elif [ ${OVE_LOGLEVEL} -eq 9 ]; then
-			bcc_tool="opensnoop"
-		fi
-
-		if [ ${EUID} != 0 ]; then
-			if ! ${ove_cmd2pathname["sudo"]:?} -n true; then
-				if ! ${ove_cmd2pathname["sudo"]:?} true; then
-					ove_echo_error_noprefix "'${bcc_tool}' need non-interactive 'sudo'"
-					return 1
-				fi
-			fi
-			OVE_TRACE_CMD="${ove_cmd2pathname["sudo"]:?} "
-		fi
-		OVE_TRACE_CMD+="python3 /usr/share/bcc/tools/${bcc_tool} "
-		if [ ${OVE_LOGLEVEL} -eq 9 ]; then
-			OVE_TRACE_CMD+="-T "
-		else
-			OVE_TRACE_CMD+="-t "
-		fi
-		OVE_TRACE_CMD+="-u ${EUID} "
-		OVE_TRACE_CMD+="> ${OVE_OWEL_TMP_DIR}/trace-${cmd}/trace-${cmd} "
-		OVE_TRACE_CMD+="2> /dev/null"
-		OVE_TRACE_CMD+="& echo \$! > ${OVE_OWEL_TMP_DIR}/trace.pid 2> /dev/null"
-	else
-		OVE_TRACE_CMD="strace "
-		OVE_TRACE_CMD+="-s 1024 "
-		OVE_TRACE_CMD+="-q "
-		OVE_TRACE_CMD+="-o ${OVE_OWEL_TMP_DIR}/trace-${cmd}/trace-${cmd} "
-		OVE_TRACE_CMD+="-ff "
-		OVE_TRACE_CMD+="-T "
-		OVE_TRACE_CMD+="-e ${strace_expression} "
-		OVE_TRACE_CMD+="-ttt "
-	fi
+	OVE_TRACE_CMD="strace "
+	OVE_TRACE_CMD+="-s 1024 "
+	OVE_TRACE_CMD+="-q "
+	OVE_TRACE_CMD+="-o ${OVE_OWEL_TMP_DIR}/trace-${cmd}/trace-${cmd} "
+	OVE_TRACE_CMD+="-ff "
+	OVE_TRACE_CMD+="-T "
+	OVE_TRACE_CMD+="-e ${strace_expression} "
+	OVE_TRACE_CMD+="-ttt "
 	export OVE_TRACE_CMD
 	if [ -e ${OVE_OWEL_TMP_DIR}/bash.pid ]; then
 		${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/bash.pid
@@ -2107,19 +2076,13 @@ function ove_trace_setup {
 		fi
 
 		# launch trace in background and let it start up
-		if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
-			(eval ${OVE_TRACE_CMD})
-			${ove_cmd2pathname["sleep"]:?} 2
-			true > ${OVE_OWEL_TMP_DIR}/trace.cont
+		(${OVE_TRACE_CMD} -p $(${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_TMP_DIR}/bash.pid) & echo $! > ${OVE_OWEL_TMP_DIR}/trace.pid)
+		${ove_cmd2pathname["sleep"]:?} 1
+		if [ -s ${OVE_OWEL_TMP_DIR}/trace.pid ] && \
+			! kill -0 $(cat ${OVE_OWEL_TMP_DIR}/trace.pid) 2> /dev/null; then
+			echo "0" > ${OVE_OWEL_TMP_DIR}/trace.cont
 		else
-			(${OVE_TRACE_CMD} -p $(${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_TMP_DIR}/bash.pid) & echo $! > ${OVE_OWEL_TMP_DIR}/trace.pid)
-			${ove_cmd2pathname["sleep"]:?} 1
-			if [ -s ${OVE_OWEL_TMP_DIR}/trace.pid ] && \
-				! kill -0 $(cat ${OVE_OWEL_TMP_DIR}/trace.pid) 2> /dev/null; then
-				echo "0" > ${OVE_OWEL_TMP_DIR}/trace.cont
-			else
-				echo "1" > ${OVE_OWEL_TMP_DIR}/trace.cont
-			fi
+			echo "1" > ${OVE_OWEL_TMP_DIR}/trace.cont
 		fi
 	} &
 }
@@ -2142,12 +2105,7 @@ function ove_trace_post {
 			pid=0
 		else
 			pid=$(${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_TMP_DIR}/trace.pid)
-			if [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
-				ove_kill_procs 0 1 ${pid}
-			else
-				ove_kill_procs 1 1 ${pid}
-			fi
-
+			ove_kill_procs 1 1 ${pid}
 		fi
 
 		ove_trace_cleanup
@@ -2160,8 +2118,6 @@ function ove_trace_post {
 					ove_analyze_strace_connect ${OVE_OWEL_TMP_DIR}/trace-${cmd}
 				elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
 					ove_strace_create_graph ${OVE_OWEL_TMP_DIR}/trace-${cmd} ${cmd}
-				elif [ ${OVE_LOGLEVEL} -ge 7 ] && [ ${OVE_LOGLEVEL} -lt 10 ]; then
-					${ove_cmd2pathname["head"]:?} -n -1 ${OVE_OWEL_TMP_DIR}/trace-${cmd}/trace-${cmd}
 				fi
 			} | ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
 		fi
@@ -11075,7 +11031,6 @@ function ove-revtab-check {
 function ove-loglevel {
 	ove_entry || return
 
-	local bcc_tool
 	local cfg
 	local prefix
 	local sysctl_f
@@ -11110,34 +11065,6 @@ function ove-loglevel {
 			fi
 		fi
 
-		if [ $1 -ge 7 ] && [ $1 -le 10 ]; then
-			if [ ${1} -eq 7 ]; then
-				bcc_tool="execsnoop"
-			elif [ ${1} -eq 8 ]; then
-				bcc_tool="tcpconnect"
-			elif [ ${1} -eq 9 ]; then
-				bcc_tool="opensnoop"
-			fi
-
-			if ! ove_check_command "python3"; then
-				return 1
-			fi
-
-			if ! [ -e /usr/share/bcc/tools/${bcc_tool} ]; then
-				ove_echo_error_noprefix "'/usr/share/bcc/tools/${bcc_tool}' not found."
-				return 1
-			fi
-
-			if [ ${EUID} != 0 ]; then
-				if ! ${ove_cmd2pathname["sudo"]:?} -n true; then
-					if ! ${ove_cmd2pathname["sudo"]:?} true; then
-						ove_echo_error_noprefix "'${bcc_tool}' need non-interactive 'sudo'"
-						return 1
-					fi
-				fi
-			fi
-		fi
-
 		OVE_LOGLEVEL=$1
 		cfg=$(ove_config2file OVE_LOGLEVEL)
 		if [ "${cfg}" = "" ]; then
@@ -11154,9 +11081,6 @@ function ove-loglevel {
 		echo "4: execve time analysis [strace]"
 		echo "5: connect analysis     [strace]"
 		echo "6: graph analysis       [strace]"
-		echo "7: execsnoop            [bcc]"
-		echo "8: tcpconnect           [bcc]"
-		echo "9: opensnoop            [bcc]"
 	} | ${ove_cmd2pathname["sed"]:?} -e "s/^${OVE_LOGLEVEL}:\(.*\)$/${OVE_LOGLEVEL}:\1 */g" | \
 		${ove_cmd2pathname["grep"]:?} -E --color "$|${OVE_LOGLEVEL}:.*"
 
@@ -12526,7 +12450,7 @@ function ove_config_builtins_init {
 		export OVE_OWEL_CI_BRANCH="origin/${OVE_DEFAULT_BRANCH_NAME}"
 	fi
 
-	# OVE_LOGLEVEL:int:0-9:all loglevel:set a specific log level
+	# OVE_LOGLEVEL:int:0-6:all loglevel:set a specific log level
 	if [ -z "${OVE_LOGLEVEL+x}" ]; then
 		export OVE_LOGLEVEL=1
 		export OVE_REDIRECT_OUTPUT=""

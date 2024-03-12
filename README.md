@@ -101,7 +101,7 @@ Example:
     repoX         ssh://xyz/repoX    ssh://xyz/repoX    main
     deps/repoY    https://xyz/repoY  https://xyz/repoY  stable
 
-Thats it! This is how OVE keeps track of git revisions. There is no
+That's it! This is how OVE keeps track of git revisions. There is no
 intermediate representation for revisioning in OVE. What you put in the
 'revision' column travels untouched to git, which means you can safely put
 anything there that git understands. Now, let's move on to top-view builds:
@@ -210,7 +210,7 @@ Optional. Passed on as a bash variable to all steps for this project.
       version:
         2.0.0
 
-Thats how OVE resolves external and internal dependencies for builds. As you
+That's how OVE resolves external and internal dependencies for builds. As you
 just read above, the 'version:' keyword creates an environment variable that is
 passed to all build steps. What are those steps exactly? We cover that in the
 next section:
@@ -344,7 +344,7 @@ ove what test are available in this case would look like this:
     t2
     t3
 
-Thats it for system tests! Now lets go ahead and look at plugins:
+That's it for system tests! Now lets go ahead and look at plugins:
 
 ## Plugins
 
