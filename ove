@@ -784,6 +784,40 @@ function ove_update_connect_db {
 }
 
 # $1: directory with strace pid files
+function ove_analyze_strace_raw {
+	${ove_cmd2pathname["find"]:?} "$1" \
+		-type f \
+		-exec cat {} \; | \
+		LC_ALL=C ${ove_cmd2pathname["sort"]:?} -nr
+}
+
+# $1: directory with strace pid files
+function ove_analyze_strace_file {
+	local f
+	local line
+	local re
+	local syscall
+
+	re="^[A-Za-z_0-9]+$"
+	${ove_cmd2pathname["find"]:?} "$1" -type f -exec cat {} \; | \
+		while read -r line; do
+			syscall=${line#* }
+			syscall=${syscall%%(*}
+			if [[ "${line}" == *trace.cont* ]]; then
+				continue
+			elif [[ "$syscall" =~ ${re} ]]; then
+				f=${line#*\"}
+				f=${f%\"*}
+				if [[ "$line" == *ENOENT* ]]; then
+					echo "${line%% *}:ENOENT:$syscall:$f"
+				else
+					echo "${line%% *}:0:$syscall:$f"
+				fi
+			fi
+		done
+}
+
+# $1: directory with strace pid files
 function ove_analyze_strace_connect {
 	local all_files
 	local f
@@ -2006,7 +2040,7 @@ function ove_sanitise_vars {
 		corrupt=0
 		if ! [ "${OVE_LOGLEVEL}" -eq "${OVE_LOGLEVEL}" ] 2> /dev/null; then
 			corrupt=1
-		elif ! [[ "${OVE_LOGLEVEL}" =~ ^[0-9]$ ]]; then
+		elif ! [[ "${OVE_LOGLEVEL}" =~ ^[0-9]+$ ]]; then
 			corrupt=1
 		fi
 
@@ -2035,6 +2069,8 @@ function ove_trace_setup {
 		strace_expression="connect,bind,execve"
 	elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
 		strace_expression="execve,clone,fork,vfork,connect,bind"
+	elif [ ${OVE_LOGLEVEL} -ge 7 ] || [ ${OVE_LOGLEVEL} -lt 10 ]; then
+		strace_expression="file"
 	else
 		strace_expression="execve"
 	fi
@@ -2045,8 +2081,15 @@ function ove_trace_setup {
 	OVE_TRACE_CMD+="-o ${OVE_OWEL_TMP_DIR}/trace-${cmd}/trace-${cmd} "
 	OVE_TRACE_CMD+="-ff "
 	OVE_TRACE_CMD+="-T "
-	OVE_TRACE_CMD+="-e ${strace_expression} "
+	if [ ${OVE_LOGLEVEL} -ne 10 ]; then
+		OVE_TRACE_CMD+="-e ${strace_expression} "
+	fi
 	OVE_TRACE_CMD+="-ttt "
+	if [ ${OVE_LOGLEVEL} -eq 8 ]; then
+		OVE_TRACE_CMD+="-z "
+	elif [ ${OVE_LOGLEVEL} -eq 9 ]; then
+		OVE_TRACE_CMD+="-Z "
+	fi
 	export OVE_TRACE_CMD
 	if [ -e ${OVE_OWEL_TMP_DIR}/bash.pid ]; then
 		${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/bash.pid
@@ -2112,12 +2155,16 @@ function ove_trace_post {
 
 		if [ $pid -ne 0 ]; then
 			{
-				if [ ${OVE_LOGLEVEL} -eq 3 ] || [ ${OVE_LOGLEVEL} -eq 4 ]; then
+				if [ ${OVE_LOGLEVEL} -eq 10 ]; then
+					ove_analyze_strace_raw ${OVE_OWEL_TMP_DIR}/trace-${cmd}
+				elif [ ${OVE_LOGLEVEL} -eq 3 ] || [ ${OVE_LOGLEVEL} -eq 4 ]; then
 					ove_analyze_strace_execve_timing ${OVE_OWEL_TMP_DIR}/trace-${cmd}
 				elif [ ${OVE_LOGLEVEL} -eq 5 ]; then
 					ove_analyze_strace_connect ${OVE_OWEL_TMP_DIR}/trace-${cmd}
 				elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
 					ove_strace_create_graph ${OVE_OWEL_TMP_DIR}/trace-${cmd} ${cmd}
+				elif [ ${OVE_LOGLEVEL} -ge 7 ] || [ ${OVE_LOGLEVEL} -lt 10 ]; then
+					ove_analyze_strace_file ${OVE_OWEL_TMP_DIR}/trace-${cmd}
 				fi
 			} | ${ove_cmd2pathname["tee"]:?} -a ${OVE_LAST_COMMAND}
 		fi
@@ -11036,7 +11083,7 @@ function ove-loglevel {
 	local sysctl_f
 
 	set +x
-	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-9]$ ]]; then
+	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-9]+$ ]]; then
 		ove_command_usage
 		return 1
 	elif [ $# -eq 1 ]; then
@@ -11074,15 +11121,19 @@ function ove-loglevel {
 	fi
 
 	{
-		echo "0: silence is golden"
-		echo "1: normal"
-		echo "2: debug                [set -x]"
-		echo "3: execve timeline      [strace]"
-		echo "4: execve time analysis [strace]"
-		echo "5: connect analysis     [strace]"
-		echo "6: graph analysis       [strace]"
-	} | ${ove_cmd2pathname["sed"]:?} -e "s/^${OVE_LOGLEVEL}:\(.*\)$/${OVE_LOGLEVEL}:\1 */g" | \
-		${ove_cmd2pathname["grep"]:?} -E --color "$|${OVE_LOGLEVEL}:.*"
+		echo " 0: silence is golden"
+		echo " 1: normal"
+		echo " 2: debug                [set -x]"
+		echo " 3: execve timeline      [strace]"
+		echo " 4: execve time analysis [strace]"
+		echo " 5: connect analysis     [strace]"
+		echo " 6: graph analysis       [strace]"
+		echo " 7: file (all)           [strace]"
+		echo " 8: file (-z/ok)         [strace]"
+		echo " 9: file (-Z/nok)        [strace]"
+		echo "10: raw                  [strace]"
+	} | ${ove_cmd2pathname["sed"]:?} -e "s/\(.*\)${OVE_LOGLEVEL}:\(.*\)$/\1${OVE_LOGLEVEL}:\2 */g" | \
+		${ove_cmd2pathname["grep"]:?} -E --color "$|.*${OVE_LOGLEVEL}:.*"
 
 	if [ $# -eq 1 ]; then
 		OVE_REDIRECT_OUTPUT=""
@@ -12450,7 +12501,7 @@ function ove_config_builtins_init {
 		export OVE_OWEL_CI_BRANCH="origin/${OVE_DEFAULT_BRANCH_NAME}"
 	fi
 
-	# OVE_LOGLEVEL:int:0-6:all loglevel:set a specific log level
+	# OVE_LOGLEVEL:int:0-10:all loglevel:set a specific log level
 	if [ -z "${OVE_LOGLEVEL+x}" ]; then
 		export OVE_LOGLEVEL=1
 		export OVE_REDIRECT_OUTPUT=""

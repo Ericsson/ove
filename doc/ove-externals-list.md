@@ -20,7 +20,7 @@
 | du               | 6         |
 | ffmpeg           | 1         |
 | file             | 3         |
-| find             | 77        |
+| find             | 79        |
 | flock            | 10        |
 | fold             | 2         |
 | fzf              | 5         |
@@ -61,7 +61,7 @@
 | setsid           | 1         |
 | shellcheck       | 1         |
 | sleep            | 15        |
-| sort             | 117       |
+| sort             | 118       |
 | ssh              | 7         |
 | stat             | 8         |
 | stty             | 1         |
@@ -88,4 +88,4 @@
 | xargs            | 35        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1298__  |
+| __sum__          | __1301__  |
