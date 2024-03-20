@@ -6697,9 +6697,10 @@ function ove_locate_owels {
 	fi
 
 	for o in ${owels}; do
-		if ! [ -e ${o}/revtab ]; then
-			owels=${owels/${o}/}
+		if ! ove_is_base_dir "$o"; then
+			continue
 		fi
+		owels=${owels/${o}/}
 	done
 
 	owels=${owels//\/.owel/}
@@ -6794,7 +6795,7 @@ function ove_set_workspace {
 	elif [ $# -eq 0 ]; then
 		ove_set_workspaces_helper
 		echo
-		read -r -p "Workspace#: "
+		read -r -p "workspace? "
 		if [[ ! "${REPLY}" =~ ^[0-9]+$ ]]; then
 			if [ "${REPLY}" != "" ]; then
 				echo "error: just numbers" 1>&2
@@ -9519,10 +9520,10 @@ function ove-checkout {
 			# shellcheck disable=SC2016
 			cmd='ove_repo_cmd ${repo} reset; ove_repo_cmd ${repo} checkout .'
 
-			read -p "Proceed to run 'git reset && git checkout .' for all git repositories? (y/N) " -r
+			read -p "proceed to run 'git reset && git checkout .' for all git repositories? (y/N) " -r
 			echo
 			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-				read -p "Are you really sure? (y/N) " -r
+				read -p "are you really sure? (y/N) " -r
 				echo
 				if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 					ove_revtab_forall "${cmd}"
@@ -10625,12 +10626,12 @@ function ove_rmdir {
 	fi
 
 	printf "%s\n" ${_files}
-	read -p "Proceed to remove ${_files_total} files/directories (list above) from '${_dir}' using 'rm -rf'? (y/N) " -r
+	read -p "proceed to remove ${_files_total} files/directories (list above) from '${_dir}' using 'rm -rf'? (y/N) " -r
 	if ! [[ ${REPLY} =~ ^[Yy]$ ]]; then
 		return 1
 	fi
 
-	read -p "Are you really sure? (y/N) " -r
+	read -p "are you really sure? (y/N) " -r
 	if ! [[ ${REPLY} =~ ^[Yy]$ ]]; then
 		return 1
 	fi
@@ -10664,9 +10665,9 @@ function ove-mrproper {
 		# dry-run first
 		# shellcheck disable=SC2016
 		ove_revtab_forall 'GIT_DRY_RUN=1 ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} "--no-pager clean" | ${ove_cmd2pathname["sed"]:?} -e "s|Would remove \(.*\)$|${PWD}/\1|g"'
-		read -p "Proceed to remove ${nbr_untracked_files} untracked files/directories (list above) using 'git clean'? (y/N) " -r
+		read -p "proceed to remove ${nbr_untracked_files} untracked files/directories (list above) using 'git clean'? (y/N) " -r
 		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-			read -p "Are you really sure? (y/N) " -r
+			read -p "are you really sure? (y/N) " -r
 			if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 				# shellcheck disable=SC2016
 				ove_revtab_forall 'ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} "--no-pager clean"'
@@ -11530,7 +11531,7 @@ function ove-rm-logs {
 		${ove_cmd2pathname["find"]:?} ${OVE_LOG_DIR} ${find_opt} | ${ove_cmd2pathname["cat"]:?} -n
 
 		echo
-		echo -n "Proceed to remove "
+		echo -n "proceed to remove "
 		if [ $# -eq 1 ] && [ $1 -eq 0 ]; then
 			read -p "ALL files (list above) from '${OVE_LOG_DIR}' (y/N) " -r
 		else
@@ -11539,7 +11540,7 @@ function ove-rm-logs {
 		if [[ ! ${REPLY} =~ ^[Yy]$ ]]; then
 			return 1
 		fi
-		read -p "Are you really sure? (y/N) " -r
+		read -p "are you really sure? (y/N) " -r
 		if [[ ! ${REPLY} =~ ^[Yy]$ ]]; then
 			return 1
 		fi
@@ -13500,7 +13501,7 @@ function ove-init {
 
 	if [ $# -eq 0 ]; then
 		while true; do
-			read -r -p "Directory to scan for git repositories? Leave blank to search in '$PWD': "
+			read -r -p "directory to scan for git repositories? Leave blank to search in '$PWD': "
 			if [ "${REPLY}" = "" ]; then
 				if ove_is_base_dir "${PWD}"; then
 					ove_echo_error_noprefix "'${PWD}' is already a OVE workspace. Remove the symblic link '${PWD}/.owel' to be able to re-init this directory."
@@ -13676,7 +13677,7 @@ function ove-init {
 
 	skeleton=0
 	if [ -t 1 ]; then
-		read -r -p "Create example/skeleton files? (y/N) "
+		read -r -p "create example/skeleton files? (y/N) "
 		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 			skeleton=1
 			# projs
