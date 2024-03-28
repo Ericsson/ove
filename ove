@@ -11088,7 +11088,7 @@ function ove-loglevel {
 		ove_command_usage
 		return 1
 	elif [ $# -eq 1 ]; then
-		if [ $1 -gt 2 ] && [ $1 -lt 7 ]; then
+		if [ $1 -gt 2 ] && [ $1 -lt 11 ]; then
 			if ! ove_check_command "strace"; then
 				return 1
 			fi
