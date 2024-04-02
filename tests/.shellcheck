@@ -1,8 +1,0 @@
-43
-     22  SC2059: Don't use variables in the printf format string. Use printf "..%s.." "$foo".
-      7  SC2031: all_files was modified in a subshell. That change might be lost.
-      5  SC2206: Quote to prevent word splitting/globbing, or split robustly with mapfile or read -a.
-      3  SC2207: Prefer mapfile or read -a to split command output (or quote to avoid splitting).
-      2  SC2175: Quote this invalid brace expansion since it should be passed literally to eval.
-      2  SC2030: Modification of all_files is local (to subshell caused by pipeline).
-      2  SC2004: $/${} is unnecessary on arithmetic variables.

@@ -22,6 +22,7 @@ function test_empty_projs() {
 
 function test_corrupt_projs() {
 	echo 1234 > .owel/projs
+	# shellcheck disable=SC2320
 	assertEquals "0" "$?"
 	# shellcheck disable=SC1091
 	source ove

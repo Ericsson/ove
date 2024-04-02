@@ -51,7 +51,7 @@
 | recordmydesktop  | 1         |
 | rev              | 4         |
 | rg               | 1         |
-| rm               | 54        |
+| rm               | 55        |
 | rmdir            | 3         |
 | scp              | 3         |
 | script           | 5         |
@@ -85,7 +85,7 @@
 | wc               | 22        |
 | whoami           | 1         |
 | whois            | 1         |
-| xargs            | 35        |
+| xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
 | __sum__          | __1301__  |

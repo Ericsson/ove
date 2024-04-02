@@ -147,13 +147,13 @@ function run {
 
 	_echo "[${distro}]$ $*"
 	while true; do
-		if eval "$@" 2> "${OVE_TMP}/${tag:?}.err"; then
+		if eval "$*" 2> "${OVE_TMP}/${tag:?}.err"; then
 			return 0
 		fi
 
 		_echo "error: '$*' failed for distro '${distro}'"
 		if [ ! -s "${OVE_TMP}/${tag}.err" ]; then
-			if [ "x${NO_EXIT}" = "x1" ]; then
+			if [ "${NO_EXIT}" = "1" ]; then
 				return 1
 			else
 				exit 1
@@ -183,7 +183,7 @@ function run {
 			cat "${OVE_TMP}/${tag}.err"
 		fi
 
-		if [ "x${NO_EXIT}" = "x1" ]; then
+		if [ "${NO_EXIT}" = "1" ]; then
 			return 1
 		else
 			exit 1
@@ -231,13 +231,13 @@ function container_exec {
 	fi
 
 	for e in ftp_proxy http_proxy https_proxy; do
-		if [ "x${!e}" = "x" ]; then
+		if [ "${!e}" = "" ]; then
 			continue
 		fi
 		container_exec_options+=" --env ${e}=${!e}"
 	done
 
-	if [ "x${CONTAINER_EXEC_EXTRA}" != "x" ]; then
+	if [ "${CONTAINER_EXEC_EXTRA}" != "" ]; then
 		container_exec_options+=" ${CONTAINER_EXEC_EXTRA}"
 	fi
 
@@ -274,13 +274,13 @@ function container_exec_no_exit {
 	fi
 
 	for e in ftp_proxy http_proxy https_proxy; do
-		if [ "x${!e}" = "x" ]; then
+		if [ "${!e}" = "" ]; then
 			continue
 		fi
 		container_exec_options+=" --env ${e}=${!e}"
 	done
 
-	if [ "x${CONTAINER_EXEC_EXTRA}" != "x" ]; then
+	if [ "${CONTAINER_EXEC_EXTRA}" != "" ]; then
 		container_exec_options+=" ${CONTAINER_EXEC_EXTRA}"
 	fi
 
@@ -665,7 +665,7 @@ EOF
 
 	true > "${OVE_TMP}/${tag}-sshenv"
 	for e in ftp_proxy http_proxy https_proxy; do
-		if [ "x${!e}" = "x" ]; then
+		if [ "${!e}" = "" ]; then
 			continue
 		fi
 		echo "${e}=${!e}" >> "${OVE_TMP}/${tag}-sshenv"
@@ -691,7 +691,7 @@ function get_id {
 			return 1
 		fi
 		_id=$(container_exec "id -${1::1} ${container_user}")
-		if [ "x${_id}" = "x" ]; then
+		if [ "${_id}" = "" ]; then
 			sleep_s=$((RANDOM%10))
 			echo "warning: empty $1, retry in ${sleep_s}s ($i)" 1>&2
 			sleep ${sleep_s}
@@ -898,7 +898,7 @@ while true; do
 		exit 0
 	fi
 	s=\$(\$cmd 2> /dev/null);
-	if [ "x\$s" = "x\$exp" ]; then
+	if [ "\$s" = "\$exp" ]; then
 		break
 	fi
 	sleep 0.1
@@ -945,7 +945,7 @@ function wait_for_ip {
 		# shellcheck disable=SC2086
 		container_ip=$("$(container_command)"${container_global_flags} list -c4 --format csv ${container_name})
 		container_ip=${container_ip% *}
-		if [ "x${container_ip}" = "x" ]; then
+		if [ "${container_ip}" = "" ]; then
 			_echo "waiting for IPv4 address for ${container_name} ($i)"
 			sleep 1
 			continue
@@ -1075,7 +1075,7 @@ function update_package_manager {
 }
 
 function prepare {
-	if [ "x${OVE_LAST_COMMAND}" != "x" ]; then
+	if [ "${OVE_LAST_COMMAND}" != "" ]; then
 		# re-use date+time (ignore micro/nano) from OVE_LAST_COMMAND
 		tag="${OVE_LAST_COMMAND##*/}"
 		tag="${tag:0:18}"
@@ -1083,11 +1083,11 @@ function prepare {
 		tag="$(date '+%Y%m%d-%H%M%S%N')"
 	fi
 
-	if [ "x${OVE_DISTROCHECK_CONTAINER_NAME}" != "x" ]; then
+	if [ "${OVE_DISTROCHECK_CONTAINER_NAME}" != "" ]; then
 		container_name="${OVE_DISTROCHECK_CONTAINER_NAME}"
 	else
 		container_name="${OVE_USER}-${tag}-${distro}"
-		if [ "x${OVE_DISTROCHECK_CONTAINER_PREFIX}" != "x" ]; then
+		if [ "${OVE_DISTROCHECK_CONTAINER_PREFIX}" != "" ]; then
 			container_name="${OVE_DISTROCHECK_CONTAINER_PREFIX}-${container_name}"
 		fi
 
@@ -1400,7 +1400,7 @@ function run_ove {
 		fi
 		ws_name=$(container_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
 		ws_name=${ws_name//[$'\t\r\n']/}
-		if [ "x${ws_name}" = "x" ]; then
+		if [ "${ws_name}" = "" ]; then
 			ws_name="ove-tutorial"
 			_echo "using ${ws_name} as OVE workspace (fallback)"
 			container_exec "bash -c 'curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s ${ws_name} https://github.com/Ericsson/${ws_name}'"
@@ -1452,7 +1452,7 @@ function run_unittest {
 }
 
 function run_distcheck_ove {
-	if [ "x${distcheck}" = "x" ]; then
+	if [ "${distcheck}" = "" ]; then
 		return 0
 	elif [[ ${OVE_DISTROCHECK_STEPS} != *ove* ]]; then
 		return 0
@@ -1498,7 +1498,7 @@ function run_distcheck_ove {
 }
 
 function run_distcheck_cmd {
-	if [ "x${distcheck}" = "x" ]; then
+	if [ "${distcheck}" = "" ]; then
 		return 0
 	elif [[ ${OVE_DISTROCHECK_STEPS} = *ove* ]]; then
 		return 0
