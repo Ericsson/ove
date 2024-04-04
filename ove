@@ -745,6 +745,8 @@ function ove_update_connect_db {
 			${ove_cmd2pathname["cut"]:?} -d')' -f1)
 		if [ "${port}" = "" ]; then
 			continue
+		elif [[ ! "${port}" =~ ^[0-9]+$ ]]; then
+			continue
 		fi
 
 		if ! test "${ove_ip2host_db["${ip}"]+isset}"; then
