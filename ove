@@ -780,7 +780,7 @@ function ove_update_connect_db {
 		if [ ! -s "$f" ]; then
 			continue
 		fi
-		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -V -o ${f} ${f} &
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -V -u -o ${f} ${f} &
 	done
 	wait
 }
