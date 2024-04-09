@@ -2829,6 +2829,7 @@ function ove_project_commands_list {
 		for f in $(cd ${OVE_OWEL_DIR}/projects && ${ove_cmd2pathname["find"]:?} -L ${OVE_PROJECT_LIST} -perm -u=x -type f \
 			-not -name '*-*' \
 			-not -name '*_*' \
+			-not -name 'common' \
 			-not -name '*#*' 2> /dev/null); do
 			echo ${f##*/};
 		done
@@ -3159,54 +3160,73 @@ function ove_list_projects_with_deps {
 function ove_projects_cmd_execute {
 	local e
 	local ret=0
+	local s
 
-	# common for this command?
-	if [ -e "${OVE_OWEL_DIR}/projects/common/${proj_command}" ]; then
-		OVE_ACTIVE_PROJECT_NAME="${proj_name}" \
-			OVE_ACTIVE_PROJECT_COMMAND="${proj_command}" \
-			OVE_ACTIVE_PROJECT_VERSION=${ove_projects_version[${i}]} \
-			source "${OVE_OWEL_DIR}/projects/common/${proj_command}"
-		# preserve return code
-		ret="$?"
+	# command common?
+	s="${OVE_OWEL_DIR}/projects/common/${proj_command}"
+	if [ -s "${s}" ]; then
+		if [ "${OVE_DRY_RUN}" -eq 1 ]; then
+			ove_echo_stderr_noprefix "source ${s}"
+		else
+			OVE_ACTIVE_PROJECT_NAME="${proj_name}" \
+				OVE_ACTIVE_PROJECT_COMMAND="${proj_command}" \
+				OVE_ACTIVE_PROJECT_VERSION=${ove_projects_version[${i}]} \
+				source "${s}"
+			# preserve return code
+			ret="$?"
+		fi
+	fi
+
+	# project common?
+	s="${OVE_OWEL_DIR}/projects/${proj_name}/common"
+	if [ ${ret} -eq 0 ] && \
+		[ -s "${s}" ]; then
+		if [ "${OVE_DRY_RUN}" -eq 1 ]; then
+			ove_echo_stderr_noprefix "source ${s}"
+		else
+			OVE_ACTIVE_PROJECT_NAME="${proj_name}" \
+				OVE_ACTIVE_PROJECT_COMMAND="${proj_command}" \
+				OVE_ACTIVE_PROJECT_VERSION=${ove_projects_version[${i}]} \
+				source "${s}"
+			# preserve return code
+			ret="$?"
+		fi
 	fi
 
 	# sanity check that the project command is executable
+	s="${OVE_OWEL_DIR}/projects/${proj_name}/${proj_command}"
 	if [ ${ret} -eq 0 ] && \
-		[ -x "${OVE_OWEL_DIR}/projects/${proj_name}/${proj_command}" ]; then
+		[ -x "${s}" ]; then
 		# "$1"/$2 is no longer needed
 		shift 2
 
-		if [ ${OVE_DRY_RUN} -eq 0 ]; then
-			e="${proj_name}_version=${ove_projects_version[${i}]}"
-			e+=" OVE_ACTIVE_PROJECT_NAME=${proj_name}"
-			e+=" OVE_ACTIVE_PROJECT_COMMAND=${proj_command}"
-			e+=" OVE_ACTIVE_PROJECT_VERSION=${ove_projects_version[${i}]}"
-			if [ ${OVE_TAINT_USER_ENV} -eq 0 ]; then
-				e+=" LD_LIBRARY_PATH=${OVE_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}"
-				e+=" MAKEFLAGS=\"\${OVE_MAKEFLAGS}\""
-				e+=" PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/sbin:${OVE_STAGE_DIR}${OVE_PREFIX}/bin:${PATH}"
-				e+=" PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH}"
-			fi
-
-			# run it
-			eval "${e} \
-				${OVE_OWEL_DIR}/projects/${proj_name}/${proj_command} \
-				${OVE_REDIRECT_OUTPUT}"
-		else
-			# dry: print the command
-			ove_echo_stderr_noprefix "cd ${path} && ${OVE_OWEL_DIR}/projects/${proj_name}/${proj_command}"
+		e="${proj_name}_version=${ove_projects_version[${i}]}"
+		e+=" OVE_ACTIVE_PROJECT_NAME=${proj_name}"
+		e+=" OVE_ACTIVE_PROJECT_COMMAND=${proj_command}"
+		e+=" OVE_ACTIVE_PROJECT_VERSION=${ove_projects_version[${i}]}"
+		if [ ${OVE_TAINT_USER_ENV} -eq 0 ]; then
+			e+=" LD_LIBRARY_PATH=${OVE_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}"
+			e+=" MAKEFLAGS=\"\${OVE_MAKEFLAGS}\""
+			e+=" PATH=${OVE_STAGE_DIR}${OVE_PREFIX}/sbin:${OVE_STAGE_DIR}${OVE_PREFIX}/bin:${PATH}"
+			e+=" PKG_CONFIG_PATH=${OVE_PKG_CONFIG_PATH}"
 		fi
 
-		# preserve return code
-		ret="$?"
+		if [ "${OVE_DRY_RUN}" -eq 1 ]; then
+			ove_echo_stderr_noprefix "eval ${e} ${s}"
+		else
+			# run the command
+			eval "${e} \
+				${s} \
+				${OVE_REDIRECT_OUTPUT}"
+			# preserve return code
+			ret="$?"
+		fi
 	fi
 
 	if [ "${ret}" -ne 0 ]; then
 		ove_echo_error "${proj_name}: ${proj_command}"
-	else
-		if [ ${OVE_LOGLEVEL} -ne 0 ]; then
-			ove_echo_cyan_error "${proj_name}: ${proj_command}: done"
-		fi
+	elif [ ${OVE_LOGLEVEL} -ne 0 ]; then
+		ove_echo_cyan_error "${proj_name}: ${proj_command}: done"
 	fi
 
 	return $ret
@@ -3261,11 +3281,11 @@ function ove_projects_cmd {
 		fi
 	fi
 
-	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
-		if ! pushd "${path}" &>/dev/null; then
-			ove_echo_error_noprefix "${proj_name}: ${proj_command}: pushd '${path}' failed"
-			return 1
-		fi
+	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
+		ove_echo_stderr_noprefix "pushd ${path}"
+	elif ! pushd "${path}" &>/dev/null; then
+		ove_echo_error_noprefix "${proj_name}: ${proj_command}: pushd '${path}' failed"
+		return 1
 	fi
 
 	if [ ${OVE_LOGLEVEL} -ne 0 ]; then
@@ -3291,10 +3311,10 @@ function ove_projects_cmd {
 		ret=$?
 	fi
 
-	if [ "${OVE_DRY_RUN}" -eq 0 ]; then
-		if ! popd &>/dev/null; then
-			ove_echo_warning_noprefix "${proj_name}: ${proj_command}: popd failed"
-		fi
+	if [ "${OVE_DRY_RUN}" -eq 1 ]; then
+		ove_echo_stderr_noprefix "popd"
+	elif ! popd &>/dev/null; then
+		ove_echo_warning_noprefix "${proj_name}: ${proj_command}: popd failed"
 	fi
 
 	return "${ret}"
@@ -11189,7 +11209,7 @@ function ove-dry-run {
 	ove-env ^OVE_DRY_RUN
 }
 
-# rec:[0|1]:toggle or set screen recording
+# rec:[0|1]:toggle or set screen recording:UTIL
 function ove-rec {
 	ove_entry || return
 

@@ -241,12 +241,14 @@ tree):
     │   ├── projC/
     │   │   ├── bootstrap
     │   │   ├── build
+    │   │   ├── common
     │   │   ├── configure
     │   │   └── install
     │   └── common/
     │   │   ├── bootstrap
     │   │   ├── bootstrap.post
-    │   │   └── bootstrap.pre
+    │   │   ├── bootstrap.pre
+    │   │   └── build.pre
 
 When OVE builds the top project the following happens: First, OVE sorts out the
 build order as explained in the previous section. Secondly, each projects'
@@ -274,15 +276,23 @@ pre/post files are sourced before/after the first/last bootstrap command.
 
 Example:
 
-    $ ove bootstrap projA projB projC
-    common/bootstrap.pre
-    A: common/bootstrap
-    A: bootstrap
-    B: common/bootstrap
-    B: bootstrap
-    C: common/bootstrap
-    C: bootstrap
-    common/bootstrap.post
+    $ ove bootstrap projA projB
+    projects/common/bootstrap.pre
+    A: projects/common/bootstrap
+    A: projects/projA/bootstrap
+    B: projects/common/bootstrap
+    B: projects/projB/bootstrap
+    projects/common/bootstrap.post
+
+Each OVE project may also have a 'common' file within the project directory.
+This 'common' file is sourced before the project command file is executed.
+
+Example:
+
+    $ ove build projC
+    projects/common/build.pre
+    C: projects/projC/common
+    C: projects/projC/build
 
 You now know how to build sub projects together, but what about testing from a
 system perspective? We cover that in the next section:
