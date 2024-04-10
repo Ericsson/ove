@@ -414,6 +414,7 @@ your machine and prompt for installation otherwise. This is the current list:
 * file
 * flock
 * git (>=1.8.5)
+* gzip
 * ld
 * less
 * pgrep
@@ -422,9 +423,36 @@ your machine and prompt for installation otherwise. This is the current list:
 * tsort
 
 OVE is also dependent on 'sed/grep/tail/awk/...' but they are not checked for
-since it is quite uncommon to lack these. Run 'ove list-externals' or check
-[this page](doc/ove-externals-list.md) for a complete list of commands that OVE is
-dependent on.
+since it is quite uncommon to lack these. To unlock all OVE features you also
+need:
+
+* ag
+* convert
+* dig
+* dot
+* ffmpeg
+* fzf
+* graph-easy
+* inotifywait
+* jp2a
+* incus
+* locate
+* lxc
+* make
+* md5deep
+* recordmydesktop
+* rg
+* shellcheck
+* strace
+* task
+* tmux
+* tsp
+* whois
+* yamllint
+* xdotool
+
+Run 'ove list-externals' or check [this page](doc/ove-externals-list.md) for a
+complete list of commands that OVE is dependent on.
 
 After successfully sourcing OVE, further instructions are given to enter the
 OVE workspace and fetch the rest of the repos. When the fetch is completed,
