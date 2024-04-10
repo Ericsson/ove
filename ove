@@ -11118,7 +11118,7 @@ function ove-revtab-check {
 	fi
 }
 
-# loglevel:[level] :show or change loglevel [0-9]:DEBUG
+# loglevel:[level]:show or change loglevel [0-10]:DEBUG
 function ove-loglevel {
 	ove_entry || return
 
@@ -11128,6 +11128,9 @@ function ove-loglevel {
 
 	set +x
 	if [ $# -eq 1 ] && ! [[ "${1}" =~ ^[0-9]+$ ]]; then
+		ove_command_usage
+		return 1
+	elif [ $# -eq 1 ] && [ "${1}" -gt 10 ]; then
 		ove_command_usage
 		return 1
 	elif [ $# -eq 1 ]; then
@@ -11165,19 +11168,19 @@ function ove-loglevel {
 	fi
 
 	{
-		echo " 0: silence is golden"
-		echo " 1: normal"
-		echo " 2: debug                [set -x]"
-		echo " 3: execve timeline      [strace]"
-		echo " 4: execve time analysis [strace]"
-		echo " 5: connect analysis     [strace]"
-		echo " 6: graph analysis       [strace]"
-		echo " 7: file (all)           [strace]"
-		echo " 8: file (-z/ok)         [strace]"
-		echo " 9: file (-Z/nok)        [strace]"
-		echo "10: raw                  [strace]"
-	} | ${ove_cmd2pathname["sed"]:?} -e "s/\(.*\)${OVE_LOGLEVEL}:\(.*\)$/\1${OVE_LOGLEVEL}:\2 */g" | \
-		${ove_cmd2pathname["grep"]:?} -E --color "$|.*${OVE_LOGLEVEL}:.*"
+		echo "0@silence is golden"
+		echo "1@normal"
+		echo "2@debug@[set -x]"
+		echo "3@execve timeline@[strace]"
+		echo "4@execve time analysis@[strace]"
+		echo "5@connect analysis@[strace]"
+		echo "6@graph analysis@[strace]"
+		echo "7@file (all)@[strace]"
+		echo "8@file (-z/ok)@[strace]"
+		echo "9@file (-Z/nok)@[strace]"
+		echo "10@raw@[strace]"
+	} | ${ove_cmd2pathname["column"]:?} -t -s'@' | \
+		${ove_cmd2pathname["grep"]:?} -E --color "$|^${OVE_LOGLEVEL} .*"
 
 	if [ $# -eq 1 ]; then
 		OVE_REDIRECT_OUTPUT=""

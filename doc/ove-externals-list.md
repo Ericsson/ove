@@ -6,7 +6,7 @@
 | bash             | 18        |
 | cat              | 53        |
 | chmod            | 7         |
-| column           | 28        |
+| column           | 29        |
 | comm             | 15        |
 | convert          | 1         |
 | cp               | 6         |
@@ -56,7 +56,7 @@
 | scp              | 3         |
 | script           | 5         |
 | scriptreplay     | 1         |
-| sed              | 89        |
+| sed              | 88        |
 | seq              | 11        |
 | setsid           | 1         |
 | shellcheck       | 1         |
