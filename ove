@@ -10849,8 +10849,8 @@ function ove-describe {
 	# yes, this is ugly
 	# shellcheck disable=SC1004,SC2016
 	${func} 'echo $(\
-		echo ${repo} | ${ove_cmd2pathname["sed"]:?} -e "s|${OVE_BASE_DIR}/||g")@$(ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} describe)@"$(\
-		${ove_cmd2pathname["git"]:?} log --format="%<(20,trunc)%s" -1\
+		echo ${repo} | ${ove_cmd2pathname["sed"]:?} -e "s|${OVE_BASE_DIR}/||g")@$(ALLOW_OVERRIDE=1 ove_repo_cmd ${repo} describe 2> /dev/null)@"$(\
+		${ove_cmd2pathname["git"]:?} log --format="%<(20,trunc)%s" -1 2> /dev/null \
 		)"@"$(\
 		${ove_cmd2pathname["git"]:?} -c color.status=never status -s -uno | \
 		${ove_cmd2pathname["tr"]:?} "\n" " ")"' "$@" |\
