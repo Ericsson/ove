@@ -7866,6 +7866,7 @@ function ove-export {
 	local args="$*"
 	local name
 	local proj_list
+	local rev
 
 	if [ $# -eq 0 ]; then
 		if ! ove_export; then
@@ -7887,8 +7888,13 @@ function ove-export {
 		return 1
 	fi
 
+	name="${OVE_BASE_DIR}/${OVE_OWEL_NAME}"
 	# shellcheck disable=SC2016
-	name="${OVE_BASE_DIR}/${OVE_OWEL_NAME}-$(ove-describe ${OVE_OWEL_NAME} | ${ove_cmd2pathname["awk"]:?} '{print $2}')"
+	rev=$(ove-describe ${OVE_OWEL_NAME} | ${ove_cmd2pathname["awk"]:?} '{print $2}')
+	if [ "$rev" != "" ]; then
+		name+="-${rev}"
+	fi
+
 	if [ $# -eq 1 ]; then
 		name+="-${args}"
 	fi
