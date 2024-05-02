@@ -1354,6 +1354,8 @@ function user_exec {
 }
 
 function run_ove {
+	local i
+
 	if [[ ${OVE_DISTROCHECK_STEPS} != *ove* ]]; then
 		return 0
 	fi
@@ -1389,6 +1391,19 @@ function run_ove {
 		run "$(container_command)${container_global_flags} config device add ${container_name} ove-state disk source=${OVE_GLOBAL_STATE_DIR} path=${OVE_GLOBAL_STATE_DIR}"
 		ws_name="${OVE_BASE_DIR}"
 		prefix="cd ${ws_name}; source ove hush"
+
+		i=0
+		while true; do
+			((i++))
+			if [ $i -ge 100 ]; then
+				echo "error: not possible to exec commands" 1>&2
+				exit 1
+			elif container_exec_no_exit "true"; then
+				break
+			fi
+			_echo "not possible to exec commands ($i)" 1>&2
+			sleep 0.1
+		done
 	else
 		if [ -x "${OVE_OWEL_DIR}/SETUP" ]; then
 			container_file_push_user \
