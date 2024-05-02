@@ -689,11 +689,11 @@ OVE has been tested for the following Linux distributions:
 | Arch Linux          | N/A                               |
 | Debian              | Buster, Bullseye, Bookworm        |
 | Devuan              | Beowulf, Chimaera, Daedalus       |
-| Fedora              | 36, 37, 38, 39                    |
+| Fedora              | 36, 37, 38, 39, 40                |
 | Kali                | N/A                               |
 | Linux Mint          | Uma, Una, Vanessa, Vera, Victoria |
 | openSUSE Tumbleweed | N/A                               |
-| Ubuntu              | 16.04, 18.04, 20.04, 22.04        |
+| Ubuntu              | 16.04, 18.04, 20.04, 22.04, 24.04 |
 | Void Linux          | N/A                               |
 
 Want to know more about OVE? Please check out the OVE
