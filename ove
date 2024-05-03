@@ -13975,6 +13975,7 @@ function ove_deps {
 	optional+=('recordmydesktop')
 	optional+=('rg')
 	optional+=('shellcheck')
+	optional+=('sshpass')
 	optional+=('strace')
 	optional+=('task')
 	optional+=('tmux')
@@ -13982,6 +13983,7 @@ function ove_deps {
 	optional+=('whois')
 	optional+=('yamllint')
 	optional+=('xdotool')
+	optional+=('xpra')
 
 	for dep in "${deps[@]}"; do
 		if ! command -v ${dep} > /dev/null; then

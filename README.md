@@ -443,6 +443,7 @@ need:
 * recordmydesktop
 * rg
 * shellcheck
+* sshpass
 * strace
 * task
 * tmux
@@ -450,6 +451,7 @@ need:
 * whois
 * yamllint
 * xdotool
+* xpra
 
 Run 'ove list-externals' or check [this page](doc/ove-externals-list.md) for a
 complete list of commands that OVE is dependent on.
