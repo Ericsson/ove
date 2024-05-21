@@ -4964,7 +4964,9 @@ function ove-digraph {
 		echo "}"
 	} > ${OVE_OWEL_TMP_DIR}/digraph.dot
 
-	if command -v dot > /dev/null; then
+	if ! command -v dot > /dev/null; then
+		ove_echo_note_noprefix "install 'dot' to render graph as svg, pdf and png" 1>&2
+	else
 		for f in svg pdf png; do
 			if ! ${ove_cmd2pathname["dot"]:?} \
 				-T${f} \
@@ -4974,7 +4976,9 @@ function ove-digraph {
 		done
 	fi
 
-	if command -v graph-easy > /dev/null; then
+	if ! command -v graph-easy > /dev/null; then
+		ove_echo_note_noprefix "install 'graph-easy' to render graph as html, boxart and ascii" 1>&2
+	else
 		for f in html boxart ascii; do
 			if ! ${ove_cmd2pathname["graph-easy"]:?} \
 				--from=dot \
