@@ -3015,6 +3015,35 @@ function ove_projects_init {
 		}"
 	done
 
+	# clean/distclean/xyzclean-me functions
+	for m in ${OVE_PROJECT_COMMANDS}; do
+		if [[ $m != *clean ]]; then
+			continue
+		fi
+
+		eval "ove-${m}me() {
+			ove_entry || return
+
+			local ove_plugin_helptext=\"${m}me:[project...|tag...]:$m project(s) and their dependencies:BUILD\"
+			local proj_list
+
+			if ! ove_build_pre \$*; then
+				return 1
+			fi
+
+			if [ \$# -eq 0 ]; then
+				if ! ove-$m; then
+					return 1
+				fi
+			else
+				if ! proj_list=\$(ove_validate_project_list \"\$@\"); then
+					return 1
+				fi
+				ove-$m \$(ove_get_build_list \${proj_list})
+			fi
+		}"
+	done
+
 	read -a projects -r <<<"${OVE_PROJECT_LIST}"
 	ove_number_of_projects=${#projects[@]}
 
@@ -8132,7 +8161,7 @@ function ove_build_pre {
 			ove_echo_error_noprefix "'$(LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -3 \
 				<(printf "%s\n" ${OVE_PROJECT_LIST}) \
 				<(printf "%s\n" ${OVE_PROJECT_LIST_BUILDABLE}) |
-				${ove_cmd2pathname["xargs"]:?})' is not buildable project(s). Try: 'ove fetch'"
+				${ove_cmd2pathname["xargs"]:?})' is not ${OVE_PROJECT_COMMANDS// /\/}-able. Try: 'ove fetch'"
 			return 1
 		fi
 	else
@@ -8168,7 +8197,7 @@ function ove_build_pre {
 								return 1
 							fi
 						else
-							ove_echo_error_noprefix "'$a' is not a buildable project. Try: 'ove fetch ${repos}'"
+							ove_echo_error_noprefix "'$a' is not a ${OVE_PROJECT_COMMANDS// /\/}-able project. Try: 'ove fetch ${repos}'"
 							return 1
 						fi
 					fi
@@ -11750,6 +11779,7 @@ function ove_bash_complete {
 		fi
 	elif [ "${subcommand}" = "buildme" ] ||
 		[ "${subcommand}" = "buildme-parallel" ] ||
+		[[ "${subcommand}" == *cleanme ]] ||
 		[ "${subcommand}" = "export" ] ||
 		[ "${subcommand}" = "install-pkg" ] ||
 		[ "${subcommand}" = "list-deps" ] ||
@@ -12197,6 +12227,14 @@ function ove_update_tab_complete {
 	# parallel project commands
 	for cmd in ${OVE_PROJECT_COMMANDS}; do
 		OVE_ALL_COMMANDS+=" ${cmd}-parallel"
+	done
+
+	for m in ${OVE_PROJECT_COMMANDS}; do
+		if [[ $m != *clean ]]; then
+			continue
+		fi
+		# clean/distclean/anyclean-me commands
+		OVE_ALL_COMMANDS+=" ${m}me"
 	done
 
 	read -a array -r <<<"${OVE_ALL_COMMANDS}"
@@ -14941,7 +14979,7 @@ function ove_unittest_preparations {
 			fi
 			echo >> ${unittest_dir}/${owel_name}/projs
 			${ove_cmd2pathname["mkdir"]:?} -p ${unittest_dir}/${owel_name}/projects/p${a}
-			for b in bootstrap configure build install; do
+			for b in bootstrap configure build install clean; do
 				echo "#!${ove_cmd2pathname["bash"]:?}" > ${unittest_dir}/${owel_name}/projects/p${a}/${b}
 				echo "echo ${b} p${a}" >> ${unittest_dir}/${owel_name}/projects/p${a}/${b}
 				${ove_cmd2pathname["chmod"]:?} +x ${unittest_dir}/${owel_name}/projects/p${a}/${b}
@@ -15017,7 +15055,8 @@ function ove_unittest {
 		return 1
 	fi
 
-	tot_files=$((nbr_of_files_per_repo * nbr_of_repos + (4 * nbr_of_projs)))
+	# 5 = bootstrap configure build install clean
+	tot_files=$((nbr_of_files_per_repo * nbr_of_repos + (5 * nbr_of_projs)))
 
 	# one symlink
 	if [ $nbr_of_projs -ne 0 ]; then

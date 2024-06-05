@@ -12,6 +12,21 @@ function test_buildme() {
 	assertEquals "0" "$?"
 }
 
+function test_cleanme() {
+	if [ "${nbr_of_projs:?}" -eq 0 ]; then
+		return 0
+	fi
+
+	ove cleanme
+	assertEquals "0" "$?"
+
+	ove cleanme p1 l1
+	assertEquals "0" "$?"
+
+	ove cleanme x1
+	assertEquals "1" "$?"
+}
+
 function test_buildme_parallel() {
 	if [ "${nbr_of_projs:?}" -eq 0 ]; then
 		return 0
