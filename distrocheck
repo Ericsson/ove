@@ -1064,6 +1064,8 @@ function update_package_manager {
 			args+=" -y"
 		elif [ "${packman}" = "zypper" ]; then
 			args+=" -y"
+		elif [ "${packman}" = "pacman" ]; then
+			args="-Syu"
 		fi
 
 		if ! container_exec_no_exit_as_root "${package_manager%% *} $args"; then
