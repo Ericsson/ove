@@ -15811,7 +15811,6 @@ function ove-shell-check {
 	ove_entry || return
 
 	local exclude
-	local sc
 
 	if ! ove_check_command "shellcheck"; then
 		return 1
@@ -15858,31 +15857,11 @@ function ove-shell-check {
 	# then, run shellcheck on self
 	(cd "${OVE_DIR}" && \shellcheck --extended-analysis=false -x -e ${exclude} "${OVE_SELF}" > "${OVE_TMP}/shell-check")
 	if [ ! -s "${OVE_TMP}/shell-check" ]; then
-		if [ -e "${OVE_DIR}/tests/.shellcheck" ]; then
-			${ove_cmd2pathname["rm"]:?} -v "${OVE_DIR}/tests/.shellcheck"
-		fi
 		return 0
 	fi
 
-	${ove_cmd2pathname["grep"]:?} -c -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" > "${OVE_TMP}/shellcheck.summary"
-	${ove_cmd2pathname["grep"]:?} -o ' SC[0-9]\+.*' "${OVE_TMP}/shell-check" | \
-		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
-		${ove_cmd2pathname["uniq"]:?} -c | \
-		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -nr >> "${OVE_TMP}/shellcheck.summary"
-	${ove_cmd2pathname["cp"]:?} -a "${OVE_TMP}/shellcheck.summary" "${OVE_DIR}/tests/.shellcheck"
-	${ove_cmd2pathname["git"]:?} --no-pager -C "${OVE_DIR}" diff -- tests/.shellcheck
-
-	if ${ove_cmd2pathname["git"]:?} -C "${OVE_DIR}" diff-files  --quiet -- tests/.shellcheck; then
-		return 0
-	else
-		echo "\${OVE_TMP}/shell-check"
-		for sc in $(${ove_cmd2pathname["git"]:?} -C "${OVE_DIR}" diff -U0 ${OVE_DIR}/tests/.shellcheck | \
-			${ove_cmd2pathname["grep"]:?} '^+\s' | \
-			${ove_cmd2pathname["grep"]:?} -o 'SC[0-9]\+'); do
-			${ove_cmd2pathname["grep"]:?} --color=always -B5 ${sc} ${OVE_TMP}/shell-check
-		done
-		return 1
-	fi
+	${ove_cmd2pathname["cat"]:?} "${OVE_TMP}/shell-check"
+	return 1
 }
 
 function ove_externals_reinit {

@@ -4,12 +4,12 @@
 | awk              | 56        |
 | basename         | 1         |
 | bash             | 18        |
-| cat              | 53        |
+| cat              | 54        |
 | chmod            | 7         |
 | column           | 29        |
 | comm             | 15        |
 | convert          | 1         |
-| cp               | 6         |
+| cp               | 5         |
 | csplit           | 1         |
 | cut              | 62        |
 | date             | 17        |
@@ -25,9 +25,9 @@
 | fold             | 2         |
 | fzf              | 5         |
 | getconf          | 2         |
-| git              | 84        |
+| git              | 81        |
 | graph-easy       | 2         |
-| grep             | 182       |
+| grep             | 177       |
 | head             | 21        |
 | incus            | 0         |
 | inotifywait      | 3         |
@@ -51,7 +51,7 @@
 | recordmydesktop  | 1         |
 | rev              | 4         |
 | rg               | 1         |
-| rm               | 55        |
+| rm               | 54        |
 | rmdir            | 3         |
 | scp              | 3         |
 | script           | 5         |
@@ -61,7 +61,7 @@
 | setsid           | 1         |
 | shellcheck       | 1         |
 | sleep            | 15        |
-| sort             | 118       |
+| sort             | 116       |
 | ssh              | 7         |
 | stat             | 8         |
 | stty             | 1         |
@@ -80,7 +80,7 @@
 | tsort            | 2         |
 | tsp              | 3         |
 | uname            | 4         |
-| uniq             | 7         |
+| uniq             | 6         |
 | uuidgen          | 1         |
 | wc               | 22        |
 | whoami           | 1         |
@@ -88,4 +88,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1301__  |
+| __sum__          | __1289__  |
