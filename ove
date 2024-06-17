@@ -12211,6 +12211,7 @@ function ove_get_built_ins {
 function ove_update_tab_complete {
 	local array
 	local cmd
+	local m
 	local oldIFS
 
 	# project commands
