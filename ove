@@ -9449,9 +9449,11 @@ function ove_submodule2revtab {
 			fi
 
 			# shellcheck disable=SC2016
-			sha=$(ove_repo_cmd ${repo} submodule--helper list | \
-				${ove_cmd2pathname["awk"]:?} '{print $4,$2}' | \
-				${ove_cmd2pathname["grep"]:?} "^${path} " | ${ove_cmd2pathname["awk"]:?} '{print $2}')
+			sha=$(ove_repo_cmd ${repo} submodule | \
+				${ove_cmd2pathname["grep"]:?} " ${path}$" | \
+				${ove_cmd2pathname["awk"]:?} '{print $1}')
+			sha=${sha/+/}
+			sha=${sha/-/}
 			if [ "${sha}" = "" ]; then
 				ove_echo_warning_noprefix "import-submodules: could not get SHA-1 for submodule '${submodule}'"
 				continue

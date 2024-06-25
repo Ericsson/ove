@@ -1,7 +1,7 @@
 | Command          | Usage     |
 | ---              | ---       |
 | ag               | 3         |
-| awk              | 56        |
+| awk              | 55        |
 | basename         | 1         |
 | bash             | 18        |
 | cat              | 54        |
@@ -88,4 +88,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1289__  |
+| __sum__          | __1288__  |
