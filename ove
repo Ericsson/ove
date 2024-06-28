@@ -11055,6 +11055,11 @@ function ove-what-is {
 
 	local dir
 
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
+
 	for dir in "$@"; do
 		if [ ! -d "${dir}" ]; then
 			continue
