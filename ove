@@ -11066,8 +11066,8 @@ function ove-what-is {
 		fi
 		echo "${dir}":
 		# shellcheck disable=SC2016
-		${ove_cmd2pathname["find"]:?} "${dir}" -not -path '*.git*' -print0 | \
-			${ove_cmd2pathname["xargs"]:?} -0 -P"$(${ove_cmd2pathname["getconf"]:?} _NPROCESSORS_ONLN)" file | \
+		${ove_cmd2pathname["find"]:?} "${dir}" -not -path '*.git*' -print0 2> /dev/null | \
+			${ove_cmd2pathname["xargs"]:?} -0 -P"$(${ove_cmd2pathname["getconf"]:?} _NPROCESSORS_ONLN)" ${ove_cmd2pathname["file"]:?} | \
 			${ove_cmd2pathname["awk"]:?} '{$1=""; print $0}' | \
 			LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
 			${ove_cmd2pathname["uniq"]:?} -c | \
