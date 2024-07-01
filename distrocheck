@@ -1533,6 +1533,33 @@ function run_distcheck_cmd {
 	container_exec "/var/tmp/${tag}.cmd"
 }
 
+function push_files_helper() {
+	declare -a _arr
+	local d
+	local i
+	local s
+
+	IFS=";" read -r -a _arr <<< "${1:?}"
+	for i in "${!_arr[@]}"; do
+		s=${_arr[i]%%:*}
+		d=${container_name}${_arr[i]##*:}
+		container_file_push_${2:?} \
+			"${s}" \
+			"${d}" \
+			"--create-dirs"
+	done
+}
+
+function push_files() {
+	if [ "${OVE_DISTROCHECK_CONTAINER_ROOT_FILES}" != "" ]; then
+		push_files_helper "${OVE_DISTROCHECK_CONTAINER_ROOT_FILES}" "root"
+	fi
+
+	if [ "${OVE_DISTROCHECK_CONTAINER_USER_FILES}" != "" ]; then
+		push_files_helper "${OVE_DISTROCHECK_CONTAINER_USER_FILES}" "user"
+	fi
+}
+
 function main {
 	init "$@"
 	prepare
@@ -1555,6 +1582,7 @@ function main {
 	run_ove
 	prepare_unittest
 	run_unittest
+	push_files
 	run_distcheck_ove
 	run_distcheck_cmd
 	wait_X
