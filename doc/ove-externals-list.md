@@ -56,7 +56,7 @@
 | scp              | 3         |
 | script           | 5         |
 | scriptreplay     | 1         |
-| sed              | 88        |
+| sed              | 91        |
 | seq              | 11        |
 | setsid           | 1         |
 | shellcheck       | 1         |
@@ -88,4 +88,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1289__  |
+| __sum__          | __1292__  |

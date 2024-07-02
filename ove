@@ -15738,7 +15738,8 @@ function ove-generate-doc {
 	${ove_cmd2pathname["mkdir"]:?} -p "${OVE_DIR}"/doc
 	printf "${header}\n|-|-|-|-|\n${sorted}\n" | \
 		${ove_cmd2pathname["sed"]:?} -e 's/\#/\\|/g' | \
-		${ove_cmd2pathname["column"]:?} -s: -t \
+		${ove_cmd2pathname["column"]:?} -s: -t | \
+		${ove_cmd2pathname["sed"]:?} 's/[ \t]*$//' \
 		> ${OVE_DIR}/doc/ove-cmd-list.md
 
 	# ove-config-list.md (configuration list)
@@ -15760,7 +15761,8 @@ function ove-generate-doc {
 	header="| Config:| Type: | Allowed:| Affect: | Description: | Default value:"
 	printf "${header}\n|-|-|-|-|-|-|\n${sorted}\n" | \
 		${ove_cmd2pathname["sed"]:?} -e 's/\#/\\|/g' | \
-		${ove_cmd2pathname["column"]:?} -s: -t \
+		${ove_cmd2pathname["column"]:?} -s: -t | \
+		${ove_cmd2pathname["sed"]:?} 's/[ \t]*$//' \
 		> ${OVE_DIR}/doc/ove-config-list.md
 
 	# ove.bash
@@ -15795,7 +15797,9 @@ function ove-generate-doc {
 	done
 
 	printf "$header\n|-|-|\n$str" | \
-		${ove_cmd2pathname["column"]:?} -s: -t > ${OVE_DIR}/doc/ove-variables-list.md
+		${ove_cmd2pathname["column"]:?} -s: -t | \
+		${ove_cmd2pathname["sed"]:?} 's/[ \t]*$//' \
+		> ${OVE_DIR}/doc/ove-variables-list.md
 
 	# ove-externals-list.md (external commands and usage)
 	header="| Command:| Usage:|"
