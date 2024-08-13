@@ -9669,6 +9669,47 @@ function ove-checkout {
 	return 0
 }
 
+# checkout-by-date:date:checkout by date (ignore revtab):CORE
+function ove-checkout-by-date {
+	ove_entry || return
+
+	local d
+	local prev
+	local rev
+
+	if [ $# -ne 1 ]; then
+		ove_command_usage
+		return 1
+	elif ! d=$(${ove_cmd2pathname["date"]:?} -d"$1" "+%Y-%m-%d %H:%M"); then
+		return 1
+	elif ! rev=$(ove_get_revision "$OVE_OWEL_DIR"); then
+		return 1
+	elif [ "${OVE_REVTAB_CHECK}" -eq 1 ]; then
+		ove_echo_error_noprefix "disable revtab-check with 'ove revtab-check 0' and try again"
+		return 1
+	elif ! ${ove_cmd2pathname["git"]:?} -C "$OVE_OWEL_DIR" show-ref -q --heads "${rev}"; then
+		ove_echo_error_noprefix "OWEL '$OVE_OWEL_DIR' is not on a branch"
+		return 1
+	elif ! prev="$(${ove_cmd2pathname["git"]:?} -C "${OVE_OWEL_DIR}" rev-list -n 1 --first-parent --before="${d}" "${rev}")"; then
+		return 1
+	elif [ "${prev}" = "" ]; then
+		return 1
+	elif ! ove-checkout "${prev}"; then
+		return 1
+	elif ! ove-revtab-sync; then
+		return 1
+	fi
+
+	# shellcheck disable=SC2016
+	ove-forall '
+		if [ ${repo} != ${OVE_OWEL_DIR} ] && [ ${repo} != ${OVE_DIR} ]; then
+			rev=$(ove_get_revision ${repo})
+			if ${ove_cmd2pathname["git"]:?} show-ref -q --heads ${rev}; then
+				${ove_cmd2pathname["git"]:?} checkout -q $(git rev-list -n 1 --first-parent --before="'$d'" ${rev})
+			fi
+		fi'
+}
+
 # list-commands:[pattern]:list commands:CORE
 function ove-list-commands {
 	ove_entry || return

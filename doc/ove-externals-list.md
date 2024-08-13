@@ -12,7 +12,7 @@
 | cp               | 5         |
 | csplit           | 1         |
 | cut              | 62        |
-| date             | 17        |
+| date             | 18        |
 | diff             | 1         |
 | dig              | 1         |
 | dirname          | 4         |
@@ -25,7 +25,7 @@
 | fold             | 2         |
 | fzf              | 5         |
 | getconf          | 2         |
-| git              | 81        |
+| git              | 85        |
 | graph-easy       | 2         |
 | grep             | 177       |
 | head             | 21        |
@@ -88,4 +88,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1292__  |
+| __sum__          | __1297__  |
