@@ -184,7 +184,7 @@ function ove_read_config {
 		c[$var]=1
 
 		# duplicates across config files
-		re=\\b${var}\\b
+		re="(^| )${var}($| )"
 		if [[ "${OVE_CONFIG_DUPLICATES}" =~ ${re} ]]; then
 			continue
 		fi
@@ -319,7 +319,7 @@ function ove_welcome_msg {
 	fi
 
 	# shellcheck disable=SC2016
-	script_ver=$(${ove_cmd2pathname["script"]:?} --version | \
+	script_ver=$(${ove_cmd2pathname["script"]:?} --version 2> /dev/null | \
 		${ove_cmd2pathname["awk"]:?} '{print $NF}')
 	if [[ ${script_ver} =~ ^2.3[12] ]]; then
 		echo
@@ -2449,7 +2449,7 @@ function ove {
 	if [ -t 1 ]; then
 		log_cmd="script"
 	elif [[ ${cmd} = *-parallel ]]; then
-		re=\\b${cmd/-parallel/}\\b
+		re="(^| )${cmd/-parallel/}($| )"
 		if [[ "${OVE_PROJECT_COMMANDS} buildme" =~ ${re} ]]; then
 			log_cmd="script"
 		fi
@@ -2508,21 +2508,30 @@ function ove {
 		set +m
 
 		# run the command
-		SHELL=${ove_cmd2pathname["bash"]:?} \
-			${ove_cmd2pathname["script"]:?} ${OVE_SCRIPT_OPTIONS} \
-			-t${OVE_LAST_COMMAND/.log}.timing \
-			-c "source ${OVE_BASE_DIR}/ove || exit 1; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
-			${OVE_LAST_COMMAND}
+		if [[ "${OVE_OS_KERNEL,,}" == *linux* ]]; then
+			SHELL=${ove_cmd2pathname["bash"]:?} \
+				${ove_cmd2pathname["script"]:?} ${OVE_SCRIPT_OPTIONS} \
+				-t${OVE_LAST_COMMAND/.log}.timing \
+				-c "source ${OVE_BASE_DIR}/ove || exit 1; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")" \
+				${OVE_LAST_COMMAND}
+		else
+			SHELL=${ove_cmd2pathname["bash"]:?} \
+				${ove_cmd2pathname["script"]:?} ${OVE_SCRIPT_OPTIONS} \
+				${OVE_LAST_COMMAND} \
+				bash -c "source ${OVE_BASE_DIR}/ove || exit 1; OVE_LAST_COMMAND=$OVE_LAST_COMMAND; ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")"
+		fi
 		ret=$?
 
 		# trace post hook
 		ove_trace_post
 
-		# remove NULL bytes and insert command+args at line 2
-		${ove_cmd2pathname["sed"]:?} -i -e 's/\x0//' -e "2i${cmd_and_args}\r" ${OVE_LAST_COMMAND}
+		if [[ "${OVE_OS_KERNEL,,}" == *linux* ]]; then
+			# remove NULL bytes and insert command+args at line 2
+			${ove_cmd2pathname["sed"]:?} -i -e 's/\x0//' -e "2i${cmd_and_args}\r" ${OVE_LAST_COMMAND}
 
-		# compensate timing file for command, args and linefeed
-		${ove_cmd2pathname["sed"]:?} -i -e "1i0.1 $((${#cmd_and_args}+1))" ${OVE_LAST_COMMAND/.log}.timing
+			# compensate timing file for command, args and linefeed
+			${ove_cmd2pathname["sed"]:?} -i -e "1i0.1 $((${#cmd_and_args}+1))" ${OVE_LAST_COMMAND/.log}.timing
+		fi
 
 		# turn on monitor mode
 		set -m
@@ -3322,7 +3331,7 @@ function ove_projects_cmd {
 	fi
 
 	if [ "${OVE_FORCE_SERIALIZE_COMMANDS}" != "" ]; then
-		re=\\b${proj_command}\\b
+		re="(^| )${proj_command}($| )"
 		if [[ "${OVE_FORCE_SERIALIZE_COMMANDS}" =~ ${re} ]]; then
 			with_flock=1
 		fi
@@ -3401,7 +3410,7 @@ function ove_read_git_command_options {
 					ove_revtab_git_cmd_opts["*:${cmd}"]="${cmd_opt}"
 					continue
 				fi
-				re=\\b$re\\b
+				re="(^| )$re($| )"
 
 				if [[ ! "${ove_revtab_git_name[*]} $OVE_OWEL_NAME" =~ $re ]]; then
 					continue
@@ -4603,7 +4612,7 @@ function ove_repo_is_excluded {
 			# remove all ' and "
 			o=${o//\'}
 			o=${o//\"}
-			re=\\b$o\\b
+			re="(^| )$o($| )"
 			if [[ "${o}" = ". .. "* ]]; then
 				return 0
 			elif [[ "${o}" = ".*" ]]; then
@@ -8176,7 +8185,7 @@ function ove_build_pre {
 			fi
 
 			if [ -n "${OVE_PROJECT_LIST_BUILDABLE+x}" ]; then
-				re=\\b$a\\b
+				re="(^| )$a($| )"
 				if ! [[ "${OVE_PROJECT_LIST_BUILDABLE}" =~ ${re} ]]; then
 					for p in $(ove_get_paths_recursive $a | ${ove_cmd2pathname["xargs"]:?} -n1 | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u); do
 						if ove_dir_is_repo "${p}"; then
@@ -8304,7 +8313,7 @@ function ove_list_helper {
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
-			re=\\b${b}\\b
+			re="(^| )${b}($| )"
 			if [[ -v proj_mask[${b}] ]]; then
 				continue
 			elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8386,7 +8395,7 @@ function ove-buildme {
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
 		for b in ${OVE_BUILD_ORDER}; do
 			if [ $# -ge 1 ]; then
-				re=\\b${b}\\b
+				re="(^| )${b}($| )"
 				if [[ -v proj_mask[${b}] ]]; then
 					continue
 				elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8406,7 +8415,7 @@ function ove-buildme {
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
-			re=\\b${b}\\b
+			re="(^| )${b}($| )"
 			if [[ -v proj_mask[${b}] ]]; then
 				continue
 			elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8456,7 +8465,7 @@ function ove_buildme_parallel_shell {
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
 		for b in ${OVE_BUILD_ORDER}; do
 			if [ $# -ge 1 ]; then
-				re=\\b${b}\\b
+				re="(^| )${b}($| )"
 				if [[ -v proj_mask[${b}] ]]; then
 					continue
 				elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8492,7 +8501,7 @@ function ove_buildme_parallel_shell {
 	fi
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
-			re=\\b${b}\\b
+			re="(^| )${b}($| )"
 			if [[ -v proj_mask[${b}] ]]; then
 				continue
 			elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8588,7 +8597,7 @@ EOF
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
 		for b in ${OVE_BUILD_ORDER}; do
 			if [ $# -ge 1 ]; then
-				re=\\b${b}\\b
+				re="(^| )${b}($| )"
 				if [[ -v proj_mask[${b}] ]]; then
 					continue
 				elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8609,7 +8618,7 @@ EOF
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
-			re=\\b${b}\\b
+			re="(^| )${b}($| )"
 			if [[ -v proj_mask[${b}] ]]; then
 				continue
 			elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8668,6 +8677,11 @@ function ove-buildme-parallel {
 	fi
 
 	if command -v make > /dev/null; then
+		if [[ "${OVE_OS_KERNEL,,}" = *bsd* ]] && \
+			! command -v gmake > /dev/null; then
+			ove_command_not_found "gmake"
+			return 1
+		fi
 		ove_buildme_parallel_make "$@"
 	else
 		ove_buildme_parallel_shell "$@"
@@ -10223,9 +10237,10 @@ function ove_config_one {
 	elif [ $# -gt 1 ]; then
 		var=$1
 		if ${ove_cmd2pathname["grep"]:?} -q -w ${var} ${cfg}; then
-			${ove_cmd2pathname["sed"]:?} -i -e "s|\(^${var}\s\+\).*|\1${*:2}|g" \
-				-e "s|\(^${var}$\)|\1 ${*:2}|g" \
-				-e "s|\s\+$||g" ${cfg}
+			${ove_cmd2pathname["sed"]:?} -E -e "s|(^${var}[[:space:]]+).*|\1${*:2}|g" \
+				-e "s|(^${var}$)|\1 ${*:2}|g" \
+				-e "s|[[:space:]]+$||g" \
+				-i -- ${cfg}
 			ove_config_one ${cfg} ${var}
 		fi
 	fi
@@ -10261,7 +10276,12 @@ function ove-add-config {
 		return 1
 	fi
 
-	file=$(${ove_cmd2pathname["readlink"]:?} -f -- $1)
+	if [ -e "$1" ]; then
+		file=$(${ove_cmd2pathname["readlink"]:?} -f -- $1)
+	else
+		file=$1
+	fi
+
 	if ! ove_config_validate_filename ${file}; then
 		ove_echo_error_noprefix "file '${file}' is not a valid OVE config file, select one of:"
 		printf "%s\n" ${OVE_CONFIG_FILES_USER} 1>&2
@@ -11045,7 +11065,11 @@ function ove-heads2revtab {
 			ove_echo_fatal_noprefix "empty SHA-1 for '${repo}'"
 			continue
 		fi
-		${ove_cmd2pathname["sed"]:?} -i -e 's|^'${repo}'\(\s\+.*\s\+.*\s\+\)\(.*\)$|'${repo}'\1'${sha_1}'|g' "${OVE_OWEL_DIR}"/revtab
+		${ove_cmd2pathname["sed"]:?} \
+			-E \
+			-e 's|^'${repo}'([[:space:]]+.*[[:space:]]+.*[[:space:]]+)(.*)$|'${repo}'\1'${sha_1}'|g' \
+			-i \
+			-- "${OVE_OWEL_DIR}"/revtab
 	done
 
 	ove_repo_cmd "${OVE_OWEL_DIR}" "--no-pager diff" revtab
@@ -11161,14 +11185,13 @@ function ove-cd {
 function ove-version {
 	ove_entry || return
 
-	local os_real
+	local s
 
-	os_real=$(${ove_cmd2pathname["uname"]:?} -o 2> /dev/null)
-	if [ "${os_real}" = "" ]; then
-		echo "OVE ${OVE_SHA} | ${OVE_OS} ${OVE_OS_VER}"
-	else
-		echo "OVE ${OVE_SHA} | ${OVE_OS} ${OVE_OS_VER} | ${os_real}"
+	s="OVE ${OVE_SHA} | ${OVE_OS} ${OVE_OS_VER}"
+	if [ "${OVE_OS_KERNEL:?}" != "" ]; then
+		s+=" | ${OVE_OS_KERNEL}"
 	fi
+	echo "${s}"
 }
 
 # revtab-check:[0|1]:disable/enable if OVE should keep repos in-sync with 'revtab':CORE
@@ -13133,9 +13156,9 @@ function ove_init {
 
 	if [ ! -L "${OVE_BASE_DIR}"/README ]; then
 		if [ -s "${OVE_OWEL_DIR}"/README ]; then
-			( cd "${OVE_BASE_DIR}" && ${ove_cmd2pathname["ln"]:?} -s -r "${OVE_OWEL_DIR}"/README .)
+			( cd "${OVE_BASE_DIR}" && ${ove_cmd2pathname["ln"]:?} -s "${OVE_OWEL_DIR}"/README .)
 		elif [ -s "${OVE_OWEL_DIR}"/README.md ]; then
-			( cd "${OVE_BASE_DIR}" && ${ove_cmd2pathname["ln"]:?} -s -r "${OVE_OWEL_DIR}"/README.md README )
+			( cd "${OVE_BASE_DIR}" && ${ove_cmd2pathname["ln"]:?} -s "${OVE_OWEL_DIR}"/README.md README )
 		fi
 	fi
 
@@ -13143,8 +13166,12 @@ function ove_init {
 
 	ove_config_builtins_init
 
-	read -r -a OVE_LD_SEARCH_PATH < <(${ove_cmd2pathname["ld"]:?} --verbose | \
+	if [[ "${OVE_OS_KERNEL,,}" != *bsd* ]]; then
+		read -r -a OVE_LD_SEARCH_PATH < <(${ove_cmd2pathname["ld"]:?} --verbose 2> /dev/null | \
 		${ove_cmd2pathname["sed"]:?} -n -e '/^SEARCH_DIR/s,SEARCH_DIR("=\?,,g' -e 's,");,,gp')
+	else
+		read -r -a OVE_LD_SEARCH_PATH < <(${ove_cmd2pathname["gcc"]:?} -Xlinker --verbose  2>/dev/null | sed -n -e '/^SEARCH_DIR/s,SEARCH_DIR("=,,g' -e 's,");,,gp')
+	fi
 	OVE_LDFLAGS=""
 	for dir in "${OVE_LD_SEARCH_PATH[@]}"; do
 		OVE_LDFLAGS+=" -L${OVE_STAGE_DIR}${dir}"
@@ -13532,9 +13559,9 @@ function ove_buildable_projects {
 	for proj in ${OVE_PROJECT_LIST}; do
 		deps=$(ove_get_deps_recursive ${proj})
 		for q in ${projs_not_buildable}; do
-			re=\\b${q}\\b
+			re="(^| )${q}($| )"
 			if [[ "${deps}" =~ ${re} ]]; then
-				re=\\b${proj}\\b
+				re="(^| )${proj}($| )"
 				# already marked as removed?
 				if [[ "${projs_and_deps_not_buildable}" =~ ${re} ]]; then
 					continue
@@ -14004,6 +14031,9 @@ function ove_command_to_package {
 		else
 			package="util-linux"
 		fi
+	# gtac
+	elif [ "$1" = "gtac" ]; then
+		package="coreutils"
 	# tsort
 	elif [ "$1" = "tsort" ]; then
 		package="coreutils"
@@ -14041,12 +14071,17 @@ function ove_deps {
 	deps+=('flock')
 	deps+=('git')
 	deps+=('gzip')
-	deps+=('ld')
 	deps+=('less')
 	deps+=('pgrep')
 	deps+=('script')
 	deps+=('tar')
 	deps+=('tsort')
+	if [[ "${OVE_OS_KERNEL,,}" == *bsd* ]]; then
+		deps+=('gcc')
+		deps+=('gtac')
+	else
+		deps+=('ld')
+	fi
 
 	optional=()
 	optional+=('ag')
@@ -14163,22 +14198,26 @@ function ove_packages_not_installed {
 			${ove_cmd2pathname["rev"]:?} | \
 			LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
 			${ove_cmd2pathname["xargs"]:?} -n1)
+	elif [[ ${OVE_OS,,} == *"bsd"* ]]; then
+		LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -2 -3 <(printf "%s\n" ${p_sort}) <(\pkg query -e '%a = 0' '%n' | LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
 	else
 		ove_echo_error_noprefix "function '${FUNCNAME[0]}' is not implemented for ${OVE_OS}"
 	fi
 }
 
 function ove_determine_dist_version_and_pack_manager {
-	# OVE_OS:Linux distribution NAME
+	# OVE_OS:Distribution NAME
 	OVE_OS=
-	# OVE_OS_ID:Linux distribution ID
+	# OVE_OS_ID:Distribution ID
 	OVE_OS_ID=
-	# OVE_OS_VER:Linux distribution version
+	# OVE_OS_VER:Distribution version
 	OVE_OS_VER=
-	# OVE_OS_ID_LIKE:Linux distribution ID_LIKE
+	# OVE_OS_ID_LIKE:Distribution ID_LIKE
 	OVE_OS_ID_LIKE=
-	# OVE_OS_CODENAME:Linux distribution code name
+	# OVE_OS_CODENAME:Distribution code name
 	OVE_OS_CODENAME=
+	# OVE_OS_KERNEL:Operating system implementation
+	OVE_OS_KERNEL=
 	if [ -e /etc/os-release ]; then
 		OVE_OS=$(source /etc/os-release; echo ${NAME})
 		OVE_OS_ID=$(source /etc/os-release; echo ${ID})
@@ -14195,6 +14234,8 @@ function ove_determine_dist_version_and_pack_manager {
 		OVE_OS_ID=${OVE_OS}
 		OVE_OS_VER=$(${ove_cmd2pathname["uname"]:?} -r)
 	fi
+
+	OVE_OS_KERNEL=$(${ove_cmd2pathname["uname"]:?} -o 2> /dev/null)
 
 	# OVE_OS_PACKAGE_MANAGER:package manager
 	OVE_OS_PACKAGE_MANAGER=
@@ -14229,6 +14270,9 @@ function ove_determine_dist_version_and_pack_manager {
 		OVE_OS_PACKAGE_MANAGER_ARGS=""
 	elif [[ ${OVE_OS} == *"openwrt"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="opkg"
+		OVE_OS_PACKAGE_MANAGER_ARGS="install"
+	elif [[ ${OVE_OS,,} == *"bsd"* ]]; then
+		OVE_OS_PACKAGE_MANAGER="pkg"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
 	else
 		OVE_OS_PACKAGE_MANAGER="unknown"
@@ -14988,10 +15032,9 @@ function ove_unittest_preparations {
 
 		f_all=
 		for i in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_files_per_repo}); do
-			filename=$(${ove_cmd2pathname["head"]:?} /dev/urandom | \
-				${ove_cmd2pathname["tr"]:?} -dc A-Za-z0-9 | \
-				${ove_cmd2pathname["head"]:?} -c 13 ; echo '')
-			${ove_cmd2pathname["tr"]:?} -dc "\t\n [:alnum:]" < /dev/urandom | ${ove_cmd2pathname["head"]:?} -c10 > ${filename}
+			filename=$(echo "${EPOCHREALTIME:?}" | ${ove_cmd2pathname["md5sum"]:?})
+			filename=${filename:0:10}
+			echo "${filename}" > "${filename}"
 			f_all+=" $filename"
 		done
 		if [ ${nbr_of_files_per_repo} -ne 0 ]; then
@@ -15925,6 +15968,7 @@ function ove_externals_init {
 	local cmds=()
 	local cmd
 	local pathname
+	local _kernel
 	local restore
 
 	if declare -p ove_cmd2pathname &> /dev/null; then
@@ -15955,6 +15999,7 @@ function ove_externals_init {
 	cmds+=('flock')
 	cmds+=('fold')
 	cmds+=('fzf')
+	cmds+=('gcc')
 	cmds+=('getconf')
 	cmds+=('git')
 	cmds+=('graph-easy')
@@ -16038,6 +16083,13 @@ function ove_externals_init {
 	done
 	if [ $restore -eq 1 ]; then
 		shopt -s expand_aliases
+	fi
+
+	_kernel=$(\uname -o)
+	if [[ "${_kernel,,}" == *bsd* ]]; then
+		ove_cmd2pathname["head"]="$(command -v ghead)"
+		ove_cmd2pathname["tac"]="$(command -v gtac)"
+		ove_cmd2pathname["make"]="$(command -v gmake)"
 	fi
 }
 
