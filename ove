@@ -11346,16 +11346,19 @@ function ove-lastlog-summary {
 
 	local cmd
 	local d
+	local diff_s
 	local exit_code
 	local f
 	local f_base
-	local first
 	local ff
+	local first
 	local last
 	local log_type
 	local second
 	local self=${FUNCNAME[0]/ove-/}
 	local t
+	local t0="NA"
+	local t1="NA"
 	local u
 
 	# ignore logs before October 1, 2021
@@ -11380,7 +11383,7 @@ function ove-lastlog-summary {
 		${ove_cmd2pathname["mv"]:?} $OVE_TMP/ove-${self}.filter $OVE_TMP/ove-${self}
 	fi
 
-	printf "%-24s %-4s %s\n" "date" "exit" "command"
+	printf "%-24s %-4s %-8s %s\n" "date" "exit" "sec" "command"
 	for f in $(${ove_cmd2pathname["xargs"]:?} stat --format '%Y:%n' < $OVE_TMP/ove-${self} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -nr); do
 		t=${f%%:*}
 		ff=${f#*:}
@@ -11389,6 +11392,9 @@ function ove-lastlog-summary {
 		second=
 		last=
 		exit_code=
+		t0="NA"
+		t1="NA"
+		diff_s="NA"
 		while read -r line; do
 			if [ "$first" = "" ]; then
 				first=${line}
@@ -11401,15 +11407,27 @@ function ove-lastlog-summary {
 		if [[ $first == "Script started"* ]]; then
 			log_type="script"
 			last=$(${ove_cmd2pathname["tail"]:?} -1 $ff)
+			t0=${first/Script started on }
+			t0=${t0%%[*}
+			if ! t0=$(${ove_cmd2pathname["date"]:?} -d "$t0" '+%s' 2> /dev/null); then
+				t0="NA"
+			fi
 		else
 			log_type="tee"
 		fi
 
 		if [ "$log_type" = "script" ]; then
 			cmd=$second
+			# remove CR
+			cmd=${cmd//$'\r'/}
 			if [[ $last == "Script done"* ]]; then
 				exit_code=${last/*COMMAND_EXIT_CODE=\"}
 				exit_code=${exit_code%\"*}
+				t1=${last/Script done on }
+				t1=${t1%% [*}
+				if ! t1=$(${ove_cmd2pathname["date"]:?} -d "$t1" '+%s' 2> /dev/null); then
+					t1="NA"
+				fi
 			fi
 		elif [ "$log_type" = "tee" ]; then
 			cmd=$first
@@ -11423,6 +11441,10 @@ function ove-lastlog-summary {
 			continue
 		fi
 
+		if [ "$t0" != "NA" ] && [ "$t1" != "NA" ]; then
+			diff_s=$((t1-t0))
+		fi
+
 		if [ "$exit_code" = "" ]; then
 			exit_code="NA"
 		elif ! [[ "${exit_code}" =~ ^[0-9]+$ ]]; then
@@ -11432,6 +11454,10 @@ function ove-lastlog-summary {
 		if [ "$cmd" = "" ]; then
 			cmd="unknown"
 		else
+			if [ "${cmd: -1}" = " " ]; then
+				# remove trailing whitespace
+				cmd=${cmd::-1}
+			fi
 			cmd=${cmd:2}
 
 			if [[ $cmd != ove* ]]; then
@@ -11446,9 +11472,9 @@ function ove-lastlog-summary {
 		u=${u#*/}
 		u=${u%%/*}
 		if [ "$u" = "$OVE_USER" ]; then
-			printf "%-24s %-4s %s\n" $d $exit_code "$cmd"
+			printf "%-24s %-4s %-8s %s\n" $d $exit_code ${diff_s} "$cmd"
 		else
-			printf "%-24s %-10s %-3s %s\n" $d $u $exit_code "$cmd"
+			printf "%-24s %-10s %-3s %-8s %s\n" $d $u $exit_code ${diff_s} "$cmd"
 		fi
 	done
 

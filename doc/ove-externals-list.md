@@ -12,7 +12,7 @@
 | cp               | 5         |
 | csplit           | 1         |
 | cut              | 62        |
-| date             | 18        |
+| date             | 20        |
 | diff             | 1         |
 | dig              | 1         |
 | dirname          | 4         |
@@ -89,4 +89,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1298__  |
+| __sum__          | __1300__  |
