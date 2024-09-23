@@ -87,6 +87,9 @@ wget -q -O /usr/share/keyrings/xpra.asc https://xpra.org/xpra.asc
 codename=\$(source /etc/os-release; echo \${VERSION_CODENAME})
 wget -q -O /etc/apt/sources.list.d/xpra.sources https://raw.githubusercontent.com/Xpra-org/xpra/master/packaging/repos/\${codename:?}/xpra.sources
 
+# refresh
+apt update
+
 # install xpra
 apt install -y xpra
 EOF
