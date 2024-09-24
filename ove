@@ -14310,6 +14310,7 @@ function ove_determine_dist_version_and_pack_manager {
 	export OVE_OS_VER
 	export OVE_OS_ID_LIKE
 	export OVE_OS_CODENAME
+	export OVE_OS_KERNEL
 	export OVE_OS_PACKAGE_MANAGER
 	export OVE_OS_PACKAGE_MANAGER_ARGS
 }
