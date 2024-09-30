@@ -13733,8 +13733,8 @@ function ove-init {
 		dir=${1}
 	fi
 
-	# remove any trailing slash
 	if [ ${#dir} -ne 1 ]; then
+		# remove trailing slash
 		dir="${dir%/}"
 	fi
 
@@ -15522,14 +15522,15 @@ function ove-add-repo {
 	if [ $# -eq 0 ] || [ $# -gt 3 ]; then
 		ove_command_usage
 		return 1
-	elif [ $# -eq 1 ] && ove_dir_is_repo "${1}"; then
-		name=${1}
+	fi
 
-		# remove any trailing slash
-		if [ ${#name} -ne 1 ]; then
-			name="${name%/}"
-		fi
+	name="${1}"
+	if [ ${#name} -ne 1 ]; then
+		# remove trailing slash
+		name="${name%/}"
+	fi
 
+	if [ $# -eq 1 ] && ove_dir_is_repo "${name}"; then
 		# sanity check
 		if [ "$(ove_validate_repo_list "$name")" != "" ]; then
 			ove_echo_error_noprefix "'$name' is already added"
@@ -15548,19 +15549,19 @@ function ove-add-repo {
 				fi
 			done
 		else
-			remote=$(${ove_cmd2pathname["git"]:?} -C "${1}" remote)
+			remote=$(${ove_cmd2pathname["git"]:?} -C "${name}" remote)
 		fi
 
 		fetch_url=$(ove_get_fetch_url "${name}" ${remote})
 		push_url=$(ove_get_push_url "${name}" ${remote})
 		revision=$(ove_get_revision "${name}")
 	else
-		fetch_url="${1}"
+		fetch_url="${name}"
 		push_url="${fetch_url}"
 		revision="${OVE_DEFAULT_BRANCH_NAME}"
 
 		if [ $# -eq 1 ]; then
-			name="${1##*/}"
+			name="${name##*/}"
 			name="${name%%.*}"
 
 			read -r -p "name? (leave empty to name it '${name}'): "
