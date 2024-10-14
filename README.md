@@ -294,6 +294,15 @@ Example:
     C: projects/projC/common
     C: projects/projC/build
 
+For convenience, each project command has access to a few OVE_ACTIVE_PROJECT_
+variables:
+
+| Environment variable       | Description                                  |
+|----------------------------|----------------------------------------------|
+| OVE_ACTIVE_PROJECT_COMMAND | Project command. E.g. 'build'                |
+| OVE_ACTIVE_PROJECT_NAME    | Project name. E.g. 'projA'                   |
+| OVE_ACTIVE_PROJECT_VERSION | Project version (if available). E.g. '1.4.1' |
+
 You now know how to build sub projects together, but what about testing from a
 system perspective? We cover that in the next section:
 
