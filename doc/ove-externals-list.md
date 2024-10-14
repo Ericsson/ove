@@ -25,7 +25,7 @@
 | fold             | 2         |
 | fzf              | 5         |
 | gcc              | 1         |
-| getconf          | 2         |
+| getconf          | 1         |
 | git              | 85        |
 | graph-easy       | 2         |
 | grep             | 177       |
@@ -89,4 +89,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1300__  |
+| __sum__          | __1299__  |
