@@ -9535,7 +9535,7 @@ function ove-do {
 	eval "${cmd}"
 }
 
-# fetch-fetched: :git fetch for already fetched repositories, ends with ove status:CORE
+# fetch-fetched: :fetch already fetched repositories, ends with ove status:CORE
 function ove-fetch-fetched {
 	ove_entry || return
 
@@ -9543,7 +9543,46 @@ function ove-fetch-fetched {
 	ove-fetch $(ove-status | ${ove_cmd2pathname["awk"]:?} '{print $1}')
 }
 
-# fetch:[git...]:git fetch for all/specified repositories, ends with ove status:CORE
+# fetch-remains: :fetch not yet fetched repositories, ends with ove status:CORE
+function ove-fetch-remains {
+	ove_entry || return
+
+	local a
+	local n
+
+	mapfile -t -d ' ' a <<< "${OVE_REPO_LIST}"
+	if [ ${OVE_REPOS_FETCHED} -eq "${#a[@]}" ]; then
+		return 0
+	fi
+
+	# save repos fetched
+	ove-forall "pwd" | \
+		${ove_cmd2pathname["sed"]:?} -e "s,${OVE_BASE_DIR}/,,g" | \
+		LC_ALL=C ${ove_cmd2pathname["sort"]:?} \
+		> "${OVE_TMP}"/a
+
+	# save all repos
+	printf "%s\n" ${OVE_REPO_LIST//${OVE_BASE_DIR}\/} | \
+		LC_ALL=C ${ove_cmd2pathname["sort"]:?} \
+		> "${OVE_TMP}"/b
+
+	# compare and save the remains
+	LC_ALL=C ${ove_cmd2pathname["comm"]:?} \
+		-1 \
+		-3 \
+		"${OVE_TMP}"/a \
+		"${OVE_TMP}"/b \
+		> "${OVE_TMP}"/c
+
+	n=$(${ove_cmd2pathname["wc"]:?} -l < "${OVE_TMP}"/c)
+	if [ "$n" -gt 0 ]; then
+		# fetch remains
+		ove-fetch $(cat "${OVE_TMP}"/c)
+	fi
+	${ove_cmd2pathname["rm"]:?} "${OVE_TMP}"/{a,b,c}
+}
+
+# fetch:[git...]:fetch all/specified repositories, ends with ove status:CORE
 function ove-fetch {
 	ove_entry || return
 
@@ -12643,7 +12682,7 @@ function ove_config_builtins_init {
 		export OVE_DRY_RUN=0
 	fi
 
-	# OVE_FETCH_MAX_PARALLEL:int:[0-9]+:fetch fetch-fetched:max number of 'git fetch' to run in parallel
+	# OVE_FETCH_MAX_PARALLEL:int:[0-9]+:fetch fetch-fetched fetch-remains:max number of 'git fetch' to run in parallel
 	if [ -z "${OVE_FETCH_MAX_PARALLEL+x}" ]; then
 		export OVE_FETCH_MAX_PARALLEL=0
 	fi
@@ -12653,7 +12692,7 @@ function ove_config_builtins_init {
 		export OVE_FETCH_SUBMODULES=1
 	fi
 
-	# OVE_FETCH_EXCLUDE:string::fetch fetch-fetched:semi-colon separated list of repos to exclude
+	# OVE_FETCH_EXCLUDE:string::fetch fetch-fetched fetch-remains:semi-colon separated list of repos to exclude
 	if [ -z "${OVE_FETCH_EXCLUDE+x}" ]; then
 		export OVE_FETCH_EXCLUDE=""
 	fi
