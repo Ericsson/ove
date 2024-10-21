@@ -8013,10 +8013,22 @@ function ove-import {
 	fi
 
 	n=0
+
 	if [ ! -s ${OVE_OWEL_DIR}/projs ]; then
+		# create projs
 		echo "---" > ${OVE_OWEL_DIR}/projs
 		n=1
 	fi
+
+	if [ ! -s ${OVE_OWEL_DIR}/revtab ] && \
+		${ove_cmd2pathname["grep"]:?} \
+			-q \
+			' b/revtab$' \
+			"${OVE_OWEL_TMP_DIR}/import/"*; then
+		# create revtab
+		true > ${OVE_OWEL_DIR}/revtab
+	fi
+
 	for patch in "${OVE_OWEL_TMP_DIR}/import/"*.patch; do
 		if ! ove_patch_one_project "$patch"; then
 			((ret++))
