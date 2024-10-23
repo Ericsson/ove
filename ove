@@ -184,7 +184,7 @@ function ove_read_config {
 		c[$var]=1
 
 		# duplicates across config files
-		re="(^| )${var}($| )"
+		re=\\b${var}\\b
 		if [[ "${OVE_CONFIG_DUPLICATES}" =~ ${re} ]]; then
 			continue
 		fi
@@ -2449,7 +2449,7 @@ function ove {
 	if [ -t 1 ]; then
 		log_cmd="script"
 	elif [[ ${cmd} = *-parallel ]]; then
-		re="(^| )${cmd/-parallel/}($| )"
+		re=\\b${cmd/-parallel/}\\b
 		if [[ "${OVE_PROJECT_COMMANDS} buildme" =~ ${re} ]]; then
 			log_cmd="script"
 		fi
@@ -3331,7 +3331,7 @@ function ove_projects_cmd {
 	fi
 
 	if [ "${OVE_FORCE_SERIALIZE_COMMANDS}" != "" ]; then
-		re="(^| )${proj_command}($| )"
+		re=\\b${proj_command}\\b
 		if [[ "${OVE_FORCE_SERIALIZE_COMMANDS}" =~ ${re} ]]; then
 			with_flock=1
 		fi
@@ -3410,7 +3410,7 @@ function ove_read_git_command_options {
 					ove_revtab_git_cmd_opts["*:${cmd}"]="${cmd_opt}"
 					continue
 				fi
-				re="(^| )$re($| )"
+				re=\\b$re\\b
 
 				if [[ ! "${ove_revtab_git_name[*]} $OVE_OWEL_NAME" =~ $re ]]; then
 					continue
@@ -4612,7 +4612,7 @@ function ove_repo_is_excluded {
 			# remove all ' and "
 			o=${o//\'}
 			o=${o//\"}
-			re="(^| )$o($| )"
+			re=\\b$o\\b
 			if [[ "${o}" = ". .. "* ]]; then
 				return 0
 			elif [[ "${o}" = ".*" ]]; then
@@ -8197,7 +8197,7 @@ function ove_build_pre {
 			fi
 
 			if [ -n "${OVE_PROJECT_LIST_BUILDABLE+x}" ]; then
-				re="(^| )$a($| )"
+				re=\\b$a\\b
 				if ! [[ "${OVE_PROJECT_LIST_BUILDABLE}" =~ ${re} ]]; then
 					for p in $(ove_get_paths_recursive $a | ${ove_cmd2pathname["xargs"]:?} -n1 | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u); do
 						if ove_dir_is_repo "${p}"; then
@@ -8325,7 +8325,7 @@ function ove_list_helper {
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
-			re="(^| )${b}($| )"
+			re=\\b${b}\\b
 			if [[ -v proj_mask[${b}] ]]; then
 				continue
 			elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8407,7 +8407,7 @@ function ove-buildme {
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
 		for b in ${OVE_BUILD_ORDER}; do
 			if [ $# -ge 1 ]; then
-				re="(^| )${b}($| )"
+				re=\\b${b}\\b
 				if [[ -v proj_mask[${b}] ]]; then
 					continue
 				elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8427,7 +8427,7 @@ function ove-buildme {
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
-			re="(^| )${b}($| )"
+			re=\\b${b}\\b
 			if [[ -v proj_mask[${b}] ]]; then
 				continue
 			elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8477,7 +8477,7 @@ function ove_buildme_parallel_shell {
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
 		for b in ${OVE_BUILD_ORDER}; do
 			if [ $# -ge 1 ]; then
-				re="(^| )${b}($| )"
+				re=\\b${b}\\b
 				if [[ -v proj_mask[${b}] ]]; then
 					continue
 				elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8513,7 +8513,7 @@ function ove_buildme_parallel_shell {
 	fi
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
-			re="(^| )${b}($| )"
+			re=\\b${b}\\b
 			if [[ -v proj_mask[${b}] ]]; then
 				continue
 			elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8609,7 +8609,7 @@ EOF
 	for p in ${OVE_BUILDME_PRE_STEPS}; do
 		for b in ${OVE_BUILD_ORDER}; do
 			if [ $# -ge 1 ]; then
-				re="(^| )${b}($| )"
+				re=\\b${b}\\b
 				if [[ -v proj_mask[${b}] ]]; then
 					continue
 				elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -8630,7 +8630,7 @@ EOF
 
 	for b in ${OVE_BUILD_ORDER}; do
 		if [ $# -ge 1 ]; then
-			re="(^| )${b}($| )"
+			re=\\b${b}\\b
 			if [[ -v proj_mask[${b}] ]]; then
 				continue
 			elif ! [[ "${build_list}" =~ ${re} ]]; then
@@ -13636,9 +13636,9 @@ function ove_buildable_projects {
 	for proj in ${OVE_PROJECT_LIST}; do
 		deps=$(ove_get_deps_recursive ${proj})
 		for q in ${projs_not_buildable}; do
-			re="(^| )${q}($| )"
+			re=\\b${q}\\b
 			if [[ "${deps}" =~ ${re} ]]; then
-				re="(^| )${proj}($| )"
+				re=\\b${proj}\\b
 				# already marked as removed?
 				if [[ "${projs_and_deps_not_buildable}" =~ ${re} ]]; then
 					continue
