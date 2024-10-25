@@ -16225,7 +16225,10 @@ function ove-rename {
 	ove_entry || return
 
 	local a
+	local aa
 	local b
+	local bb
+	local c
 	local cur
 	local link
 	local new
@@ -16270,15 +16273,27 @@ function ove-rename {
 	fi
 	for link in .owel .ove.state .ove.tmp README; do
 		resolved="$(${ove_cmd2pathname["readlink"]:?} ${link})"
-		if [[ "${resolved}" == *${cur}* ]]; then
-			if [ -d "${resolved}" ]; then
+		if [[ "${resolved}" != *${cur}* ]]; then
+			continue
+		fi
+
+		if [ -d "${resolved}" ]; then
+			if [[ "${resolved}" = */tmp/* ]]; then
+				# special treatment for .ove.state and .ove.tmp
+				a="${resolved%/*}"
+				b="${a%/*}/${new}"
+				aa="${OVE_USER}/ove/${cur}"
+				bb="${OVE_USER}/ove/${new}"
+				c="${resolved/${aa}/${bb}}"
+			else
 				a="${resolved%%"${cur}"*}${cur}"
 				b="${resolved%%"${cur}"*}${new}"
-				${ove_cmd2pathname["mv"]:?} ${a} ${b}
+				c="${resolved/${cur}/${new}}"
 			fi
-			${ove_cmd2pathname["rm"]:?} ${link}
-			${ove_cmd2pathname["ln"]:?} -s ${resolved/${cur}/${new}} ${link}
+			${ove_cmd2pathname["mv"]:?} "${a}" "${b}"
 		fi
+		${ove_cmd2pathname["rm"]:?} "${link}"
+		${ove_cmd2pathname["ln"]:?} -s "${c}" "${link}"
 	done
 }
 
