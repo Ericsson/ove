@@ -1208,13 +1208,17 @@ function ove-strace-connect {
 # $2: append string to output files
 function ove_strace_create_graph {
 	local all_files
+	local cmd
+	local ext
 	local f
 	local i
 	local o_base
 	local o_dot
 	local o_svg
 	local o_timing
+	local opt
 	local pid
+	declare -A ext_list
 
 	if [ ! -d "$1" ]; then
 		return 1
@@ -1226,6 +1230,14 @@ function ove_strace_create_graph {
 	o_dot=${o_base}.dot
 	o_svg=${o_base}.svg
 	o_timing=${o_base}.timing
+
+	# supported extensions
+	ext_list['ascii']=1
+	ext_list['boxart']=1
+	ext_list['html']=1
+	ext_list['pdf']=1
+	ext_list['png']=1
+	ext_list['svg']=1
 
 	echo "strict digraph $(${ove_cmd2pathname["tr"]:?} '-' '_' <<<"${OVE_OWEL_NAME}" | \
 		${ove_cmd2pathname["tr"]:?} -d '.') {" > ${o_dot}
@@ -1280,27 +1292,73 @@ function ove_strace_create_graph {
 	LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u ${OVE_OWEL_TMP_DIR}/timing > ${o_timing}
 	${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/timing
 
-	${ove_cmd2pathname["du"]:?} -sh ${o_dot}
+	if [ "${OVE_TRACE_GRAPH_VIEWER}" = "" ]; then
+		${ove_cmd2pathname["du"]:?} -sh ${o_dot}
+	else
+		ext_list['ascii']=0
+		ext_list['boxart']=0
+		ext_list['html']=0
+		ext_list['pdf']=0
+		ext_list['png']=0
+		ext_list['svg']=0
+		while IFS=';' read -a opt -r; do
+			for o in "${opt[@]}"; do
+				if [[ "${o}" != *:* ]]; then
+					ove_echo_error_noprefix "colon missing '$o', check 'OVE_TRACE_GRAPH_VIEWER' config"
+					return 1
+				elif [ ! "${ext_list["${o%:*}"]+isset}" ]; then
+					ove_echo_error_noprefix "'${o%:*}' is not a supported file extension"
+					continue
+				fi
+				ext_list["${o%:*}"]=1
+			done
+		done <<<"${OVE_TRACE_GRAPH_VIEWER}"
+		if [[ "${ext_list[*]}" != *1* ]]; then
+			return 1
+		fi
+	fi
+
 	if command -v dot > /dev/null; then
 		for f in svg pdf png; do
-			if ! ${ove_cmd2pathname["dot"]:?} -T${f} ${o_dot} > ${o_base:?}.$f; then
+			if [ "${ext_list[${f}]}" -eq 0 ]; then
+				continue
+			elif ! ${ove_cmd2pathname["dot"]:?} -T${f} ${o_dot} > ${o_base:?}.$f; then
 				return 1
+			elif [ "${OVE_TRACE_GRAPH_VIEWER}" = "" ]; then
+				${ove_cmd2pathname["du"]:?} -sh ${o_base:?}.$f
 			fi
-			${ove_cmd2pathname["du"]:?} -sh ${o_base:?}.$f
 		done
 	fi
 
 	if command -v graph-easy > /dev/null; then
 		for f in html boxart ascii; do
-			if ! ${ove_cmd2pathname["graph-easy"]:?} \
+			if [ "${ext_list[${f}]}" -eq 0 ]; then
+				continue
+			elif ! ${ove_cmd2pathname["graph-easy"]:?} \
 				--from=dot \
 				--as="$f" \
 				< ${o_dot} > ${o_base:?}.$f 2> /dev/null; then
 				return 1
+			elif [ "${OVE_TRACE_GRAPH_VIEWER}" = "" ]; then
+				${ove_cmd2pathname["du"]:?} -sh ${o_base:?}.$f
 			fi
-			${ove_cmd2pathname["du"]:?} -sh ${o_base:?}.$f
 		done
 	fi
+
+	if [ "${OVE_TRACE_GRAPH_VIEWER}" != "" ]; then
+		while IFS=';' read -a opt -r; do
+			for o in "${opt[@]}"; do
+				ext="${o%:*}"
+				cmd="${o#*:}"
+				if [ -s "${o_base:?}.${ext}" ] && command -v "${cmd}" > /dev/null; then
+					# launch viewer
+					"${cmd}" "${o_base:?}.${ext}"
+				fi
+			done
+		done <<<"${OVE_TRACE_GRAPH_VIEWER}"
+	fi
+
+	return 0
 }
 
 # helper for tmux related commands
@@ -12754,6 +12812,11 @@ function ove_config_builtins_init {
 	# OVE_TRACE_MODE:int:0|1:all loglevel:what to include in the trace, skip OVE internals (=0), include OVE internals (=1)
 	if [ -z "${OVE_TRACE_MODE+x}" ]; then
 		export OVE_TRACE_MODE=0
+	fi
+
+	# OVE_TRACE_GRAPH_VIEWER:string::loglevel 6:semi-colon separated list of extension-colon-viewer pairs
+	if [ -z "${OVE_TRACE_GRAPH_VIEWER+x}" ]; then
+		export OVE_TRACE_GRAPH_VIEWER=
 	fi
 
 	# OVE_AUTO_CORRECT:int:0|1:all:automatically correct commands
