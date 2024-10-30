@@ -11,7 +11,7 @@
 | convert          | 1         |
 | cp               | 6         |
 | csplit           | 1         |
-| cut              | 62        |
+| cut              | 63        |
 | date             | 20        |
 | diff             | 1         |
 | dig              | 1         |
@@ -20,7 +20,7 @@
 | du               | 6         |
 | ffmpeg           | 1         |
 | file             | 4         |
-| find             | 79        |
+| find             | 80        |
 | flock            | 10        |
 | fold             | 2         |
 | fzf              | 5         |
@@ -28,7 +28,7 @@
 | getconf          | 1         |
 | git              | 87        |
 | graph-easy       | 2         |
-| grep             | 178       |
+| grep             | 179       |
 | head             | 18        |
 | incus            | 0         |
 | inotifywait      | 3         |
@@ -48,9 +48,9 @@
 | pgrep            | 5         |
 | ps               | 1         |
 | pstree           | 1         |
-| readlink         | 29        |
+| readlink         | 31        |
 | recordmydesktop  | 1         |
-| rev              | 4         |
+| rev              | 6         |
 | rg               | 1         |
 | rm               | 55        |
 | rmdir            | 3         |
@@ -62,7 +62,7 @@
 | setsid           | 1         |
 | shellcheck       | 1         |
 | sleep            | 15        |
-| sort             | 119       |
+| sort             | 121       |
 | ssh              | 7         |
 | stat             | 8         |
 | stty             | 1         |
@@ -81,7 +81,7 @@
 | tsort            | 2         |
 | tsp              | 3         |
 | uname            | 4         |
-| uniq             | 6         |
+| uniq             | 7         |
 | uuidgen          | 1         |
 | wc               | 23        |
 | whoami           | 1         |
@@ -89,4 +89,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1310__  |
+| __sum__          | __1320__  |

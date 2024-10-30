@@ -11255,6 +11255,38 @@ function ove-head-tail {
 	fi
 }
 
+# what-extensions:dir...:classify files inside 'dir' based on file extensions:UTIL
+function ove-what-extensions {
+	ove_entry || return
+
+	local dir
+
+	if [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	for dir in "$@"; do
+		if [ ! -d "${dir}" ]; then
+			continue
+		fi
+		echo "$(${ove_cmd2pathname["readlink"]:?} -f -- ${dir}):"
+		${ove_cmd2pathname["find"]:?} \
+			"${dir}" \
+			-not -path '*/.git/*' \
+			-name '*.*' \
+			-printf "%f\n" \
+			2> /dev/null | \
+		${ove_cmd2pathname["grep"]:?} -v '^\.' | \
+		${ove_cmd2pathname["rev"]:?} | \
+		${ove_cmd2pathname["cut"]:?} -d'.' -f1 | \
+		${ove_cmd2pathname["rev"]:?} | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
+		${ove_cmd2pathname["uniq"]:?} -c | \
+		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -nr
+	done
+}
+
 # what-is:dir...:classify files inside 'dir' using 'file':UTIL
 function ove-what-is {
 	ove_entry || return
@@ -11270,9 +11302,13 @@ function ove-what-is {
 		if [ ! -d "${dir}" ]; then
 			continue
 		fi
-		echo "${dir}":
+		echo "$(${ove_cmd2pathname["readlink"]:?} -f -- ${dir}):"
 		# shellcheck disable=SC2016
-		${ove_cmd2pathname["find"]:?} "${dir}" -not -path '*.git*' -print0 2> /dev/null | \
+		${ove_cmd2pathname["find"]:?} \
+			"${dir}" \
+			-not -path '*/.git/*' \
+			-print0 \
+			2> /dev/null | \
 			${ove_cmd2pathname["xargs"]:?} -0 ${ove_cmd2pathname["file"]:?} | \
 			${ove_cmd2pathname["awk"]:?} '{$1=""; print $0}' | \
 			LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
