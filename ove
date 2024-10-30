@@ -7847,6 +7847,7 @@ function ove_export_create_proj_patch {
 		proj="$1"
 	fi
 
+	# project commands
 	if ${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects/${proj} -mindepth 1 -print -quit 2> /dev/null | ${ove_cmd2pathname["grep"]:?} -q .; then
 		if ! ${ove_cmd2pathname["mkdir"]:?} -p "${wd}"/projects/${proj}; then
 			return 1
@@ -7854,8 +7855,7 @@ function ove_export_create_proj_patch {
 			return 1
 		fi
 		for f in "${wd}"/projects/"${proj}"/*; do
-			(cd "${wd}" || exit 1
-			${ove_cmd2pathname["git"]:?} diff /dev/null ${f/${OVE_OWEL_TMP_DIR}\/export\/} >> "${wd}"/${proj}.patch)
+			${ove_cmd2pathname["git"]:?} -C "${wd}" diff /dev/null ${f/${OVE_OWEL_TMP_DIR}\/export\/} >> "${wd}"/${proj}.patch
 		done
 	fi
 
@@ -7863,14 +7863,18 @@ function ove_export_create_proj_patch {
 }
 
 function ove_export {
+	local c
 	local _end
+	local f
 	local proj
 	local projects
 	local proj_index
 	local proj_path
 	local repo_path
+	local s
 	local _start
 	local wd="${OVE_OWEL_TMP_DIR}/export"
+	declare -A cfg_list
 
 	${ove_cmd2pathname["mkdir"]:?} -p "${wd}"
 	${ove_cmd2pathname["find"]:?} "${wd}" -maxdepth 1 -name '*.patch' -exec rm {} \;
@@ -7884,12 +7888,13 @@ function ove_export {
 	# preparations
 	true > "${wd}"/revtab
 	true > "${wd}"/projs
+	true > "${wd}"/.oveconfig
 	(cd "${wd}" || exit 1
 	if [ -d .git ]; then
 		${ove_cmd2pathname["rm"]:?} -rf .git
 	fi
 	${ove_cmd2pathname["git"]:?} init -q .
-	${ove_cmd2pathname["git"]:?} add revtab projs
+	${ove_cmd2pathname["git"]:?} add revtab projs .oveconfig
 	${ove_cmd2pathname["git"]:?} commit -m "export: revtab projs" -q)
 
 	for proj in ${projects}; do
@@ -7923,8 +7928,7 @@ function ove_export {
 		if ! ove_export_create_proj_patch "${proj}" "${wd}"; then
 			return 1
 		fi
-		(cd "${wd}" || exit 1
-			${ove_cmd2pathname["git"]:?} diff -U0 projs >> "${wd}"/${proj}.patch)
+		${ove_cmd2pathname["git"]:?} -C "${wd}" diff -U0 projs >> "${wd}"/${proj}.patch
 		ove_modify_patch "${wd}"/${proj}.patch "projs"
 
 		# revtab
@@ -7942,13 +7946,41 @@ function ove_export {
 					${ove_revtab_fetch_url[${i}]} \
 					${ove_revtab_push_url[${i}]} \
 					${ove_revtab_rev[${i}]} >>"${wd}"/revtab
-				(cd "${wd}" || exit 1
-					${ove_cmd2pathname["git"]:?} diff revtab >> "${wd}"/${proj}.patch)
+				${ove_cmd2pathname["git"]:?} -C "${wd}" diff revtab >> "${wd}"/${proj}.patch
 				ove_modify_patch "${wd}"/${proj}.patch "revtab"
 				break
 			fi
 			proj_path="${proj_path%/*}"
 		done
+
+		# scripts
+		${ove_cmd2pathname["mkdir"]:?} -p "${wd}"/scripts
+		for s in $(ove-proj2val "${proj}" scripts 2> /dev/null); do
+			if [ ! -s "${OVE_OWEL_DIR}/scripts/${s}" ]; then
+				continue
+			elif ! ${ove_cmd2pathname["cp"]:?} -a "${OVE_OWEL_DIR}/scripts/${s}" "${wd}/scripts/${s}"; then
+				return 1
+			fi
+			f="${wd}/scripts/${s}"
+			${ove_cmd2pathname["git"]:?} -C "${wd}" diff /dev/null ${f/${OVE_OWEL_TMP_DIR}\/export\/} >> "${wd}"/${proj}.patch
+		done
+
+		# config
+		for c in $(ove-proj2val "${proj}" config 2> /dev/null); do
+			if [ "${cfg_list["${c}"]+isset}" ]; then
+				continue
+			elif [ "${!c}" = "" ]; then
+				continue
+			fi
+			echo "$c ${!c}" >> "${wd}/.oveconfig"
+			cfg_list[$c]=1
+		done
+		if [ -s "${wd}/.oveconfig" ]; then
+			f="${wd}/.oveconfig"
+			${ove_cmd2pathname["git"]:?} -C "${wd}" diff ${f/${OVE_OWEL_TMP_DIR}\/export\/} >> "${wd}"/${proj}.patch
+			ove_modify_patch "${wd}"/${proj}.patch ".oveconfig"
+			true > "${wd}/.oveconfig"
+		fi
 	done
 
 	# common
@@ -7956,7 +7988,7 @@ function ove_export {
 		return 1
 	fi
 
-	${ove_cmd2pathname["rm"]:?} -rf "${wd}"/{projs,revtab,projects,.git}
+	${ove_cmd2pathname["rm"]:?} -rf "${wd}"/{projs,revtab,projects,.git,scripts,.oveconfig}
 }
 
 # export:[project...|tag...]:export project(s):CORE

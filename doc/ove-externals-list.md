@@ -9,7 +9,7 @@
 | column           | 29        |
 | comm             | 17        |
 | convert          | 1         |
-| cp               | 5         |
+| cp               | 6         |
 | csplit           | 1         |
 | cut              | 62        |
 | date             | 20        |
@@ -26,7 +26,7 @@
 | fzf              | 5         |
 | gcc              | 1         |
 | getconf          | 1         |
-| git              | 85        |
+| git              | 87        |
 | graph-easy       | 2         |
 | grep             | 178       |
 | head             | 18        |
@@ -42,7 +42,7 @@
 | make             | 1         |
 | md5deep          | 1         |
 | md5sum           | 15        |
-| mkdir            | 35        |
+| mkdir            | 36        |
 | mktemp           | 14        |
 | mv               | 11        |
 | pgrep            | 5         |
@@ -89,4 +89,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1306__  |
+| __sum__          | __1310__  |
