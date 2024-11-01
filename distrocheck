@@ -1438,6 +1438,13 @@ function run_ove {
 		container_exec "bash ${bash_opt} -c '${prefix}; ove-status'"
 	fi
 
+	# sanity check mktemp
+	container_exec "mktemp"
+
+	# sanity check OVE
+	container_exec "bash ${bash_opt} -c '${prefix}; ove-nop'"
+
+	# no questions asked
 	package_manager_noconfirm
 	if [ ${unittest} -eq 0 ] && [[ ${distro} == *opensuse* ]]; then
 		container_exec "sudo zypper install -y -t pattern devel_basis"
