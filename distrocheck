@@ -552,6 +552,17 @@ dnf groupinstall -y xfce
 EOF
 }
 
+function ssh_config_entry {
+	cat << EOF
+Host ${container_name:?}
+	HostName ${container_ip:?}
+	RemoteCommand cd ${OVE_BASE_DIR:?}; exec \$SHELL
+	RequestTTY yes
+	StrictHostKeyChecking no
+	User ${_user:?}
+EOF
+}
+
 function update_ssh_config {
 	local n
 	local _user
@@ -573,18 +584,13 @@ function update_ssh_config {
 	elif grep -q "^Host ${container_name}$" "${HOME}/.ssh/config"; then
 		# insert on top of existing host
 		n=$(grep -m 1 -n "^Host ${container_name}$" "${HOME}/.ssh/config" | cut -d: -f1)
-		if ! sed -i -e "${n}iHost ${container_name}\n\tUser ${_user}\n\tHostName ${container_ip}\n\tStrictHostKeyChecking no\n" "${HOME}/.ssh/config"; then
+		if ! sed -i -e "${n}i$(ssh_config_entry)" "${HOME}/.ssh/config"; then
 			echo "error: not possible to update ${HOME}/.ssh/config" 1>&2
 			exit 1
 		fi
 	else
 		# append
-		cat >> "${HOME}/.ssh/config" <<EOF
-Host ${container_name}
-	User ${_user}
-	HostName ${container_ip}
-	StrictHostKeyChecking no
-EOF
+		ssh_config_entry >> "${HOME}/.ssh/config"
 	fi
 
 	if [[ ( ${OVE_DISTROCHECK_STEPS} == *ssh* ) && \
