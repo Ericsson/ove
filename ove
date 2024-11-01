@@ -14178,9 +14178,9 @@ function ove_debian_based {
 		return 0
 	elif [ "${OVE_OS_ID_LIKE,,}" = "ubuntu" ]; then
 		return 0
-	elif [[ ${OVE_OS} == *"Debian"* ]]; then
+	elif [[ ${OVE_OS,,} == *"debian"* ]]; then
 		return 0
-	elif [[ ${OVE_OS} == *"Ubuntu"* ]]; then
+	elif [[ ${OVE_OS,,} == *"ubuntu"* ]]; then
 		return 0
 	else
 		return 1
@@ -14195,23 +14195,23 @@ function ove_command_to_package {
 	if [ "$1" = "column" ]; then
 		if ove_debian_based; then
 			package="bsdmainutils"
-		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
+		elif [[ ${OVE_OS,,} == *"gentoo"* ]]; then
 			package="sys-apps/util-linux"
 		else
 			package="util-linux"
 		fi
 	# flock
 	elif [ "$1" = "flock" ]; then
-		if [[ ${OVE_OS} == *"Gentoo"* ]]; then
+		if [[ ${OVE_OS,,} == *"gentoo"* ]]; then
 			package="sys-apps/util-linux"
 		else
 			package="util-linux"
 		fi
 	# git
 	elif [ "$1" = "git" ]; then
-		if [[ ${OVE_OS} == *"Alpine"* ]]; then
+		if [[ ${OVE_OS,,} == *"alpine"* ]]; then
 			package="git git-perl"
-		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
+		elif [[ ${OVE_OS,,} == *"gentoo"* ]]; then
 			package="dev-vcs/git"
 		fi
 	# ld
@@ -14219,7 +14219,7 @@ function ove_command_to_package {
 		package="binutils"
 	# less
 	elif [ "$1" = "less" ]; then
-		if [[ ${OVE_OS} == *"Gentoo"* ]]; then
+		if [[ ${OVE_OS,,} == *"gentoo"* ]]; then
 			package="sys-apps/less"
 		fi
 	# locate
@@ -14234,7 +14234,7 @@ function ove_command_to_package {
 	elif [ "$1" = "script" ]; then
 		if ove_debian_based; then
 			package="bsdutils"
-		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
+		elif [[ ${OVE_OS,,} == *"gentoo"* ]]; then
 			package="sys-apps/util-linux"
 		else
 			package="util-linux"
@@ -14249,7 +14249,7 @@ function ove_command_to_package {
 	elif [ "$1" = "xz" ]; then
 		if ove_debian_based; then
 			package="xz-utils"
-		elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
+		elif [[ ${OVE_OS,,} == *"gentoo"* ]]; then
 			package="app-arch/xz"
 		fi
 	fi
@@ -14376,16 +14376,16 @@ function ove_packages_not_installed {
 
 	p_sort=$(printf "%s\n" "$@" | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u)
 
-	if [[ ${OVE_OS} == *"Arch Linux"* ]]; then
+	if [[ ${OVE_OS,,} == *"arch linux"* ]]; then
 		# shellcheck disable=SC2016
 		LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -2 -3 <(printf "%s\n" ${p_sort}) <(\pacman -Q | ${ove_cmd2pathname["awk"]:?} '{print $1}')
-	elif [[ ${OVE_OS} == *"Alpine"* ]]; then
+	elif [[ ${OVE_OS,,} == *"alpine"* ]]; then
 		LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -2 -3 <(printf "%s\n" ${p_sort}) <(\apk info | LC_ALL="C" ${ove_cmd2pathname["sort"]:?})
-	elif [[ ${OVE_OS} == *"CentOS"* ]] || \
-		[[ ${OVE_OS} == *"Fedora"* ]] || \
-		[[ ${OVE_OS} == *"SLES"* ]] || \
-		[[ ${OVE_OS} == *"openSUSE"* ]] || \
-		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]] ||
+	elif [[ ${OVE_OS,,} == *"centos"* ]] || \
+		[[ ${OVE_OS,,} == *"fedora"* ]] || \
+		[[ ${OVE_OS,,} == *"sles"* ]] || \
+		[[ ${OVE_OS,,} == *"opensuse"* ]] || \
+		[[ ${OVE_OS,,} == *"redhatenterpriseserver"* ]] ||
 		[[ ${OVE_OS_ID_LIKE,,} == *rhel* ]] ||
 		[[ ${OVE_OS_ID_LIKE,,} == *centos* ]] ||
 		[[ ${OVE_OS_ID_LIKE,,} == *fedora* ]]; then
@@ -14395,7 +14395,7 @@ function ove_packages_not_installed {
 			${ove_cmd2pathname["grep"]:?} -v ":install ok installed" | \
 			${ove_cmd2pathname["sed"]:?} -e 's/dpkg-query: no packages found matching //g' -e 's/:.*//g' | \
 			${ove_cmd2pathname["xargs"]:?}
-	elif [[ ${OVE_OS} == *"void"* ]]; then
+	elif [[ ${OVE_OS,,} == *"void"* ]]; then
 		# shellcheck disable=SC2016
 		LC_ALL="C" ${ove_cmd2pathname["comm"]:?} -2 -3 \
 			<(printf "%s\n" ${p_sort}) \
@@ -14449,34 +14449,34 @@ function ove_determine_dist_version_and_pack_manager {
 	OVE_OS_PACKAGE_MANAGER=
 	# OVE_OS_PACKAGE_MANAGER_ARGS:package manager arguments
 	OVE_OS_PACKAGE_MANAGER_ARGS=
-	if [[ ${OVE_OS} == *"Alpine"* ]]; then
+	if [[ ${OVE_OS,,} == *"alpine"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="apk"
 		OVE_OS_PACKAGE_MANAGER_ARGS="add"
-	elif [[ ${OVE_OS} == *"Arch Linux"* ]]; then
+	elif [[ ${OVE_OS,,} == *"arch linux"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="pacman"
 		OVE_OS_PACKAGE_MANAGER_ARGS="-S"
-	elif [[ ${OVE_OS} == *"CentOS"* ]]; then
+	elif [[ ${OVE_OS,,} == *"centos"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="yum"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
 	elif ove_debian_based; then
 		OVE_OS_PACKAGE_MANAGER="apt"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
-	elif [[ ${OVE_OS} == *"Fedora"* ]] || \
-		[[ ${OVE_OS} == *"RedHatEnterpriseServer"* ]] || \
+	elif [[ ${OVE_OS,,} == *"fedora"* ]] || \
+		[[ ${OVE_OS,,} == *"redhatenterpriseserver"* ]] || \
 		command -v dnf > /dev/null; then
 		OVE_OS_PACKAGE_MANAGER="dnf"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
-	elif [[ ${OVE_OS} == *"Gentoo"* ]]; then
+	elif [[ ${OVE_OS,,} == *"gentoo"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="emerge"
 		OVE_OS_PACKAGE_MANAGER_ARGS=""
-	elif [[ ${OVE_OS} == *"openSUSE"* ]] || \
-		[[ ${OVE_OS} == *"SLES"* ]]; then
+	elif [[ ${OVE_OS,,} == *"opensuse"* ]] || \
+		[[ ${OVE_OS,,} == *"sles"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="zypper"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
-	elif [[ ${OVE_OS} == *"void"* ]]; then
+	elif [[ ${OVE_OS,,} == *"void"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="xbps-install"
 		OVE_OS_PACKAGE_MANAGER_ARGS=""
-	elif [[ ${OVE_OS} == *"openwrt"* ]]; then
+	elif [[ ${OVE_OS,,} == *"openwrt"* ]]; then
 		OVE_OS_PACKAGE_MANAGER="opkg"
 		OVE_OS_PACKAGE_MANAGER_ARGS="install"
 	elif [[ ${OVE_OS,,} == *"bsd"* ]]; then
