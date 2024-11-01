@@ -304,7 +304,7 @@ function package_manager_noconfirm {
 	elif [[ ${package_manager} == pacman* ]]; then
 		container_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -S --noconfirm --noprogressbar'"
 	elif [[ ${package_manager} == xbps-install* ]]; then
-		container_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER xbps-install -y'"
+		container_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS -y'"
 	elif [[ ${package_manager} == zypper* ]]; then
 		container_exec "bash ${bash_opt} -c '${prefix}; ove-add-config \$HOME/.oveconfig OVE_OS_PACKAGE_MANAGER_ARGS install -y'"
 	elif [[ ${package_manager} == dnf* ]]; then
@@ -1065,7 +1065,7 @@ function update_package_manager {
 		if [ "${packman}" = "apt-get" ]; then
 			args+=" -y"
 		elif [ "${packman}" = "xbps" ]; then
-			args+=" -y"
+			args="-Syu"
 		elif [ "${packman}" = "dnf" ]; then
 			args+=" -y"
 		elif [ "${packman}" = "zypper" ]; then
