@@ -431,6 +431,8 @@ EOF
 	if [[ ${distro} == *alpine* ]]; then
 		echo "rc-update add sshd >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 		echo "/etc/init.d/sshd start >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
+	elif [[ ${distro} == *devuan* ]]; then
+		echo "service ssh restart" >> "${OVE_TMP}/${tag}-services.sh"
 	elif [[ ${distro} == *openwrt* ]]; then
 		{
 			echo "uci set dropbear.@dropbear[0].Port=2222"
@@ -566,6 +568,12 @@ EOF
 function update_ssh_config {
 	local n
 	local _user
+
+	if [[ ${OVE_DISTROCHECK_STEPS} != *ssh* ]]; then
+		return 0
+	elif [[ ${OVE_DISTROCHECK_STEPS} != *ssh_config* ]]; then
+		return 0
+	fi
 
 	if command -v flock > /dev/null; then
 		exec {fd}>"${OVE_TMP}"/distrocheck.lock
@@ -922,6 +930,7 @@ EOF
 
 function run_bootcheck {
 	container_exec_no_exit_as_root "sh /root/${tag}-bootcheck.sh"
+	wait_for_ip
 }
 
 function prepare_package_manager {
@@ -1142,16 +1151,6 @@ function prepare {
 	fi
 }
 
-function prepare_ssh_config {
-	if [[ ${OVE_DISTROCHECK_STEPS} != *ssh* ]]; then
-		return 0
-	elif [[ ${OVE_DISTROCHECK_STEPS} != *ssh_config* ]]; then
-		return 0
-	fi
-
-	update_ssh_config
-}
-
 function run_services {
 	if [ ! -s "${OVE_TMP}/${tag}-services.sh" ]; then
 		return
@@ -1286,7 +1285,6 @@ function prepare_ove {
 		ove_packs+=" util-linux"
 	else
 		ove_packs+=" coreutils-comm"
-		ove_packs+=" coreutils-difftils"
 		ove_packs+=" coreutils-du"
 		ove_packs+=" coreutils-nproc"
 		ove_packs+=" coreutils-readlink"
@@ -1441,6 +1439,13 @@ function run_ove {
 	# sanity check mktemp
 	container_exec "mktemp"
 
+	if [[ ${OVE_DISTROCHECK_STEPS} = *ove* ]] && [[ ${OVE_DISTROCHECK_STEPS} = *user* ]]; then
+		# sanity check /dev/ptmx (for OVE and script)
+		if ! container_exec_no_exit "[ -w /dev/ptmx ]"; then
+			container_exec_as_root "chmod 0666 /dev/ptmx"
+		fi
+	fi
+
 	# sanity check OVE
 	container_exec "bash ${bash_opt} -c '${prefix}; ove-nop'"
 
@@ -1580,18 +1585,17 @@ function main {
 	prepare_bootcheck
 	run_bootcheck
 	prepare_package_manager
-	wait_for_ip
 	update_package_manager
 	setup_sshd
 	prepare_X
 	run_services
-	prepare_ssh_config
 	prepare_ssh "root"
 	expose_user
 	prepare_ssh "${container_user}"
 	prepare_ove
 	user_exec
 	run_X
+	update_ssh_config
 	run_ove
 	prepare_unittest
 	run_unittest
