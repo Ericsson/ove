@@ -8088,7 +8088,7 @@ function ove-import {
 		ove_echo_error_noprefix "'${f}' is not a bzip2 compressed data file"
 		return 1
 	# sanity check archive
-	elif ! ${ove_cmd2pathname["tar"]:?} -tf "$f" | ${ove_cmd2pathname["grep"]:?} -q '\.\/[0-9a-f]\+\-export$'; then
+	elif ! ${ove_cmd2pathname["tar"]:?} -tf "$f" | ${ove_cmd2pathname["grep"]:?} -q '\./[0-9a-f]\+-export$'; then
 		ove_echo_error_noprefix "archive '$f' was not created with 'ove export'"
 		return 1
 	elif ! ${ove_cmd2pathname["mkdir"]:?} -p "${OVE_OWEL_TMP_DIR}/import"; then
