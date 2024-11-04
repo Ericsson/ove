@@ -7131,8 +7131,28 @@ function ove-remote-check {
 	done
 }
 
+# $1: repo
+# $2: cmd
+# $3: opt
+function ove_revtab_git_options_is_set {
+	if declare -p ove_revtab_git_cmd_opts &>/dev/null && \
+		[ "${ove_revtab_git_cmd_opts["$1:$2"]}" != "" ] && \
+		[[ "${ove_revtab_git_cmd_opts["$1:$2"]}" == *$3* ]]; then
+		return 0
+	fi
+
+	return 1
+}
+
 function ove_repo_is_dirty {
-	if test -z "$(ove_repo_cmd ${1} "${OVE_GIT_OPTIONS} --no-pager status" --porcelain -uno)"; then
+	local opt
+
+	if ove_revtab_git_options_is_set "*" "status" "--ignore-submodule" || \
+		ove_revtab_git_options_is_set "${1/${OVE_BASE_DIR}\/}" "status" "--ignore-submodule"; then
+		opt="--ignore-submodules"
+	fi
+
+	if test -z "$(ove_repo_cmd ${1} "${OVE_GIT_OPTIONS} --no-pager status" --porcelain -uno ${opt})"; then
 		return 1
 	else
 		return 0
@@ -7142,9 +7162,15 @@ function ove_repo_is_dirty {
 # $1: repo
 # $2: 1 = index or 2 = worktree
 function ove_repo_is_dirty_helper {
+	local opt
 	local s
 
-	s="$(ove_repo_cmd ${1} "${OVE_GIT_OPTIONS} --no-pager status" --porcelain -uno)"
+	if ove_revtab_git_options_is_set "*" "status" "--ignore-submodule" || \
+		ove_revtab_git_options_is_set "${1/${OVE_BASE_DIR}\/}" "status" "--ignore-submodule"; then
+		opt="--ignore-submodules"
+	fi
+
+	s="$(ove_repo_cmd ${1} "${OVE_GIT_OPTIONS} --no-pager status" --porcelain -uno ${opt})"
 	if [ "${s}" = "" ]; then
 		return 1
 	fi
@@ -9219,9 +9245,7 @@ function ove-pull {
 	set +m
 
 	autostash=0
-	if declare -p ove_revtab_git_cmd_opts &>/dev/null && \
-		[ "${ove_revtab_git_cmd_opts["*:pull"]}" != "" ] && \
-		[[ "${ove_revtab_git_cmd_opts["*:pull"]}" == *--autostash* ]]; then
+	if ove_revtab_git_options_is_set "*" "pull" "--autostash"; then
 		autostash=1
 	fi
 
@@ -9229,9 +9253,7 @@ function ove-pull {
 		for repo in $(ove_validate_repo_list "${@//${OVE_BASE_DIR}\/}"); do
 			if [ ${autostash} -eq 1 ]; then
 				true
-			elif declare -p ove_revtab_git_cmd_opts &>/dev/null && \
-				[ "${ove_revtab_git_cmd_opts["${repo}:pull"]}" != "" ] && \
-				[[ "${ove_revtab_git_cmd_opts["${repo}:pull"]}" == *--autostash* ]]; then
+			elif ove_revtab_git_options_is_set "${repo}" "pull" "--autostash"; then
 				true
 			elif ove_repo_is_dirty ${OVE_BASE_DIR}/${repo}; then
 				ove_echo_error_noprefix "cannot pull '${repo}' as it is dirty"
@@ -9244,9 +9266,7 @@ function ove-pull {
 			for repo in $(ove_list_repositories "behind"); do
 				if [ ${autostash} -eq 1 ]; then
 					true
-				elif declare -p ove_revtab_git_cmd_opts &>/dev/null && \
-					[ "${ove_revtab_git_cmd_opts["${repo}:pull"]}" != "" ] && \
-					[[ "${ove_revtab_git_cmd_opts["${repo}:pull"]}" == *--autostash* ]]; then
+				elif ove_revtab_git_options_is_set "${repo}" "pull" "--autostash"; then
 					true
 				elif ove_repo_is_dirty ${OVE_BASE_DIR}/${repo}; then
 					ove_echo_error_noprefix "cannot pull '${repo}' as it is dirty"
@@ -13052,14 +13072,14 @@ function ove_config_builtins_init {
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@clean:-dffx;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@clone: ;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@describe:--tags --always --dirty --long;"
-		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@diff:--color=always;"
+		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@diff:--color=always --ignore-submodules;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@fetch:--all --tags;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@fsck:--full;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@grep:--color=always;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@reset:-p;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@pull:--rebase;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@show:--first-parent --color=always;"
-		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@status:-bs -uno;"
+		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@status:-bs -uno --ignore-submodules;"
 		export OVE_GIT_COMMAND_OPTIONS_DEFAULT
 	fi
 
