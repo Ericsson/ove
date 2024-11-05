@@ -1437,7 +1437,9 @@ function run_ove {
 	fi
 
 	# sanity check mktemp
-	container_exec "mktemp"
+	if ! container_exec "mktemp"; then
+		exit 1
+	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} = *ove* ]] && [[ ${OVE_DISTROCHECK_STEPS} = *user* ]]; then
 		# sanity check /dev/ptmx (for OVE and script)
@@ -1447,7 +1449,9 @@ function run_ove {
 	fi
 
 	# sanity check OVE
-	container_exec "bash ${bash_opt} -c '${prefix}; ove-nop'"
+	if ! container_exec "bash ${bash_opt} -c '${prefix}; ove-nop'"; then
+		exit 1
+	fi
 
 	# no questions asked
 	package_manager_noconfirm
