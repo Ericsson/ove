@@ -592,18 +592,17 @@ function update_ssh_config {
 	elif grep -q "^Host ${container_name}$" "${HOME}/.ssh/config"; then
 		# insert on top of existing host
 		n=$(grep -m 1 -n "^Host ${container_name}$" "${HOME}/.ssh/config" | cut -d: -f1)
-		if ! sed -i -e "${n}i$(ssh_config_entry)" "${HOME}/.ssh/config"; then
+		{
+			echo -n "${n}i"
+			ssh_config_entry | sed -e 's,$,\\,g'
+		} > "${OVE_TMP}/${tag}-sed-script"
+		if ! sed -i -f "${OVE_TMP}/${tag}-sed-script" "${HOME}/.ssh/config"; then
 			echo "error: not possible to update ${HOME}/.ssh/config" 1>&2
 			exit 1
 		fi
 	else
 		# append
 		ssh_config_entry >> "${HOME}/.ssh/config"
-	fi
-
-	if [[ ( ${OVE_DISTROCHECK_STEPS} == *ssh* ) && \
-		( ${OVE_DISTROCHECK_STEPS} != *user* ) ]]; then
-		echo -e "\tUser root" >> "${HOME}/.ssh/config"
 	fi
 
 	if command -v flock > /dev/null; then
