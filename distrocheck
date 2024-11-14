@@ -120,7 +120,7 @@ function init {
 	container_global_flags=""
 	if [[ ${OVE_DISTROCHECK_STEPS} == *verbose* ]]; then
 		for s in ${OVE_DISTROCHECK_STEPS//:/ };do
-			echo ${s}
+			echo "${s}"
 		done | LC_ALL=C sort -u
 	elif "${c}" -h | grep -q '\-q'; then
 		container_global_flags+=" -q"
@@ -606,7 +606,7 @@ function update_ssh_config {
 	fi
 
 	if command -v flock > /dev/null; then
-		flock -u ${fd}
+		flock -u "${fd}"
 	fi
 }
 
@@ -1015,8 +1015,8 @@ function run_X {
 }
 
 function wait_X {
-	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]] && kill -0 ${xpra_pid} 2> /dev/null; then
-		wait ${xpra_pid}
+	if [[ ${OVE_DISTROCHECK_STEPS} == *X* ]] && kill -0 "${xpra_pid}" 2> /dev/null; then
+		wait "${xpra_pid}"
 	fi
 }
 
@@ -1387,6 +1387,8 @@ function run_ove {
 		container_file_push_user \
 			"${OVE_TMP}/${tag}-ove.bash" \
 			"${container_name}${_home}/.ove.bash"
+		# append to bashrc
+		container_exec "echo source ~/.ove.bash >> ${_home}/.bashrc"
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
@@ -1564,7 +1566,7 @@ function push_files_helper() {
 	for i in "${!_arr[@]}"; do
 		s=${_arr[i]%%:*}
 		d=${container_name}${_arr[i]##*:}
-		container_file_push_${2:?} \
+		container_file_push_"${2:?}" \
 			"${s}" \
 			"${d}" \
 			"--create-dirs"
