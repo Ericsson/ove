@@ -324,6 +324,17 @@ function remove_tmp {
 function cleanup {
 	local f
 
+	if [ -s "${HOME}/.ssh/config" ] && \
+		[[ ${OVE_DISTROCHECK_STEPS} = *ove* ]] && \
+		[[ ${OVE_DISTROCHECK_STEPS} = *user* ]] && \
+		[[ ${OVE_DISTROCHECK_STEPS} = *ssh_config* ]]; then
+		# enable RemoteCommand
+		sed \
+			-i \
+			-e "s,^\t#\(RemoteCommand cd $OVE_BASE_DIR.*$\),\t\1,g" \
+			"${HOME}/.ssh/config"
+	fi
+
 	f="${OVE_TMP}/${tag}-$(container_command)-config-exit"
 	if ! save_instance_config "$f"; then
 		exit 1
@@ -558,11 +569,14 @@ function ssh_config_entry {
 	cat << EOF
 Host ${container_name:?}
 	HostName ${container_ip:?}
-	RemoteCommand cd ${OVE_BASE_DIR:?}; exec \$SHELL
 	RequestTTY yes
 	StrictHostKeyChecking no
 	User ${_user:?}
 EOF
+	if [[ ${OVE_DISTROCHECK_STEPS} = *ove* ]] && \
+		[[ ${OVE_DISTROCHECK_STEPS} = *user* ]]; then
+		echo -e "\t#RemoteCommand cd ${OVE_BASE_DIR:?}; exec \$SHELL"
+	fi
 }
 
 function update_ssh_config {
@@ -589,7 +603,8 @@ function update_ssh_config {
 	if ! mkdir -p "${HOME}/.ssh"; then
 		echo "error: mkdir ${HOME}/.ssh failed" 1>&2
 		exit 1
-	elif grep -q "^Host ${container_name}$" "${HOME}/.ssh/config"; then
+	elif [ -s "${HOME}/.ssh/config" ] && \
+		grep -q "^Host ${container_name}$" "${HOME}/.ssh/config"; then
 		# insert on top of existing host
 		n=$(grep -m 1 -n "^Host ${container_name}$" "${HOME}/.ssh/config" | cut -d: -f1)
 		{
@@ -1599,8 +1614,8 @@ function main {
 	prepare_ssh "${container_user}"
 	prepare_ove
 	user_exec
-	run_X
 	update_ssh_config
+	run_X
 	run_ove
 	prepare_unittest
 	run_unittest
