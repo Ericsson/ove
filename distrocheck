@@ -1403,7 +1403,14 @@ function run_ove {
 			"${OVE_TMP}/${tag}-ove.bash" \
 			"${container_name}${_home}/.ove.bash"
 		# append to bashrc
-		container_exec "echo source ~/.ove.bash >> ${_home}/.bashrc"
+		if container_exec_no_exit "[ -s ${_home}/.bashrc ]"; then
+			container_exec "sed -i '$ a source ~/.ove.bash' ${_home}/.bashrc"
+		else
+			echo "source ~/.ove.bash" > "${OVE_TMP}/${tag}-bashrc"
+			container_file_push_user \
+				"${OVE_TMP}/${tag}-bashrc" \
+				"${container_name}${_home}/.bashrc"
+		fi
 	fi
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *user* ]]; then
@@ -1453,7 +1460,7 @@ function run_ove {
 	fi
 
 	# sanity check mktemp
-	if ! container_exec "mktemp"; then
+	if ! container_exec "mktemp" &> /dev/null; then
 		exit 1
 	fi
 
