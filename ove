@@ -12100,11 +12100,15 @@ function ove_bash_complete {
 	elif [ "${subcommand}" = "distrocheck" ] ||
 		[ "${subcommand}" = "distrocheck-parallel" ]; then
 		if [ ${size} -eq 2 ]; then
-			wordlist=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects/*/ -name 'distcheck' -exec dirname {} \; 2> /dev/null)
-			if [ "${wordlist}" != "" ]; then
-				wordlist=${wordlist//${OVE_OWEL_DIR}\/projects\/}
+			if [ -s "${OVE_OWEL_DIR}"/projects/common/distcheck ]; then
+				wordlist="${OVE_PROJECT_LIST}"
 			else
-				wordlist=${OVE_PROJECT_LIST}
+				wordlist=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects/*/ -name 'distcheck' -exec dirname {} \; 2> /dev/null)
+				if [ "${wordlist}" != "" ]; then
+					wordlist=${wordlist//${OVE_OWEL_DIR}\/projects\/}
+				else
+					wordlist=${OVE_PROJECT_LIST}
+				fi
 			fi
 		elif [ ${size} -ge 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
 			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
