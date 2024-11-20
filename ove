@@ -5028,45 +5028,155 @@ function ove-list-projects {
 	return 0
 }
 
-# digraph: :create a DOT directed graph for all projects:CORE
+function ove_digraph_helper_deps {
+	local d
+	local i
+
+	while ((i < ove_number_of_projects)); do
+		# deps
+		if [ "${ove_projects_deps[${i}]}" != "" ]; then
+			for d in ${ove_projects_deps[${i}]}; do
+				echo "    ${ove_projects_name[${i}]} -> ${d};"
+			done
+		fi
+		(( i+=1 ))
+	done
+}
+
+# $1: project
+# ${@:2}: keys
+function ove_digraph_helper_keys {
+	local f
+	local key
+	local p
+	local s
+
+	p="$1"
+	shift
+
+	# project commands
+	if [[ "$*" = *commands* ]]; then
+		val=
+		for f in "${OVE_OWEL_DIR}"/projects/"${p}"/*; do
+			if [ ! -x "$f" ]; then
+				continue
+			fi
+			val+=" ${f##*/}"
+		done
+
+		if [ "$val" != "" ]; then
+			s+="\\l\\lcommands:\\l  $(echo "$val" | \
+				${ove_cmd2pathname["xargs"]:?} | \
+				${ove_cmd2pathname["sed"]:?} -e 's, ,\\l  ,g')\\l"
+		fi
+	fi
+
+	# projs keys
+	for key in "$@"; do
+		val=
+		if ! val=$(ove-proj2val $p $key); then
+			continue
+		elif [ "$val" = "" ]; then
+			continue
+		fi
+		s+="\\l\\l$key:\\l  $(echo "$val" | \
+			${ove_cmd2pathname["xargs"]:?} | \
+			${ove_cmd2pathname["sed"]:?} -e 's, ,\\l  ,g')\\l"
+	done
+
+	if [ "$s" != "" ]; then
+		# shellcheck disable=SC2028
+		echo "    $p [shape=rectangle, style=filled, label=\"$p\n\n$s\"];"
+	else
+		echo "    $p [shape=rectangle, style=filled];"
+	fi
+}
+
+# digraph:[commands key...] :create a DOT directed graph for all projects:CORE
 function ove-digraph {
 	ove_entry || return
 
+	declare -a rev
 	local f
 	local i
 	local n
+	local o
+	local p
+	local t
 
 	if [ ${ove_number_of_projects} -eq 0 ]; then
 		return 0
 	fi
 
+	n="${OVE_OWEL_NAME//-/_}"
+	n="${n//.}"
+
+	o="${OVE_OWEL_NAME}"
+	read -r -a rev < <(ove-describe ${OVE_OWEL_NAME})
+	if [ "${rev[1]}" != "" ]; then
+		o+="-${rev[1]}"
+	fi
+	o+="-digraph"
+
 	{
-		n="${OVE_OWEL_NAME//-/_}"
-		n="${n//.}"
 		echo "digraph ${n} {"
 
+		# draw all projects
 		i=0
 		while ((i < ove_number_of_projects)); do
-			if [ "${ove_projects_deps[${i}]}" != "" ]; then
-				for d in ${ove_projects_deps[${i}]}; do
-					echo "    ${ove_projects_name[${i}]} -> ${d};"
-				done
-			else
-				echo "    ${ove_projects_name[${i}]};"
-			fi
+			echo "    ${ove_projects_name[${i}]} [shape=rectangle, style=filled];"
 			(( i+=1 ))
 		done
 
+		if [[ "$*" = *tags* ]]; then
+			if [ "$(ove-list-tags | ${ove_cmd2pathname["wc"]:?} -l)" -eq 0 ]; then
+				ove_echo_error_noprefix "no tags"
+				return 1
+			fi
+
+			while read -r t foo; do
+				echo "subgraph cluster$t {"
+				echo "label=$t"
+				for p in $foo; do
+					ove_digraph_helper_keys "$p" "$@"
+				done
+				echo "}"
+			done < <(ove-list-tags)
+
+			# projects with tags
+			ove-list-tags | \
+				${ove_cmd2pathname["cut"]:?} -d' ' -f2- | \
+				${ove_cmd2pathname["xargs"]:?} -n1 | \
+				LC_ALL=C ${ove_cmd2pathname["sort"]:?} -u \
+				> "${OVE_TMP}"/a
+
+			# all projects
+			ove-list-projects \
+				> "${OVE_TMP}"/b
+
+			# projects without tags
+			for p in $(LC_ALL=C ${ove_cmd2pathname["comm"]:?} -1 -3 "${OVE_TMP}"/{a,b}); do
+				ove_digraph_helper_keys "$p" "$@"
+			done
+		elif [ "$#" -ne 0 ]; then
+			i=0
+			while ((i < ove_number_of_projects)); do
+				ove_digraph_helper_keys "${ove_projects_name[${i}]}" "$@"
+				(( i+=1 ))
+			done
+		fi
+		# draw all dependencies
+		ove_digraph_helper_deps
 		echo "}"
-	} > ${OVE_OWEL_TMP_DIR}/digraph.dot
+	} > "${OVE_OWEL_TMP_DIR}/${o}.dot"
 
 	if ! command -v dot > /dev/null; then
 		ove_echo_note_noprefix "install 'dot' to render graph as svg, pdf and png" 1>&2
 	else
 		for f in svg pdf png; do
 			if ! ${ove_cmd2pathname["dot"]:?} \
-				-T${f} \
-				${OVE_OWEL_TMP_DIR}/digraph.dot > ${OVE_OWEL_TMP_DIR}/digraph.${f}; then
+				-T"${f}" \
+				"${OVE_OWEL_TMP_DIR}/${o}.dot" > "${OVE_OWEL_TMP_DIR}/${o}.${f}"; then
 				return 1
 			fi
 		done
@@ -5078,22 +5188,22 @@ function ove-digraph {
 		for f in html boxart ascii; do
 			if ! ${ove_cmd2pathname["graph-easy"]:?} \
 				--from=dot \
-				--as=${f} \
-				< ${OVE_OWEL_TMP_DIR}/digraph.dot > ${OVE_OWEL_TMP_DIR}/digraph.${f} 2> /dev/null; then
+				--as="${f}" \
+				< "${OVE_OWEL_TMP_DIR}/${o}.dot" > "${OVE_OWEL_TMP_DIR}/${o}.${f}" 2> /dev/null; then
 				return 1
 			fi
 		done
 	fi
 
-	if [ -s "${OVE_OWEL_TMP_DIR}/digraph.ascii" ]; then
-		${ove_cmd2pathname["cat"]:?} ${OVE_OWEL_TMP_DIR}/digraph.ascii
+	if [ -s "${OVE_OWEL_TMP_DIR}/${o}.ascii" ]; then
+		${ove_cmd2pathname["cat"]:?} "${OVE_OWEL_TMP_DIR}/${o}.ascii"
 	fi
 
 	for f in dot svg pdf png html boxart ascii; do
-		if [ ! -e "${OVE_OWEL_TMP_DIR}/digraph.${f}" ]; then
+		if [ ! -e "${OVE_OWEL_TMP_DIR}/${o}.${f}" ]; then
 			continue
 		fi
-		${ove_cmd2pathname["du"]:?} -sh "${OVE_OWEL_TMP_DIR}/digraph.${f}" 1>&2
+		${ove_cmd2pathname["du"]:?} -sh "${OVE_OWEL_TMP_DIR}/${o}.${f}" 1>&2
 	done
 
 	return 0
@@ -6533,6 +6643,7 @@ function ove-setup {
 	local a
 	local dir
 	local n
+	local rev
 	local url
 
 	if [ $# -eq 1 ] || [ $# -gt 3 ]; then
@@ -12074,6 +12185,7 @@ function ove_bash_complete {
 	elif [ "${subcommand}" = "buildme" ] ||
 		[ "${subcommand}" = "buildme-parallel" ] ||
 		[[ "${subcommand}" == *cleanme ]] ||
+		[ "${subcommand}" = "digraph" ] ||
 		[ "${subcommand}" = "export" ] ||
 		[ "${subcommand}" = "install-pkg" ] ||
 		[ "${subcommand}" = "list-deps" ] ||
@@ -12096,6 +12208,13 @@ function ove_bash_complete {
 		fi
 		if [ "${subcommand}" = "proj2val" ] && [ ${size} -ge 3 ]; then
 			wordlist+=" deps needs path version"
+		elif [ "${subcommand}" = "digraph" ] && \
+			[ ${size} -ge 2 ] && \
+			[ -s "${OVE_OWEL_DIR}"/projs ]; then
+			wordlist="commands "
+			wordlist+="$(${ove_cmd2pathname["grep"]:?} '^  [a-z]\+:' "${OVE_OWEL_DIR}"/projs | \
+				${ove_cmd2pathname["sort"]:?} -u | \
+				${ove_cmd2pathname["tr"]:?} -d ': ')"
 		fi
 	elif [ "${subcommand}" = "distrocheck" ] ||
 		[ "${subcommand}" = "distrocheck-parallel" ]; then
