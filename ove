@@ -1292,71 +1292,7 @@ function ove_strace_create_graph {
 	LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u ${OVE_OWEL_TMP_DIR}/timing > ${o_timing}
 	${ove_cmd2pathname["rm"]:?} ${OVE_OWEL_TMP_DIR}/timing
 
-	if [ "${OVE_TRACE_GRAPH_VIEWER}" = "" ]; then
-		${ove_cmd2pathname["du"]:?} -sh ${o_dot}
-	else
-		ext_list['ascii']=0
-		ext_list['boxart']=0
-		ext_list['html']=0
-		ext_list['pdf']=0
-		ext_list['png']=0
-		ext_list['svg']=0
-		while IFS=';' read -a opt -r; do
-			for o in "${opt[@]}"; do
-				if [[ "${o}" != *:* ]]; then
-					ove_echo_error_noprefix "colon missing '$o', check 'OVE_TRACE_GRAPH_VIEWER' config"
-					return 1
-				elif [ ! "${ext_list["${o%:*}"]+isset}" ]; then
-					ove_echo_error_noprefix "'${o%:*}' is not a supported file extension"
-					continue
-				fi
-				ext_list["${o%:*}"]=1
-			done
-		done <<<"${OVE_TRACE_GRAPH_VIEWER}"
-		if [[ "${ext_list[*]}" != *1* ]]; then
-			return 1
-		fi
-	fi
-
-	if command -v dot > /dev/null; then
-		for f in svg pdf png; do
-			if [ "${ext_list[${f}]}" -eq 0 ]; then
-				continue
-			elif ! ${ove_cmd2pathname["dot"]:?} -T${f} ${o_dot} > ${o_base:?}.$f; then
-				return 1
-			elif [ "${OVE_TRACE_GRAPH_VIEWER}" = "" ]; then
-				${ove_cmd2pathname["du"]:?} -sh ${o_base:?}.$f
-			fi
-		done
-	fi
-
-	if command -v graph-easy > /dev/null; then
-		for f in html boxart ascii; do
-			if [ "${ext_list[${f}]}" -eq 0 ]; then
-				continue
-			elif ! ${ove_cmd2pathname["graph-easy"]:?} \
-				--from=dot \
-				--as="$f" \
-				< ${o_dot} > ${o_base:?}.$f 2> /dev/null; then
-				return 1
-			elif [ "${OVE_TRACE_GRAPH_VIEWER}" = "" ]; then
-				${ove_cmd2pathname["du"]:?} -sh ${o_base:?}.$f
-			fi
-		done
-	fi
-
-	if [ "${OVE_TRACE_GRAPH_VIEWER}" != "" ]; then
-		while IFS=';' read -a opt -r; do
-			for o in "${opt[@]}"; do
-				ext="${o%:*}"
-				cmd="${o#*:}"
-				if [ -s "${o_base:?}.${ext}" ] && command -v "${cmd}" > /dev/null; then
-					# launch viewer
-					"${cmd}" "${o_base:?}.${ext}"
-				fi
-			done
-		done <<<"${OVE_TRACE_GRAPH_VIEWER}"
-	fi
+	ove_graph_viewer_helper "${o_dot}"
 
 	return 0
 }
@@ -5092,6 +5028,92 @@ function ove_digraph_helper_keys {
 	fi
 }
 
+# $1: a dot file
+function ove_graph_viewer_helper {
+	declare -A ext_list
+	local cmd
+	local ext
+	local f_base
+	local f_dot
+
+	f_dot="$1"
+	f_base="${f_dot//\.dot}"
+
+	# supported extensions
+	ext_list['ascii']=1
+	ext_list['boxart']=1
+	ext_list['html']=1
+	ext_list['pdf']=1
+	ext_list['png']=1
+	ext_list['svg']=1
+
+	if [ "${OVE_GRAPH_VIEWER}" = "" ]; then
+		${ove_cmd2pathname["du"]:?} -sh "${f_dot}"
+	else
+		ext_list['ascii']=0
+		ext_list['boxart']=0
+		ext_list['html']=0
+		ext_list['pdf']=0
+		ext_list['png']=0
+		ext_list['svg']=0
+		while IFS=';' read -a opt -r; do
+			for o in "${opt[@]}"; do
+				if [[ "${o}" != *:* ]]; then
+					ove_echo_error_noprefix "colon missing '$o', check 'OVE_GRAPH_VIEWER' config"
+					return 1
+				elif [ ! "${ext_list["${o%:*}"]+isset}" ]; then
+					ove_echo_error_noprefix "'${o%:*}' is not a supported file extension"
+					continue
+				fi
+				ext_list["${o%:*}"]=1
+			done
+		done <<<"${OVE_GRAPH_VIEWER}"
+
+		if [[ "${ext_list[*]}" != *1* ]]; then
+			# no viewers
+			return 0
+		fi
+	fi
+
+	if command -v dot > /dev/null; then
+		for ext in svg pdf png; do
+			if [ "${ext_list[${ext}]}" -eq 0 ]; then
+				continue
+			elif ! ${ove_cmd2pathname["dot"]:?} -T"${ext}" "${f_dot}" > "${f_base:?}.${ext}"; then
+				return 1
+			elif [ "${OVE_GRAPH_VIEWER}" = "" ]; then
+				${ove_cmd2pathname["du"]:?} -sh "${f_base:?}.${ext}"
+			fi
+		done
+	fi
+
+	if command -v graph-easy > /dev/null; then
+		for ext in html boxart ascii; do
+			if [ "${ext_list[${ext}]}" -eq 0 ]; then
+				continue
+			elif ! ${ove_cmd2pathname["graph-easy"]:?} \
+				--from=dot \
+				--as="${ext}" \
+				< "${f_dot}" > "${f_base:?}.${ext}" 2> /dev/null; then
+				return 1
+			elif [ "${OVE_GRAPH_VIEWER}" = "" ]; then
+				${ove_cmd2pathname["du"]:?} -sh "${f_base:?}.${ext}"
+			fi
+		done
+	fi
+
+	# launch viewer(s)
+	while IFS=';' read -a opt -r; do
+		for o in "${opt[@]}"; do
+			ext="${o%:*}"
+			cmd="${o#*:}"
+			if [ -s "${f_base:?}.${ext}" ] && command -v "${cmd}" > /dev/null; then
+				"${cmd}" "${f_base:?}.${ext}"
+			fi
+		done
+	done <<<"${OVE_GRAPH_VIEWER}"
+}
+
 # digraph:[commands key...] :create a DOT directed graph for all projects:CORE
 function ove-digraph {
 	ove_entry || return
@@ -5100,7 +5122,8 @@ function ove-digraph {
 	local f
 	local i
 	local n
-	local o
+	local o_base
+	local o_dot
 	local p
 	local t
 
@@ -5111,12 +5134,13 @@ function ove-digraph {
 	n="${OVE_OWEL_NAME//-/_}"
 	n="${n//.}"
 
-	o="${OVE_OWEL_NAME}"
+	o_base="${OVE_OWEL_TMP_DIR}/${OVE_OWEL_NAME}"
 	read -r -a rev < <(ove-describe ${OVE_OWEL_NAME})
 	if [ "${rev[1]}" != "" ]; then
-		o+="-${rev[1]}"
+		o_base+="-${rev[1]}"
 	fi
-	o+="-digraph"
+	o_base+="-digraph"
+	o_dot="${o_base}.dot"
 
 	{
 		echo "digraph ${n} {"
@@ -5168,43 +5192,13 @@ function ove-digraph {
 		# draw all dependencies
 		ove_digraph_helper_deps
 		echo "}"
-	} > "${OVE_OWEL_TMP_DIR}/${o}.dot"
+	} > "${o_dot}"
 
-	if ! command -v dot > /dev/null; then
-		ove_echo_note_noprefix "install 'dot' to render graph as svg, pdf and png" 1>&2
-	else
-		for f in svg pdf png; do
-			if ! ${ove_cmd2pathname["dot"]:?} \
-				-T"${f}" \
-				"${OVE_OWEL_TMP_DIR}/${o}.dot" > "${OVE_OWEL_TMP_DIR}/${o}.${f}"; then
-				return 1
-			fi
-		done
+	if [ "${OVE_GRAPH_VIEWER}" = "" ] && [ -s "${o_base}.ascii" ]; then
+		${ove_cmd2pathname["cat"]:?} "${o_base}.ascii"
 	fi
 
-	if ! command -v graph-easy > /dev/null; then
-		ove_echo_note_noprefix "install 'graph-easy' to render graph as html, boxart and ascii" 1>&2
-	else
-		for f in html boxart ascii; do
-			if ! ${ove_cmd2pathname["graph-easy"]:?} \
-				--from=dot \
-				--as="${f}" \
-				< "${OVE_OWEL_TMP_DIR}/${o}.dot" > "${OVE_OWEL_TMP_DIR}/${o}.${f}" 2> /dev/null; then
-				return 1
-			fi
-		done
-	fi
-
-	if [ -s "${OVE_OWEL_TMP_DIR}/${o}.ascii" ]; then
-		${ove_cmd2pathname["cat"]:?} "${OVE_OWEL_TMP_DIR}/${o}.ascii"
-	fi
-
-	for f in dot svg pdf png html boxart ascii; do
-		if [ ! -e "${OVE_OWEL_TMP_DIR}/${o}.${f}" ]; then
-			continue
-		fi
-		${ove_cmd2pathname["du"]:?} -sh "${OVE_OWEL_TMP_DIR}/${o}.${f}" 1>&2
-	done
+	ove_graph_viewer_helper "${o_dot}"
 
 	return 0
 }
@@ -13025,9 +13019,9 @@ function ove_config_builtins_init {
 		export OVE_TRACE_MODE=0
 	fi
 
-	# OVE_TRACE_GRAPH_VIEWER:string::loglevel 6:semi-colon separated list of extension-colon-viewer pairs
-	if [ -z "${OVE_TRACE_GRAPH_VIEWER+x}" ]; then
-		export OVE_TRACE_GRAPH_VIEWER=
+	# OVE_GRAPH_VIEWER:string::loglevel digraph:semi-colon separated list of extension-colon-viewer pairs
+	if [ -z "${OVE_GRAPH_VIEWER+x}" ]; then
+		export OVE_GRAPH_VIEWER=
 	fi
 
 	# OVE_AUTO_CORRECT:int:0|1:all:automatically correct commands

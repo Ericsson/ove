@@ -16,8 +16,8 @@
 | diff             | 1         |
 | dig              | 1         |
 | dirname          | 4         |
-| dot              | 2         |
-| du               | 6         |
+| dot              | 1         |
+| du               | 5         |
 | ffmpeg           | 1         |
 | file             | 4         |
 | find             | 80        |
@@ -27,7 +27,7 @@
 | gcc              | 1         |
 | getconf          | 1         |
 | git              | 87        |
-| graph-easy       | 2         |
+| graph-easy       | 1         |
 | grep             | 180       |
 | head             | 18        |
 | incus            | 0         |
@@ -89,4 +89,4 @@
 | xargs            | 37        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1332__  |
+| __sum__          | __1329__  |
