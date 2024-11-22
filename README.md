@@ -394,7 +394,7 @@ We now covered the four main functionality areas of OVE. Next we will go
 through how to make life easy for developers or CI/CD machines when it comes to
 setting up an OVE project:
 
-## Setup an existing OVE project
+## Setup: an existing OVE project
 
 An existing OVE project is typically setup (or downloaded if you will) by the
 developer or CI/CD machine using the following oneliner:
@@ -532,11 +532,13 @@ structure can look like when ready:
         ├── systests
         └── systests-groups
 
-## Setup OVE to track a few repos
+## Setup: track a few repos
 
 Oneliner:
 
     git clone https://github.com/Ericsson/ove.git .ove && source .ove/ove
+
+In this example you will end up with a complete OVE workspace.
 
 Example:
 
@@ -554,6 +556,47 @@ Example:
     # try 'ove status'
     $ ove status
     ...
+
+## Setup: create an OWEL within a git repository
+
+Oneliner:
+
+    source <(curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/ove)
+
+In this example you will create an OWEL within a git repository.
+
+Example:
+
+    $ cd a-git-repo
+    $ source <(curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/ove)
+    # add and commit
+    git add projects projs revtab scripts SETUP systests systests-groups && git commit -m "initial commit"
+    # publish
+    git push
+
+    # OVE oneliner
+    curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s foo https://...
+
+## Setup: create an OWEL within a git repository using 'ove init'
+
+Oneliner:
+
+    ove init
+
+Same as above except that OVE is already available on the host.
+
+    # an existing OVE workspace
+    $ source ove
+    # move to a git repository
+    $ cd a-git-repo
+    $ ove init
+    # add and commit
+    git add projects projs revtab scripts SETUP systests systests-groups && git commit -m "initial commit"
+    # publish
+    git push
+
+    # OVE oneliner
+    curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s bar https://...
 
 Up until now we covered everything you need to know to get to the point where
 developers (or machines) can start working with your OVE project. Going through

@@ -1,10 +1,10 @@
 | Command          | Usage     |
 | ---              | ---       |
 | ag               | 3         |
-| awk              | 55        |
+| awk              | 56        |
 | basename         | 1         |
 | bash             | 19        |
-| cat              | 54        |
+| cat              | 55        |
 | chmod            | 7         |
 | column           | 29        |
 | comm             | 18        |
@@ -26,9 +26,9 @@
 | fzf              | 5         |
 | gcc              | 1         |
 | getconf          | 1         |
-| git              | 87        |
+| git              | 89        |
 | graph-easy       | 1         |
-| grep             | 180       |
+| grep             | 181       |
 | head             | 18        |
 | incus            | 0         |
 | inotifywait      | 3         |
@@ -48,7 +48,7 @@
 | pgrep            | 5         |
 | ps               | 1         |
 | pstree           | 1         |
-| readlink         | 31        |
+| readlink         | 32        |
 | recordmydesktop  | 1         |
 | rev              | 6         |
 | rg               | 1         |
@@ -89,4 +89,4 @@
 | xargs            | 37        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1329__  |
+| __sum__          | __1335__  |
