@@ -1,7 +1,7 @@
 | Command          | Usage     |
 | ---              | ---       |
 | ag               | 3         |
-| awk              | 56        |
+| awk              | 55        |
 | basename         | 1         |
 | bash             | 19        |
 | cat              | 55        |
@@ -26,9 +26,9 @@
 | fzf              | 5         |
 | gcc              | 1         |
 | getconf          | 1         |
-| git              | 89        |
+| git              | 88        |
 | graph-easy       | 1         |
-| grep             | 181       |
+| grep             | 180       |
 | head             | 18        |
 | incus            | 0         |
 | inotifywait      | 3         |
@@ -89,4 +89,4 @@
 | xargs            | 37        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1335__  |
+| __sum__          | __1332__  |

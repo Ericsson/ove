@@ -569,11 +569,16 @@ Example:
 
     $ cd a-git-repo
     $ source <(curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/ove)
-    # add and commit
+    # the commands below will:
+    #   - create a git commit of the OWEL specific files
+    #   - publish the OWEL commit upstream
+    #   - print OVE oneliner
+    #   - try the oneliner _after_ the push
+    #   - remember to run the oneliner outside of the 'foo' repo
+    # create a git commit
     git add projects projs revtab scripts SETUP systests systests-groups && git commit -m "initial commit"
-    # publish
+    # publish the commit
     git push
-
     # OVE oneliner
     curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s foo https://...
 
@@ -590,11 +595,11 @@ Same as above except that OVE is already available on the host.
     # move to a git repository
     $ cd a-git-repo
     $ ove init
-    # add and commit
+    ...
+    # create a git commit
     git add projects projs revtab scripts SETUP systests systests-groups && git commit -m "initial commit"
-    # publish
+    # publish the commit
     git push
-
     # OVE oneliner
     curl -sSL https://raw.githubusercontent.com/Ericsson/ove/master/setup | bash -s bar https://...
 

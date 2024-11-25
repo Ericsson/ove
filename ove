@@ -14095,8 +14095,9 @@ function ove-init {
 		if ove_dir_is_repo "${dir}"; then
 			# already a git repo? run non-interactive
 			interactive=0
-			cd "${dir}" || return 1
 		fi
+	else
+		return 1
 	fi
 
 	if [ ${#dir} -ne 1 ]; then
@@ -14115,7 +14116,7 @@ function ove-init {
 	fi
 
 	if [ "${interactive}" -eq 1 ]; then
-		mapfile -t revtabs < <(${ove_cmd2pathname["find"]:?} ${dir} -mindepth 2 -maxdepth 2 -name revtab 2> /dev/null)
+		mapfile -t revtabs < <(${ove_cmd2pathname["find"]:?} "${dir}" -mindepth 2 -maxdepth 2 -name revtab 2> /dev/null)
 		if [ $# -lt 2 ] && [ ${#revtabs[*]} -eq 1 ]; then
 			owel_default="$(${ove_cmd2pathname["basename"]:?} $(${ove_cmd2pathname["dirname"]:?} ${revtabs[0]}))"
 		else
@@ -14123,17 +14124,17 @@ function ove-init {
 		fi
 	else
 		# shellcheck disable=SC2016
-		owel_default="$(${ove_cmd2pathname["git"]:?} remote -v | \
-			${ove_cmd2pathname["grep"]:?} fetch | \
-			${ove_cmd2pathname["awk"]:?} '{print $2}')"
-		if [ "$owel_default" = "" ]; then
-			owel_default="${PWD##*/}"
+		owel_default=$(ove_get_fetch_url "${dir}" origin)
+		if [ "$owel_default" = "noremote" ]; then
+			owel_default="${dir##*/}"
 		else
 			owel_default="${owel_default##*/}"
 		fi
 	fi
 
-	if [ "${interactive}" -eq 1 ]; then
+	if [ $# -eq 2 ]; then
+		owel_name=${2}
+	elif [ "${interactive}" -eq 1 ]; then
 		if [ $# -eq 0 ] || [ $# -eq 1 ]; then
 			while true; do
 				read -r -p "OWEL name? Leave blank to name it '${owel_default}': "
@@ -14144,8 +14145,6 @@ function ove-init {
 				fi
 				break
 			done
-		elif [ $# -eq 2 ]; then
-			owel_name=${2}
 		fi
 	else
 		owel_name=${owel_default}
@@ -14241,15 +14240,18 @@ function ove-init {
 			revtab_file="${dir}/${owel_name}/revtab"
 			printf "${str}" | \
 				${ove_cmd2pathname["column"]:?} -t | \
-				LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u > ${revtab_file}
+				LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -u > "${revtab_file}"
 
 			# inform user on repos with same fetch url
 			# shellcheck disable=SC2016
-			mapfile -t doublets < <(${ove_cmd2pathname["awk"]:?} '{print $2}' ${revtab_file} | ${ove_cmd2pathname["grep"]:?} -v noremote | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | ${ove_cmd2pathname["uniq"]:?} -d)
+			mapfile -t doublets < <(${ove_cmd2pathname["awk"]:?} '{print $2}' "${revtab_file}" | \
+				${ove_cmd2pathname["grep"]:?} -v noremote | \
+				LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
+				${ove_cmd2pathname["uniq"]:?} -d)
 			if [ "${doublets[*]}" != "" ]; then
 				ove_echo_note_noprefix "found a few repos with the same fetch url:"
 				for d in "${doublets[@]}"; do
-					${ove_cmd2pathname["grep"]:?} -H -n "${d}" ${revtab_file}
+					${ove_cmd2pathname["grep"]:?} -H -n "${d}" "${revtab_file}"
 				done | ${ove_cmd2pathname["column"]:?} -t
 			fi
 		fi
@@ -14262,11 +14264,11 @@ function ove-init {
 			fi
 		fi
 	else
-		dst="."
-		${ove_cmd2pathname["cat"]:?} << EOF > revtab
+		dst="${dir}"
+		${ove_cmd2pathname["cat"]:?} << EOF > "${dst}/revtab"
 .ove $ove_url $ove_url $(ove_print_branch)
 EOF
-		true > projs
+		true > "${dst}/projs"
 		skeleton=1
 	fi
 
@@ -14328,11 +14330,11 @@ EOF
 
 		# SETUP
 		if [ "${interactive}" -eq 0 ]; then
-			remote=$(${ove_cmd2pathname["git"]:?} remote)
+			remote=$(${ove_cmd2pathname["git"]:?} -C "${dst}" remote)
 			if [ "${remote}" = "" ]; then
 				fetch_url=$PWD
 			else
-				fetch_url=$(ove_get_fetch_url "${PWD}" "${remote}")
+				fetch_url=$(ove_get_fetch_url "${dst}" "${remote}")
 			fi
 		else
 			fetch_url="<add-fetch-URL-here>"
@@ -14357,15 +14359,29 @@ EOF
 	fi
 
 	if [ "${interactive}" -eq 0 ]; then
-		echo "# add and commit"
+		echo "# the commands below will:"
+		echo "#   - create a git commit of the OWEL specific files"
+		if [ "${remote}" != "" ]; then
+			echo "#   - publish the OWEL commit upstream"
+			echo "#   - print OVE oneliner"
+			echo "#   - try the oneliner _after_ the push"
+			echo "#   - remember to run the oneliner outside of the '${dst##*/}' repo"
+		else
+			echo "#   - print OVE oneliner"
+			echo "#   - as there is no git remote available, either add a git remote and publish the commit or use the OWEL locally only"
+			echo "#   - if you do add a git remote, do not forget to update the URL in the 'SETUP' file"
+		fi
+		if [ "$PWD" != "$dst" ]; then
+			echo "cd $dst"
+		fi
+		echo "# create a git commit"
 		echo "git add projects projs revtab scripts SETUP systests systests-groups && git commit -m \"initial commit\""
 		if [ "${remote}" != "" ]; then
-			echo "# publish"
+			echo "# publish the commit"
 			echo "git push"
 		fi
-		echo
 		echo "# OVE oneliner"
-		cat SETUP
+		cat "${dst}"/SETUP
 		return 2
 	else
 		echo
@@ -14384,19 +14400,17 @@ EOF
 		if [ ${#doublets[*]} -ne 0 ]; then
 			echo "* found that a few repos are mentioned more than one time in '${revtab_file}', details above"
 		fi
-		if [ ${dir} != "${PWD}" ]; then
-			if ! cd ${dir}; then
-				return 1
-			fi
-			echo "* changed current working directory to ${dir}"
-		fi
 		if [ ${skeleton} -eq 1 ]; then
-			echo "* created these example/skeleton files:"
+			echo "* created example/skeleton files:"
 			${ove_cmd2pathname["find"]:?} ${dst}/{projects,scripts,projs,SETUP} -type f
 		fi
 		echo
 		echo "# now what?"
 		echo
+		echo "# move to OVE workspace"
+		echo "$ cd ${dir}"
+		echo "# init OVE"
+		echo "$ source ove"
 		echo "# check status"
 		echo "$ ove status"
 		echo
@@ -14410,8 +14424,9 @@ EOF
 			echo "$ ove systest all"
 			echo
 		fi
-		echo "# add new repos/projects"
+		echo "# add repos"
 		echo "$ ove add-repo"
+		echo "# add projects"
 		echo "$ ove add-project"
 		echo
 		echo "# need help? ask OVE"
