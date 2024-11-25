@@ -11,7 +11,7 @@
 | convert          | 1         |
 | cp               | 6         |
 | csplit           | 1         |
-| cut              | 64        |
+| cut              | 63        |
 | date             | 20        |
 | diff             | 1         |
 | dig              | 1         |
@@ -52,12 +52,12 @@
 | recordmydesktop  | 1         |
 | rev              | 6         |
 | rg               | 1         |
-| rm               | 55        |
+| rm               | 56        |
 | rmdir            | 3         |
 | scp              | 3         |
 | script           | 6         |
 | scriptreplay     | 1         |
-| sed              | 94        |
+| sed              | 92        |
 | seq              | 11        |
 | setsid           | 1         |
 | shellcheck       | 1         |
@@ -86,7 +86,7 @@
 | wc               | 24        |
 | whoami           | 1         |
 | whois            | 1         |
-| xargs            | 37        |
+| xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1332__  |
+| __sum__          | __1327__  |

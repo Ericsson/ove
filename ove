@@ -4990,6 +4990,7 @@ function ove_digraph_helper_keys {
 	local key
 	local p
 	local s
+	local v
 
 	p="$1"
 	shift
@@ -5005,9 +5006,10 @@ function ove_digraph_helper_keys {
 		done
 
 		if [ "$val" != "" ]; then
-			s+="\\l\\lcommands:\\l  $(echo "$val" | \
-				${ove_cmd2pathname["xargs"]:?} | \
-				${ove_cmd2pathname["sed"]:?} -e 's, ,\\l  ,g')\\l"
+			s+="\\l\\lcommands:\\l"
+			for v in $val; do
+				s+="  $v\l"
+			done
 		fi
 	fi
 
@@ -5019,9 +5021,10 @@ function ove_digraph_helper_keys {
 		elif [ "$val" = "" ]; then
 			continue
 		fi
-		s+="\\l\\l$key:\\l  $(echo "$val" | \
-			${ove_cmd2pathname["xargs"]:?} | \
-			${ove_cmd2pathname["sed"]:?} -e 's, ,\\l  ,g')\\l"
+		s+="\\l\\l$key:\\l"
+		for v in $val; do
+			s+="  $v\l"
+		done
 	done
 
 	if [ "$s" != "" ]; then
@@ -5112,6 +5115,7 @@ function ove_graph_viewer_helper {
 			ext="${o%:*}"
 			cmd="${o#*:}"
 			if [ -s "${f_base:?}.${ext}" ] && command -v "${cmd}" > /dev/null; then
+				echo "${cmd} ${f_base:?}.${ext}"
 				"${cmd}" "${f_base:?}.${ext}"
 			fi
 		done
@@ -5172,10 +5176,11 @@ function ove-digraph {
 			done < <(ove-list-tags)
 
 			# projects with tags
-			ove-list-tags | \
-				${ove_cmd2pathname["cut"]:?} -d' ' -f2- | \
-				${ove_cmd2pathname["xargs"]:?} -n1 | \
-				LC_ALL=C ${ove_cmd2pathname["sort"]:?} -u \
+			ove_uniq $(while read -r tag projs; do
+				true "${tag}"
+				echo "${projs}"
+			done < <(ove-list-tags)) | \
+				LC_ALL=C ${ove_cmd2pathname["sort"]:?} \
 				> "${OVE_TMP}"/a
 
 			# all projects
@@ -5186,6 +5191,7 @@ function ove-digraph {
 			for p in $(LC_ALL=C ${ove_cmd2pathname["comm"]:?} -1 -3 "${OVE_TMP}"/{a,b}); do
 				ove_digraph_helper_keys "$p" "$@"
 			done
+			${ove_cmd2pathname["rm"]:?} "${OVE_TMP}"/{a,b}
 		elif [ "$#" -ne 0 ]; then
 			i=0
 			while ((i < ove_number_of_projects)); do
