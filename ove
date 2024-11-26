@@ -13229,7 +13229,7 @@ function ove_config_builtins_init {
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@clone: ;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@describe:--tags --always --dirty --long;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@diff:--color=always --ignore-submodules;"
-		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@fetch:--all --tags;"
+		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@fetch:--all --tags --force;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@fsck:--full;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@grep:--color=always;"
 		OVE_GIT_COMMAND_OPTIONS_DEFAULT+=".*@reset:-p;"
