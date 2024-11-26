@@ -3638,7 +3638,7 @@ function ove_status_one_repo {
 	# only allow overrides from 'ove-status'
 	if [ ${FUNCNAME[-1]} = "ove-status" ]; then
 		override=1
-	elif [ ! -v ove_revtab_git_cmd_opts_default ]; then
+	elif ! declare -p ove_revtab_git_cmd_opts_default &> /dev/null; then
 		git_opt="-bs -uno"
 	else
 		git_opt=${ove_revtab_git_cmd_opts_default['*:status']}
