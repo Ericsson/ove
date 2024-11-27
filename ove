@@ -812,8 +812,8 @@ function ove_analyze_strace_file {
 			if [[ "${line}" == *trace.cont* ]]; then
 				continue
 			elif [[ "$syscall" =~ ${re} ]]; then
-				f=${line#*\"}
-				f=${f%\"*}
+				f=${line#*\(}
+				f=${f%\)*}
 				if [[ "$line" == *ENOENT* ]]; then
 					echo "${line%% *}:ENOENT:$syscall:$f"
 				else
