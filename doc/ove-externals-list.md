@@ -62,7 +62,7 @@
 | setsid           | 1         |
 | shellcheck       | 1         |
 | sleep            | 15        |
-| sort             | 123       |
+| sort             | 124       |
 | ssh              | 7         |
 | stat             | 8         |
 | stty             | 1         |
@@ -89,4 +89,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1327__  |
+| __sum__          | __1328__  |
