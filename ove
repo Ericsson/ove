@@ -6099,6 +6099,10 @@ function ove-systest {
 		read -r -a systest_row <<<"$(${ove_cmd2pathname["grep"]:?} -w ^${systest_name} "${OVE_OWEL_DIR}"/systests)"
 		systest_name=${systest_row[0]}
 		systest_timeout=${systest_row[1]}
+		if [ "${OVE_SYSTEST_TIMEOUT}" -ne 0 ]; then
+			ove_echo_note_noprefix "systest timeout forced to ${OVE_SYSTEST_TIMEOUT}s (was ${systest_timeout}s)"
+			systest_timeout=${OVE_SYSTEST_TIMEOUT}
+		fi
 		systest_type=${systest_row[2]}
 		systest2name[i]="${systest_name}"
 		systest2abort[i]=$(((systest_type & 0x1) != 0))
@@ -13197,6 +13201,11 @@ function ove_config_builtins_init {
 	# OVE_SYSTEST_HEADER:string:detailed|short|off:systest:systest text detail level
 	if [ -z "${OVE_SYSTEST_HEADER+x}" ]; then
 		export OVE_SYSTEST_HEADER="short"
+	fi
+
+	# OVE_SYSTEST_TIMEOUT:int:[0-9]+:systest:force systest timeout
+	if [ -z "${OVE_SYSTEST_TIMEOUT+x}" ]; then
+		export OVE_SYSTEST_TIMEOUT=0
 	fi
 
 	# OVE_FORCE_SERIALIZE_COMMANDS:string::all-parallel-build-commands:force OVE to serialize one or more project steps
