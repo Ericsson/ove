@@ -16962,6 +16962,9 @@ function ove-post-push {
 
 	mapfile -t distro_list <"${OVE_DIR}/tests/distrocheck.list"
 	for d in "${distro_list[@]}"; do
+		if [[ ${d} == \#* ]]; then
+			continue
+		fi
 		OVE_DISTROCHECK_CONTAINER_PREFIX=ove-ut \
 			${OVE_DIR}/distrocheck "unittest" "${d}"
 	done

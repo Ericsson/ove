@@ -3,6 +3,7 @@ alpine/3.17
 alpine/3.18
 alpine/3.19
 alpine/3.20
+alpine/3.21
 alpine/edge
 archlinux
 debian/10
@@ -13,6 +14,7 @@ devuan/chimaera
 devuan/daedalus
 fedora/39
 fedora/40
+fedora/41
 kali
 mint/uma
 mint/una
@@ -20,6 +22,7 @@ mint/vanessa
 mint/vera
 mint/victoria
 mint/virginia
+mint/wilma
 opensuse/tumbleweed
 ubuntu/20.04
 ubuntu/22.04

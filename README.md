@@ -744,13 +744,13 @@ OVE has been tested for the following Linux distributions:
 | Distribution        | Release(s)                  |
 |---------------------|-----------------------------|
 | AlmaLinux           | 9.1                         |
-| Alpine Linux        | 3.15..3.20                  |
+| Alpine Linux        | 3.15..3.21                  |
 | Arch Linux          | N/A                         |
 | Debian              | Buster, Bullseye, Bookworm  |
 | Devuan              | Beowulf, Chimaera, Daedalus |
-| Fedora              | 36..40                      |
+| Fedora              | 36..41                      |
 | Kali                | N/A                         |
-| Linux Mint          | Uma..Virginia               |
+| Linux Mint          | Uma..Wilma                  |
 | openSUSE Tumbleweed | N/A                         |
 | Ubuntu              | 16.04..24.04                |
 | Void Linux          | N/A                         |
