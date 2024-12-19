@@ -2613,10 +2613,7 @@ function ove {
 
 	if [ "${log_cmd}" != "tsp" ]; then
 		if [ -n "${OVE_ANONYMIZE_LOGS+x}" ] && [ "${OVE_ANONYMIZE_LOGS}" -eq 1 ]; then
-			${ove_cmd2pathname["sed"]:?} -i \
-				-e "s,$OVE_BASE_DIR,\$OVE_BASE_DIR,g" \
-				-e "s,$OVE_USER,\$OVE_USER,g" \
-				-e "s,$HOSTNAME,\$HOSTNAME,g" ${OVE_LAST_COMMAND}
+			ove_anonymize_file "${OVE_LAST_COMMAND}"
 		fi
 
 		${ove_cmd2pathname["ln"]:?} -s -f ${OVE_LAST_COMMAND} ${OVE_LOG_DIR}/last
@@ -5082,6 +5079,17 @@ function ove_digraph_helper_keys {
 	fi
 }
 
+function ove_anonymize_file {
+	if [ "$#" -ne 1 ]; then
+		return 1
+	fi
+
+	${ove_cmd2pathname["sed"]:?} -i \
+		-e "s,$OVE_BASE_DIR,\$OVE_BASE_DIR,g" \
+		-e "s,$OVE_USER,\$OVE_USER,g" \
+		-e "s,$HOSTNAME,\$HOSTNAME,g" "${1}"
+}
+
 # $1: a dot file
 function ove_graph_viewer_helper {
 	declare -A ext_list
@@ -5092,6 +5100,11 @@ function ove_graph_viewer_helper {
 
 	f_dot="$1"
 	f_base="${f_dot//\.dot}"
+
+	# anonymize?
+	if [ -n "${OVE_ANONYMIZE_LOGS+x}" ] && [ "${OVE_ANONYMIZE_LOGS}" -eq 1 ]; then
+		ove_anonymize_file "${f_dot}"
+	fi
 
 	# supported extensions
 	ext_list['ascii']=1
