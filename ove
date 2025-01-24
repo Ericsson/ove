@@ -10498,8 +10498,10 @@ function ove-gfv {
 
 	printf "%s\n" "${out}" | \
 		SHELL=${ove_cmd2pathname["bash"]:?} \
-		${ove_cmd2pathname["fzf"]:?} --bind "enter:execute(< /dev/tty eval \$(echo vi {} | ${ove_cmd2pathname["cut"]:?} -d' ' -f1-3))" \
-		--bind "left-click:execute(< /dev/tty eval \$(echo vi {} | ${ove_cmd2pathname["cut"]:?} -d' ' -f1-3))"
+		${ove_cmd2pathname["fzf"]:?} \
+			--tac \
+			--bind "enter:execute(< /dev/tty eval \$(echo vi {} | ${ove_cmd2pathname["cut"]:?} -d' ' -f1-3))" \
+			--bind "left-click:execute(< /dev/tty eval \$(echo vi {} | ${ove_cmd2pathname["cut"]:?} -d' ' -f1-3))"
 }
 
 # gfe:pattern:git grep+fzf+emacs combo:SEARCH
@@ -10522,8 +10524,10 @@ function ove-gfe {
 	# shellcheck disable=SC2016
 	printf "%s\n" "${out}" | \
 		SHELL=${ove_cmd2pathname["bash"]:?} \
-		${ove_cmd2pathname["fzf"]:?} --bind "enter:execute(eval \$(echo emacs {} | ${ove_cmd2pathname["awk"]:?} '{print \$1,\$3,\$2}'))" \
-		--bind "left-click:execute(eval \$(echo emacs {} | ${ove_cmd2pathname["awk"]:?} '{print \$1,\$3,\$2}'))"
+		${ove_cmd2pathname["fzf"]:?} \
+			--tac \
+			--bind "enter:execute(eval \$(echo emacs {} | ${ove_cmd2pathname["awk"]:?} '{print \$1,\$3,\$2}'))" \
+			--bind "left-click:execute(eval \$(echo emacs {} | ${ove_cmd2pathname["awk"]:?} '{print \$1,\$3,\$2}'))"
 }
 
 # blame-history:pattern:git log -G -p pattern for all git repositories:SEARCH
