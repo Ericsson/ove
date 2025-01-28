@@ -11495,6 +11495,7 @@ function ove-head-tail {
 function ove-what-extensions {
 	ove_entry || return
 
+	local d
 	local dir
 
 	if [ $# -eq 0 ]; then
@@ -11503,12 +11504,13 @@ function ove-what-extensions {
 	fi
 
 	for dir in "$@"; do
-		if [ ! -d "${dir}" ]; then
+		d=$(${ove_cmd2pathname["readlink"]:?} -f -- ${dir})
+		if [ ! -d "${d}" ]; then
 			continue
 		fi
-		echo "$(${ove_cmd2pathname["readlink"]:?} -f -- ${dir}):"
+		echo "${d}:"
 		${ove_cmd2pathname["find"]:?} \
-			"${dir}" \
+			"${d}" \
 			-not -path '*/.git/*' \
 			-name '*.*' \
 			-printf "%f\n" \
@@ -11527,6 +11529,7 @@ function ove-what-extensions {
 function ove-what-is {
 	ove_entry || return
 
+	local d
 	local dir
 
 	if [ $# -eq 0 ]; then
@@ -11535,13 +11538,14 @@ function ove-what-is {
 	fi
 
 	for dir in "$@"; do
-		if [ ! -d "${dir}" ]; then
+		d=$(${ove_cmd2pathname["readlink"]:?} -f -- ${dir})
+		if [ ! -d "${d}" ]; then
 			continue
 		fi
-		echo "$(${ove_cmd2pathname["readlink"]:?} -f -- ${dir}):"
+		echo "${d}:"
 		# shellcheck disable=SC2016
 		${ove_cmd2pathname["find"]:?} \
-			"${dir}" \
+			"${d}" \
 			-not -path '*/.git/*' \
 			-print0 \
 			2> /dev/null | \
