@@ -16207,7 +16207,7 @@ function ove-add-project {
 
 			if [[ ${c} != *@* ]]; then
 				while true; do
-					read -p "$(printf "%-9s" ${cmd}): " -r
+					read -p "${cmd}: " -r
 					if [ "$REPLY" = "" ]; then
 						continue
 					fi
@@ -16243,7 +16243,7 @@ function ove-add-project {
 		name_check_ok=0
 		for c in name path deps needs tags bootstrap configure build install clean test; do
 			while true; do
-				read -p "$(printf "%-9s" ${c}): " -r
+				read -p "${c}: " -r
 				if [ "${c}" = "name" ] || [ "${c}" = "path" ]; then
 					if [ "$REPLY" = "" ]; then
 						continue
@@ -16262,7 +16262,7 @@ function ove-add-project {
 					if [ "$REPLY" = "" ]; then
 						echo -en "\033[1A\033[2K"
 					else
-						eval local ${c}="$REPLY"
+						eval local ${c}="\"$REPLY\""
 					fi
 					continue 2
 				elif [ "$REPLY" = "" ]; then
@@ -16291,46 +16291,55 @@ function ove-add-project {
 		done
 	fi
 
-	if [ -s $OVE_OWEL_DIR/projs ] && ${ove_cmd2pathname["grep"]:?} -q ${name}: $OVE_OWEL_DIR/projs; then
-		ove_echo_note_noprefix "project '${name}' is already present in '$OVE_OWEL_DIR/projs':"
-		${ove_cmd2pathname["grep"]:?} -H -n -A3 --color=always "${name}:" $OVE_OWEL_DIR/projs | ${ove_cmd2pathname["sed"]:?} -e "s,$OVE_BASE_DIR/,,g"
+	if [ -s $OVE_OWEL_DIR/projs ] && ${ove_cmd2pathname["grep"]:?} -q ^${name}: $OVE_OWEL_DIR/projs; then
+		ove_echo_error_noprefix "project '${name}' is already present in '$OVE_OWEL_DIR/projs':"
+		${ove_cmd2pathname["grep"]:?} \
+			-H \
+			-n \
+			-A3 \
+			--color=always \
+			"^${name}:" \
+			$OVE_OWEL_DIR/projs | \
+			${ove_cmd2pathname["sed"]:?} \
+			-e "s,$OVE_BASE_DIR/,,g"
+		return 1
+	fi
+
+	if [ -s $OVE_OWEL_DIR/projs ]; then
+		echo >> $OVE_OWEL_DIR/projs
 	else
-		if [ -s $OVE_OWEL_DIR/projs ]; then
-			echo >> $OVE_OWEL_DIR/projs
-		else
-			echo "---" >> $OVE_OWEL_DIR/projs
-		fi
-		echo -e "${name}:\n  path:\n    ${path}" >> $OVE_OWEL_DIR/projs
+		echo "---" >> $OVE_OWEL_DIR/projs
+	fi
+	echo -e "${name}:\n  path:\n    ${path}" >> $OVE_OWEL_DIR/projs
 
-		if [ "${deps}" != "" ]; then
-			echo -e "  deps:" >> $OVE_OWEL_DIR/projs
-			while read -r i; do
-				echo "    $i" >> $OVE_OWEL_DIR/projs
-			done < <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"$(printf "%s\n" ${deps})")
-		fi
+	if [ "${deps}" != "" ]; then
+		echo -e "  deps:" >> $OVE_OWEL_DIR/projs
+		while read -r i; do
+			echo "    $i" >> $OVE_OWEL_DIR/projs
+		done < <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"$(printf "%s\n" ${deps})")
+	fi
 
-		if [ "${needs}" != "" ]; then
-			echo -e "  needs:" >> $OVE_OWEL_DIR/projs
-			while read -r i; do
-				echo "    $i" >> $OVE_OWEL_DIR/projs
-			done < <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"$(printf "%s\n" ${needs})")
-		fi
+	if [ "${needs}" != "" ]; then
+		echo -e "  needs:" >> $OVE_OWEL_DIR/projs
+		while read -r i; do
+			echo "    $i" >> $OVE_OWEL_DIR/projs
+		done < <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"$(printf "%s\n" ${needs})")
+	fi
 
-		if [ "${tags}" != "" ]; then
-			echo -e "  tags:" >> $OVE_OWEL_DIR/projs
-			while read -r i; do
-				echo "    $i" >> $OVE_OWEL_DIR/projs
-			done < <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"$(printf "%s\n" ${tags})")
-		fi
+	if [ "${tags}" != "" ]; then
+		echo -e "  tags:" >> $OVE_OWEL_DIR/projs
+		while read -r i; do
+			echo "    $i" >> $OVE_OWEL_DIR/projs
+		done < <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"$(printf "%s\n" ${tags})")
+	fi
 
-		if [ "${needs_dist}" != "" ]; then
-			for i in ${needs_dist}; do
-				echo -e "  $i:" >> $OVE_OWEL_DIR/projs
-				while read -r j; do
-					echo "    $j" >> $OVE_OWEL_DIR/projs
-				done < <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"$(printf "%s\n" ${!i})")
-			done
-		fi
+	if [ "${needs_dist}" != "" ]; then
+		for i in ${needs_dist}; do
+			echo -e "  $i:" >> $OVE_OWEL_DIR/projs
+			while read -r j; do
+				echo "    $j" >> $OVE_OWEL_DIR/projs
+			done < <(LC_ALL="C" ${ove_cmd2pathname["sort"]:?} <<<"$(printf "%s\n" ${!i})")
+		done
 	fi
 
 	if [ "${proj_dir}" != "" ]; then
