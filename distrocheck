@@ -1234,8 +1234,9 @@ function expose_user {
 	fi
 
 	container_exec "${package_manager} bash >/dev/null 2>&1"
+	container_exec "${package_manager} sudo >/dev/null 2>&1"
 	if [[ ${distro} == *alpine* ]]; then
-		container_exec "${package_manager} shadow shadow-login sudo" > /dev/null
+		container_exec "${package_manager} shadow shadow-login" > /dev/null
 	elif [[ ${distro} == *openwrt* ]]; then
 		container_exec "${package_manager} shadow-useradd" > /dev/null
 	fi
