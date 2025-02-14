@@ -4,14 +4,14 @@
 | awk              | 55        |
 | basename         | 1         |
 | bash             | 19        |
-| cat              | 55        |
+| cat              | 50        |
 | chmod            | 7         |
 | column           | 29        |
 | comm             | 18        |
 | convert          | 1         |
 | cp               | 6         |
 | csplit           | 1         |
-| cut              | 63        |
+| cut              | 68        |
 | date             | 20        |
 | diff             | 1         |
 | dig              | 1         |
@@ -28,7 +28,7 @@
 | getconf          | 1         |
 | git              | 88        |
 | graph-easy       | 1         |
-| grep             | 180       |
+| grep             | 183       |
 | head             | 18        |
 | incus            | 0         |
 | inotifywait      | 3         |
@@ -61,7 +61,7 @@
 | seq              | 11        |
 | setsid           | 1         |
 | shellcheck       | 1         |
-| sleep            | 15        |
+| sleep            | 14        |
 | sort             | 124       |
 | ssh              | 7         |
 | stat             | 8         |
@@ -89,4 +89,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1328__  |
+| __sum__          | __1330__  |

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 function testStatus() {
-	ove status | grep -q "git-.*${OVE_DEFAULT_BRANCH_NAME:?}.*origin"
+	ove status | grep -q "git-.*${OVE_BRANCH_NAME_DEFAULT:?}.*origin"
 	ret=$?
 	assertEquals "0" $ret
 }

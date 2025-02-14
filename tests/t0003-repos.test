@@ -23,10 +23,10 @@ function test_remove_repo_2() {
 		return 0
 	fi
 
-	ove add-repo "${OVE_BASE_DIR}/remotes/git-1" qwerty "$OVE_DEFAULT_BRANCH_NAME"
+	ove add-repo "${OVE_BASE_DIR}/remotes/git-1" qwerty "$OVE_BRANCH_NAME_DEFAULT"
 	assertEquals "0" "$?"
 
-	ove add-repo "${OVE_BASE_DIR}/remotes/git-1" qwerty "$OVE_DEFAULT_BRANCH_NAME"
+	ove add-repo "${OVE_BASE_DIR}/remotes/git-1" qwerty "$OVE_BRANCH_NAME_DEFAULT"
 	ove remove-repo qwerty
 	assertEquals "0" "$?"
 }

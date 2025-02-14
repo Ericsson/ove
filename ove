@@ -12339,20 +12339,20 @@ function ove_bash_complete {
 				fi
 			fi
 		elif [ ${size} -ge 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
-			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+			wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 		elif [ ${size} -eq 3 ]; then
 			if ove-refresh-image &> /dev/null; then
-				wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+				wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 			fi
 		else
 			return
 		fi
 	elif [ "${subcommand}" = "distrocheck-all" ]; then
 		if [ ${size} -ge 2 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
-			wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+			wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 		elif [ ${size} -eq 2 ]; then
 			if ove-refresh-image &> /dev/null; then
-				wordlist=$(${ove_cmd2pathname["cat"]:?} "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+				wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
 			fi
 		else
 			return
@@ -13112,14 +13112,14 @@ function ove_config_builtins_init {
 		export OVE_LOCATE_SEARCH_DIR
 	fi
 
-	# OVE_DEFAULT_BRANCH_NAME:string::add-repo unittest:default branch name
-	if [ -z "${OVE_DEFAULT_BRANCH_NAME+x}" ]; then
-		export OVE_DEFAULT_BRANCH_NAME="main"
+	# OVE_BRANCH_NAME_DEFAULT:string::add-repo unittest:default branch name
+	if [ -z "${OVE_BRANCH_NAME_DEFAULT+x}" ]; then
+		export OVE_BRANCH_NAME_DEFAULT="main"
 	fi
 
 	# OVE_OWEL_CI_BRANCH:string::log:branch to use for 'ove log'
 	if [ -z "${OVE_OWEL_CI_BRANCH+x}" ]; then
-		export OVE_OWEL_CI_BRANCH="origin/${OVE_DEFAULT_BRANCH_NAME}"
+		export OVE_OWEL_CI_BRANCH="origin/${OVE_BRANCH_NAME_DEFAULT}"
 	fi
 
 	# OVE_LOGLEVEL:int:0-10:all loglevel:set a specific log level
@@ -13374,9 +13374,19 @@ function ove_config_builtins_init {
 		export OVE_DISTROCHECK_CONTAINER_NAME=""
 	fi
 
-	# OVE_DISTROCHECK_CONTAINER_PREFIX:string::distrocheck distrocheck-parallel:prefix container name
-	if [ -z "${OVE_DISTROCHECK_CONTAINER_PREFIX+x}" ]; then
-		export OVE_DISTROCHECK_CONTAINER_PREFIX=""
+	# OVE_DISTROCHECK_CONTAINER_NAME_PREFIX:string::distrocheck distrocheck-parallel:set container name prefix
+	if [ -z "${OVE_DISTROCHECK_CONTAINER_NAME_PREFIX+x}" ]; then
+		export OVE_DISTROCHECK_CONTAINER_NAME_PREFIX=""
+	fi
+
+	# OVE_DISTROCHECK_CONTAINER_NAME_RANDOM:string::distrocheck distrocheck-parallel:set a somewhat random container name
+	if [ -z "${OVE_DISTROCHECK_CONTAINER_NAME_RANDOM+x}" ]; then
+		export OVE_DISTROCHECK_CONTAINER_NAME_RANDOM=""
+	fi
+
+	# OVE_DISTROCHECK_REMOTE_DEFAULT:string::distrocheck distrocheck-parallel:default remote name for upstream images
+	if [ -z "${OVE_DISTROCHECK_REMOTE_DEFAULT+x}" ]; then
+		export OVE_DISTROCHECK_REMOTE_DEFAULT="images"
 	fi
 
 	# OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS:string::distrocheck distrocheck-parallel:extra args sent to container framework on launch
@@ -14286,7 +14296,7 @@ function ove-init {
 		if [ ${do_init_git} -eq 1 ]; then
 			# Git v2.28
 			if ${ove_cmd2pathname["git"]:?} init -h | ${ove_cmd2pathname["grep"]:?} -q '\-\-initial-branch'; then
-				# $OVE_DEFAULT_BRANCH_NAME is not available at this moment
+				# $OVE_BRANCH_NAME_DEFAULT is not available at this moment
 				init_opt="--initial-branch main"
 			else
 				init_opt=""
@@ -15552,7 +15562,7 @@ function ove_unittest_preparations {
 		${ove_cmd2pathname["mkdir"]:?} -p ${unittest_dir}/remotes/git-${a}
 		if ! [ -d .git ]; then
 			${ove_cmd2pathname["git"]:?} init -q --bare ${unittest_dir}/remotes/git-${a}
-			${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/remotes/git-${a} symbolic-ref HEAD refs/heads/${OVE_DEFAULT_BRANCH_NAME}
+			${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/remotes/git-${a} symbolic-ref HEAD refs/heads/${OVE_BRANCH_NAME_DEFAULT}
 		fi
 	done
 
@@ -15592,22 +15602,22 @@ function ove_unittest_preparations {
 		if [ ${nbr_of_files_per_repo} -ne 0 ]; then
 			${ove_cmd2pathname["git"]:?} add $f_all
 			${ove_cmd2pathname["git"]:?} commit -q -m "asdf"
-			${ove_cmd2pathname["git"]:?} checkout -q -b ${OVE_DEFAULT_BRANCH_NAME} 2> /dev/null
+			${ove_cmd2pathname["git"]:?} checkout -q -b ${OVE_BRANCH_NAME_DEFAULT} 2> /dev/null
 			${ove_cmd2pathname["git"]:?} tag 0.0.1
 			${ove_cmd2pathname["git"]:?} tag 0.0.2
 			${ove_cmd2pathname["git"]:?} tag 0.0.3
-			${ove_cmd2pathname["git"]:?} push -q origin ${OVE_DEFAULT_BRANCH_NAME}
+			${ove_cmd2pathname["git"]:?} push -q origin ${OVE_BRANCH_NAME_DEFAULT}
 			${ove_cmd2pathname["git"]:?} push -q --tags
-			${ove_cmd2pathname["git"]:?} branch -q --set-upstream-to=origin/${OVE_DEFAULT_BRANCH_NAME}
+			${ove_cmd2pathname["git"]:?} branch -q --set-upstream-to=origin/${OVE_BRANCH_NAME_DEFAULT}
 		fi
 	done
 
 	# create revtab
 	for a in $(${ove_cmd2pathname["seq"]:?} 1 ${nbr_of_repos}); do
 		if [ $((a%2)) -eq 0 ]; then
-			echo "testing/src/git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} ${OVE_DEFAULT_BRANCH_NAME}" >> ${unittest_dir}/${owel_name}/revtab
+			echo "testing/src/git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} ${OVE_BRANCH_NAME_DEFAULT}" >> ${unittest_dir}/${owel_name}/revtab
 		else
-			echo "git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} ${OVE_DEFAULT_BRANCH_NAME}" >> ${unittest_dir}/${owel_name}/revtab
+			echo "git-${a} ${unittest_dir}/remotes/git-${a} ${unittest_dir}/remotes/git-${a} ${OVE_BRANCH_NAME_DEFAULT}" >> ${unittest_dir}/${owel_name}/revtab
 		fi
 	done
 
@@ -15660,9 +15670,9 @@ function ove_unittest_preparations {
 	# commit and push
 	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/${owel_name} add .
 	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/${owel_name} commit -q -m "test"
-	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/${owel_name} checkout -q -b ${OVE_DEFAULT_BRANCH_NAME} 2> /dev/null
-	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/${owel_name} push -q origin ${OVE_DEFAULT_BRANCH_NAME}
-	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/${owel_name} branch -q --set-upstream-to=origin/${OVE_DEFAULT_BRANCH_NAME}
+	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/${owel_name} checkout -q -b ${OVE_BRANCH_NAME_DEFAULT} 2> /dev/null
+	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/${owel_name} push -q origin ${OVE_BRANCH_NAME_DEFAULT}
+	${ove_cmd2pathname["git"]:?} -C ${unittest_dir}/${owel_name} branch -q --set-upstream-to=origin/${OVE_BRANCH_NAME_DEFAULT}
 }
 
 function ove_unittest_exit {
@@ -16083,7 +16093,7 @@ function ove-add-repo {
 	else
 		fetch_url="${name}"
 		push_url="${fetch_url}"
-		revision="${OVE_DEFAULT_BRANCH_NAME}"
+		revision="${OVE_BRANCH_NAME_DEFAULT}"
 
 		if [ $# -eq 1 ]; then
 			name="${name##*/}"
@@ -16789,9 +16799,50 @@ function ove-rename {
 	done
 }
 
+# $1 = image name
+function ove_distrocheck_verify_image_name {
+	local c
+	local r
+	local remotes
+
+	if ! c=$(ove_container_command); then
+		return 1
+	elif "${c}" image list --format csv --columns fF | \
+		${ove_cmd2pathname["grep"]:?} -q -w "${1}"; then
+		# image fingerprint (short or long)
+		echo "$1"
+		return 0
+	elif "${c}" image alias list --format=csv -ca | \
+		${ove_cmd2pathname["grep"]:?} -q -w "^${1}$"; then
+		# image alias
+		echo "$1"
+		return 0
+	elif [[ "${1}" = *:* ]]; then
+		# get public remotes
+		mapfile -t remotes < <(${c} remote list --format=csv -cnP | \
+			${ove_cmd2pathname["grep"]:?} -v ',NO$' | \
+			${ove_cmd2pathname["cut"]:?} -d, -f1)
+		for r in "${remotes[@]}"; do
+			if [[ "$1" = ${r}:* ]] && [ "$r" != "${OVE_DISTROCHECK_REMOTE_DEFAULT:?}" ]; then
+				# not the default remote
+				echo "$1"
+				return 0
+			fi
+		done
+	fi
+
+	# sanity check
+	if ! ${ove_cmd2pathname["grep"]:?} -E "${1}" "${OVE_GLOBAL_STATE_DIR}/distrocheck.images"; then
+		return 1
+	fi
+
+	return 0
+}
+
 function ove_distrocheck_helper {
+	local c
 	local d
-	local pattern
+	local name
 	local proj
 
 	if [ $# -lt 2 ]; then
@@ -16810,49 +16861,49 @@ function ove_distrocheck_helper {
 		OVE_DISTROCHECK_STEPS+=" ove"
 	fi
 
-	if [ $# -eq 2 ]; then
-		pattern="$2"
+	if ! c=$(ove_container_command); then
+		return 1
+	fi
+
+	shift
+	if [ $# -eq 1 ]; then
+		if ! name=$(ove_distrocheck_verify_image_name "${1}"); then
+			return 1
+		fi
+		image_list=("${name}")
 	else
-		shift
-		pattern="'"
 		while true; do
-			pattern+="$1|"
+			if ! name=$(ove_distrocheck_verify_image_name "${1}"); then
+				continue
+			fi
+			image_list+=("${name}")
 			shift
 			if [ $# -eq 0 ]; then
 				break
 			fi
 		done
-		pattern="${pattern::-1}'"
-	fi
-
-	mapfile -t distro_list <<<"$(eval ${ove_cmd2pathname["grep"]:?} -E "$pattern" "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")"
-	if [[ ( ${#distro_list[@]} -eq 0 ) || ( ${#distro_list[@]} -eq 1 && "${distro_list[*]}" = "" ) ]]; then
-		ove_echo_error_noprefix "try another filter, choose from:"
-		${ove_cmd2pathname["sleep"]:?} 1
-		${ove_cmd2pathname["cat"]:?} -n ${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images
-		return 1
 	fi
 
 	if [[ "$OVE_DISTROCHECK_STEPS" == *verbose* ]]; then
-		for d in "${distro_list[@]}"; do
+		for d in "${image_list[@]}"; do
 			echo "$d"
 		done
 	fi
 }
 
-# distrocheck:file|project pattern...:verify a project within multiple Linux distributions (incus|LXD only):UTIL
+# distrocheck:file|project pattern...:verify a project within one or many container(s) (incus|LXD only):UTIL
 function ove-distrocheck {
 	ove_entry || return
 
 	local d
-	local distro_list
+	local image_list
 
 	if ! ove_distrocheck_helper "$@"; then
 		ove_command_usage
 		return 1
 	fi
 
-	for d in "${distro_list[@]}"; do
+	for d in "${image_list[@]}"; do
 		${OVE_DIR}/distrocheck "${1}" "$d"
 	done
 }
@@ -16863,7 +16914,7 @@ function ove-distrocheck-parallel {
 
 	local args
 	local d
-	local distro_list
+	local image_list
 	local env
 	local v
 	local val
@@ -16885,14 +16936,14 @@ function ove-distrocheck-parallel {
 		env+=" $v=${val// /:}"
 	done
 
-	for d in "${distro_list[@]}"; do
+	for d in "${image_list[@]}"; do
 		args+=" 0 '$env ${OVE_DIR}/distrocheck $1 $d'"
 	done
 
 	eval ove-run-parallel $args
 }
 
-# distrocheck-all:pattern...:distrocheck ALL projects within one or multiple Linux distributions (incus|LXD only):UTIL
+# distrocheck-all:pattern...:distrocheck ALL projects within one or multiple containers (incus|LXD only):UTIL
 function ove-distrocheck-all {
 	ove_entry || return
 
@@ -16946,7 +16997,7 @@ function ove-pre-push {
 	ove-status .ove
 }
 
-# refresh-image: :refresh list of available Linux distributions (incus|LXD only):UTIL
+# refresh-image: :refresh list of available container images (incus|LXD only):UTIL
 function ove-refresh-image {
 	ove_entry || return
 
@@ -16962,9 +17013,13 @@ function ove-refresh-image {
 		arch="amd64"
 	fi
 
-	if ! ${ove_cmd2pathname["$c"]:?} image list --format csv -cL images: arch=${arch} | \
-		${ove_cmd2pathname["sed"]:?} -e 's,",,g' -e '/^$/d' > "${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images"; then
-		ove_echo_error_noprefix "'$c image list images:' failed"
+	if ! ${ove_cmd2pathname["$c"]:?} image list --format csv -cL "${OVE_DISTROCHECK_REMOTE_DEFAULT:?}:" arch=${arch} | \
+		${ove_cmd2pathname["sed"]:?} \
+		-e 's,",,g' \
+		-e '/^$/d' \
+		-e "s,^,${OVE_DISTROCHECK_REMOTE_DEFAULT:?}:,g" \
+		> "${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images"; then
+		ove_echo_error_noprefix "'$c image list ${OVE_DISTROCHECK_REMOTE_DEFAULT:?}:' failed"
 		return 1
 	elif [ ! -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
 		ove_echo_error_noprefix "weird - empty image list"
@@ -16982,7 +17037,7 @@ function ove-post-push {
 	ove_entry || return
 
 	local d
-	local distro_list
+	local image_list
 
 	if [ ! -s "${OVE_DIR}/tests/distrocheck.list" ]; then
 		return 1
@@ -16990,8 +17045,8 @@ function ove-post-push {
 		return 1
 	fi
 
-	mapfile -t distro_list <"${OVE_DIR}/tests/distrocheck.list"
-	for d in "${distro_list[@]}"; do
+	mapfile -t image_list <"${OVE_DIR}/tests/distrocheck.list"
+	for d in "${image_list[@]}"; do
 		if [[ ${d} == \#* ]]; then
 			continue
 		fi

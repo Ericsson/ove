@@ -85,7 +85,7 @@ function init {
 	fi
 
 	bash_opt=""
-	distro="$2"
+	image="$2"
 
 	if [[ ${OVE_DISTROCHECK_STEPS} == *debug* ]]; then
 		set -x
@@ -145,13 +145,13 @@ function init {
 function run {
 	local sleep_s
 
-	_echo "[${distro}]$ $*"
+	_echo "[${image}]$ $*"
 	while true; do
 		if eval "$*" 2> "${OVE_TMP}/${tag:?}.err"; then
 			return 0
 		fi
 
-		_echo "error: '$*' failed for distro '${distro}'"
+		_echo "error: '$*' failed for distro '${image}'"
 		if [ ! -s "${OVE_TMP}/${tag}.err" ]; then
 			if [ "${NO_EXIT}" = "1" ]; then
 				return 1
@@ -354,7 +354,7 @@ function cleanup {
 function setup_package_manager {
 	run "$(container_command)${container_global_flags} file pull ${container_name}/root/${tag}-packman ${OVE_TMP}/${tag}-packman"
 	if [ ! -s "${OVE_TMP}/${tag}-packman" ]; then
-		echo "error: could not determine package manager for ${distro}" 1>&2
+		echo "error: could not determine package manager for ${image}" 1>&2
 		exit 1
 	fi
 
@@ -393,7 +393,7 @@ EOF
 	elif [ "${packman}" = "opkg" ]; then
 		package_manager="opkg install"
 	else
-		echo "error: unknown package manager for '${distro}'" 1>&2
+		echo "error: unknown package manager for '${image}'" 1>&2
 		exit 1
 	fi
 
@@ -420,9 +420,9 @@ function _setup_sshd {
 	echo "${package_manager:?} openssh-server >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 	echo "${package_manager} openssh >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 
-	if [[ ${distro} == *opensuse* ]]; then
+	if [[ ${image} == *opensuse* ]]; then
 		echo "cp -a /usr/etc/ssh/sshd_config /etc/ssh/" >> "${OVE_TMP}/${tag}-services.sh"
-	elif [[ ${distro} == *void* ]]; then
+	elif [[ ${image} == *void* ]]; then
 		echo "ln -s /etc/sv/sshd /var/service" >> "${OVE_TMP}/${tag}-services.sh"
 	fi
 
@@ -439,12 +439,12 @@ if ! sed -i \
 	exit 1
 fi
 EOF
-	if [[ ${distro} == *alpine* ]]; then
+	if [[ ${image} == *alpine* ]]; then
 		echo "rc-update add sshd >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 		echo "/etc/init.d/sshd start >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
-	elif [[ ${distro} == *devuan* ]]; then
+	elif [[ ${image} == *devuan* ]]; then
 		echo "service ssh restart" >> "${OVE_TMP}/${tag}-services.sh"
-	elif [[ ${distro} == *openwrt* ]]; then
+	elif [[ ${image} == *openwrt* ]]; then
 		{
 			echo "uci set dropbear.@dropbear[0].Port=2222"
 			echo "uci commit dropbear"
@@ -644,7 +644,7 @@ function setup_ssh {
 		fi
 	fi
 
-	if [[ ${distro} == *alpine* ]]; then
+	if [[ ${image} == *alpine* ]]; then
 		cat > "${OVE_TMP}/${tag}-passwd-${_user}" <<EOF
 echo -e "${pass}\n${pass}" | passwd ${_user} &> /dev/null
 EOF
@@ -655,7 +655,7 @@ EOF
 		# shellcheck disable=SC2097,SC2098
 		container_exec_as_root "sh /root/${tag}-passwd-${_user}"
 	else
-		if [[ ${distro} == *openwrt* ]]; then
+		if [[ ${image} == *openwrt* ]]; then
 			container_exec_as_root "${package_manager} shadow-usermod shadow-useradd" > /dev/null
 		fi
 
@@ -851,10 +851,10 @@ function set_instance_description {
 }
 
 function launch_container {
-	_echo "$(container_command)${container_global_flags} launch images:${distro} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ }"
+	_echo "$(container_command)${container_global_flags} launch ${image} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ }"
 
 	# shellcheck disable=SC2086
-	if ! "$(container_command)"${container_global_flags} launch images:${distro} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
+	if ! "$(container_command)"${container_global_flags} launch ${image} ${container_name} ${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS//\#/ } > /dev/null; then
 		exit 1
 	fi
 	trap cleanup EXIT
@@ -892,7 +892,7 @@ if [ ! -s /root/${tag}-packman ]; then
 	elif command -v opkg > /dev/null; then
 		packman="opkg"
 	else
-		echo "bootcheck: unknown package manager for ${distro}"
+		echo "bootcheck: unknown package manager for ${image}"
 		packman="unknown"
 	fi
 	echo "\$packman" > /root/${tag}-packman
@@ -914,8 +914,6 @@ elif command -v procd > /dev/null; then
 	cmd="sleep 1"
 	exp=""
 else
-	echo "bootcheck: unknown init system for ${distro}"
-	sleep 1
 	exit 0
 fi
 
@@ -958,7 +956,7 @@ function prepare_package_manager {
 function wait_for_ip {
 	local i
 
-	if [[ ${distro} == *openwrt* ]]; then
+	if [[ ${image} == *openwrt* ]]; then
 		_echo "openwrt: sleep 5: wait for real IPv4 address"
 		sleep 5
 	fi
@@ -1047,7 +1045,7 @@ function prepare_X {
 			elif [[ ${package_manager:?} == apk* ]];  then
 				setup_X_apk
 			else
-				echo "error: X for distro '${distro}' is not supported" 1>&2
+				echo "error: X for distro '${image}' is not supported" 1>&2
 				exit 1
 			fi
 		fi
@@ -1106,6 +1104,12 @@ function update_package_manager {
 }
 
 function prepare {
+	local a
+	local n
+	local r
+	local remotes
+	local z
+
 	if [ "${OVE_LAST_COMMAND}" != "" ]; then
 		# re-use date+time (ignore micro/nano) from OVE_LAST_COMMAND
 		tag="${OVE_LAST_COMMAND##*/}"
@@ -1114,21 +1118,50 @@ function prepare {
 		tag="$(date '+%Y%m%d-%H%M%S%N')"
 	fi
 
+	while true; do
+		if [ ! -e "${OVE_GLOBAL_STATE_DIR}/${tag}" ]; then
+			break
+		fi
+		# tag already used, append a random number"
+		tag="${tag}-${RANDOM}"
+	done
+	touch "${OVE_GLOBAL_STATE_DIR}/${tag}"
+
 	if [ "${OVE_DISTROCHECK_CONTAINER_NAME}" != "" ]; then
 		container_name="${OVE_DISTROCHECK_CONTAINER_NAME}"
+	elif [ "${OVE_DISTROCHECK_CONTAINER_NAME_RANDOM}" != "" ]; then
+		a=$(grep -o -w -E '[a-z]{6}ed' "${OVE_SELF:?}" | \
+			sort -u | \
+			shuf -n 1)
+		z=$(grep -o -w -E '[a-z]{8}' "${OVE_SELF:?}" | \
+			grep -v 'ed$' | \
+			sort -u | \
+			shuf -n 1)
+		container_name="${a}-${z}"
 	else
-		container_name="${OVE_USER}-${tag}-${distro}"
-		if [ "${OVE_DISTROCHECK_CONTAINER_PREFIX}" != "" ]; then
-			container_name="${OVE_DISTROCHECK_CONTAINER_PREFIX}-${container_name}"
-		fi
-
+		# remove any leading remote name
+		mapfile -t remotes < <($(container_command) remote list --format=csv -cn)
+		n=${image}
+		for r in "${remotes[@]}"; do
+			if [[ "$n" == $r:* ]]; then
+				n=${n//$r:}
+				break
+			fi
+		done
+		container_name="${OVE_USER}-${tag}-${n}"
 	fi
 
-	_echo "info: replace all spaces, slashes, dots and underscores with hyphen-minus"
+	if [ "${OVE_DISTROCHECK_CONTAINER_NAME}" = "" ] && \
+		[ "${OVE_DISTROCHECK_CONTAINER_NAME_PREFIX}" != "" ]; then
+		container_name="${OVE_DISTROCHECK_CONTAINER_NAME_PREFIX}-${container_name}"
+	fi
+
+	_echo "info: replace all spaces, slashes, dots, underscores and colons with hyphen-minus"
 	container_name="${container_name// /-}"
 	container_name="${container_name//\//-}"
 	container_name="${container_name//./-}"
 	container_name="${container_name//_/-}"
+	container_name="${container_name//:/-}"
 
 	if [ ${#container_name} -gt 63 ]; then
 		_echo "info: $(container_command) name is ${#container_name} chars, max allowed is 63. Truncating."
@@ -1160,7 +1193,7 @@ function prepare {
 			OVE_DISTROCHECK_STEPS+=" stopped"
 	fi
 
-	if [[ ${distro} == *archlinux* ]] || [[ ${distro} == *fedora* ]]; then
+	if [[ ${image} == *archlinux* ]] || [[ ${image} == *fedora* ]]; then
 		OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS+=" -c security.nesting=true"
 	fi
 }
@@ -1235,9 +1268,9 @@ function expose_user {
 
 	container_exec "${package_manager} bash >/dev/null 2>&1"
 	container_exec "${package_manager} sudo >/dev/null 2>&1"
-	if [[ ${distro} == *alpine* ]]; then
+	if [[ ${image} == *alpine* ]]; then
 		container_exec "${package_manager} shadow shadow-login" > /dev/null
-	elif [[ ${distro} == *openwrt* ]]; then
+	elif [[ ${image} == *openwrt* ]]; then
 		container_exec "${package_manager} shadow-useradd" > /dev/null
 	fi
 
@@ -1275,7 +1308,7 @@ function expose_user {
 			sul=$((sul + 1))
 			container_exec_no_exit_as_root "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${container_user}' /etc/pam.d/su"
 			_echo "user: su: add '${container_user}' to 'root' group"
-			if [[ ${distro} == *openwrt* ]]; then
+			if [[ ${image} == *openwrt* ]]; then
 				container_exec_no_exit_as_root "${package_manager} shadow-usermod" > /dev/null
 			fi
 
@@ -1296,7 +1329,7 @@ function prepare_ove {
 	fi
 
 	ove_packs+="bash bzip2 git curl file binutils coreutils tar make"
-	if [[ ${distro} != *openwrt* ]]; then
+	if [[ ${image} != *openwrt* ]]; then
 		ove_packs+=" util-linux"
 	else
 		ove_packs+=" coreutils-comm"
@@ -1352,10 +1385,10 @@ function prepare_ove {
 	# install OVE packages
 	container_exec_as_root "${package_manager} ${ove_packs}"
 
-	if [[ ${distro} == *archlinux* ]]; then
+	if [[ ${image} == *archlinux* ]]; then
 		container_exec "sed -i 's|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g' /etc/locale.gen"
 		container_exec "locale-gen"
-	elif [[ ${distro} == *openwrt* ]]; then
+	elif [[ ${image} == *openwrt* ]]; then
 		container_exec_as_root "sh -c '
 		rm /usr/bin/xargs
 		echo exec busybox xargs \$\@ > /usr/bin/xargs
@@ -1479,7 +1512,7 @@ function run_ove {
 
 	# no questions asked
 	package_manager_noconfirm
-	if [ ${unittest} -eq 0 ] && [[ ${distro} == *opensuse* ]]; then
+	if [ ${unittest} -eq 0 ] && [[ ${image} == *opensuse* ]]; then
 		container_exec "sudo zypper install -y -t pattern devel_basis"
 	fi
 }
@@ -1490,11 +1523,11 @@ function prepare_unittest {
 	fi
 
 	container_exec_as_root "${package_manager} python3"
-	if [[ ${distro} == *alpine* ]]; then
+	if [[ ${image} == *alpine* ]]; then
 		container_exec_as_root "${package_manager} py3-yaml"
-	elif [[ ${distro} == *archlinux* ]]; then
+	elif [[ ${image} == *archlinux* ]]; then
 		container_exec_as_root "${package_manager} python-yaml"
-	elif [[ ${distro} == *opensuse* ]]; then
+	elif [[ ${image} == *opensuse* ]]; then
 		container_exec_as_root "${package_manager} python3-PyYAML"
 	else
 		container_exec_as_root "${package_manager} python3-yaml"
