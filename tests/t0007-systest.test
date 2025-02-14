@@ -19,5 +19,5 @@ function test_systest() {
 	assertEquals "$nbr_of_systests" "$(ove list-systests | wc -l)"
 }
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${OVE_DIR}/tests/common.sh"

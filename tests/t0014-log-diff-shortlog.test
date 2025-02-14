@@ -26,14 +26,14 @@ function test_log_diff_shortlog() {
 	done
 
 	for r in {1..10}; do
-		echo $r:log-owel
-		ove log-owel HEAD~$r HEAD
+		echo "$r":log-owel
+		ove log-owel HEAD~"$r" HEAD
 		assertEquals "0" "$?"
-		echo $r:shortlog-owel
-		ove shortlog-owel HEAD~$r HEAD
+		echo "$r":shortlog-owel
+		ove shortlog-owel HEAD~"$r" HEAD
 		assertEquals "0" "$?"
 	done
 }
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${OVE_DIR}/tests/common.sh"

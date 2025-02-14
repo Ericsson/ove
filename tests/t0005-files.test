@@ -6,5 +6,5 @@ function test_ls_files() {
 	assertEquals "${nbr_of_files:?}" "$num_files"
 }
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${OVE_DIR}/tests/common.sh"

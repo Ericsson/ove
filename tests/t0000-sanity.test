@@ -5,5 +5,5 @@ test_sh() {
 	assertEquals "1" "$?"
 }
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${OVE_DIR}/tests/common.sh"

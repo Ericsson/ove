@@ -4,5 +4,5 @@ function testVersion () {
 	assertNotNull "$(ove version | grep -oE '[a-f0-9]{5,6}')"
 }
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${OVE_DIR}/tests/common.sh"

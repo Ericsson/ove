@@ -26,5 +26,5 @@ function test_built_ins_without_args() {
 	done
 }
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${OVE_DIR}/tests/common.sh"

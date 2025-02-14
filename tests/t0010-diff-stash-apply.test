@@ -31,5 +31,5 @@ function oneTimeTearDown() {
 	return 0
 }
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${OVE_DIR}/tests/common.sh"

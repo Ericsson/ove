@@ -11,5 +11,5 @@ function testNumberOfRepos() {
 	assertEquals "${nbr_of_repos:?}" "$num"
 }
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${OVE_DIR}/tests/common.sh"
