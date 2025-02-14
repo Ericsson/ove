@@ -10346,6 +10346,11 @@ ove distrocheck true alpine/3.20/amd64
 # re-attach
 xpra attach --ssh=ssh ssh:alice
 
+# add an image remote server
+incus remote add docker https://docker.io --protocol=oci
+# check nginx version
+ove distrocheck 'nginx -v' docker:nginx
+
 $(ove_echo_cyan_noprefix "replicate")
 
 # replicate OVE workspace to a tmp directory on localhost
