@@ -16832,7 +16832,7 @@ function ove_distrocheck_verify_image_name {
 	fi
 
 	# sanity check
-	if ! ${ove_cmd2pathname["grep"]:?} -E "${1}" "${OVE_GLOBAL_STATE_DIR}/distrocheck.images"; then
+	if ! ${ove_cmd2pathname["grep"]:?} -E "${1}$" "${OVE_GLOBAL_STATE_DIR}/distrocheck.images"; then
 		return 1
 	fi
 
@@ -16891,7 +16891,7 @@ function ove_distrocheck_helper {
 	fi
 }
 
-# distrocheck:file|project pattern...:verify a project within one or many container(s) (incus|LXD only):UTIL
+# distrocheck:file|project [<remote><colon>]<image>...:verify a project within one or many container(s) (incus|LXD only):UTIL
 function ove-distrocheck {
 	ove_entry || return
 
@@ -16908,7 +16908,7 @@ function ove-distrocheck {
 	done
 }
 
-# distrocheck-parallel:file|project pattern...:distrocheck in parallel (tmux and incus|LXD only):UTIL
+# distrocheck-parallel:file|project [<remote><colon>]<image>...:distrocheck in parallel (tmux and incus|LXD only):UTIL
 function ove-distrocheck-parallel {
 	ove_entry || return
 
@@ -16943,7 +16943,7 @@ function ove-distrocheck-parallel {
 	eval ove-run-parallel $args
 }
 
-# distrocheck-all:pattern...:distrocheck ALL projects within one or multiple containers (incus|LXD only):UTIL
+# distrocheck-all:[<remote><colon>]<image>...:distrocheck ALL projects within one or multiple containers (incus|LXD only):UTIL
 function ove-distrocheck-all {
 	ove_entry || return
 
