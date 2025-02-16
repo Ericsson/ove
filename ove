@@ -1163,49 +1163,69 @@ function ove_command_usage {
 function ove-strace-graph {
 	ove_entry || return
 
+	local d
+	local e
+
 	if [ $# -ne 1 ]; then
 		ove_command_usage
 		return 1
+	elif ! d="$(readlink -f $1)"; then
+		return 1
 	fi
+	e="${d##*/}"
 
-	ove_strace_create_graph $1 ${1##*/}
+	ove_strace_create_graph "${d}" "${e}"
 }
 
 # strace-execve-timeline:dir:run strace execve timeline analysis:DEBUG
 function ove-strace-execve-timeline {
 	ove_entry || return
 
+	local d
+
 	if [ $# -ne 1 ]; then
 		ove_command_usage
 		return 1
+	elif ! d="$(readlink -f $1)"; then
+		return 1
 	fi
-
-	OVE_LOGLEVEL=3 ove_analyze_strace_execve_timing $1
-
+	OVE_LOGLEVEL=3 ove_analyze_strace_execve_timing "${d}"
 }
 
 # strace-execve-time:dir:run strace execve time analysis:DEBUG
 function ove-strace-execve-time {
 	ove_entry || return
 
+	local d
+
 	if [ $# -ne 1 ]; then
 		ove_command_usage
 		return 1
+	elif ! d="$(readlink -f $1)"; then
+		return 1
 	fi
 
-	OVE_LOGLEVEL=4 ove_analyze_strace_execve_timing $1
+	OVE_LOGLEVEL=4 ove_analyze_strace_execve_timing "${d}"
 }
 
 # strace-connect:dir:run strace connect time analysis:DEBUG
 function ove-strace-connect {
 	ove_entry || return
 
+	local d
+
 	if [ $# -ne 1 ]; then
 		ove_command_usage
 		return 1
+	elif ! d="$(readlink -f $1)"; then
+		return 1
 	fi
 
-	ove_analyze_strace_connect $1
+	ove_analyze_strace_connect "${d}"
+}
+
+function ove_strace_usage {
+	ove_echo_error_noprefix "strace file(s) was created with non-supported strace options. Try 'strace -ff -ttt ...'"
 }
 
 # $1: directory with strace pid files
@@ -1229,6 +1249,23 @@ function ove_strace_create_graph {
 	elif [ $# -ne 2 ]; then
 		return 1
 	fi
+
+	# sanity check strace options
+	# shellcheck disable=SC2016
+	if ! ${ove_cmd2pathname["head"]:?} -1 -q "$1"/* | ${ove_cmd2pathname["grep"]:?} -q -E '^[0-9]+' ; then
+		ove_strace_usage
+		return 1
+	elif ${ove_cmd2pathname["head"]:?} -1 -q "$1"/* | ${ove_cmd2pathname["awk"]:?} '{print $1}' | ${ove_cmd2pathname["grep"]:?} -q ':'; then
+		ove_strace_usage
+		return 1
+	fi
+	for f in $(${ove_cmd2pathname["find"]:?} "$1" -type f); do
+		pid=${f##*.}
+		if ! [[ "${pid}" =~ ^[0-9]+$ ]]; then
+			ove_strace_usage
+			return 1
+		fi
+	done
 
 	o_base="${OVE_OWEL_TMP_DIR}/strace-${2}"
 	o_dot=${o_base}.dot

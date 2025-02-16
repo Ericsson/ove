@@ -1,7 +1,7 @@
 | Command          | Usage     |
 | ---              | ---       |
 | ag               | 3         |
-| awk              | 55        |
+| awk              | 56        |
 | basename         | 1         |
 | bash             | 19        |
 | cat              | 50        |
@@ -20,7 +20,7 @@
 | du               | 5         |
 | ffmpeg           | 1         |
 | file             | 4         |
-| find             | 80        |
+| find             | 81        |
 | flock            | 10        |
 | fold             | 2         |
 | fzf              | 5         |
@@ -28,8 +28,8 @@
 | getconf          | 1         |
 | git              | 88        |
 | graph-easy       | 1         |
-| grep             | 183       |
-| head             | 18        |
+| grep             | 185       |
+| head             | 20        |
 | incus            | 0         |
 | inotifywait      | 3         |
 | jp2a             | 1         |
@@ -89,4 +89,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1330__  |
+| __sum__          | __1336__  |
