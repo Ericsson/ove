@@ -8131,6 +8131,7 @@ function ove_export_create_proj_patch {
 
 function ove_export {
 	local c
+	local d
 	local _end
 	local f
 	local proj
@@ -8233,20 +8234,28 @@ function ove_export {
 		done
 
 		# config
-		for c in $(ove-proj2val "${proj}" config 2> /dev/null); do
-			if [ "${cfg_list["${c}"]+isset}" ]; then
-				continue
-			elif [ "${!c}" = "" ]; then
-				continue
+		if [ -s "${OVE_OWEL_DIR}"/.oveconfig ]; then
+			for c in $(ove-proj2val "${proj}" config 2> /dev/null); do
+				if [ "${cfg_list["${c}"]+isset}" ]; then
+					continue
+				elif [ "${!c}" = "" ]; then
+					continue
+				fi
+				d=$(OVE_CONFIG_COLOR=auto ove-config ${OVE_OWEL_DIR}/.oveconfig "$c" | ${ove_cmd2pathname["grep"]:?} "^$c ")
+				if [ "$d" = "" ]; then
+					ove_echo_warning_noprefix "config '$c' is not set in '${OVE_OWEL_DIR}/.oveconfig'"
+					continue
+				fi
+				echo "$d" >> "${wd}/.oveconfig"
+				cfg_list[$c]=1
+			done
+
+			if [ -s "${wd}/.oveconfig" ]; then
+				f="${wd}/.oveconfig"
+				${ove_cmd2pathname["git"]:?} -C "${wd}" diff ${f/${OVE_OWEL_TMP_DIR}\/export\/} >> "${wd}"/${proj}.patch
+				ove_modify_patch "${wd}"/${proj}.patch ".oveconfig"
+				true > "${wd}/.oveconfig"
 			fi
-			echo "$c ${!c}" >> "${wd}/.oveconfig"
-			cfg_list[$c]=1
-		done
-		if [ -s "${wd}/.oveconfig" ]; then
-			f="${wd}/.oveconfig"
-			${ove_cmd2pathname["git"]:?} -C "${wd}" diff ${f/${OVE_OWEL_TMP_DIR}\/export\/} >> "${wd}"/${proj}.patch
-			ove_modify_patch "${wd}"/${proj}.patch ".oveconfig"
-			true > "${wd}/.oveconfig"
 		fi
 	done
 
@@ -10640,18 +10649,21 @@ function ove-blame {
 # $3: value
 function ove_config_one {
 	local cfg=$1
+	local color_opt
 	local var
+
+	color_opt="${OVE_CONFIG_COLOR:-always}"
 
 	shift
 	if [ $# -eq 0 ]; then
 		${ove_cmd2pathname["grep"]:?} ${grep_prefix} -E -v '^#|^$' ${cfg} | \
 			LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
-			${ove_cmd2pathname["grep"]:?} -E --color=always "${grep_postfix}"
+			${ove_cmd2pathname["grep"]:?} -E --color=${color_opt} "${grep_postfix}"
 	elif [ $# -eq 1 ]; then
 		if ${ove_cmd2pathname["grep"]:?} -q -i $1 ${cfg}; then
 			${ove_cmd2pathname["grep"]:?} ${grep_prefix} -E -v '^#|^$' ${cfg} | \
 			${ove_cmd2pathname["grep"]:?} -i $1 | \
-			${ove_cmd2pathname["grep"]:?} -E --color=always "${grep_postfix}"
+			${ove_cmd2pathname["grep"]:?} -E --color=${color_opt} "${grep_postfix}"
 		fi
 	elif [ $# -gt 1 ]; then
 		var=$1

@@ -28,7 +28,7 @@
 | getconf          | 1         |
 | git              | 88        |
 | graph-easy       | 1         |
-| grep             | 185       |
+| grep             | 186       |
 | head             | 20        |
 | incus            | 0         |
 | inotifywait      | 3         |
@@ -89,4 +89,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1336__  |
+| __sum__          | __1337__  |
