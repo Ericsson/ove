@@ -10,19 +10,39 @@ EOF
 		arch="amd64"
 	fi
 	export OVE_DISTROCHECK_CONTAINER_NAME_RANDOM=1
-	export OVE_DISTROCHECK_CONTAINER_NAME_PREFIX="unittest-t0020"
+	export OVE_DISTROCHECK_CONTAINER_NAME_PREFIX="unittest-t0020-${FUNCNAME[0]}"
 
-	a=$(ove distrocheck "$OVE_TMP"/t alpine/edge)
-	assertEquals "0" "$?"
-	b=$(ove distrocheck "$OVE_TMP"/t alpine/edge/"$arch")
-	assertEquals "0" "$?"
-	assertEquals "$a" "$b"
-	c=$(ove distrocheck "$OVE_TMP"/t images:alpine/edge)
-	assertEquals "0" "$?"
-	assertEquals "$a" "$c"
-	d=$(ove distrocheck "$OVE_TMP"/t images:alpine/edge/"$arch")
-	assertEquals "0" "$?"
-	assertEquals "$a" "$d"
+	ove distrocheck "$OVE_TMP"/t alpine/edge
+	assertEquals "$?" "0"
+	ove distrocheck "$OVE_TMP"/t alpine/edge/"$arch"
+	assertEquals "$?" "0"
+	ove distrocheck "$OVE_TMP"/t images:alpine/edge
+	assertEquals "$?" "0"
+	ove distrocheck "$OVE_TMP"/t images:alpine/edge/"$arch"
+	assertEquals "$?" "0"
+}
+
+function test_b() {
+	export OVE_DISTROCHECK_CONTAINER_NAME_RANDOM=1
+	export OVE_DISTROCHECK_CONTAINER_NAME_PREFIX="unittest-t0020-${FUNCNAME[0]}"
+
+	ove distrocheck hostname alpine/edge
+	assertEquals "$?" "0"
+	ove distrocheck hostname alpine/edge/"$arch"
+	assertEquals "$?" "0"
+	ove distrocheck hostname images:alpine/edge
+	assertEquals "$?" "0"
+	ove distrocheck hostname images:alpine/edge/"$arch"
+	assertEquals "$?" "0"
+}
+
+function test_c() {
+	ove distrocheck
+	assertEquals "$?" "1"
+	ove distrocheck a
+	assertEquals "$?" "1"
+	ove distrocheck hostname a${RANDOM}
+	assertEquals "$?" "1"
 }
 
 # shellcheck disable=SC1091
