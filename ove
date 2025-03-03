@@ -8166,7 +8166,7 @@ function ove_export {
 	${ove_cmd2pathname["git"]:?} commit -m "export: revtab projs" -q)
 
 	for proj in ${projects}; do
-		echo $proj
+		echo "$proj" 1>&2
 
 		_start=$(${ove_cmd2pathname["grep"]:?} -n '^[a-zA-Z0-9_]\+:' ${OVE_OWEL_DIR}/projs |
 			${ove_cmd2pathname["grep"]:?} -A1 "^[0-9]\+:${proj}:" |
