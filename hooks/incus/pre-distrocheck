@@ -26,13 +26,16 @@
 set -e
 
 function supported {
-	if [ "${OVE_OS_ID:?}" = "ubuntu" ]; then
+	if [ "${OVE_OS_ID}" = "" ]; then
+		echo "error: OVE is not initialized" 1>&2
+		return 1
+	elif [ "${OVE_OS_ID}" = "ubuntu" ]; then
 		case "${OVE_OS_VER:?}" in
 			20.04|22.04|24.04)
 				return 0
 				;;
 		esac
-	elif [ "${OVE_OS_ID:?}" = "debian" ]; then
+	elif [ "${OVE_OS_ID}" = "debian" ]; then
 		case "${OVE_OS_VER:?}" in
 			11|12)
 				return 0
