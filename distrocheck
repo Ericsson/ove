@@ -1274,7 +1274,10 @@ function expose_user {
 		container_exec "${package_manager} shadow-useradd" > /dev/null
 	fi
 
-	container_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${container_user:?}"
+	# create user?
+	if ! container_exec_no_exit "id -u ${container_user:?}" &> /dev/null; then
+		container_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${container_user:?}"
+	fi
 
 	if ! _uid=$(get_id "uid"); then
 		exit 1
