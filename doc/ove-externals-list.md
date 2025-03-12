@@ -4,7 +4,7 @@
 | awk              | 56        |
 | basename         | 1         |
 | bash             | 19        |
-| cat              | 50        |
+| cat              | 51        |
 | chmod            | 7         |
 | column           | 29        |
 | comm             | 18        |
@@ -28,8 +28,8 @@
 | getconf          | 1         |
 | git              | 88        |
 | graph-easy       | 1         |
-| grep             | 186       |
-| head             | 20        |
+| grep             | 192       |
+| head             | 21        |
 | incus            | 0         |
 | inotifywait      | 3         |
 | jp2a             | 1         |
@@ -57,7 +57,7 @@
 | scp              | 3         |
 | script           | 6         |
 | scriptreplay     | 1         |
-| sed              | 92        |
+| sed              | 93        |
 | seq              | 11        |
 | setsid           | 1         |
 | shellcheck       | 1         |
@@ -70,7 +70,7 @@
 | sudo             | 3         |
 | sync             | 1         |
 | tac              | 3         |
-| tail             | 12        |
+| tail             | 13        |
 | tar              | 8         |
 | task             | 2         |
 | tee              | 11        |
@@ -89,4 +89,4 @@
 | xargs            | 34        |
 | xdotool          | 1         |
 | yamllint         | 1         |
-| __sum__          | __1337__  |
+| __sum__          | __1347__  |

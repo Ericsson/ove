@@ -12411,6 +12411,13 @@ function ove_bash_complete {
 		else
 			return
 		fi
+	elif [ "${subcommand}" = "delete-instance" ]; then
+		if [ ${size} -eq 2 ]; then
+			if ! a=$(ove_container_command 2> /dev/null); then
+				return
+			fi
+			wordlist=$($a list -f csv -c n)
+		fi
 	elif [ "${subcommand}" = "run" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist="TIMEOUT"
@@ -17084,6 +17091,112 @@ function ove-refresh-image {
 		-u \
 		-o "${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images" \
 		"${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images"
+}
+
+# delete-instance:name [y]:delete instance (incus|LXD only), USE WITH CARE:UTIL
+function ove-delete-instance {
+	ove_entry || return
+
+	local c
+	local e
+	local f
+	local line
+	local name
+	local prompt
+	local remove
+	local s
+
+	if [ $# -eq 0 ] || [ $# -gt 2 ]; then
+		ove_command_usage
+		return 1
+	elif [ $# -eq 2 ] && [ "$2" != "y" ]; then
+		ove_command_usage
+		return 1
+	elif ! c=$(ove_container_command); then
+		return 1
+	elif [ $# -eq 0 ]; then
+		ove_command_usage
+		return 1
+	fi
+
+	name="$1"
+	if ! "${c}" list -c nd -f csv | grep -q "^${name},"; then
+		ove_echo_error_noprefix "instance '${name}' not found"
+		return 1
+	fi
+
+	prompt=1
+	if [ $# -eq 2 ]; then
+		prompt=0
+	fi
+
+	f="${HOME}/.ssh/config"
+	if [ -s "${f}" ]; then
+		# did distrocheck create a host entry for this instance?
+		# AND
+		# just one host entry for this instance?
+		if "${c}" list -c nd -f csv | ${ove_cmd2pathname["grep"]:?} -q "^${name},.*STEPS.*ssh_config.*" && \
+			${ove_cmd2pathname["grep"]:?} -q "^Host $1$" "${f}"; then
+
+			# skip if multiple entries
+			if [ $(${ove_cmd2pathname["grep"]:?} -c "^Host $1$" "${f}") -gt 1 ]; then
+				echo "warning: multiple entries for 'Host $name', leaving '${f}' unmodified"
+				return 1
+			fi
+
+			# get start line num
+			s=$(${ove_cmd2pathname["grep"]:?} -A5 -n "^Host ${name}" "${f}" | \
+				${ove_cmd2pathname["grep"]:?} -E -o '^[0-9]+' | \
+				${ove_cmd2pathname["head"]:?} -1)
+
+			# get end line num
+			e="${s}"
+			while IFS= read -r line; do
+				if ! [[ "${line}" == *$'\t'* ]]; then
+					break
+				fi
+				e=$((e + 1))
+			done < <(${ove_cmd2pathname["tail"]:?} +"$((s+1))" "${f}")
+
+			remove=0
+			if [ "${prompt}" -eq 1 ]; then
+				${ove_cmd2pathname["cat"]:?} -n "${f}" | \
+					${ove_cmd2pathname["grep"]:?} --color=always -C5 "Host ${name}"
+				read -p "remove lines ${s} to ${e} in '${f}'? (y/N) " -r
+				if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+					remove=1
+				fi
+			else
+				remove=1
+			fi
+
+			if [ "$remove" = "1" ]; then
+				# remove the entry
+				if ! ${ove_cmd2pathname["sed"]:?} -i -e "${s},${e} d" "${f}"; then
+					return 1
+				fi
+			fi
+		fi
+	fi
+
+	remove=0
+	if [ "${prompt}" -eq 1 ]; then
+		"${c}" list "${name}"
+		read -p "delete '${name}'? (y/N) " -r
+		if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+			remove=1
+		fi
+	else
+		remove=1
+	fi
+
+	if [ "$remove" = "1" ]; then
+		if ! "${c}" delete -f "${name}"; then
+			return 1
+		fi
+	fi
+
+	return 0
 }
 
 # post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/distrocheck.list (incus|LXD only):INTERNAL
