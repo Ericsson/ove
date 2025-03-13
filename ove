@@ -10352,50 +10352,51 @@ ove lastlog-replay $(date -d @$(($(date +"%s")-86400)) +"%Y%m%d")- 10
 # run htop for 5 seconds, replay the command immediately after
 ove do . timeout --foreground 5 htop -d 0.1 || ove lr
 
-$(ove_echo_cyan_noprefix "distrocheck")
+$(ove_echo_cyan_noprefix "instance")
 
 # steps:
-#   ove        use the OVE workspace (map it or by running the oneliner) within the container
-#   running    leave the container running
-#   ssh        install sshd within the container and use ssh instead of 'incus|lxc exec'
+#   ove        use the OVE workspace (map it or by running the oneliner) within an instance
+#   running    leave the instance running
+#   ssh        install sshd within the instance and use ssh instead of 'incus|lxc exec'
 #   ssh_config update \$HOME/.ssh/config with host entries
-#   stopped    leave the container in stopped state
+#   stopped    leave the instance in stopped state
 #   user       run jobs as user
 #   verbose    debug printouts
-#   worktree   run distcheck within an OVE worktree
+#   worktree   run entry within an OVE worktree
 #   X          Xpra+Xfce
 #
-# run 'ove distcheck foo' within a Ubuntu 24.04 container, run the job as user, delete the container when done
-export OVE_DISTROCHECK_STEPS="user ove"
-ove distrocheck foo ubuntu/24.04/amd64
+# run 'ove entry foo' within a Ubuntu 24.04 container, run the job as user, delete the container when done
+export OVE_INSTANCE_STEPS="user ove"
+ove create-instance foo ubuntu/24.04/amd64
 
 # run a local script "test.sh" within Ubuntu 24.04, enable debug prints, leave the container running
 echo "set -x;date;whoami;hostname;ip addr" > test.sh
-export OVE_DISTROCHECK_STEPS="running verbose"
-ove distrocheck test.sh ubuntu/24.04/amd64
+export OVE_INSTANCE_STEPS="running verbose"
+ove create-instance test.sh ubuntu/24.04/amd64
 
-# (tmux only) run 'ove distcheck ag' within three Linux distributions at the same time, run the job as root, leave the containers running
-export OVE_DISTROCHECK_STEPS="ove running"
-ove distrocheck-parallel ag alpine/edge/amd64 fedora/40/amd64 ubuntu/24.04/amd64
+# (tmux only) run 'ove entry ag' within three Linux distributions at the same time, run the job as root, leave the containers running
+export OVE_INSTANCE_STEPS="ove running"
+ove create-instance-parallel ag alpine/edge/amd64 fedora/40/amd64 ubuntu/24.04/amd64
 
 # install Xpra
-bash \${OVE_DIR:?}/hooks/xpra/pre-distrocheck
+bash \${OVE_DIR:?}/hooks/xpra/pre-create-instance
 
 # install incus
-bash \${OVE_DIR:?}/hooks/incus/pre-distrocheck
+bash \${OVE_DIR:?}/hooks/incus/pre-create-instance
 
 # attach to a Xfce desktop running within an Alpine 3.20 container 'alice', enable debug prints, leave the container running
-export OVE_DISTROCHECK_CONTAINER_NAME="alice"
-export OVE_DISTROCHECK_STEPS="running verbose X"
-export OVE_DISTROCHECK_XPRA_CLIENT_ARGS="attach"
-ove distrocheck true alpine/3.20/amd64
+export OVE_INSTANCE_NAME="alice"
+export OVE_INSTANCE_STEPS="running verbose X"
+export OVE_INSTANCE_XPRA_CLIENT_ARGS="attach"
+ove create-instance true alpine/3.20/amd64
 # re-attach
 xpra attach --ssh=ssh ssh:alice
 
 # add an image remote server
 incus remote add docker https://docker.io --protocol=oci
 # check nginx version
-ove distrocheck 'nginx -v' docker:nginx
+export OVE_INSTANCE_STEPS="running"
+ove create-instance 'nginx -v' docker:nginx
 
 $(ove_echo_cyan_noprefix "replicate")
 
@@ -12379,41 +12380,41 @@ function ove_bash_complete {
 				${ove_cmd2pathname["sort"]:?} -u | \
 				${ove_cmd2pathname["tr"]:?} -d ': ')"
 		fi
-	elif [ "${subcommand}" = "distrocheck" ] ||
-		[ "${subcommand}" = "distrocheck-parallel" ]; then
+	elif [ "${subcommand}" = "create-instance" ] ||
+		[ "${subcommand}" = "create-instance-parallel" ]; then
 		if [ ${size} -eq 2 ]; then
-			if [ -s "${OVE_OWEL_DIR}"/projects/common/distcheck ]; then
+			if [ -s "${OVE_OWEL_DIR}"/projects/common/entry ]; then
 				wordlist="${OVE_PROJECT_LIST}"
 			else
-				wordlist=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects/*/ -name 'distcheck' -exec dirname {} \; 2> /dev/null)
+				wordlist=$(${ove_cmd2pathname["find"]:?} ${OVE_OWEL_DIR}/projects/*/ -name 'entry' -exec dirname {} \; 2> /dev/null)
 				if [ "${wordlist}" != "" ]; then
 					wordlist=${wordlist//${OVE_OWEL_DIR}\/projects\/}
 				else
 					wordlist=${OVE_PROJECT_LIST}
 				fi
 			fi
-		elif [ ${size} -ge 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
-			wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+		elif [ ${size} -ge 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/instance.list" ]; then
+			wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list")
 		elif [ ${size} -eq 3 ]; then
 			if ove-refresh-image &> /dev/null; then
-				wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+				wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list")
 			fi
 		else
 			return
 		fi
-	elif [ "${subcommand}" = "distrocheck-all" ]; then
-		if [ ${size} -ge 2 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
-			wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+	elif [ "${subcommand}" = "create-instance-all" ]; then
+		if [ ${size} -ge 2 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/instance.list" ]; then
+			wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list")
 		elif [ ${size} -eq 2 ]; then
 			if ove-refresh-image &> /dev/null; then
-				wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/distrocheck.images")
+				wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list")
 			fi
 		else
 			return
 		fi
 	elif [ "${subcommand}" = "delete-instance" ]; then
 		if [ ${size} -eq 2 ]; then
-			if ! a=$(ove_container_command 2> /dev/null); then
+			if ! a=$(ove_instance_runtime 2> /dev/null); then
 				return
 			fi
 			wordlist=$($a list -f csv -c n)
@@ -13425,34 +13426,34 @@ function ove_config_builtins_init {
 		export OVE_HASH_SIZE_THRESHOLD_IN_BYTES="104857600"
 	fi
 
-	# OVE_DISTROCHECK_STEPS:string:ove running ssh ssh_config stopped user verbose worktree X:distrocheck distrocheck-parallel:list of steps to perform for distrocheck
-	if [ -z "${OVE_DISTROCHECK_STEPS+x}" ]; then
-		export OVE_DISTROCHECK_STEPS=""
+	# OVE_INSTANCE_STEPS:string:ove running ssh ssh_config stopped user verbose worktree X:create-instance create-instance-parallel:list of steps to perform for create-instance
+	if [ -z "${OVE_INSTANCE_STEPS+x}" ]; then
+		export OVE_INSTANCE_STEPS=""
 	fi
 
-	# OVE_DISTROCHECK_CONTAINER_NAME:string::distrocheck distrocheck-parallel:set container name
-	if [ -z "${OVE_DISTROCHECK_CONTAINER_NAME+x}" ]; then
-		export OVE_DISTROCHECK_CONTAINER_NAME=""
+	# OVE_INSTANCE_NAME:string::create-instance create-instance-parallel:set instance name
+	if [ -z "${OVE_INSTANCE_NAME+x}" ]; then
+		export OVE_INSTANCE_NAME=""
 	fi
 
-	# OVE_DISTROCHECK_CONTAINER_NAME_PREFIX:string::distrocheck distrocheck-parallel:set container name prefix
-	if [ -z "${OVE_DISTROCHECK_CONTAINER_NAME_PREFIX+x}" ]; then
-		export OVE_DISTROCHECK_CONTAINER_NAME_PREFIX=""
+	# OVE_INSTANCE_NAME_PREFIX:string::create-instance create-instance-parallel:set instance name prefix
+	if [ -z "${OVE_INSTANCE_NAME_PREFIX+x}" ]; then
+		export OVE_INSTANCE_NAME_PREFIX=""
 	fi
 
-	# OVE_DISTROCHECK_CONTAINER_NAME_RANDOM:string::distrocheck distrocheck-parallel:set a somewhat random container name
-	if [ -z "${OVE_DISTROCHECK_CONTAINER_NAME_RANDOM+x}" ]; then
-		export OVE_DISTROCHECK_CONTAINER_NAME_RANDOM=""
+	# OVE_INSTANCE_NAME_RANDOM:string::create-instance create-instance-parallel:set a somewhat random instance name
+	if [ -z "${OVE_INSTANCE_NAME_RANDOM+x}" ]; then
+		export OVE_INSTANCE_NAME_RANDOM=""
 	fi
 
-	# OVE_DISTROCHECK_REMOTE_DEFAULT:string::distrocheck distrocheck-parallel:default remote name for upstream images
-	if [ -z "${OVE_DISTROCHECK_REMOTE_DEFAULT+x}" ]; then
-		export OVE_DISTROCHECK_REMOTE_DEFAULT="images"
+	# OVE_INSTANCE_REMOTE_DEFAULT:string::create-instance create-instance-parallel:default remote name for upstream images
+	if [ -z "${OVE_INSTANCE_REMOTE_DEFAULT+x}" ]; then
+		export OVE_INSTANCE_REMOTE_DEFAULT="images"
 	fi
 
-	# OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS:string::distrocheck distrocheck-parallel:extra args sent to container framework on launch
-	if [ -z "${OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS+x}" ]; then
-		export OVE_DISTROCHECK_LAUNCH_EXTRA_ARGS=""
+	# OVE_INSTANCE_EXTRA_ARGS:string::create-instance create-instance-parallel:extra args sent to instance runtime
+	if [ -z "${OVE_INSTANCE_EXTRA_ARGS+x}" ]; then
+		export OVE_INSTANCE_EXTRA_ARGS=""
 	fi
 
 	# OVE_HOOKS_APPEND_TO_LASTLOG:int:0-1:all:append output from hooks to lastlog
@@ -14036,7 +14037,7 @@ function ove_post_checks {
 	# incus
 	if [ "${OVE_AUTO_INSTALL_INCUS}" = "1" ] && ! command -v incus > /dev/null; then
 		${ove_cmd2pathname["bash"]:?} \
-			"${OVE_DIR}"/hooks/incus/pre-distrocheck || true
+			"${OVE_DIR}"/hooks/incus/pre-create-instance || true
 	fi
 
 	if [ "$OVE_HUB_URL_LIST" != "" ]; then
@@ -14463,7 +14464,7 @@ EOF
 		# projects
 		${ove_cmd2pathname["mkdir"]:?} -p ${dst}/projects/${proj_name}
 
-		for d in bootstrap configure build install test distcheck; do
+		for d in bootstrap configure build install test entry; do
 			${ove_cmd2pathname["cat"]:?} > "${dst}/projects/${proj_name}/$d" << EOF
 #!/usr/bin/env bash
 
@@ -15210,13 +15211,13 @@ function ove-replicate-cluster-parallel {
 	ove-replicate-cluster "$@"
 }
 
-function ove_container_command {
+function ove_instance_runtime {
 	if command -v "incus" > /dev/null; then
 		echo "incus"
 	elif command -v "lxc" > /dev/null; then
 		echo "lxc"
 	else
-		ove_echo_fatal_noprefix "no container runtime found"
+		ove_echo_fatal_noprefix "no instance runtime found"
 		return 1
 	fi
 
@@ -15230,7 +15231,7 @@ function ove-replicate-cluster {
 	local p
 	local s
 
-	if ! c=$(ove_container_command); then
+	if ! c=$(ove_instance_runtime); then
 		return 1
 	elif ! ${ove_cmd2pathname[$c]:?} cluster list &> /dev/null; then
 		ove_echo_error_noprefix "this host is not part of a $c cluster"
@@ -16861,12 +16862,12 @@ function ove-rename {
 }
 
 # $1 = image name
-function ove_distrocheck_verify_image_name {
+function ove_instance_verify_image_name {
 	local c
 	local r
 	local remotes
 
-	if ! c=$(ove_container_command); then
+	if ! c=$(ove_instance_runtime); then
 		return 1
 	elif "${c}" image list --format csv --columns fF | \
 		${ove_cmd2pathname["grep"]:?} -q -w "${1}"; then
@@ -16884,7 +16885,7 @@ function ove_distrocheck_verify_image_name {
 			${ove_cmd2pathname["grep"]:?} -v ',NO$' | \
 			${ove_cmd2pathname["cut"]:?} -d, -f1)
 		for r in "${remotes[@]}"; do
-			if [[ "$1" = ${r}:* ]] && [ "$r" != "${OVE_DISTROCHECK_REMOTE_DEFAULT:?}" ]; then
+			if [[ "$1" = ${r}:* ]] && [ "$r" != "${OVE_INSTANCE_REMOTE_DEFAULT:?}" ]; then
 				# not the default remote
 				echo "$1"
 				return 0
@@ -16893,14 +16894,14 @@ function ove_distrocheck_verify_image_name {
 	fi
 
 	# sanity check
-	if ! ${ove_cmd2pathname["grep"]:?} -E "${1}$" "${OVE_GLOBAL_STATE_DIR}/distrocheck.images"; then
+	if ! ${ove_cmd2pathname["grep"]:?} -E "${1}$" "${OVE_GLOBAL_STATE_DIR}/instance.list"; then
 		return 1
 	fi
 
 	return 0
 }
 
-function ove_distrocheck_helper {
+function ove_instance_helper {
 	local c
 	local d
 	local name
@@ -16908,33 +16909,33 @@ function ove_distrocheck_helper {
 
 	if [ $# -lt 2 ]; then
 		return 1
-	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images ] && ! ove-refresh-image; then
+	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/instance.list ] && ! ove-refresh-image; then
 		return 1
 	fi
 
 	proj="$1"
 	if [[ -v ove_projects_name2index[${proj}] ]]; then
-		if ! ove_project_has_step "${proj}" "distcheck"; then
-			ove_echo_error_noprefix "$proj does not have a distcheck file '\${OVE_OWEL_DIR}/projects/${proj}/distcheck'. Add one and retry!"
+		if ! ove_project_has_step "${proj}" "entry"; then
+			ove_echo_error_noprefix "$proj does not have a entry file '\${OVE_OWEL_DIR}/projects/${proj}/entry'. Add one and retry!"
 			return 1
 		fi
 
-		OVE_DISTROCHECK_STEPS+=" ove"
+		OVE_INSTANCE_STEPS+=" ove"
 	fi
 
-	if ! c=$(ove_container_command); then
+	if ! c=$(ove_instance_runtime); then
 		return 1
 	fi
 
 	shift
 	if [ $# -eq 1 ]; then
-		if ! name=$(ove_distrocheck_verify_image_name "${1}"); then
+		if ! name=$(ove_instance_verify_image_name "${1}"); then
 			return 1
 		fi
 		image_list=("${name}")
 	else
 		while true; do
-			if ! name=$(ove_distrocheck_verify_image_name "${1}"); then
+			if ! name=$(ove_instance_verify_image_name "${1}"); then
 				continue
 			fi
 			image_list+=("${name}")
@@ -16945,32 +16946,32 @@ function ove_distrocheck_helper {
 		done
 	fi
 
-	if [[ "$OVE_DISTROCHECK_STEPS" == *verbose* ]]; then
+	if [[ "$OVE_INSTANCE_STEPS" == *verbose* ]]; then
 		for d in "${image_list[@]}"; do
 			echo "$d"
 		done
 	fi
 }
 
-# distrocheck:file|project [<remote><colon>]<image>...:verify a project within one or many container(s) (incus|LXD only):UTIL
-function ove-distrocheck {
+# create-instance:file|project [<remote><colon>]<image>...:create one or many instances (incus|LXD only):UTIL
+function ove-create-instance {
 	ove_entry || return
 
 	local d
 	local image_list
 
-	if ! ove_distrocheck_helper "$@"; then
+	if ! ove_instance_helper "$@"; then
 		ove_command_usage
 		return 1
 	fi
 
 	for d in "${image_list[@]}"; do
-		${OVE_DIR}/distrocheck "${1}" "$d"
+		${OVE_DIR}/instance "${1}" "$d"
 	done
 }
 
-# distrocheck-parallel:file|project [<remote><colon>]<image>...:distrocheck in parallel (tmux and incus|LXD only):UTIL
-function ove-distrocheck-parallel {
+# create-instance-parallel:file|project [<remote><colon>]<image>...:create one or many instances in parallel (tmux and incus|LXD only):UTIL
+function ove-create-instance-parallel {
 	ove_entry || return
 
 	local args
@@ -16983,7 +16984,7 @@ function ove-distrocheck-parallel {
 	if ! ove_sanity_check_tmux; then
 		ove_command_usage
 		return 1
-	elif ! ove_distrocheck_helper "$@"; then
+	elif ! ove_instance_helper "$@"; then
 		ove_command_usage
 		return 1
 	fi
@@ -16992,41 +16993,41 @@ function ove-distrocheck-parallel {
 		env+=" OVE_UNITTEST_TC=${OVE_UNITTEST_TC}"
 	fi
 
-	for v in $(compgen -A variable OVE_DISTROCHECK_); do
+	for v in $(compgen -A variable OVE_INSTANCE_); do
 		val=${!v}
 		env+=" $v=${val// /:}"
 	done
 
 	for d in "${image_list[@]}"; do
-		args+=" 0 '$env ${OVE_DIR}/distrocheck $1 $d'"
+		args+=" 0 '$env ${OVE_DIR}/instance $1 $d'"
 	done
 
 	eval ove-run-parallel $args
 }
 
-# distrocheck-all:[<remote><colon>]<image>...:distrocheck ALL projects within one or multiple containers (incus|LXD only):UTIL
-function ove-distrocheck-all {
+# create-instance-all:[<remote><colon>]<image>...:create one or many instances for all projects (incus|LXD only):UTIL
+function ove-create-instance-all {
 	ove_entry || return
 
 	local c
 	local cmd
 	local p
 
-	if ! c=$(ove_container_command); then
+	if ! c=$(ove_instance_runtime); then
 		return 1
 	elif [ $# -eq 0 ]; then
 		ove_command_usage
 		return 1
 	fi
 
-	cmd="ove-distrocheck"
+	cmd="ove-instance"
 	if ove_sanity_check_tmux 2> /dev/null; then
 		cmd+="-parallel"
 	fi
 
 	# random order
 	for p in $(printf "%s\n" $OVE_PROJECT_LIST | LC_ALL="C" ${ove_cmd2pathname["sort"]:?} -R); do
-		OVE_DISTROCHECK_CONTAINER_PREFIX="${p//_/-}" "${cmd}" "$p" "$@"
+		OVE_INSTANCE_PREFIX="${p//_/-}" "${cmd}" "$p" "$@"
 	done
 }
 
@@ -17058,14 +17059,14 @@ function ove-pre-push {
 	ove-status .ove
 }
 
-# refresh-image: :refresh list of available container images (incus|LXD only):UTIL
+# refresh-image: :refresh list of available images (incus|LXD only):UTIL
 function ove-refresh-image {
 	ove_entry || return
 
 	local arch
 	local c
 
-	if ! c=$(ove_container_command); then
+	if ! c=$(ove_instance_runtime); then
 		return 1
 	fi
 
@@ -17074,23 +17075,23 @@ function ove-refresh-image {
 		arch="amd64"
 	fi
 
-	if ! ${ove_cmd2pathname["$c"]:?} image list --format csv -cL "${OVE_DISTROCHECK_REMOTE_DEFAULT:?}:" arch=${arch} | \
+	if ! ${ove_cmd2pathname["$c"]:?} image list --format csv -cL "${OVE_INSTANCE_REMOTE_DEFAULT:?}:" arch=${arch} | \
 		${ove_cmd2pathname["sed"]:?} \
 		-e 's,",,g' \
 		-e '/^$/d' \
-		-e "s,^,${OVE_DISTROCHECK_REMOTE_DEFAULT:?}:,g" \
-		> "${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images"; then
-		ove_echo_error_noprefix "'$c image list ${OVE_DISTROCHECK_REMOTE_DEFAULT:?}:' failed"
+		-e "s,^,${OVE_INSTANCE_REMOTE_DEFAULT:?}:,g" \
+		> "${OVE_GLOBAL_STATE_DIR:?}/instance.list"; then
+		ove_echo_error_noprefix "'$c image list ${OVE_INSTANCE_REMOTE_DEFAULT:?}:' failed"
 		return 1
-	elif [ ! -s "${OVE_GLOBAL_STATE_DIR}/distrocheck.images" ]; then
+	elif [ ! -s "${OVE_GLOBAL_STATE_DIR}/instance.list" ]; then
 		ove_echo_error_noprefix "weird - empty image list"
 		return 1
 	fi
 
 	LC_ALL="C" ${ove_cmd2pathname["sort"]:?} \
 		-u \
-		-o "${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images" \
-		"${OVE_GLOBAL_STATE_DIR:?}/distrocheck.images"
+		-o "${OVE_GLOBAL_STATE_DIR:?}/instance.list" \
+		"${OVE_GLOBAL_STATE_DIR:?}/instance.list"
 }
 
 # delete-instance:name [y]:delete instance (incus|LXD only), USE WITH CARE:UTIL
@@ -17112,7 +17113,7 @@ function ove-delete-instance {
 	elif [ $# -eq 2 ] && [ "$2" != "y" ]; then
 		ove_command_usage
 		return 1
-	elif ! c=$(ove_container_command); then
+	elif ! c=$(ove_instance_runtime); then
 		return 1
 	elif [ $# -eq 0 ]; then
 		ove_command_usage
@@ -17132,7 +17133,7 @@ function ove-delete-instance {
 
 	f="${HOME}/.ssh/config"
 	if [ -s "${f}" ]; then
-		# did distrocheck create a host entry for this instance?
+		# did create-instance create a host entry for this instance?
 		# AND
 		# just one host entry for this instance?
 		if "${c}" list -c nd -f csv | ${ove_cmd2pathname["grep"]:?} -q "^${name},.*STEPS.*ssh_config.*" && \
@@ -17199,26 +17200,26 @@ function ove-delete-instance {
 	return 0
 }
 
-# post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/distrocheck.list (incus|LXD only):INTERNAL
+# post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/instance.list (incus|LXD only):INTERNAL
 function ove-post-push {
 	ove_entry || return
 
 	local d
 	local image_list
 
-	if [ ! -s "${OVE_DIR}/tests/distrocheck.list" ]; then
+	if [ ! -s "${OVE_DIR}/tests/instance.list" ]; then
 		return 1
 	elif ! ove-refresh-image; then
 		return 1
 	fi
 
-	mapfile -t image_list <"${OVE_DIR}/tests/distrocheck.list"
+	mapfile -t image_list <"${OVE_DIR}/tests/instance.list"
 	for d in "${image_list[@]}"; do
 		if [[ ${d} == \#* ]]; then
 			continue
 		fi
-		OVE_DISTROCHECK_CONTAINER_PREFIX=ove-ut \
-			${OVE_DIR}/distrocheck "unittest" "${d}"
+		OVE_INSTANCE_PREFIX=ove-ut \
+			${OVE_DIR}/instance "unittest" "${d}"
 	done
 }
 
@@ -17229,7 +17230,7 @@ function ove-post-push-parallel {
 	local args
 	local d
 
-	if [ ! -s "${OVE_DIR}/tests/distrocheck.list" ]; then
+	if [ ! -s "${OVE_DIR}/tests/instance.list" ]; then
 		return 1
 	elif ! ove_sanity_check_tmux; then
 		ove_command_usage
@@ -17239,8 +17240,8 @@ function ove-post-push-parallel {
 	fi
 
 	while read -r d; do
-		args+=" 0 'OVE_DISTROCHECK_CONTAINER_PREFIX=ove-ut ${OVE_DIR}/distrocheck unittest $d'"
-	done <"${OVE_DIR}/tests/distrocheck.list"
+		args+=" 0 'OVE_INSTANCE_PREFIX=ove-ut ${OVE_DIR}/instance unittest $d'"
+	done <"${OVE_DIR}/tests/instance.list"
 
 	eval ove-run-parallel $args
 }

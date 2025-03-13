@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+function test_a() {
+	cat << EOF > "$OVE_TMP"/t
+sha256sum <(find /usr /lib -xdev -type f -exec sha256sum {} \; 2> /dev/null | \
+sort) | awk '{print \$1}'
+EOF
+	arch=$(uname -m)
+	if [ "${arch}" = "x86_64" ]; then
+		arch="amd64"
+	fi
+	export OVE_INSTANCE_NAME_RANDOM=1
+	export OVE_INSTANCE_NAME_PREFIX="unittest-t0020-${FUNCNAME[0]}"
+
+	ove create-instance "$OVE_TMP"/t alpine/edge
+	assertEquals "$?" "0"
+	ove create-instance "$OVE_TMP"/t alpine/edge/"$arch"
+	assertEquals "$?" "0"
+	ove create-instance "$OVE_TMP"/t images:alpine/edge
+	assertEquals "$?" "0"
+	ove create-instance "$OVE_TMP"/t images:alpine/edge/"$arch"
+	assertEquals "$?" "0"
+}
+
+function test_b() {
+	export OVE_INSTANCE_NAME_RANDOM=1
+	export OVE_INSTANCE_NAME_PREFIX="unittest-t0020-${FUNCNAME[0]}"
+
+	ove create-instance hostname alpine/edge
+	assertEquals "$?" "0"
+	ove create-instance hostname alpine/edge/"$arch"
+	assertEquals "$?" "0"
+	ove create-instance hostname images:alpine/edge
+	assertEquals "$?" "0"
+	ove create-instance hostname images:alpine/edge/"$arch"
+	assertEquals "$?" "0"
+}
+
+function test_c() {
+	ove create-instance
+	assertEquals "$?" "1"
+	ove create-instance a
+	assertEquals "$?" "1"
+	ove create-instance hostname a${RANDOM}
+	assertEquals "$?" "1"
+}
+
+# shellcheck disable=SC1091
+source "${OVE_DIR}/tests/common.sh"
