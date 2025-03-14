@@ -2317,36 +2317,61 @@ EOF
 }
 
 function ove_rec_start {
-	if ! ove_check_command "recordmydesktop"; then
-		return 1
-	elif ! ove_check_command "xdotool"; then
-		return 1
-	fi
+	rec_pid=0
 
-	# already recording?
-	if ${ove_cmd2pathname["pgrep"]:?} -f recordmydesktop > /dev/null; then
-		rec_pid=0
+	if ! ove_check_command "ffmpeg"; then
+		return 1
+	elif ${ove_cmd2pathname["pgrep"]:?} -f ffmpeg > /dev/null; then
+		# already recording
 		return 0
 	fi
 
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
 
-	# start recording
-	${ove_cmd2pathname["recordmydesktop"]:?} \
-		--no-cursor \
-		--no-frame \
-		--no-sound \
-		-o ${OVE_LAST_COMMAND/.log}.ogv \
-		--windowid $(printf "0x%x\n" $(${ove_cmd2pathname["xdotool"]:?} getactivewindow)) \
+	if [ $OVE_RECORD_METHOD = "auto" ]; then
+		if ! ove_check_command "xdotool"; then
+			return 1
+		elif ! eval $(${ove_cmd2pathname["xdotool"]:?} getwindowgeometry --shell $(${ove_cmd2pathname["xdotool"]:?} getactivewindow)); then
+			return 0
+		fi
+		unset WINDOW SCREEN
+	elif [ $OVE_RECORD_METHOD = "slop" ]; then
+		if ! ove_check_command "slop"; then
+			return 1
+		fi
+		read -r X Y WIDTH HEIGHT < <(${ove_cmd2pathname["slop"]:?} -k -f "%x %y %w %h" 2> /dev/null)
+		if [ "$WIDTH" = "" ]; then
+			return 0
+		fi
+	else
+		ove_echo_error_noprefix "unknown record method '${OVE_RECORD_METHOD}'"
+		return 1
+	fi
+
+	# start recording in background
+	${ove_cmd2pathname["ffmpeg"]:?} \
+		-video_size "${WIDTH:?}x${HEIGHT:?}" \
+		-r 30 \
+		-f x11grab \
+		-i +"${X:?},${Y:?}" \
+		-preset ultrafast \
+		-vcodec libx264 \
+		-hide_banner \
+		-loglevel error \
+		-y \
+		${OVE_LAST_COMMAND/.log}.mp4 \
 		2> "${OVE_TMP}/rec.err" &
 	rec_pid=$!
 
-	# sanity check recording
-	${ove_cmd2pathname["sleep"]:?} 1
+	# vars no longer needed
+	unset X Y HEIGHT WIDTH
+
+	# sanity check recording is alive
+	${ove_cmd2pathname["sleep"]:?} 0.1
 	if ! kill -0 "${rec_pid}" 2> /dev/null; then
 		set -m
-		ove_echo_error_noprefix "recordmydesktop: $(${ove_cmd2pathname["cat"]:?} ${OVE_TMP}/rec.err)"
+		ove_echo_error_noprefix "ffmpeg: $(${ove_cmd2pathname["cat"]:?} ${OVE_TMP}/rec.err)"
 		return 1
 	fi
 
@@ -2354,6 +2379,7 @@ function ove_rec_start {
 }
 
 function ove_rec_stop {
+	local f
 	local i
 	local o
 
@@ -2364,9 +2390,8 @@ function ove_rec_stop {
 	# turn off monitor mode to get rid of "Done" messages
 	set +m
 
+	# stop recording after 1 sec
 	${ove_cmd2pathname["sleep"]:?} 1
-
-	# stop recording
 	kill -SIGINT "${rec_pid}" 2> /dev/null
 
 	# wait for recording
@@ -2374,31 +2399,30 @@ function ove_rec_stop {
 		if ! kill -0 "${rec_pid}" 2> /dev/null; then
 			break
 		fi
-		${ove_cmd2pathname["sleep"]:?} 1
+		${ove_cmd2pathname["sleep"]:?} 0.1
 	done
 
-	o="${OVE_LAST_COMMAND/.log}.ogv"
-
-	# sanity check
-	if [ ! -s "$o" ]; then
-		ove_echo_error_noprefix "recordmydesktop: $(${ove_cmd2pathname["cat"]:?} ${OVE_TMP}/rec.err)"
-		return
-	fi
-
-	if command -v ffmpeg > /dev/null; then
-		i="${OVE_LAST_COMMAND/.log}.ogv"
-		o="${OVE_LAST_COMMAND/.log}.mp4"
-
-		# convert to MPEG-4
-		if ! ${ove_cmd2pathname["ffmpeg"]:?} -i "${i}" "${o}" 2> /dev/null; then
-			o="${OVE_LAST_COMMAND/.log}.ogv"
-		else
-			${ove_cmd2pathname["rm"]:?} "${i}"
-		fi
+	f="${OVE_LAST_COMMAND/.log}.mp4"
+	if [ ! -s "${f}" ]; then
+		ove_echo_fatal_noprefix "'$f' is empty or does not exist"
+		return 0
 	fi
 
 	# display path and size
-	${ove_cmd2pathname["du"]:?} -sh "${o}" 1>&2
+	${ove_cmd2pathname["du"]:?} -sh "${f}" 1>&2
+
+	if [ "${OVE_EXT_VIEWER}" != "" ]; then
+		while IFS=';' read -a opt -r; do
+			for o in "${opt[@]}"; do
+				ext="${o%:*}"
+				if [ "$ext" != "mp4" ]; then
+					continue
+				fi
+				cmd="${o#*:}"
+				eval "${cmd}" "${f}"
+			done
+		done <<<"${OVE_EXT_VIEWER}"
+	fi
 
 	# turn on monitor mode
 	set -m
@@ -5151,7 +5175,7 @@ function ove_graph_viewer_helper {
 	ext_list['png']=1
 	ext_list['svg']=1
 
-	if [ "${OVE_GRAPH_VIEWER}" = "" ]; then
+	if [ "${OVE_EXT_VIEWER}" = "" ]; then
 		${ove_cmd2pathname["du"]:?} -sh "${f_dot}"
 	else
 		ext_list['ascii']=0
@@ -5163,15 +5187,14 @@ function ove_graph_viewer_helper {
 		while IFS=';' read -a opt -r; do
 			for o in "${opt[@]}"; do
 				if [[ "${o}" != *:* ]]; then
-					ove_echo_error_noprefix "colon missing '$o', check 'OVE_GRAPH_VIEWER' config"
+					ove_echo_error_noprefix "colon missing '$o', check 'OVE_EXT_VIEWER' config"
 					return 1
 				elif [ ! "${ext_list["${o%:*}"]+isset}" ]; then
-					ove_echo_error_noprefix "'${o%:*}' is not a supported file extension"
 					continue
 				fi
 				ext_list["${o%:*}"]=1
 			done
-		done <<<"${OVE_GRAPH_VIEWER}"
+		done <<<"${OVE_EXT_VIEWER}"
 
 		if [[ "${ext_list[*]}" != *1* ]]; then
 			# no viewers
@@ -5185,7 +5208,7 @@ function ove_graph_viewer_helper {
 				continue
 			elif ! ${ove_cmd2pathname["dot"]:?} -T"${ext}" "${f_dot}" > "${f_base:?}.${ext}"; then
 				return 1
-			elif [ "${OVE_GRAPH_VIEWER}" = "" ]; then
+			elif [ "${OVE_EXT_VIEWER}" = "" ]; then
 				${ove_cmd2pathname["du"]:?} -sh "${f_base:?}.${ext}"
 			fi
 		done
@@ -5200,7 +5223,7 @@ function ove_graph_viewer_helper {
 				--as="${ext}" \
 				< "${f_dot}" > "${f_base:?}.${ext}" 2> /dev/null; then
 				return 1
-			elif [ "${OVE_GRAPH_VIEWER}" = "" ]; then
+			elif [ "${OVE_EXT_VIEWER}" = "" ]; then
 				${ove_cmd2pathname["du"]:?} -sh "${f_base:?}.${ext}"
 			fi
 		done
@@ -5220,7 +5243,7 @@ function ove_graph_viewer_helper {
 				"${cmd}" "${f_base:?}.${ext}"
 			fi
 		done
-	done <<<"${OVE_GRAPH_VIEWER}"
+	done <<<"${OVE_EXT_VIEWER}"
 }
 
 # digraph:[commands key...] :create a DOT directed graph for all projects:CORE
@@ -5305,7 +5328,7 @@ function ove-digraph {
 		echo "}"
 	} > "${o_dot}"
 
-	if [ "${OVE_GRAPH_VIEWER}" = "" ] && [ -s "${o_base}.ascii" ]; then
+	if [ "${OVE_EXT_VIEWER}" = "" ] && [ -s "${o_base}.ascii" ]; then
 		${ove_cmd2pathname["cat"]:?} "${o_base}.ascii"
 	fi
 
@@ -13195,9 +13218,9 @@ function ove_config_builtins_init {
 		export OVE_TRACE_MODE=0
 	fi
 
-	# OVE_GRAPH_VIEWER:string::loglevel digraph:semi-colon separated list of extension-colon-viewer pairs
-	if [ -z "${OVE_GRAPH_VIEWER+x}" ]; then
-		export OVE_GRAPH_VIEWER=
+	# OVE_EXT_VIEWER:string::loglevel digraph rec:semi-colon separated list of extension-colon-viewer pairs
+	if [ -z "${OVE_EXT_VIEWER+x}" ]; then
+		export OVE_EXT_VIEWER=
 	fi
 
 	# OVE_AUTO_CORRECT:int:0|1:all:automatically correct commands
@@ -13414,6 +13437,11 @@ function ove_config_builtins_init {
 	# OVE_RECORD_IT:int:0-1:all:screen record commands
 	if [ -z "${OVE_RECORD_IT+x}" ]; then
 		export OVE_RECORD_IT=0
+	fi
+
+	# OVE_RECORD_METHOD:string::all:record method (auto or slop)
+	if [ -z "${OVE_RECORD_METHOD+x}" ]; then
+		export OVE_RECORD_METHOD="auto"
 	fi
 
 	# OVE_COMMAND_SETSID:int:0-1:all:run non-terminal commands in a separate session (SID)
@@ -14721,9 +14749,9 @@ function ove_deps {
 	optional+=('lxc')
 	optional+=('make')
 	optional+=('md5deep')
-	optional+=('recordmydesktop')
 	optional+=('rg')
 	optional+=('shellcheck')
+	optional+=('slop')
 	optional+=('sshpass')
 	optional+=('strace')
 	optional+=('task')
@@ -16667,7 +16695,6 @@ function ove_externals_init {
 	cmds+=('ps')
 	cmds+=('pstree')
 	cmds+=('readlink')
-	cmds+=('recordmydesktop')
 	cmds+=('rev')
 	cmds+=('rg')
 	cmds+=('rm')
@@ -16680,6 +16707,7 @@ function ove_externals_init {
 	cmds+=('setsid')
 	cmds+=('shellcheck')
 	cmds+=('sleep')
+	cmds+=('slop')
 	cmds+=('sort')
 	cmds+=('ssh')
 	cmds+=('stat')

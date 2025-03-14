@@ -449,7 +449,6 @@ need:
 * lxc
 * make
 * md5deep
-* recordmydesktop
 * rg
 * shellcheck
 * sshpass
