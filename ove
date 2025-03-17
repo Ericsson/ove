@@ -5234,7 +5234,6 @@ function ove_graph_viewer_helper {
 		for o in "${opt[@]}"; do
 			cmd="${o#*:}"
 			if ! command -v "${cmd}" > /dev/null; then
-				ove_command_not_found "${cmd}"
 				continue
 			fi
 			ext="${o%:*}"
