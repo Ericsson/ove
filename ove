@@ -2321,7 +2321,7 @@ function ove_rec_start {
 
 	if ! ove_check_command "ffmpeg"; then
 		return 1
-	elif ${ove_cmd2pathname["pgrep"]:?} -f ffmpeg > /dev/null; then
+	elif ${ove_cmd2pathname["pgrep"]:?} -f ${ove_cmd2pathname["ffmpeg"]:?} > /dev/null; then
 		# already recording
 		return 0
 	fi
@@ -2378,10 +2378,94 @@ function ove_rec_start {
 	return 0
 }
 
+function ove_rec_view {
+	local cmd
+	local ext
+	local f
+	local o
+	local opt
+
+	f="$1"
+
+	# display path and size
+	${ove_cmd2pathname["du"]:?} -sh "${f}" 1>&2
+
+	if [ "${OVE_EXT_VIEWER}" = "" ]; then
+		return 0
+	fi
+
+	while IFS=';' read -a opt -r; do
+		for o in "${opt[@]}"; do
+			ext="${o%:*}"
+			if [ "$ext" != "mp4" ]; then
+				continue
+			fi
+			cmd="${o#*:}"
+			eval "${cmd}" "${f}"
+		done
+	done <<<"${OVE_EXT_VIEWER}"
+}
+
+function ove_rec_trim {
+	local d
+	local e
+	local f
+	local f_t
+	local s
+
+	if [ "${OVE_RECORD_TRIM}" != "1" ]; then
+		return 0
+	elif ! ove_check_command "ffprobe"; then
+		return 1
+	fi
+
+	f="$1"
+
+	# get duration
+	d=$(${ove_cmd2pathname["ffprobe"]:?} \
+		-v quiet \
+		-print_format json \
+		-show_format \
+		"${f}" | \
+		${ove_cmd2pathname["grep"]:?} '"duration"' | \
+		${ove_cmd2pathname["cut"]:?} -d'"' -f4)
+	if [ "${d}" = "" ]; then
+		return 0
+	fi
+	read -p "trim (${d}s)? (y/N) " -r
+	if ! [[ ${REPLY} =~ ^[Yy]$ ]]; then
+		return 0
+	fi
+	read -r -p "start: "
+	s="${REPLY}"
+	if [ "${s}" = "" ]; then
+		return 0
+	fi
+	read -r -p "duration: "
+	e="${REPLY}"
+	if [ "${e}" = "" ]; then
+		return 0
+	fi
+	f_t="${OVE_LAST_COMMAND/.log}-trim.mp4"
+
+	# trim it
+	if ! ${ove_cmd2pathname["ffmpeg"]:?} \
+		-v quiet \
+		-ss "${s}" \
+		-t "${e}" \
+		-i "${f}" \
+		-vcodec copy \
+		"${f_t}"; then
+		ove_echo_fatal_noprefix "ffmpeg: trim failed"
+		return 1
+	fi
+
+	# view it
+	ove_rec_view "${f_t}"
+}
+
 function ove_rec_stop {
 	local f
-	local i
-	local o
 
 	if [ "$rec_pid" -eq 0 ]; then
 		return 0
@@ -2408,21 +2492,8 @@ function ove_rec_stop {
 		return 0
 	fi
 
-	# display path and size
-	${ove_cmd2pathname["du"]:?} -sh "${f}" 1>&2
-
-	if [ "${OVE_EXT_VIEWER}" != "" ]; then
-		while IFS=';' read -a opt -r; do
-			for o in "${opt[@]}"; do
-				ext="${o%:*}"
-				if [ "$ext" != "mp4" ]; then
-					continue
-				fi
-				cmd="${o#*:}"
-				eval "${cmd}" "${f}"
-			done
-		done <<<"${OVE_EXT_VIEWER}"
-	fi
+	ove_rec_view "${f}"
+	ove_rec_trim "${f}"
 
 	# turn on monitor mode
 	set -m
@@ -11816,11 +11887,14 @@ function ove-dry-run {
 	ove-env ^OVE_DRY_RUN
 }
 
-# rec:[0|1]:toggle or set screen recording:UTIL
+# rec:[0|1 [auto|slop [0|1]]]:toggle or set screen recording:UTIL
 function ove-rec {
 	ove_entry || return
 
 	if [ $# -eq 1 ] && ! [[ "$1" =~ ^[0-1]$ ]]; then
+		ove_command_usage
+		return 1
+	elif [ $# -eq 3 ] && ! [[ "$3" =~ ^[0-1]$ ]]; then
 		ove_command_usage
 		return 1
 	fi
@@ -11831,7 +11905,15 @@ function ove-rec {
 		OVE_RECORD_IT=$1
 	fi
 
-	ove-env ^OVE_RECORD_IT
+	if [ $# -ge 2 ]; then
+		OVE_RECORD_METHOD=$2
+	fi
+
+	if [ $# -eq 3 ]; then
+		OVE_RECORD_TRIM=$3
+	fi
+
+	ove-env ^OVE_RECORD
 }
 
 # lastlog-summary:[pattern]:peek inside OVE logs and make a summary:LOG
@@ -13441,6 +13523,11 @@ function ove_config_builtins_init {
 	# OVE_RECORD_METHOD:string::all:record method (auto or slop)
 	if [ -z "${OVE_RECORD_METHOD+x}" ]; then
 		export OVE_RECORD_METHOD="auto"
+	fi
+
+	# OVE_RECORD_TRIM:int::all:trim recording
+	if [ -z "${OVE_RECORD_TRIM+x}" ]; then
+		export OVE_RECORD_TRIM=0
 	fi
 
 	# OVE_COMMAND_SETSID:int:0-1:all:run non-terminal commands in a separate session (SID)
@@ -16664,6 +16751,7 @@ function ove_externals_init {
 	cmds+=('dot')
 	cmds+=('du')
 	cmds+=('ffmpeg')
+	cmds+=('ffprobe')
 	cmds+=('file')
 	cmds+=('find')
 	cmds+=('flock')

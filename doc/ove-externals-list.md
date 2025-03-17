@@ -11,14 +11,15 @@
 | convert       | 1         |
 | cp            | 6         |
 | csplit        | 1         |
-| cut           | 68        |
+| cut           | 69        |
 | date          | 20        |
 | diff          | 1         |
 | dig           | 1         |
 | dirname       | 4         |
 | dot           | 1         |
 | du            | 5         |
-| ffmpeg        | 1         |
+| ffmpeg        | 3         |
+| ffprobe       | 1         |
 | file          | 4         |
 | find          | 81        |
 | flock         | 10        |
@@ -28,7 +29,7 @@
 | getconf       | 1         |
 | git           | 88        |
 | graph-easy    | 1         |
-| grep          | 192       |
+| grep          | 193       |
 | head          | 21        |
 | incus         | 0         |
 | inotifywait   | 3         |
@@ -88,4 +89,4 @@
 | xargs         | 34        |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1345__  |
+| __sum__       | __1350__  |
