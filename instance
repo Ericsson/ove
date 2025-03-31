@@ -198,20 +198,26 @@ function run_no_exit {
 }
 
 function ssh_exec {
-       local prefix
+	local prefix
+	local opts
 
-       _echo "ssh -F /dev/null -t -q ${ssh_opts:?} ${_user:?}@${instance_ip:?} $*"
-       # shellcheck disable=SC2086
-       if ! ssh \
+	opts="${ssh_opts}"
+	if is_cluster; then
+		opts+=" -o ProxyJump=$(cluster_get_instance_location)"
+	fi
+
+	_echo "ssh -F /dev/null -t -q ${opts:?} ${_user:?}@${instance_ip:?} $*"
+	# shellcheck disable=SC2086
+	if ! ssh \
 		-F /dev/null \
 		-t \
 		-q \
-		${ssh_opts} \
+		${opts} \
 		${_user}@${instance_ip} "$@"; then
 		return 1
-       fi
+	fi
 
-       return 0
+	return 0
 }
 
 function instance_exec {
@@ -416,6 +422,10 @@ function is_cluster {
 	fi
 }
 
+function cluster_get_instance_location {
+	"$(instance_runtime)"${instance_global_flags} list --format csv -cL "${instance_name}"
+}
+
 function _setup_sshd {
 	echo "${package_manager:?} openssh-server >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
 	echo "${package_manager} openssh >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
@@ -577,6 +587,10 @@ EOF
 		[[ ${OVE_INSTANCE_STEPS} = *user* ]]; then
 		echo -e "\t#RemoteCommand cd ${OVE_BASE_DIR:?}; exec \$SHELL"
 	fi
+
+	if is_cluster; then
+		echo -e "\tProxyJump $(cluster_get_instance_location)"
+	fi
 }
 
 function update_ssh_config {
@@ -629,6 +643,7 @@ function update_ssh_config {
 function setup_ssh {
 	local pass="${RANDOM}${RANDOM}${RANDOM}"
 	local _home
+	local opts
 
 	_user="$1"
 
@@ -668,6 +683,11 @@ EOF
 
 	_echo "copy public key to instance for user: ${_user}"
 	i=0
+	opts="${ssh_copy_id_opts}"
+	if is_cluster; then
+		opts+=" -o ProxyJump=$(cluster_get_instance_location)"
+	fi
+
 	while true; do
 		((i++))
 		if [ ${i} -gt 100 ]; then
@@ -679,7 +699,7 @@ EOF
 		if ! sshpass -p${pass} \
 			ssh-copy-id \
 			-f \
-			${ssh_copy_id_opts} \
+			${opts} \
 			"${_user}"@"${instance_ip}" &> /dev/null; then
 			_echo "copy public key to ${instance_name} ${instance_ip} failed - retry in 1 sec"
 			sleep 1
@@ -699,9 +719,14 @@ EOF
 		echo "${e}=${!e}" >> "${OVE_TMP}/${tag}-sshenv"
 	done
 
+	opts="${ssh_opts}"
+	if is_cluster; then
+		opts="${ssh_opts} -o ProxyJump=$(cluster_get_instance_location)"
+	fi
+
 	if [ -s "${OVE_TMP}/${tag}-sshenv" ]; then
 		# shellcheck disable=SC2086
-		scp ${ssh_opts} -p -q "${OVE_TMP}/${tag}-sshenv" "${_user}"@"${instance_ip}":.ssh/environment
+		scp ${opts} -p -q "${OVE_TMP}/${tag}-sshenv" "${_user}"@"${instance_ip}":.ssh/environment
 	fi
 }
 
@@ -868,7 +893,7 @@ function launch_instance {
 
 	if [[ ${OVE_INSTANCE_STEPS} == *verbose* ]] && is_cluster; then
 		# shellcheck disable=SC2086
-		_echo "location:$("$(instance_runtime)"${instance_global_flags} list --format csv -cL "${instance_name}")"
+		_echo "location:$(cluster_get_instance_location)"
 	fi
 }
 
@@ -1105,6 +1130,7 @@ function update_package_manager {
 
 function prepare {
 	local a
+	local i
 	local n
 	local r
 	local remotes
@@ -1184,6 +1210,15 @@ function prepare {
 
 		break
 	done
+
+	if [[ ${OVE_INSTANCE_STEPS} == *verbose* ]]; then
+		echo
+		for i in $(seq 1 $((OVE_COLUMNS / 2 - ${#instance_name}/2))); do
+			echo -n " "
+		done
+		ove_echo_blue_noprefix "${instance_name}"
+		echo
+	fi
 
 	# ephemeral instance?
 	if [[ ${OVE_INSTANCE_STEPS} != *running* ]] && \

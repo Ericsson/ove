@@ -17291,8 +17291,11 @@ function ove-delete-instance {
 
 			remove=0
 			if [ "${prompt}" -eq 1 ]; then
+				${ove_cmd2pathname["seq"]:?} ${s} ${e} | \
+					${ove_cmd2pathname["sed"]:?} -e 's,$,\t.*,g' > $OVE_TMP/pattern
 				${ove_cmd2pathname["cat"]:?} -n "${f}" | \
-					${ove_cmd2pathname["grep"]:?} --color=always -C5 "Host ${name}"
+					${ove_cmd2pathname["grep"]:?} --color=always -C3 -f "${OVE_TMP}"/pattern
+				${ove_cmd2pathname["rm"]:?} "${OVE_TMP}"/pattern
 				read -p "remove lines ${s} to ${e} in '${f}'? (y/N) " -r
 				if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 					remove=1

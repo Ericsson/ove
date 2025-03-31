@@ -52,13 +52,13 @@
 | readlink      | 32        |
 | rev           | 6         |
 | rg            | 1         |
-| rm            | 55        |
+| rm            | 56        |
 | rmdir         | 3         |
 | scp           | 3         |
 | script        | 6         |
 | scriptreplay  | 1         |
-| sed           | 93        |
-| seq           | 11        |
+| sed           | 94        |
+| seq           | 12        |
 | setsid        | 1         |
 | shellcheck    | 1         |
 | sleep         | 14        |
@@ -90,4 +90,4 @@
 | xargs         | 34        |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1353__  |
+| __sum__       | __1356__  |
