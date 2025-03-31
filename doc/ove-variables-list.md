@@ -6,6 +6,7 @@
 | OVE_BUILD_ORDER              | project build order                                                            |
 | OVE_DIR                      | OVE source code directory                                                      |
 | OVE_GLOBAL_STATE_DIR         | shared directory for all OVE workspaces (per user)                             |
+| OVE_HOME                     | user's home                                                                    |
 | OVE_LAST_COMMAND             | file of the last OVE command executed                                          |
 | OVE_OS                       | Distribution NAME                                                              |
 | OVE_OS_CODENAME              | Distribution code name                                                         |

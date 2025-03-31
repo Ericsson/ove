@@ -312,10 +312,10 @@ function ove_welcome_msg {
 	local script_ver
 
 	ove-version
-	if ! [ -e "${HOME}/.ove.bash" ]; then
+	if ! [ -e "${OVE_HOME}/.ove.bash" ]; then
 		echo
 		echo "Do you want to skip the initial 'source ove' step? Run this:"
-		echo " cp -a ${OVE_DIR}/ove.bash ${HOME}/.ove.bash && echo '[ -f ~/.ove.bash ] && source ~/.ove.bash' >> ${HOME}/.bashrc"
+		echo " cp -a ${OVE_DIR}/ove.bash ${OVE_HOME}/.ove.bash && echo '[ -f ~/.ove.bash ] && source ~/.ove.bash' >> ${OVE_HOME}/.bashrc"
 	fi
 
 	# shellcheck disable=SC2016
@@ -417,6 +417,20 @@ function ove_main {
 		OVE_USER="ove"
 	fi
 	export OVE_USER
+
+	# OVE_HOME:user's home
+	if [ "${HOME}" != "" ]; then
+		OVE_HOME="${HOME}"
+	elif command -v getent > /dev/null; then
+		OVE_HOME=$(${ove_cmd2pathname["getent"]:?} passwd "${OVE_USER}" | ${ove_cmd2pathname["cut"]:?} -d':' -f6)
+	else
+		OVE_HOME=$(${ove_cmd2pathname["bash"]:?} -c "cd ~; pwd -P")
+	fi
+	if [ "${OVE_HOME}" = "" ]; then
+		ove_echo_fatal_noprefix "could not set OVE_HOME"
+		return 1
+	fi
+	export OVE_HOME
 
 	# OVE_TMP:temporary directory for all OVE workspaces (per user)
 	OVE_TMP=/tmp/${OVE_USER}/ove
@@ -11378,8 +11392,8 @@ function ove-wipe-base-dir {
 	local reserved
 	local rm_options="-i"
 
-	if [ "${OVE_BASE_DIR}" = "${HOME}" ]; then
-		ove_echo_error_noprefix "sorry, but you have to clean your home yourself (reason: \$OVE_BASE_DIR=\$HOME)"
+	if [ "${OVE_BASE_DIR}" = "${OVE_HOME}" ]; then
+		ove_echo_error_noprefix "sorry, but you have to clean your home yourself (reason: \$OVE_BASE_DIR=\$OVE_HOME)"
 		return 1
 	fi
 
@@ -13210,7 +13224,7 @@ function ove_config_init {
 	OVE_CONFIG_FILES_USER="${OVE_OWEL_DIR}/.oveconfig"
 	OVE_CONFIG_FILES_USER+=" ${OVE_OWEL_STATE_DIR}/.oveconfig"
 	OVE_CONFIG_FILES_USER+=" ${OVE_GLOBAL_STATE_DIR}/.oveconfig"
-	OVE_CONFIG_FILES_USER+=" ${HOME}/.oveconfig"
+	OVE_CONFIG_FILES_USER+=" ${OVE_HOME}/.oveconfig"
 	export OVE_CONFIG_FILES_USER
 
 	OVE_CONFIG_FILE_PRIVATE="${OVE_GLOBAL_STATE_DIR}/.ove/.oveconfig.private"
@@ -13274,7 +13288,7 @@ function ove_config_builtins_init {
 
 	# OVE_LOCATE_SEARCH_DIR:string::locate:where to search for OVE workspaces (only if 'locate' is unavailable)
 	if [ -z "${OVE_LOCATE_SEARCH_DIR+x}" ]; then
-		OVE_LOCATE_SEARCH_DIR=$(${ove_cmd2pathname["readlink"]:?} -f -- $(${ove_cmd2pathname["dirname"]:?} ${HOME}))
+		OVE_LOCATE_SEARCH_DIR=$(${ove_cmd2pathname["readlink"]:?} -f -- $(${ove_cmd2pathname["dirname"]:?} ${OVE_HOME}))
 		export OVE_LOCATE_SEARCH_DIR
 	fi
 
@@ -14129,9 +14143,9 @@ function ove_post_checks {
 		fi
 	fi
 
-	# keep ${HOME}/.ove.bash up-to-date
-	if [ -e "${HOME}/.ove.bash" ] && ! ${ove_cmd2pathname["diff"]:?} -q "${OVE_DIR}/ove.bash" "${HOME}/.ove.bash" > /dev/null; then
-		${ove_cmd2pathname["cp"]:?} "${OVE_DIR}/ove.bash" "${HOME}/.ove.bash"
+	# keep ${OVE_HOME}/.ove.bash up-to-date
+	if [ -e "${OVE_HOME}/.ove.bash" ] && ! ${ove_cmd2pathname["diff"]:?} -q "${OVE_DIR}/ove.bash" "${OVE_HOME}/.ove.bash" > /dev/null; then
+		${ove_cmd2pathname["cp"]:?} "${OVE_DIR}/ove.bash" "${OVE_HOME}/.ove.bash"
 	fi
 
 	# inform user if logs etc. take too much space
@@ -15855,8 +15869,8 @@ function ove_unittest_exit {
 	if [ -e "${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak" ]; then
 		${ove_cmd2pathname["mv"]:?} ${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak ${OVE_GLOBAL_STATE_DIR}/.oveconfig
 	fi
-	if [ -e "${HOME}/.oveconfig.bak" ]; then
-		${ove_cmd2pathname["mv"]:?} ${HOME}/.oveconfig.bak ${HOME}/.oveconfig
+	if [ -e "${OVE_HOME}/.oveconfig.bak" ]; then
+		${ove_cmd2pathname["mv"]:?} ${OVE_HOME}/.oveconfig.bak ${OVE_HOME}/.oveconfig
 	fi
 }
 
@@ -15945,8 +15959,8 @@ function ove-unittest {
 	if [ -e "${OVE_GLOBAL_STATE_DIR}/.oveconfig" ]; then
 		${ove_cmd2pathname["mv"]:?} ${OVE_GLOBAL_STATE_DIR}/.oveconfig  ${OVE_GLOBAL_STATE_DIR}/.oveconfig.bak
 	fi
-	if [ -e "${HOME}/.oveconfig" ]; then
-		${ove_cmd2pathname["mv"]:?} ${HOME}/.oveconfig ${HOME}/.oveconfig.bak
+	if [ -e "${OVE_HOME}/.oveconfig" ]; then
+		${ove_cmd2pathname["mv"]:?} ${OVE_HOME}/.oveconfig ${OVE_HOME}/.oveconfig.bak
 	fi
 	if [ -e "${OVE_CONFIG_FILE_PRIVATE}" ]; then
 		${ove_cmd2pathname["rm"]:?} ${OVE_CONFIG_FILE_PRIVATE}
@@ -16759,6 +16773,7 @@ function ove_externals_init {
 	cmds+=('fzf')
 	cmds+=('gcc')
 	cmds+=('getconf')
+	cmds+=('getent')
 	cmds+=('git')
 	cmds+=('graph-easy')
 	cmds+=('grep')
@@ -17246,7 +17261,7 @@ function ove-delete-instance {
 		prompt=0
 	fi
 
-	f="${HOME}/.ssh/config"
+	f="${OVE_HOME}/.ssh/config"
 	if [ -s "${f}" ]; then
 		# did create-instance create a host entry for this instance?
 		# AND

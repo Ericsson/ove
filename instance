@@ -252,7 +252,7 @@ function instance_exec_as_root {
 }
 
 function instance_exec_as_user {
-	INSTANCE_EXEC_EXTRA="--user ${_uid:?} --group ${_gid:?} --env HOME=${HOME:?}" \
+	INSTANCE_EXEC_EXTRA="--user ${_uid:?} --group ${_gid:?} --env HOME=${OVE_HOME:?}" \
 		use_ssh=0 \
 		instance_exec "$@"
 }
@@ -324,7 +324,7 @@ function remove_tmp {
 function cleanup {
 	local f
 
-	if [ -s "${HOME}/.ssh/config" ] && \
+	if [ -s "${OVE_HOME}/.ssh/config" ] && \
 		[[ ${OVE_INSTANCE_STEPS} = *ove* ]] && \
 		[[ ${OVE_INSTANCE_STEPS} = *user* ]] && \
 		[[ ${OVE_INSTANCE_STEPS} = *ssh_config* ]]; then
@@ -332,7 +332,7 @@ function cleanup {
 		sed \
 			-i \
 			-e "s,^\t#\(RemoteCommand cd $OVE_BASE_DIR.*$\),\t\1,g" \
-			"${HOME}/.ssh/config"
+			"${OVE_HOME}/.ssh/config"
 	fi
 
 	f="${OVE_TMP}/${tag}-$(instance_runtime)-config-exit"
@@ -600,24 +600,24 @@ function update_ssh_config {
 		_user="root"
 	fi
 
-	if ! mkdir -p "${HOME}/.ssh"; then
-		echo "error: mkdir ${HOME}/.ssh failed" 1>&2
+	if ! mkdir -p "${OVE_HOME}/.ssh"; then
+		echo "error: mkdir ${OVE_HOME}/.ssh failed" 1>&2
 		exit 1
-	elif [ -s "${HOME}/.ssh/config" ] && \
-		grep -q "^Host ${instance_name}$" "${HOME}/.ssh/config"; then
+	elif [ -s "${OVE_HOME}/.ssh/config" ] && \
+		grep -q "^Host ${instance_name}$" "${OVE_HOME}/.ssh/config"; then
 		# insert on top of existing host
-		n=$(grep -m 1 -n "^Host ${instance_name}$" "${HOME}/.ssh/config" | cut -d: -f1)
+		n=$(grep -m 1 -n "^Host ${instance_name}$" "${OVE_HOME}/.ssh/config" | cut -d: -f1)
 		{
 			echo -n "${n}i"
 			ssh_config_entry | sed -e 's,$,\\,g'
 		} > "${OVE_TMP}/${tag}-sed-script"
-		if ! sed -i -f "${OVE_TMP}/${tag}-sed-script" "${HOME}/.ssh/config"; then
-			echo "error: not possible to update ${HOME}/.ssh/config" 1>&2
+		if ! sed -i -f "${OVE_TMP}/${tag}-sed-script" "${OVE_HOME}/.ssh/config"; then
+			echo "error: not possible to update ${OVE_HOME}/.ssh/config" 1>&2
 			exit 1
 		fi
 	else
 		# append
-		ssh_config_entry >> "${HOME}/.ssh/config"
+		ssh_config_entry >> "${OVE_HOME}/.ssh/config"
 	fi
 
 	if command -v flock > /dev/null; then
@@ -638,7 +638,7 @@ function setup_ssh {
 			pass="${OVE_INSTANCE_ROOT_PASS}"
 		fi
 	else
-		_home="${HOME}"
+		_home="${OVE_HOME}"
 		if [ "${OVE_INSTANCE_USER_PASS}" != "" ]; then
 			pass="${OVE_INSTANCE_USER_PASS}"
 		fi
@@ -1276,7 +1276,7 @@ function expose_user {
 
 	# create user?
 	if ! instance_exec_no_exit "id -u ${instance_user:?}" &> /dev/null; then
-		instance_exec "useradd --shell /bin/bash -m -d ${HOME:?} ${instance_user:?}"
+		instance_exec "useradd --shell /bin/bash -m -d ${OVE_HOME:?} ${instance_user:?}"
 	fi
 
 	if ! _uid=$(get_id "uid"); then
@@ -1284,7 +1284,7 @@ function expose_user {
 	elif ! _gid=$(get_id "gid"); then
 		exit 1
 	fi
-	_home=${HOME}
+	_home=${OVE_HOME}
 
 	_echo "user: idmap"
 	run "$(instance_runtime)${instance_global_flags} config set ${instance_name} security.idmap.isolated true"
@@ -1407,7 +1407,7 @@ function user_exec {
 	fi
 
 	# from now on, run all exec commands as user
-	export INSTANCE_EXEC_EXTRA="--user ${_uid} --group ${_gid} --env HOME=${HOME}"
+	export INSTANCE_EXEC_EXTRA="--user ${_uid} --group ${_gid} --env HOME=${OVE_HOME}"
 }
 
 function run_ove {
@@ -1418,24 +1418,24 @@ function run_ove {
 	fi
 
 	# gitconfig
-	if [ -s "${HOME}"/.gitconfig ]; then
-		cp -a "${HOME}"/.gitconfig "${OVE_TMP}/${tag}-gitconfig"
+	if [ -s "${OVE_HOME}"/.gitconfig ]; then
+		cp -a "${OVE_HOME}"/.gitconfig "${OVE_TMP}/${tag}-gitconfig"
 		instance_file_push_user \
 			"${OVE_TMP}/${tag}-gitconfig" \
 			"${instance_name}${_home}/.gitconfig"
 	fi
 
 	# oveconfig
-	if [ -s "${HOME}"/.oveconfig ] && [ ${unittest} -eq 0 ]; then
-		cp -a "${HOME}"/.oveconfig "${OVE_TMP}/${tag}-oveconfig"
+	if [ -s "${OVE_HOME}"/.oveconfig ] && [ ${unittest} -eq 0 ]; then
+		cp -a "${OVE_HOME}"/.oveconfig "${OVE_TMP}/${tag}-oveconfig"
 		instance_file_push_user \
 			"${OVE_TMP}/${tag}-oveconfig" \
 			"${instance_name}${_home}/.oveconfig"
 	fi
 
 	# ove.bash
-	if [ -s "${HOME}"/.ove.bash ]; then
-		cp -a "${HOME}"/.ove.bash "${OVE_TMP}/${tag}-ove.bash"
+	if [ -s "${OVE_HOME}"/.ove.bash ]; then
+		cp -a "${OVE_HOME}"/.ove.bash "${OVE_TMP}/${tag}-ove.bash"
 		instance_file_push_user \
 			"${OVE_TMP}/${tag}-ove.bash" \
 			"${instance_name}${_home}/.ove.bash"

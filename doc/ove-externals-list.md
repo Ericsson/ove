@@ -3,7 +3,7 @@
 | ag            | 3         |
 | awk           | 56        |
 | basename      | 1         |
-| bash          | 19        |
+| bash          | 20        |
 | cat           | 50        |
 | chmod         | 7         |
 | column        | 29        |
@@ -11,7 +11,7 @@
 | convert       | 1         |
 | cp            | 6         |
 | csplit        | 1         |
-| cut           | 69        |
+| cut           | 70        |
 | date          | 20        |
 | diff          | 1         |
 | dig           | 1         |
@@ -27,6 +27,7 @@
 | fzf           | 5         |
 | gcc           | 1         |
 | getconf       | 1         |
+| getent        | 1         |
 | git           | 88        |
 | graph-easy    | 1         |
 | grep          | 193       |
@@ -89,4 +90,4 @@
 | xargs         | 34        |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1350__  |
+| __sum__       | __1353__  |
