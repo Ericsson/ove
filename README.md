@@ -685,14 +685,15 @@ Please find the full command reference [here](doc/ove-cmd-list.md)
 
 ### Invocation
 
-Each OVE command can be invoked using three different methods: normal, quick or
-queue. The table below tries to explain the differencies on a few aspects.
+Each OVE command can be invoked using four different methods: normal, quick, queue or
+remote. The table below tries to explain the differencies on a few aspects.
 
-| method    | performance impact | hooks | log | debug | example                     |
-|-----------|--------------------|-------|-----|-------|-----------------------------|
-| normal    | yes                | yes   | yes | yes   | ove ls-files                |
-| quick     | no                 | no    | no  | no    | ove-ls-files                |
-| queue     | yes                | yes   | yes | no    | OVE_BATCH_IT=1 ove ls-files |
+| method    | performance impact | hooks | log | debug | example                      |
+|-----------|--------------------|-------|-----|-------|------------------------------|
+| normal    | yes                | yes   | yes | yes   | ove ls-files                 |
+| quick     | no                 | no    | no  | no    | ove-ls-files                 |
+| queue     | yes                | yes   | yes | no    | OVE_BATCH_IT=1 ove ls-files  |
+| remote    | maybe              | maybe | yes | maybe | OVE_REMOTE_IT=1 ove ls-files |
 
 Example:
 
@@ -726,6 +727,18 @@ Example:
     # check task spooler status
     $ ove ts
     ...
+
+    # method: remote
+    #
+    # run the ls-files command on a few remote hosts (tmux)
+    $ time OVE_REMOTE_IT=1 ove ls-files
+    real 0m0,949s
+    # run the ls-files command on a few remote hosts (no tmux)
+    $ time OVE_REMOTE_IT=1 ove ls-files
+    real 0m10,858s
+    # run the ls-files command on localhost and a few remote hosts (no tmux)
+    $ time OVE_REMOTE_IT=2 ove ls-files
+    real 0m11,237s
 
 ## Configuration
 
