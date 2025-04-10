@@ -17554,8 +17554,8 @@ function ove-run-remote {
 		"${host}" \
 		"cd ${path}|| exit 1
 			source ./ove hush || exit 1
-			if [ \"\$(type -t ove-${cmd})\" != \"function\" ]; then
-				echo error: \'${cmd}\' unknown command
+			if [ \"\$(type -t ove-${cmd%% *})\" != \"function\" ]; then
+				echo error: \'${cmd%% *}\' unknown command
 				exit 1
 			fi
 			OVE_REMOTE_IT=0 ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")"
