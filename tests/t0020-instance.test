@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 
+function in_container() {
+	# yes, this is probably a bad idea, but /proc/1/environ is not always readable
+	if command -v incus > /dev/null; then
+		return 1
+	elif command -v lxc > /dev/null; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 function test_a() {
+	if in_container; then
+		return 0
+	fi
 	cat << EOF > "$OVE_TMP"/t
 sha256sum <(find /usr /lib -xdev -type f -exec sha256sum {} \; 2> /dev/null | \
 sort) | awk '{print \$1}'
@@ -23,6 +37,9 @@ EOF
 }
 
 function test_b() {
+	if in_container; then
+		return 0
+	fi
 	export OVE_INSTANCE_NAME_RANDOM=1
 	export OVE_INSTANCE_NAME_PREFIX="unittest-t0020-${FUNCNAME[0]}"
 
@@ -37,6 +54,9 @@ function test_b() {
 }
 
 function test_c() {
+	if in_container; then
+		return 0
+	fi
 	ove create-instance
 	assertEquals "$?" "1"
 	ove create-instance a
