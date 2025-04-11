@@ -203,7 +203,9 @@ function ssh_exec {
 
 	opts="${ssh_opts}"
 	if is_cluster; then
-		opts+=" -o ProxyJump=$(cluster_get_instance_location)"
+		if [ "${HOSTNAME}" != "$(cluster_get_instance_location)" ]; then
+			opts+=" -o ProxyJump=$(cluster_get_instance_location)"
+		fi
 	fi
 
 	_echo "ssh -F /dev/null -t -q ${opts:?} ${_user:?}@${instance_ip:?} $*"
@@ -589,7 +591,9 @@ EOF
 	fi
 
 	if is_cluster; then
-		echo -e "\tProxyJump $(cluster_get_instance_location)"
+		if [ "${HOSTNAME}" != "$(cluster_get_instance_location)" ]; then
+			echo -e "\tProxyJump $(cluster_get_instance_location)"
+		fi
 	fi
 }
 
@@ -685,7 +689,9 @@ EOF
 	i=0
 	opts="${ssh_copy_id_opts}"
 	if is_cluster; then
-		opts+=" -o ProxyJump=$(cluster_get_instance_location)"
+		if [ "${HOSTNAME}" != "$(cluster_get_instance_location)" ]; then
+			opts+=" -o ProxyJump=$(cluster_get_instance_location)"
+		fi
 	fi
 
 	while true; do
@@ -721,7 +727,9 @@ EOF
 
 	opts="${ssh_opts}"
 	if is_cluster; then
-		opts="${ssh_opts} -o ProxyJump=$(cluster_get_instance_location)"
+		if [ "${HOSTNAME}" != "$(cluster_get_instance_location)" ]; then
+			opts="${ssh_opts} -o ProxyJump=$(cluster_get_instance_location)"
+		fi
 	fi
 
 	if [ -s "${OVE_TMP}/${tag}-sshenv" ]; then
