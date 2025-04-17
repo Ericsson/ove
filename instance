@@ -425,7 +425,7 @@ function is_cluster {
 }
 
 function cluster_get_instance_location {
-	"$(instance_runtime)"${instance_global_flags} list --format csv -cL "${instance_name}"
+	"$(instance_runtime)"${instance_global_flags} list --format csv -cL "^${instance_name}$"
 }
 
 function _setup_sshd {
