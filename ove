@@ -13651,6 +13651,11 @@ function ove_config_builtins_init {
 		export OVE_REMOTE_HOSTS=""
 	fi
 
+	# OVE_REMOTE_PATH:string::all:common base directory for all remote hosts
+	if [ -z "${OVE_REMOTE_PATH+x}" ]; then
+		export OVE_REMOTE_PATH=""
+	fi
+
 	# OVE_REMOTE_TIMEOUT:int::all:tmux pane timeout (0 = no timeout)
 	if [ -z "${OVE_REMOTE_TIMEOUT+x}" ]; then
 		export OVE_REMOTE_TIMEOUT=0
@@ -13876,7 +13881,7 @@ function ove_init {
 	OVE_BASE_DIR="${dir}"
 	export OVE_BASE_DIR
 
-	# OVE_OWEL_DIR:OWEL base dir. This directory contains 'projs', 'revtab', projects/... files.
+	# OVE_OWEL_DIR:OWEL base directory. This directory contains 'projs', 'revtab', projects/... files.
 	OVE_OWEL_DIR=$(${ove_cmd2pathname["readlink"]:?} -f -- ${OVE_BASE_DIR}/.owel)
 	export OVE_OWEL_DIR
 
