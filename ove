@@ -17274,7 +17274,7 @@ function ove-create-instance-all {
 		return 1
 	fi
 
-	cmd="ove-instance"
+	cmd="ove-create-instance"
 	if ove_sanity_check_tmux 2> /dev/null; then
 		cmd+="-parallel"
 	fi
