@@ -12612,22 +12612,14 @@ function ove_bash_complete {
 					wordlist=${OVE_PROJECT_LIST}
 				fi
 			fi
-		elif [ ${size} -ge 3 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/instance.list" ]; then
-			wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list")
-		elif [ ${size} -eq 3 ]; then
-			if ove-refresh-image &> /dev/null; then
-				wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list")
-			fi
+		elif [ ${size} -ge 3 ]; then
+			wordlist=$(ove-list-images)
 		else
 			return
 		fi
 	elif [ "${subcommand}" = "create-instance-all" ]; then
-		if [ ${size} -ge 2 ] && [ -s "${OVE_GLOBAL_STATE_DIR}/instance.list" ]; then
-			wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list")
-		elif [ ${size} -eq 2 ]; then
-			if ove-refresh-image &> /dev/null; then
-				wordlist=$(${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list")
-			fi
+		if [ ${size} -ge 2 ]; then
+			wordlist=$(ove-list-images)
 		else
 			return
 		fi
@@ -17321,7 +17313,17 @@ function ove-pre-push {
 	ove-status .ove
 }
 
-# refresh-image: :refresh list of available images (incus|LXD only):UTIL
+# list-images: :list available images (incus|LXD only):INSTANCE
+function ove-list-images {
+	ove_entry || return
+
+	if [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/instance.list ] && ! ove-refresh-image; then
+		return 1
+	fi
+	${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list"
+}
+
+# refresh-image: :refresh list of available images (incus|LXD only):INSTANCE
 function ove-refresh-image {
 	ove_entry || return
 
