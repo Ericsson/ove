@@ -11715,7 +11715,7 @@ function ove-heads2revtab {
 	ove_repo_cmd "${OVE_OWEL_DIR}" "--no-pager diff" revtab
 }
 
-# head-tail:file [num]:display first/last 3(=num) lines of a text file:UTIL
+# head-tail:file [num]:display first/last 3 (=num) lines of a text file:UTIL
 function ove-head-tail {
 	ove_entry || return
 
@@ -15466,7 +15466,7 @@ function ove-worktree {
 	return 0
 }
 
-# replicate-cluster-parallel:[force [pull]|save [msg]|nofetch]:replicate-cluster in parallel (incus|LXD only):UTIL
+# replicate-cluster-parallel:[force [pull]|save [msg]|nofetch]:replicate-cluster in parallel (incus|LXD only):INSTANCE
 function ove-replicate-cluster-parallel {
 	ove-replicate-cluster "$@"
 }
@@ -15484,7 +15484,7 @@ function ove_instance_runtime {
 	return 0
 }
 
-# replicate-cluster:[force [pull]|save [msg]|nofetch]:replicate OVE workspace on all cluster members (incus|LXD only):UTIL
+# replicate-cluster:[force [pull]|save [msg]|nofetch]:replicate OVE workspace on all cluster members (incus|LXD only):INSTANCE
 function ove-replicate-cluster {
 	local c
 	local h
@@ -15532,7 +15532,7 @@ function ove-replicate-cluster {
 	return 0
 }
 
-# replicate:host [path [force [pull|nofetch]|save [msg]|nofetch]]:replicate OVE workspace on 'host':UTIL
+# replicate:host [path [force [pull|nofetch]|save [msg]|nofetch]]:replicate OVE workspace on host:REMOTE
 function ove-replicate {
 	ove_entry || return
 
@@ -17215,7 +17215,7 @@ function ove_instance_helper {
 	fi
 }
 
-# create-instance:file|project [<remote><colon>]<image>...:create one or many instances (incus|LXD only):UTIL
+# create-instance:file|project [<remote><colon>]<image>...:create one or many instances (incus|LXD only):INSTANCE
 function ove-create-instance {
 	ove_entry || return
 
@@ -17232,7 +17232,7 @@ function ove-create-instance {
 	done
 }
 
-# create-instance-parallel:file|project [<remote><colon>]<image>...:create one or many instances in parallel (tmux and incus|LXD only):UTIL
+# create-instance-parallel:file|project [<remote><colon>]<image>...:create one or many instances in parallel (tmux and incus|LXD only):INSTANCE
 function ove-create-instance-parallel {
 	ove_entry || return
 
@@ -17267,7 +17267,7 @@ function ove-create-instance-parallel {
 	eval ove-run-parallel $args
 }
 
-# create-instance-all:[<remote><colon>]<image>...:create one or many instances for all projects (incus|LXD only):UTIL
+# create-instance-all:[<remote><colon>]<image>...:create one or many instances for all projects (incus|LXD only):INSTANCE
 function ove-create-instance-all {
 	ove_entry || return
 
@@ -17356,7 +17356,7 @@ function ove-refresh-image {
 		"${OVE_GLOBAL_STATE_DIR:?}/instance.list"
 }
 
-# delete-instance:name [y]:delete instance (incus|LXD only), USE WITH CARE:UTIL
+# delete-instance:name [y]:delete instance (incus|LXD only), USE WITH CARE:INSTANCE
 function ove-delete-instance {
 	ove_entry || return
 
@@ -17528,7 +17528,7 @@ function ove-logo {
 		${ove_cmd2pathname["jp2a"]:?} --colors --fill -
 }
 
-# run-remote:host path cmd:run a OVE command on remote host
+# run-remote:host path cmd:run a OVE command on remote host:REMOTE
 function ove-run-remote {
 	ove_entry || return
 

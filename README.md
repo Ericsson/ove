@@ -617,9 +617,11 @@ project. We divide them into the following categories:
 | BUILD    | Build commands                | buildme, mrproper   |
 | CORE     | High level git commands       | status, diff, fetch |
 | DEBUG    | Debug commands                | loglevel            |
+| INSTANCE | Instance commands             | create-instance     |
 | INTERNAL | Internal commands             | unittest            |
 | LOG      | Show and manipulate logs      | l, lastlog          |
 | PLUGIN   | Plugins/scripts               |                     |
+| REMOTE   | Remote commands               | run-remote          |
 | SEARCH   | Search repos                  | grep, ag, rg        |
 | TEST     | Test commands                 | systest             |
 | UTIL     | Utility commands              | vi

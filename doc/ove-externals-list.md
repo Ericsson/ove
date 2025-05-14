@@ -11,7 +11,7 @@
 | convert       | 1         |
 | cp            | 5         |
 | csplit        | 1         |
-| cut           | 70        |
+| cut           | 67        |
 | date          | 20        |
 | diff          | 1         |
 | dig           | 1         |
@@ -90,4 +90,4 @@
 | xargs         | 35        |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1371__  |
+| __sum__       | __1368__  |
