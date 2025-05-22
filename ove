@@ -17337,6 +17337,8 @@ function ove-refresh-image {
 	arch=$(${ove_cmd2pathname["uname"]:?} -m)
 	if [ "${arch}" = "x86_64" ]; then
 		arch="amd64"
+	elif [ "${arch}" = "aarch64" ]; then
+		arch="arm64"
 	fi
 
 	if ! ${ove_cmd2pathname["$c"]:?} image list --format csv -cL "${OVE_INSTANCE_REMOTE_DEFAULT:?}:" arch=${arch} | \
