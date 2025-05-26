@@ -86,6 +86,9 @@ function init {
 
 	bash_opt=""
 	image="$2"
+	if [[ ${image} == *nixos* ]]; then
+		bash_opt="-i"
+	fi
 
 	if [[ ${OVE_INSTANCE_STEPS} == *debug* ]]; then
 		set -x
@@ -400,6 +403,8 @@ EOF
 		package_manager="zypper install -y"
 	elif [ "${packman}" = "opkg" ]; then
 		package_manager="opkg install"
+	elif [ "${packman}" = "nix-env" ]; then
+		package_manager="nix-env -iA"
 	else
 		echo "error: unknown package manager for '${image}'" 1>&2
 		exit 1
@@ -924,6 +929,8 @@ if [ ! -s /root/${tag}-packman ]; then
 		packman="xbps"
 	elif command -v opkg > /dev/null; then
 		packman="opkg"
+	elif command -v nix-env > /dev/null; then
+		packman="nix-env"
 	else
 		echo "bootcheck: unknown package manager for ${image}"
 		packman="unknown"
@@ -1113,6 +1120,15 @@ function update_package_manager {
 		if [ $i -ge 100 ]; then
 			echo "error: update packages failed for ${instance_name}" 1>&2
 			exit 1
+		elif [ "${packman}" = "nix-env" ]; then
+			if ! instance_exec_no_exit_as_root "nix-channel --update"; then
+				sleep $((RANDOM % 5))
+				continue
+			fi
+
+			_echo "sleep 1s to get nix package manager ready"
+			sleep 1
+			break
 		fi
 
 		args="update"
@@ -1236,7 +1252,7 @@ function prepare {
 			OVE_INSTANCE_STEPS+=" stopped"
 	fi
 
-	if [[ ${image} == *archlinux* ]] || [[ ${image} == *fedora* ]]; then
+	if [[ ${image} == *archlinux* ]] || [[ ${image} == *fedora* ]] || [[ ${image} == *nixos* ]]; then
 		OVE_INSTANCE_EXTRA_ARGS+=" -c security.nesting=true"
 	fi
 }
@@ -1301,6 +1317,7 @@ EOF
 }
 
 function expose_user {
+	local f
 	local sul
 
 	if [ ${EUID} -eq 0 ]; then
@@ -1309,8 +1326,14 @@ function expose_user {
 		return 0
 	fi
 
-	instance_exec "${package_manager} bash >/dev/null 2>&1"
-	instance_exec "${package_manager} sudo >/dev/null 2>&1"
+	if [[ ${image} == *nixos* ]]; then
+		instance_exec "${package_manager} nixos.bash >/dev/null 2>&1"
+		instance_exec "${package_manager} nixos.sudo >/dev/null 2>&1"
+	else
+		instance_exec "${package_manager} bash >/dev/null 2>&1"
+		instance_exec "${package_manager} sudo >/dev/null 2>&1"
+	fi
+
 	if [[ ${image} == *alpine* ]]; then
 		instance_exec "${package_manager} shadow shadow-login" > /dev/null
 	elif [[ ${image} == *openwrt* ]]; then
@@ -1319,7 +1342,12 @@ function expose_user {
 
 	# create user?
 	if ! instance_exec_no_exit "id -u ${instance_user:?}" &> /dev/null; then
-		instance_exec "useradd --shell /bin/bash -m -d ${OVE_HOME:?} ${instance_user:?}"
+		f=$(instance_exec "which bash" 2> /dev/null)
+		f=${f//[$'\t\r\n']/}
+		if [ "$f" = "" ]; then
+			f="/bin/bash"
+		fi
+		instance_exec "useradd --shell ${f:?} -m -d ${OVE_HOME:?} ${instance_user:?}"
 	fi
 
 	if ! _uid=$(get_id "uid"); then
@@ -1338,10 +1366,16 @@ function expose_user {
 		"$(instance_runtime)"${instance_global_flags} config set "${instance_name}" raw.idmap -
 
 	_echo "user: sudo"
-	echo "${instance_user} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
-	instance_file_push_root \
-		"${OVE_TMP}/${tag}-sudoers" \
-		"${instance_name}/etc/sudoers.d/91-ove"
+	if instance_exec_no_exit "test -d /etc/sudoers.d/"; then
+		echo "${instance_user} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
+		instance_file_push_root \
+			"${OVE_TMP}/${tag}-sudoers" \
+			"${instance_name}/etc/sudoers.d/91-ove"
+	elif instance_exec_no_exit "test -s /etc/sudoers"; then
+		instance_exec "sed -i '$ a ${instance_user} ALL=(ALL) NOPASSWD:ALL' /etc/sudoers"
+	else
+		_echo "warning: could not find /etc/sudoers.d nor /etc/sudoers"
+	fi
 
 	if instance_exec_no_exit "[ -s /etc/pam.d/su ]"; then
 		sul=$(instance_exec_no_exit "grep -n '^auth.*sufficient.*pam_rootok.so' /etc/pam.d/su" | cut -d: -f1)
@@ -1375,9 +1409,9 @@ function prepare_ove {
 	fi
 
 	ove_packs+="bash bzip2 git curl file binutils coreutils tar make"
-	if [[ ${image} != *openwrt* ]]; then
-		ove_packs+=" util-linux"
-	else
+	if [[ ${image} = *nixos* ]]; then
+		ove_packs="nixos.bash nixos.bzip2 nixos.git nixos.curl nixos.file nixos.binutils nixos.coreutils nixos.gnumake"
+	elif [[ ${image} = *openwrt* ]]; then
 		ove_packs+=" coreutils-comm"
 		ove_packs+=" coreutils-du"
 		ove_packs+=" coreutils-nproc"
@@ -1423,6 +1457,8 @@ function prepare_ove {
 		./configure
 		make -j
 		make install || true'"
+	else
+		ove_packs+=" util-linux"
 	fi
 
 	# refresh packages
@@ -1568,13 +1604,20 @@ function prepare_unittest {
 		return 0
 	fi
 
-	instance_exec_as_root "${package_manager} python3"
+	if [[ ${image} == *nixos* ]]; then
+		instance_exec_as_root "${package_manager} nixos.python3"
+	else
+		instance_exec_as_root "${package_manager} python3"
+	fi
+
 	if [[ ${image} == *alpine* ]]; then
 		instance_exec_as_root "${package_manager} py3-yaml"
 	elif [[ ${image} == *archlinux* ]]; then
 		instance_exec_as_root "${package_manager} python-yaml"
 	elif [[ ${image} == *opensuse* ]]; then
 		instance_exec_as_root "${package_manager} python3-PyYAML"
+	elif [[ ${image} == *nixos* ]]; then
+		instance_exec_as_root "${package_manager} nixos.python3Packages.pyyaml"
 	else
 		instance_exec_as_root "${package_manager} python3-yaml"
 	fi

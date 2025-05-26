@@ -765,6 +765,7 @@ OVE has been tested for the following Linux distributions:
 | Fedora              | 36..41                      |
 | Kali                | N/A                         |
 | Linux Mint          | Uma..Wilma                  |
+| NixOS               | 25.05                       |
 | openSUSE Tumbleweed | N/A                         |
 | Ubuntu              | 16.04..24.04                |
 | Void Linux          | N/A                         |
