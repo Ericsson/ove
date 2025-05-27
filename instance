@@ -1459,6 +1459,9 @@ function prepare_ove {
 		make install || true'"
 	else
 		ove_packs+=" util-linux"
+		if [[ ${image} == *fedora*42* ]]; then
+			ove_packs+=" util-linux-script"
+		fi
 	fi
 
 	# refresh packages

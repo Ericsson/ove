@@ -14,6 +14,7 @@ images:devuan/daedalus
 images:fedora/39
 images:fedora/40
 images:fedora/41
+images:fedora/42
 images:kali
 images:mint/uma
 images:mint/una

@@ -762,7 +762,7 @@ OVE has been tested for the following Linux distributions:
 | Arch Linux          | N/A                         |
 | Debian              | Buster, Bullseye, Bookworm  |
 | Devuan              | Beowulf, Chimaera, Daedalus |
-| Fedora              | 36..41                      |
+| Fedora              | 36..42                      |
 | Kali                | N/A                         |
 | Linux Mint          | Uma..Wilma                  |
 | NixOS               | 25.05                       |
