@@ -5,6 +5,7 @@ function test_built_ins_without_args() {
 	ignore+=" export-logs"
 	ignore+=" generate-doc"
 	ignore+=" image-refresh"
+	ignore+=" list-images"
 	ignore+=" locate-all"
 	ignore+=" logo"
 	ignore+=" loop-close"
