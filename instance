@@ -27,7 +27,6 @@ _args="$*"
 instance_global_flags=""
 instance_ip=""
 instance_name=""
-instance_user=""
 ephemeral=0
 _gid=0
 _home="/root"
@@ -99,19 +98,10 @@ function init {
 		fi
 		OVE_INSTANCE_STEPS+=" ssh"
 		OVE_INSTANCE_STEPS+=" ssh_config"
-		if [ "${OVE_INSTANCE_XPRA_DE}" = "" ]; then
-			OVE_INSTANCE_XPRA_DE="xfce"
-			OVE_INSTANCE_XPRA_DE_CMD="xfce4-session"
-		elif [ "${OVE_INSTANCE_XPRA_DE_CMD}" = "" ]; then
+		if [ "${OVE_INSTANCE_XPRA_DE_CMD}" = "" ]; then
 			echo "error: specify how to start '${OVE_INSTANCE_XPRA_DE}' in OVE_INSTANCE_XPRA_DE_CMD" 1>&2
 			exit 1
 		fi
-	fi
-
-	if [ "${OVE_INSTANCE_USER}" != "" ]; then
-		instance_user="${OVE_INSTANCE_USER}"
-	else
-		instance_user="${OVE_USER}"
 	fi
 
 	if [ ! -v OVE_INSTANCE_STEPS ]; then
@@ -616,7 +606,7 @@ function update_ssh_config {
 	fi
 
 	if [[ ${OVE_INSTANCE_STEPS} == *user* ]] && [ ${EUID} -ne 0 ]; then
-		_user="${instance_user}"
+		_user="${OVE_INSTANCE_USER:?}"
 	else
 		_user="root"
 	fi
@@ -751,10 +741,10 @@ function get_id {
 	while true; do
 		((i++))
 		if [ $i -ge 30 ]; then
-			echo "error: could not retreive $1 for ${instance_user} for ${instance_name}" 1>&2
+			echo "error: could not retreive $1 for ${OVE_INSTANCE_USER:?} for ${instance_name}" 1>&2
 			return 1
 		fi
-		_id=$(instance_exec "id -${1::1} ${instance_user}")
+		_id=$(instance_exec "id -${1::1} ${OVE_INSTANCE_USER:?}")
 		if [ "${_id}" = "" ]; then
 			sleep_s=$((RANDOM%10))
 			echo "warning: empty $1, retry in ${sleep_s}s ($i)" 1>&2
@@ -1023,18 +1013,6 @@ function wait_for_ip {
 function run_X {
 	if [[ ${OVE_INSTANCE_STEPS} != *X* ]]; then
 		return 0
-	elif [ "${OVE_INSTANCE_XPRA_SERVER_ARGS}" = "" ]; then
-		OVE_INSTANCE_XPRA_SERVER_ARGS=""
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" start-desktop"
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" :100"
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" --exit-with-children"
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" --microphone=no"
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" --opengl=no"
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" --printing=no"
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" --resize-display=FHD"
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" --speaker=no"
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" --webcam=no"
-		OVE_INSTANCE_XPRA_SERVER_ARGS+=" --start-child=${OVE_INSTANCE_XPRA_DE_CMD:?}"
 	fi
 
 	# let cron start Xpra on reboot
@@ -1339,13 +1317,13 @@ function expose_user {
 	fi
 
 	# create user?
-	if ! instance_exec_no_exit "id -u ${instance_user:?}" &> /dev/null; then
+	if ! instance_exec_no_exit "id -u ${OVE_INSTANCE_USER:?}" &> /dev/null; then
 		f=$(instance_exec "which bash" 2> /dev/null)
 		f=${f//[$'\t\r\n']/}
 		if [ "$f" = "" ]; then
 			f="/bin/bash"
 		fi
-		instance_exec "useradd --shell ${f:?} -m -d ${OVE_HOME:?} ${instance_user:?}"
+		instance_exec "useradd --shell ${f:?} -m -d ${OVE_HOME:?} ${OVE_INSTANCE_USER:?}"
 	fi
 
 	if ! _uid=$(get_id "uid"); then
@@ -1365,12 +1343,12 @@ function expose_user {
 
 	_echo "user: sudo"
 	if instance_exec_no_exit "test -d /etc/sudoers.d/"; then
-		echo "${instance_user} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
+		echo "${OVE_INSTANCE_USER:?} ALL=(ALL) NOPASSWD:ALL" > "${OVE_TMP}/${tag}-sudoers"
 		instance_file_push_root \
 			"${OVE_TMP}/${tag}-sudoers" \
 			"${instance_name}/etc/sudoers.d/91-ove"
 	elif instance_exec_no_exit "test -s /etc/sudoers"; then
-		instance_exec "sed -i '$ a ${instance_user} ALL=(ALL) NOPASSWD:ALL' /etc/sudoers"
+		instance_exec "sed -i '$ a ${OVE_INSTANCE_USER:?} ALL=(ALL) NOPASSWD:ALL' /etc/sudoers"
 	else
 		_echo "warning: could not find /etc/sudoers.d nor /etc/sudoers"
 	fi
@@ -1384,13 +1362,13 @@ function expose_user {
 			sul=$((sul + 1))
 			instance_exec_no_exit_as_root "sed -i '${sul}iauth  [success=ignore default=1] pam_succeed_if.so user = root' /etc/pam.d/su"
 			sul=$((sul + 1))
-			instance_exec_no_exit_as_root "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${instance_user}' /etc/pam.d/su"
-			_echo "user: su: add '${instance_user}' to 'root' group"
+			instance_exec_no_exit_as_root "sed -i '${sul}iauth sufficient pam_succeed_if.so use_uid user = ${OVE_INSTANCE_USER:?}' /etc/pam.d/su"
+			_echo "user: su: add '${OVE_INSTANCE_USER:?}' to 'root' group"
 			if [[ ${image} == *openwrt* ]]; then
 				instance_exec_no_exit_as_root "${package_manager} shadow-usermod" > /dev/null
 			fi
 
-			instance_exec_no_exit_as_root "usermod -a -G root ${instance_user}"
+			instance_exec_no_exit_as_root "usermod -a -G root ${OVE_INSTANCE_USER:?}"
 		fi
 	fi
 
@@ -1742,7 +1720,7 @@ function main {
 	run_services
 	prepare_ssh "root"
 	expose_user
-	prepare_ssh "${instance_user}"
+	prepare_ssh "${OVE_INSTANCE_USER:?}"
 	prepare_ove
 	user_exec
 	update_ssh_config

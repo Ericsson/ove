@@ -13708,6 +13708,51 @@ function ove_config_builtins_init {
 		export OVE_INSTANCE_EXTRA_ARGS=""
 	fi
 
+	# OVE_INSTANCE_ROOT_FILES:string::create-instance create-instance-parallel:semi-colon separated list of src/dst file pairs to push to instance (root)
+	if [ -z "${OVE_INSTANCE_ROOT_FILES+x}" ]; then
+		export OVE_INSTANCE_ROOT_FILES=""
+	fi
+
+	# OVE_INSTANCE_USER_FILES:string::create-instance create-instance-parallel:semi-colon separated list of src/dst file pairs to push to instance (user)
+	if [ -z "${OVE_INSTANCE_USER_FILES+x}" ]; then
+		export OVE_INSTANCE_USER_FILES=""
+	fi
+
+	# OVE_INSTANCE_USER:string::create-instance create-instance-parallel:username
+	if [ -z "${OVE_INSTANCE_USER+x}" ]; then
+		export OVE_INSTANCE_USER="${OVE_USER}"
+	fi
+
+	# OVE_INSTANCE_ROOT_PASS:string::create-instance create-instance-parallel:root password
+	if [ -z "${OVE_INSTANCE_ROOT_PASS+x}" ]; then
+		export OVE_INSTANCE_ROOT_PASS=""
+	fi
+
+	# OVE_INSTANCE_USER_PASS:string::create-instance create-instance-parallel:user password
+	if [ -z "${OVE_INSTANCE_USER_PASS+x}" ]; then
+		export OVE_INSTANCE_USER_PASS=""
+	fi
+
+	# OVE_INSTANCE_XPRA_CLIENT_ARGS:string::create-instance create-instance-parallel:xpra client arguments (for auto attach)
+	if [ -z "${OVE_INSTANCE_XPRA_CLIENT_ARGS+x}" ]; then
+		export OVE_INSTANCE_XPRA_CLIENT_ARGS=""
+	fi
+
+	# OVE_INSTANCE_XPRA_DE:string::create-instance create-instance-parallel:xpra desktop environment
+	if [ -z "${OVE_INSTANCE_XPRA_DE+x}" ]; then
+		export OVE_INSTANCE_XPRA_DE="xfce"
+	fi
+
+	# OVE_INSTANCE_XPRA_DE_CMD:string::create-instance create-instance-parallel:xpra desktop envionment start command
+	if [ -z "${OVE_INSTANCE_XPRA_DE_CMD+x}" ]; then
+		export OVE_INSTANCE_XPRA_DE_CMD="xfce4-session"
+	fi
+
+	# OVE_INSTANCE_XPRA_SERVER_ARGS:string::create-instance create-instance-parallel:xpra server arguments
+	if [ -z "${OVE_INSTANCE_XPRA_SERVER_ARGS+x}" ]; then
+		export OVE_INSTANCE_XPRA_SERVER_ARGS="start-desktop --exit-with-children --minimal --resize-display=FHD --start-child=${OVE_INSTANCE_XPRA_DE_CMD}"
+	fi
+
 	# OVE_HOOKS_APPEND_TO_LASTLOG:int:0-1:all:append output from hooks to lastlog
 	if [ -z "${OVE_HOOKS_APPEND_TO_LASTLOG+x}" ]; then
 		export OVE_HOOKS_APPEND_TO_LASTLOG=1
