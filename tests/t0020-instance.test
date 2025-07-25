@@ -4,8 +4,6 @@ function in_container() {
 	# yes, this is probably a bad idea, but /proc/1/environ is not always readable
 	if command -v incus > /dev/null; then
 		return 1
-	elif command -v lxc > /dev/null; then
-		return 1
 	else
 		return 0
 	fi

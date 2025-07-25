@@ -1712,7 +1712,7 @@ function ove_loop_command {
 	done
 }
 
-# ide:[close|reopen]:launch one or more 'loop'-commands specified by OVE_IDE_LOOP_ARGS (tmux only):UTIL
+# ide:[close|reopen]:launch one or more 'loop'-commands specified by OVE_IDE_LOOP_ARGS (tmux):UTIL
 function ove-ide {
 	ove_entry || return
 
@@ -1753,7 +1753,7 @@ function ove-ide {
 	done
 }
 
-# run-parallel:t0 c0 [t1 c1 t2 c2...]:run commands in parallel (tmux only):UTIL
+# run-parallel:t0 c0 [t1 c1 t2 c2...]:run commands in parallel (tmux):UTIL
 function ove-run-parallel {
 	ove_entry || return
 
@@ -1949,7 +1949,7 @@ function ove_kill_procs {
 	done
 }
 
-# loop-close: :close all 'loop'-panes (tmux only):UTIL
+# loop-close: :close all 'loop'-panes (tmux):UTIL
 function ove-loop-close {
 	ove_entry || return
 
@@ -10565,7 +10565,7 @@ $(ove_echo_cyan_noprefix "instance")
 # steps:
 #   ove        use the OVE workspace (map it or by running the oneliner) within an instance
 #   running    leave the instance running
-#   ssh        install sshd within the instance and use ssh instead of 'incus|lxc exec'
+#   ssh        install sshd within the instance and use ssh instead of 'incus exec'
 #   ssh_config update \$HOME/.ssh/config with host entries
 #   stopped    leave the instance in stopped state
 #   user       run jobs as user
@@ -10582,7 +10582,7 @@ echo "set -x;date;whoami;hostname;ip addr" > test.sh
 export OVE_INSTANCE_STEPS="running verbose"
 ove create-instance test.sh ubuntu/24.04/amd64
 
-# (tmux only) run 'ove entry ag' within three Linux distributions at the same time, run the job as root, leave the containers running
+# in tmux run 'ove entry ag' within three Linux distributions at the same time, run the job as root, leave the containers running
 export OVE_INSTANCE_STEPS="ove running"
 ove create-instance-parallel ag alpine/edge/amd64 fedora/40/amd64 ubuntu/24.04/amd64
 
@@ -14970,7 +14970,6 @@ function ove_deps {
 	optional+=('jp2a')
 	optional+=('incus')
 	optional+=('locate')
-	optional+=('lxc')
 	optional+=('make')
 	optional+=('md5deep')
 	optional+=('rg')
@@ -15458,7 +15457,7 @@ function ove-worktree {
 	return 0
 }
 
-# replicate-cluster-parallel:[force [pull]|save [msg]|nofetch]:replicate-cluster in parallel (incus|LXD only):INSTANCE
+# replicate-cluster-parallel:[force [pull]|save [msg]|nofetch]:replicate-cluster in parallel (incus):INSTANCE
 function ove-replicate-cluster-parallel {
 	ove-replicate-cluster "$@"
 }
@@ -15466,8 +15465,6 @@ function ove-replicate-cluster-parallel {
 function ove_instance_runtime {
 	if command -v "incus" > /dev/null; then
 		echo "incus"
-	elif command -v "lxc" > /dev/null; then
-		echo "lxc"
 	else
 		ove_echo_fatal_noprefix "no instance runtime found"
 		return 1
@@ -15476,7 +15473,7 @@ function ove_instance_runtime {
 	return 0
 }
 
-# replicate-cluster:[force [pull]|save [msg]|nofetch]:replicate OVE workspace on all cluster members (incus|LXD only):INSTANCE
+# replicate-cluster:[force [pull]|save [msg]|nofetch]:replicate OVE workspace on all cluster members (incus):INSTANCE
 function ove-replicate-cluster {
 	local c
 	local h
@@ -16910,7 +16907,6 @@ function ove_externals_init {
 	cmds+=('ln')
 	cmds+=('locate')
 	cmds+=('lsb_release')
-	cmds+=('lxc')
 	cmds+=('make')
 	cmds+=('md5deep')
 	cmds+=('md5sum')
@@ -17207,7 +17203,7 @@ function ove_instance_helper {
 	fi
 }
 
-# create-instance:file|project [<remote><colon>]<image>...:create one or many instances (incus|LXD only):INSTANCE
+# create-instance:file|project [<remote><colon>]<image>...:create one or many instances (incus):INSTANCE
 function ove-create-instance {
 	ove_entry || return
 
@@ -17224,7 +17220,7 @@ function ove-create-instance {
 	done
 }
 
-# create-instance-parallel:file|project [<remote><colon>]<image>...:create one or many instances in parallel (tmux and incus|LXD only):INSTANCE
+# create-instance-parallel:file|project [<remote><colon>]<image>...:create one or many instances in parallel (tmux and incus):INSTANCE
 function ove-create-instance-parallel {
 	ove_entry || return
 
@@ -17259,7 +17255,7 @@ function ove-create-instance-parallel {
 	eval ove-run-parallel $args
 }
 
-# create-instance-all:[<remote><colon>]<image>...:create one or many instances for all projects (incus|LXD only):INSTANCE
+# create-instance-all:[<remote><colon>]<image>...:create one or many instances for all projects (incus):INSTANCE
 function ove-create-instance-all {
 	ove_entry || return
 
@@ -17313,7 +17309,7 @@ function ove-pre-push {
 	ove-status .ove
 }
 
-# list-images: :list available images (incus|LXD only):INSTANCE
+# list-images: :list available images (incus):INSTANCE
 function ove-list-images {
 	ove_entry || return
 
@@ -17323,7 +17319,7 @@ function ove-list-images {
 	${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list"
 }
 
-# refresh-image: :refresh list of available images (incus|LXD only):INSTANCE
+# refresh-image: :refresh list of available images (incus):INSTANCE
 function ove-refresh-image {
 	ove_entry || return
 
@@ -17360,7 +17356,7 @@ function ove-refresh-image {
 		"${OVE_GLOBAL_STATE_DIR:?}/instance.list"
 }
 
-# delete-instance:name [y]:delete instance (incus|LXD only), USE WITH CARE:INSTANCE
+# delete-instance:name [y]:delete instance (incus), USE WITH CARE:INSTANCE
 function ove-delete-instance {
 	ove_entry || return
 
@@ -17469,7 +17465,7 @@ function ove-delete-instance {
 	return 0
 }
 
-# post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/instance.list (incus|LXD only):INTERNAL
+# post-push: :run OVE unittests within a few Linux distributions specified by ${OVE_DIR}/tests/instance.list (incus):INTERNAL
 function ove-post-push {
 	ove_entry || return
 
@@ -17492,7 +17488,7 @@ function ove-post-push {
 	done
 }
 
-# post-push-parallel: :post-push in parallel (tmux and incus|LXD only):INTERNAL
+# post-push-parallel: :post-push in parallel (tmux and incus):INTERNAL
 function ove-post-push-parallel {
 	ove_entry || return
 

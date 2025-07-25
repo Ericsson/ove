@@ -50,8 +50,6 @@ function _echo {
 function instance_runtime {
 	if command -v incus > /dev/null; then
 		echo "incus"
-	elif command -v lxc > /dev/null; then
-		echo "lxc"
 	else
 		return 1
 	fi

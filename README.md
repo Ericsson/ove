@@ -446,7 +446,6 @@ need:
 * jp2a
 * incus
 * locate
-* lxc
 * make
 * md5deep
 * rg
