@@ -13753,7 +13753,7 @@ function ove_config_builtins_init {
 
 	# OVE_INSTANCE_XPRA_SERVER_ARGS:string::create-instance create-instance-parallel:xpra server arguments
 	if [ -z "${OVE_INSTANCE_XPRA_SERVER_ARGS+x}" ]; then
-		export OVE_INSTANCE_XPRA_SERVER_ARGS="start-desktop --exit-with-children --minimal --resize-display=FHD --start-child=${OVE_INSTANCE_XPRA_DE_CMD}"
+		export OVE_INSTANCE_XPRA_SERVER_ARGS="start-desktop --exit-with-children --minimal --start-child=${OVE_INSTANCE_XPRA_DE_CMD}"
 	fi
 
 	# OVE_HOOKS_APPEND_TO_LASTLOG:int:0-1:all:append output from hooks to lastlog
