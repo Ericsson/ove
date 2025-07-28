@@ -10596,13 +10596,14 @@ bash \${OVE_DIR:?}/hooks/incus/pre-create-instance
 export OVE_INSTANCE_NAME="alice"
 export OVE_INSTANCE_STEPS="running verbose X"
 export OVE_INSTANCE_XPRA_CLIENT_ARGS="attach"
-ove create-instance true alpine/3.20/amd64
+ove create-instance true alpine/edge/amd64
 # re-attach
 xpra attach --ssh=ssh ssh://alice
 
 # add an image remote server
 incus remote add docker https://docker.io --protocol=oci
 # check nginx version
+export OVE_INSTANCE_NAME="nginx"
 export OVE_INSTANCE_STEPS="running"
 ove create-instance 'nginx -v' docker:nginx
 
