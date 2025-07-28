@@ -1026,9 +1026,9 @@ function run_X {
 		while true; do
 			((i++))
 			if [ $i -ge 10 ]; then
-				echo "error: xpra server not alive" 1>&2
+				echo "error: xpra server is not alive" 1>&2
 				exit 1
-			elif ! xpra info --ssh="ssh" ssh:"${instance_name}" &> /dev/null; then
+			elif ! xpra info --ssh="ssh" ssh://"${instance_name}" &> /dev/null; then
 				sleep $((RANDOM % 3 + 1))
 				continue
 			fi
@@ -1037,7 +1037,7 @@ function run_X {
 
 		# shellcheck disable=SC2086
 		xpra ${OVE_INSTANCE_XPRA_CLIENT_ARGS:?} \
-			--ssh="ssh" ssh:"${instance_name}" \
+			--ssh="ssh" ssh://"${instance_name}" \
 			--title "${instance_name} ${instance_ip}" &
 		xpra_pid="$!"
 	fi
