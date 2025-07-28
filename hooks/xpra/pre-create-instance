@@ -91,7 +91,7 @@ wget -q -O /etc/apt/sources.list.d/xpra.sources https://raw.githubusercontent.co
 apt update
 
 # install xpra
-apt install -y xpra
+DEBIAN_FRONTEND=noninteractive apt install -y xpra
 EOF
 }
 
