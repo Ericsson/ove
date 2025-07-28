@@ -667,6 +667,61 @@ commands are usually also present:
 Note: For each project command there is a "command-parallel" version of that
 command.
 
+### INSTANCE
+
+The 'ove create-instance" command is a wrapper on top of incus. Features:
+
+* map OVE workspace
+* create UID mapped user
+* install OpenSSH server
+* update ssh-config
+* install Desktop Environment
+* replicate OVE workspace to incus cluster members
+
+Example:
+
+    # steps:
+    #   ove        use the OVE workspace (map it or by running the oneliner) within an instance
+    #   running    leave the instance running
+    #   ssh        install sshd within the instance and use ssh instead of 'incus exec'
+    #   ssh_config update $HOME/.ssh/config with host entries
+    #   stopped    leave the instance in stopped state
+    #   user       run jobs as user
+    #   verbose    debug printouts
+    #   worktree   run entry within an OVE worktree
+    #   X          Xpra+Xfce
+    #
+    # run 'ove entry foo' within a Ubuntu 24.04 container, run the job as user, delete the container when done
+    export OVE_INSTANCE_STEPS="user ove"
+    ove create-instance foo ubuntu/24.04/amd64
+
+    # run a local script "test.sh" within Ubuntu 24.04, enable debug prints, leave the container running
+    echo "set -x;date;whoami;hostname;ip addr" > test.sh
+    export OVE_INSTANCE_STEPS="running verbose"
+    ove create-instance test.sh ubuntu/24.04/amd64
+
+    # in tmux run 'ove entry ag' within three Linux distributions at the same time, run the job as root, leave the containers running
+    export OVE_INSTANCE_STEPS="ove running"
+    ove create-instance-parallel ag alpine/edge/amd64 fedora/40/amd64 ubuntu/24.04/amd64
+
+    # install Xpra
+    bash ${OVE_DIR:?}/hooks/xpra/pre-create-instance
+
+    # attach to a Xfce desktop running within an Alpine container 'alice', enable debug prints, leave the container running
+    export OVE_INSTANCE_NAME="alice"
+    export OVE_INSTANCE_STEPS="running verbose X"
+    export OVE_INSTANCE_XPRA_CLIENT_ARGS="attach"
+    ove create-instance true alpine/edge/amd64
+    # re-attach
+    xpra attach --ssh=ssh ssh://alice
+
+    # add an image remote server
+    incus remote add docker https://docker.io --protocol=oci
+    # check nginx version
+    export OVE_INSTANCE_NAME="nginx"
+    export OVE_INSTANCE_STEPS="running"
+    ove create-instance 'nginx -v' docker:nginx
+
 ### UTIL
 
 Here's a list (not complete) of a few utility commands:

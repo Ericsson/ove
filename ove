@@ -10562,6 +10562,11 @@ ove do . timeout --foreground 5 htop -d 0.1 || ove lr
 
 $(ove_echo_cyan_noprefix "instance")
 
+# all create-instance examples assume a working incus installation
+#
+# install incus
+bash \${OVE_DIR:?}/hooks/incus/pre-create-instance
+
 # steps:
 #   ove        use the OVE workspace (map it or by running the oneliner) within an instance
 #   running    leave the instance running
@@ -10589,10 +10594,7 @@ ove create-instance-parallel ag alpine/edge/amd64 fedora/40/amd64 ubuntu/24.04/a
 # install Xpra
 bash \${OVE_DIR:?}/hooks/xpra/pre-create-instance
 
-# install incus
-bash \${OVE_DIR:?}/hooks/incus/pre-create-instance
-
-# attach to a Xfce desktop running within an Alpine 3.20 container 'alice', enable debug prints, leave the container running
+# attach to a Xfce desktop running within an Alpine container 'alice', enable debug prints, leave the container running
 export OVE_INSTANCE_NAME="alice"
 export OVE_INSTANCE_STEPS="running verbose X"
 export OVE_INSTANCE_XPRA_CLIENT_ARGS="attach"
