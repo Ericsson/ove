@@ -1018,6 +1018,11 @@ function run_X {
 	# let cron start Xpra on reboot
 	instance_exec "echo @reboot xpra ${OVE_INSTANCE_XPRA_SERVER_ARGS:?} | crontab -"
 
+	# running as user => enable-linger (for Xpra)
+	if [[ ${OVE_INSTANCE_STEPS} = *user* ]]; then
+		instance_exec_no_exit "command -v loginctl > /dev/null && loginctl enable-linger ${OVE_INSTANCE_USER:?}"
+	fi
+
 	# restart
 	restart_instance
 
@@ -1028,7 +1033,7 @@ function run_X {
 			if [ $i -ge 10 ]; then
 				echo "error: xpra server is not alive" 1>&2
 				exit 1
-			elif ! xpra info --ssh="ssh" ssh://"${instance_name}" &> /dev/null; then
+			elif ! xpra info --ssh="ssh -oRemoteCommand=none" ssh://"${instance_name}" &> /dev/null; then
 				sleep $((RANDOM % 3 + 1))
 				continue
 			fi
@@ -1037,7 +1042,7 @@ function run_X {
 
 		# shellcheck disable=SC2086
 		xpra ${OVE_INSTANCE_XPRA_CLIENT_ARGS:?} \
-			--ssh="ssh" ssh://"${instance_name}" \
+			--ssh="ssh -oRemoteCommand=none" ssh://"${instance_name}" \
 			--title "${instance_name} ${instance_ip}" &
 		xpra_pid="$!"
 	fi
