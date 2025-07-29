@@ -110,7 +110,7 @@ function init {
 
 	instance_global_flags=""
 	if [[ ${OVE_INSTANCE_STEPS} == *verbose* ]]; then
-		for s in ${OVE_INSTANCE_STEPS//:/ };do
+		for s in ${OVE_INSTANCE_STEPS//:/ }; do
 			echo "${s}"
 		done | LC_ALL=C sort -u
 	elif "${c}" -h | grep -q '\-q'; then
@@ -1016,7 +1016,7 @@ function run_X {
 	fi
 
 	# let cron start Xpra on reboot
-	instance_exec "echo @reboot xpra ${OVE_INSTANCE_XPRA_SERVER_ARGS:?} | crontab -"
+	instance_exec "echo @reboot xpra ${OVE_INSTANCE_XPRA_SERVER_ARGS//:/ } --start-child=${OVE_INSTANCE_XPRA_DE_CMD} --exit-with-children | crontab -"
 
 	# running as user => enable-linger (for Xpra)
 	if [[ ${OVE_INSTANCE_STEPS} = *user* ]]; then
