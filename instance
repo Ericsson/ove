@@ -323,17 +323,6 @@ function remove_tmp {
 function cleanup {
 	local f
 
-	if [ -s "${OVE_HOME}/.ssh/config" ] && \
-		[[ ${OVE_INSTANCE_STEPS} = *ove* ]] && \
-		[[ ${OVE_INSTANCE_STEPS} = *user* ]] && \
-		[[ ${OVE_INSTANCE_STEPS} = *ssh_config* ]]; then
-		# enable RemoteCommand
-		sed \
-			-i \
-			-e "s,^\t#\(RemoteCommand cd $OVE_BASE_DIR.*$\),\t\1,g" \
-			"${OVE_HOME}/.ssh/config"
-	fi
-
 	f="${OVE_TMP}/${tag}-$(instance_runtime)-config-exit"
 	if ! save_instance_config "$f"; then
 		exit 1
