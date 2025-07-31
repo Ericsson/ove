@@ -2334,7 +2334,10 @@ EOF
 function ove_rec_start {
 	rec_pid=0
 
-	if ! ove_check_command "ffmpeg"; then
+	if [ "$XDG_SESSION_TYPE" != "" ] && [ "$XDG_SESSION_TYPE" != "x11" ]; then
+		ove_echo_error_noprefix "$XDG_SESSION_TYPE is not supported"
+		return 1
+	elif ! ove_check_command "ffmpeg"; then
 		return 1
 	elif ${ove_cmd2pathname["pgrep"]:?} -f ${ove_cmd2pathname["ffmpeg"]:?} > /dev/null; then
 		# already recording
@@ -12009,7 +12012,10 @@ function ove-dry-run {
 function ove-rec {
 	ove_entry || return
 
-	if [ $# -eq 1 ] && ! [[ "$1" =~ ^[0-1]$ ]]; then
+	if [ "$XDG_SESSION_TYPE" != "" ] && [ "$XDG_SESSION_TYPE" != "x11" ]; then
+		ove_echo_error_noprefix "$XDG_SESSION_TYPE is not supported"
+		return 1
+	elif [ $# -eq 1 ] && ! [[ "$1" =~ ^[0-1]$ ]]; then
 		ove_command_usage
 		return 1
 	elif [ $# -eq 3 ] && ! [[ "$3" =~ ^[0-1]$ ]]; then
@@ -13656,7 +13662,7 @@ function ove_config_builtins_init {
 		export OVE_REMOTE_TIMEOUT=0
 	fi
 
-	# OVE_RECORD_IT:int:0-1:all:screen record commands
+	# OVE_RECORD_IT:int:0-1:all:screen record commands (x11 only)
 	if [ -z "${OVE_RECORD_IT+x}" ]; then
 		export OVE_RECORD_IT=0
 	fi
