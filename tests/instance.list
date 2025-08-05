@@ -1,8 +1,8 @@
 images:almalinux/9
-images:alpine/3.18
 images:alpine/3.19
 images:alpine/3.20
 images:alpine/3.21
+images:alpine/3.22
 images:alpine/edge
 images:archlinux
 images:debian/10
@@ -24,7 +24,6 @@ images:mint/virginia
 images:mint/wilma
 images:nixos/25.05
 images:opensuse/tumbleweed
-images:ubuntu/20.04
 images:ubuntu/22.04
 images:ubuntu/24.04
 images:voidlinux

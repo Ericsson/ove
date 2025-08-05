@@ -12008,7 +12008,7 @@ function ove-dry-run {
 	ove-env ^OVE_DRY_RUN
 }
 
-# rec:[0|1 [auto|slop [0|1]]]:toggle or set screen recording:UTIL
+# rec:[0|1 [auto|slop [0|1]]]:toggle or set screen recording (x11 only):UTIL
 function ove-rec {
 	ove_entry || return
 
