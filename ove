@@ -15623,9 +15623,9 @@ function ove-replicate {
 
 		run_setup=0
 		if [ $# -eq 1 ]; then
-			d=$(${ove_cmd2pathname["ssh"]:?} -o RemoteCommand=none ${host} mktemp -d)
+			d=$(${ove_cmd2pathname["ssh"]:?} -o RemoteCommand=none ${host} mktemp -d | ${ove_cmd2pathname["tr"]:?} -d '\r\n')
 			run_setup=1
-		elif ! d=$(${ove_cmd2pathname["ssh"]:?} -o RemoteCommand=none ${host} readlink -f $2); then
+		elif ! d=$(${ove_cmd2pathname["ssh"]:?} -o RemoteCommand=none ${host} readlink -f $2 | ${ove_cmd2pathname["tr"]:?} -d '\r\n'); then
 			d="$2"
 			run_setup=1
 		elif ! ${ove_cmd2pathname["ssh"]:?} -o RemoteCommand=none -q ${host} "[ -L ${d}/ove ] && [ -L ${d}/.owel ]"; then

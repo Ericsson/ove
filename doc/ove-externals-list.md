@@ -78,7 +78,7 @@
 | timeout       | 4         |
 | tmux          | 13        |
 | touch         | 5         |
-| tr            | 21        |
+| tr            | 23        |
 | tsort         | 2         |
 | tsp           | 4         |
 | uname         | 4         |
@@ -90,4 +90,4 @@
 | xargs         | 35        |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1368__  |
+| __sum__       | __1370__  |
