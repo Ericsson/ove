@@ -7075,9 +7075,19 @@ function ove-oneliner {
 		elif [ "$u" = "" ]; then
 			return 0
 		fi
+		if [ "$XDG_SESSION_TYPE" = "x11" ] && command -v xclip > /dev/null; then
+			ove_print_oneliner "${OVE_OWEL_NAME}" "${u}" | \
+				${ove_cmd2pathname["xclip"]:?} \
+				-selection clipboard
+		fi
 		ove_print_oneliner "${OVE_OWEL_NAME}" "${u}"
 		return 0
 	elif [ ! -x "${OVE_OWEL_DIR}/SETUP" ]; then
+		if [ "$XDG_SESSION_TYPE" = "x11" ] && command -v xclip > /dev/null; then
+			${ove_cmd2pathname["xclip"]:?} \
+					-selection clipboard \
+					< "${OVE_OWEL_DIR}/SETUP"
+		fi
 		${ove_cmd2pathname["cat"]:?} "${OVE_OWEL_DIR}/SETUP"
 		return 0
 	fi
@@ -15036,6 +15046,7 @@ function ove_deps {
 	optional+=('tsp')
 	optional+=('whois')
 	optional+=('yamllint')
+	optional+=('xclip')
 	optional+=('xdotool')
 	optional+=('xpra')
 
@@ -17009,6 +17020,7 @@ function ove_externals_init {
 	cmds+=('whoami')
 	cmds+=('whois')
 	cmds+=('xargs')
+	cmds+=('xclip')
 	cmds+=('xdotool')
 	cmds+=('yamllint')
 

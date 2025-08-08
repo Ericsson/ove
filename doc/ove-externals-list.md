@@ -88,6 +88,7 @@
 | whoami        | 1         |
 | whois         | 1         |
 | xargs         | 35        |
+| xclip         | 2         |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1370__  |
+| __sum__       | __1372__  |
