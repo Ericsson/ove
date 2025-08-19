@@ -5,9 +5,9 @@ images:alpine/3.21
 images:alpine/3.22
 images:alpine/edge
 images:archlinux
-images:debian/10
 images:debian/11
 images:debian/12
+images:debian/13
 images:devuan/beowulf
 images:devuan/chimaera
 images:devuan/daedalus
