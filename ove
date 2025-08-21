@@ -17379,10 +17379,20 @@ function ove-pre-push {
 function ove-list-images {
 	ove_entry || return
 
-	if [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/instance.list ] && ! ove-refresh-image; then
+	local c
+
+	if ! c=$(ove_instance_runtime); then
+		return 1
+	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/instance.list ] && ! ove-refresh-image; then
 		return 1
 	fi
-	${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list"
+
+	{
+		${ove_cmd2pathname["cut"]:?} -d: -f2 "${OVE_GLOBAL_STATE_DIR}/instance.list"
+		${ove_cmd2pathname["$c"]:?} image alias list \
+			--format csv \
+			-ca
+	} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 }
 
 # refresh-image: :refresh list of available images (incus):INSTANCE

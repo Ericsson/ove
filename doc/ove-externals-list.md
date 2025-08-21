@@ -63,7 +63,7 @@
 | shellcheck    | 1         |
 | sleep         | 14        |
 | slop          | 1         |
-| sort          | 125       |
+| sort          | 126       |
 | ssh           | 12        |
 | stat          | 8         |
 | stty          | 1         |
@@ -91,4 +91,4 @@
 | xclip         | 2         |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1372__  |
+| __sum__       | __1373__  |
