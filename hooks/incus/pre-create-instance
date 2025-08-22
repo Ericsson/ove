@@ -37,7 +37,7 @@ function supported {
 		esac
 	elif [ "${OVE_OS_ID}" = "debian" ]; then
 		case "${OVE_OS_VER:?}" in
-			11|12)
+			11|12|13)
 				return 0
 				;;
 		esac
