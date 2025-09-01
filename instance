@@ -688,7 +688,10 @@ EOF
 			ssh-copy-id \
 			-f \
 			${opts} \
-			"${_user}"@"${instance_ip}" &> /dev/null; then
+			"${_user}"@"${instance_ip}" > /dev/null 2> "${OVE_TMP}/${tag}-ssh-copy-id.err"; then
+			if [ -s "${OVE_TMP}/${tag}-ssh-copy-id.err" ]; then
+				cat "${OVE_TMP}/${tag}-ssh-copy-id.err"
+			fi
 			_echo "copy public key to ${instance_name} ${instance_ip} failed - retry in 1 sec"
 			sleep 1
 			continue
