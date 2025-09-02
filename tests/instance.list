@@ -8,7 +8,6 @@ images:archlinux
 images:debian/11
 images:debian/12
 images:debian/13
-images:devuan/beowulf
 images:devuan/chimaera
 images:devuan/daedalus
 images:fedora/40

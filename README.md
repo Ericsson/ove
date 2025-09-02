@@ -809,20 +809,20 @@ can be found [here](doc/ove-variables-list.md).
 
 OVE has been tested for the following Linux distributions:
 
-| Distribution        | Release(s)                  |
-|---------------------|-----------------------------|
-| AlmaLinux           | 9.1                         |
-| Alpine Linux        | 3.15..3.22                  |
-| Arch Linux          | N/A                         |
-| Debian              | 10..13                      |
-| Devuan              | Beowulf, Chimaera, Daedalus |
-| Fedora              | 36..42                      |
-| Kali                | N/A                         |
-| Linux Mint          | Uma..Wilma                  |
-| NixOS               | 25.05                       |
-| openSUSE Tumbleweed | N/A                         |
-| Ubuntu              | 16.04..24.04                |
-| Void Linux          | N/A                         |
+| Distribution        | Release(s)   |
+|---------------------|--------------|
+| AlmaLinux           | 9.1          |
+| Alpine Linux        | 3.15..3.22   |
+| Arch Linux          | N/A          |
+| Debian              | 10..13       |
+| Devuan              | 3..5         |
+| Fedora              | 36..42       |
+| Kali                | N/A          |
+| Linux Mint          | Uma..Wilma   |
+| NixOS               | 25.05        |
+| openSUSE Tumbleweed | N/A          |
+| Ubuntu              | 16.04..24.04 |
+| Void Linux          | N/A          |
 
 Want to know more about OVE? Please check out the OVE
 [tutorial](https://github.com/Ericsson/ove-tutorial) or ask OVE:
