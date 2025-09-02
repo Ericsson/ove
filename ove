@@ -14245,7 +14245,7 @@ function ove_setup_hub {
 		(( i+=1 ))
 		if ! ${ove_cmd2pathname["git"]:?} clone -q "${u}" "${OVE_GLOBAL_STATE_DIR:?}"/hub/$i 2> /dev/null; then
 			rm -rf "${OVE_GLOBAL_STATE_DIR:?}"/hub/$i
-			ove_echo_error_noprefix "hub: 'git clone ${u}' failed"
+			ove_echo_note_noprefix "hub: 'git clone ${u}' failed"
 		fi
 	done
 }
