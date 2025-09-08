@@ -4497,7 +4497,7 @@ function ove_revtab_forall {
 			continue
 		fi
 		repo_basename=${repo/${OVE_BASE_DIR}\/}
-		eval "pushd ${repo} &>/dev/null && $1; popd&>/dev/null"
+		eval "pushd \"${repo}\" &>/dev/null && $1; popd &>/dev/null"
 	done
 }
 
@@ -4579,7 +4579,7 @@ function ove_revtab_forsome {
 				continue
 			elif [ "${repo}" = "${OVE_BASE_DIR}/${i}" ]; then
 				repo_basename=${repo/${OVE_BASE_DIR}\/}
-				eval "pushd ${repo} &>/dev/null && $1; popd&>/dev/null"
+				eval "pushd \"${repo}\" &>/dev/null && $1; popd &>/dev/null"
 			fi
 		done
 	done
@@ -4598,7 +4598,7 @@ function ove_revtab_forsome_parallel {
 			if ! ove_dir_is_repo "${repo}"; then
 				continue
 			elif [ "${repo}" = "${OVE_BASE_DIR}/${i}" ]; then
-				eval "pushd ${repo} &>/dev/null; $1; popd&>/dev/null" &
+				eval "pushd \"${repo}\" &>/dev/null; $1; popd &>/dev/null" &
 				ove_cap_jobs ${2}
 			fi
 		done
@@ -4860,7 +4860,7 @@ function ove_repo_cmd {
 	if [ "${git_cmd}" = "clone" ] || [ "${git_cmd}" = "ls-remote" ]; then
 		cmd="${ove_cmd2pathname["git"]:?} $1 ${git_cmd_opt}"
 	else
-		cmd="${ove_cmd2pathname["git"]:?} -C ${repo} $1 ${git_cmd_opt}"
+		cmd="${ove_cmd2pathname["git"]:?} -C \"${repo}\" $1 ${git_cmd_opt}"
 
 		# dry run?
 		if [ "${GIT_DRY_RUN}" != "" ] && [ "${GIT_DRY_RUN}" = "1" ]; then
@@ -10020,7 +10020,7 @@ function ove_submodule2revtab {
 	fi
 
 	for repo in ${repos_with_submodules}; do
-		for submodule in $(ove_repo_cmd ${repo} config --file .gitmodules --list | ${ove_cmd2pathname["cut"]:?} -d'.' -f2 | ${ove_cmd2pathname["sort"]} -u); do
+		while read -r submodule; do
 			# get path
 			path=$(ove_repo_cmd ${repo} config --file .gitmodules --get "submodule.${submodule}.path")
 			if [ "${path}" = "" ]; then
@@ -10067,7 +10067,7 @@ function ove_submodule2revtab {
 			fi
 
 			echo "${repo//${OVE_BASE_DIR}\/}/${path} ${url} ${url} ${sha}"
-		done
+		done < <(ove_repo_cmd ${repo} config --file .gitmodules --list | ${ove_cmd2pathname["cut"]:?} -d'.' -f2 | ${ove_cmd2pathname["sort"]} -u)
 	done | ${ove_cmd2pathname["tee"]:?} -a ${OVE_OWEL_DIR}/revtab
 
 	return
