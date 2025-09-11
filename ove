@@ -14233,7 +14233,11 @@ function ove_setup_hub {
 	if [ "$OVE_HUB_URL_LIST" = "" ]; then
 		return 1
 	elif [ -d "${OVE_GLOBAL_STATE_DIR:?}"/hub ]; then
-		return 0
+		if [ $(${ove_cmd2pathname["find"]:?} "${OVE_GLOBAL_STATE_DIR:?}"/hub | ${ove_cmd2pathname["wc"]:?} -l) -eq 1 ]; then
+			ove-purge-hub
+		else
+			return 0
+		fi
 	fi
 
 	mapfile -t urls <<<"$(echo -e "${OVE_HUB_URL_LIST//;/\\n}")"
@@ -14260,7 +14264,7 @@ function ove-refresh-hub {
 		return 0
 	fi
 
-	find "${OVE_GLOBAL_STATE_DIR:?}"/hub/ \
+	${ove_cmd2pathname["find"]:?} "${OVE_GLOBAL_STATE_DIR:?}"/hub/ \
 		-maxdepth 1 \
 		-mindepth 1 \
 		-type d |
@@ -14295,7 +14299,7 @@ function ove-list-hub {
 		return 0
 	fi
 
-	find "${OVE_GLOBAL_STATE_DIR:?}"/hub/ \
+	${ove_cmd2pathname["find"]:?} "${OVE_GLOBAL_STATE_DIR:?}"/hub/ \
 		-maxdepth 1 \
 		-mindepth 1 \
 		-type d |

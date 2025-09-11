@@ -21,7 +21,7 @@
 | ffmpeg        | 3         |
 | ffprobe       | 1         |
 | file          | 4         |
-| find          | 82        |
+| find          | 85        |
 | flock         | 10        |
 | fold          | 2         |
 | fzf           | 5         |
@@ -84,11 +84,11 @@
 | uname         | 4         |
 | uniq          | 7         |
 | uuidgen       | 1         |
-| wc            | 25        |
+| wc            | 26        |
 | whoami        | 1         |
 | whois         | 1         |
 | xargs         | 35        |
 | xclip         | 2         |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1373__  |
+| __sum__       | __1377__  |
