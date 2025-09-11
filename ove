@@ -14243,12 +14243,12 @@ function ove_setup_hub {
 	mapfile -t urls <<<"$(echo -e "${OVE_HUB_URL_LIST//;/\\n}")"
 	i=0
 
-	mkdir -p "${OVE_GLOBAL_STATE_DIR:?}"/hub
+	${ove_cmd2pathname["mkdir"]:?} -p "${OVE_GLOBAL_STATE_DIR:?}"/hub
 	while ((i < ${#urls[@]})); do
 		u="${urls[$i]}"
 		(( i+=1 ))
 		if ! ${ove_cmd2pathname["git"]:?} clone -q "${u}" "${OVE_GLOBAL_STATE_DIR:?}"/hub/$i 2> /dev/null; then
-			rm -rf "${OVE_GLOBAL_STATE_DIR:?}"/hub/$i
+			${ove_cmd2pathname["rm"]:?} -rf "${OVE_GLOBAL_STATE_DIR:?}"/hub/$i
 			ove_echo_note_noprefix "hub: 'git clone ${u}' failed"
 		fi
 	done
@@ -14855,7 +14855,7 @@ EOF
 			echo "git push"
 		fi
 		echo "# OVE oneliner"
-		cat "${dst}"/SETUP
+		${ove_cmd2pathname["cat"]:?} "${dst}"/SETUP
 		return 2
 	else
 		echo
@@ -15411,7 +15411,7 @@ function ove_worktree_remove {
 		${ove_cmd2pathname["rmdir"]:?} $(${ove_cmd2pathname["readlink"]:?} -f -- ${worktree})
 		worktree_base="${worktree##*/}"
 		if [ -h "$OVE_OWEL_STATE_DIR/worktree/${worktree_base}" ]; then
-			rm "$OVE_OWEL_STATE_DIR/worktree/${worktree_base}"
+			${ove_cmd2pathname["rm"]:?} "$OVE_OWEL_STATE_DIR/worktree/${worktree_base}"
 		fi
 	done
 
@@ -15791,7 +15791,7 @@ function ove-replicate {
 			if ! cd ..; then
 				return
 			elif [ ${OVE_BASE_DIR##*/} = ${OVE_OWEL_NAME} ]; then
-				mv ${OVE_OWEL_NAME} ${OVE_OWEL_NAME}a
+				${ove_cmd2pathname["mv"]:?} ${OVE_OWEL_NAME} ${OVE_OWEL_NAME}a
 				n_base=${OVE_OWEL_NAME}a
 			fi
 			if ! ${ove_cmd2pathname["mv"]:?} ${n_base}/{.[!.],}* .; then
@@ -16866,6 +16866,7 @@ function ove-generate-doc {
 function ove-shell-check {
 	ove_entry || return
 
+	local c
 	local exclude
 
 	if ! ove_check_command "shellcheck"; then
@@ -16909,6 +16910,11 @@ function ove-shell-check {
 		# tabs and spaces
 		ove_validate_tabs_and_space "${f}"
 	done < <(${ove_cmd2pathname["git"]:?} -C ${OVE_DIR} ls-files -- ":(exclude)${OVE_BASENAME}" | ${ove_cmd2pathname["xargs"]:?} file | ${ove_cmd2pathname["grep"]:?} 'shell script' | ${ove_cmd2pathname["cut"]:?} -d: -f1)
+
+	# highlight commands without cmd2pathname
+	for c in ${!ove_cmd2pathname[*]}; do
+		${ove_cmd2pathname["grep"]:?} -n -P "^\t+${c} " "${OVE_SELF}"
+	done
 
 	# then, run shellcheck on self
 	(cd "${OVE_DIR}" && \shellcheck --extended-analysis=false -x -e ${exclude} "${OVE_SELF}" > "${OVE_TMP}/shell-check")

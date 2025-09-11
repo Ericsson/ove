@@ -4,7 +4,7 @@
 | awk           | 56        |
 | basename      | 1         |
 | bash          | 19        |
-| cat           | 51        |
+| cat           | 52        |
 | chmod         | 7         |
 | column        | 28        |
 | comm          | 18        |
@@ -30,7 +30,7 @@
 | getent        | 1         |
 | git           | 88        |
 | graph-easy    | 1         |
-| grep          | 196       |
+| grep          | 197       |
 | head          | 22        |
 | incus         | 0         |
 | inotifywait   | 3         |
@@ -43,16 +43,16 @@
 | make          | 1         |
 | md5deep       | 1         |
 | md5sum        | 15        |
-| mkdir         | 37        |
+| mkdir         | 38        |
 | mktemp        | 14        |
-| mv            | 12        |
+| mv            | 13        |
 | pgrep         | 5         |
 | ps            | 1         |
 | pstree        | 1         |
 | readlink      | 32        |
 | rev           | 6         |
 | rg            | 1         |
-| rm            | 57        |
+| rm            | 59        |
 | rmdir         | 3         |
 | scp           | 3         |
 | script        | 6         |
@@ -91,4 +91,4 @@
 | xclip         | 2         |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1377__  |
+| __sum__       | __1383__  |
