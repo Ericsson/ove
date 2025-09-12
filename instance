@@ -885,6 +885,8 @@ function launch_instance {
 	# use instance description for args and env vars
 	set_instance_description
 
+	wait_for_instance
+
 	if ! instance_exec_no_exit "test -d /var/tmp"; then
 		mkdir_var_tmp
 	fi
@@ -963,6 +965,15 @@ EOF
 	instance_file_push_root \
 		"${OVE_TMP}/${tag}-bootcheck.sh" \
 		"${instance_name}/root/${tag}-bootcheck.sh"
+}
+
+function wait_for_instance {
+	while true; do
+		if instance_exec_no_exit_as_root "/bin/true"; then
+			break
+		fi
+		sleep 1
+	done
 }
 
 function run_bootcheck {
@@ -1262,6 +1273,7 @@ function prepare_ssh {
 
 function restart_instance {
 	run "$(instance_runtime)${instance_global_flags} restart ${instance_name}"
+	wait_for_instance
 	run_bootcheck
 
 	if [[ ${OVE_INSTANCE_STEPS} == *ssh* ]]; then
