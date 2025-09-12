@@ -664,8 +664,13 @@ EOF
 		instance_exec_as_root "usermod -p '$(openssl passwd -1 "${pass}")' ${_user}"
 	fi
 
-	instance_exec_as_user "mkdir -p .ssh"
-	instance_exec_as_user "chmod 700 .ssh"
+	if [ "${_user}" = "root" ]; then
+		instance_exec_as_root "mkdir -p .ssh"
+		instance_exec_as_root "chmod 700 .ssh"
+	else
+		instance_exec_as_user "mkdir -p .ssh"
+		instance_exec_as_user "chmod 700 .ssh"
+	fi
 
 	_echo "copy public key to instance for user: ${_user}"
 	i=0
