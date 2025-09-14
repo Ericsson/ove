@@ -969,7 +969,7 @@ EOF
 
 function wait_for_instance {
 	while true; do
-		if instance_exec_no_exit_as_root "/bin/true"; then
+		if instance_exec_no_exit_as_root "sh -c true"; then
 			break
 		fi
 		sleep 1
