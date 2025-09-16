@@ -28,15 +28,11 @@ case $- in
 	*i*) __i=1;;
 esac
 if [ "${__i}" -eq 1 ]; then
-	# shellcheck disable=SC2009
-	__p=$(\ps | \grep -w $$ | \grep -v grep)
-	if [ "${__p#*bash}" = "$__p" ]; then
+	if [ -z "${BASH_VERSION:-}" ]; then
 		echo 'error: run this in bash'
 		unset __i
-		unset __p
 		return 1
 	fi
-	unset __p
 fi
 unset __i
 
