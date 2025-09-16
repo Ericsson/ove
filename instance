@@ -1309,6 +1309,7 @@ EOF
 function expose_user {
 	local f
 	local sul
+	local t
 
 	if [ ${EUID} -eq 0 ]; then
 		return 0
@@ -1351,9 +1352,20 @@ function expose_user {
 	run "$(instance_runtime)${instance_global_flags} config set ${instance_name} security.idmap.isolated true"
 	run "$(instance_runtime)${instance_global_flags} config set ${instance_name} security.idmap.base 200000000"
 
+	# raw.idmap can not be updated when a VM is running
+	t=$("$(instance_runtime)"${instance_global_flags} list -f csv -c t ${instance_name:?})
+	if [ "$t" = "VIRTUAL-MACHINE" ]; then
+		run "$(instance_runtime)${instance_global_flags} stop ${instance_name:?}"
+	fi
+
 	# shellcheck disable=SC2086
 	printf "uid %s ${_uid}\ngid %s ${_gid}" "$(id -u)" "$(id -g)" | \
 		"$(instance_runtime)"${instance_global_flags} config set "${instance_name}" raw.idmap -
+
+	if [ "$t" = "VIRTUAL-MACHINE" ]; then
+		run "$(instance_runtime)${instance_global_flags} start ${instance_name:?}"
+		wait_for_instance
+	fi
 
 	_echo "user: sudo"
 	if instance_exec_no_exit "test -d /etc/sudoers.d/"; then
