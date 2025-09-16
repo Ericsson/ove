@@ -836,7 +836,7 @@ function print_vars {
 			# shellcheck disable=SC2086
 			echo "${v/OVE_INSTANCE_}=$(_uniq ${!v})"
 		fi
-	done | xargs
+	done | tr ',' '#' | xargs
 }
 
 # $1: file
