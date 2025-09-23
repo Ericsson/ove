@@ -1561,7 +1561,7 @@ function run_ove {
 				"${instance_name}${_home}/SETUP"
 			instance_exec "bash ${_home}/SETUP"
 		else
-			instance_exec "bash -c '$(ove-oneliner)'"
+			instance_exec "bash -c '$(XDG_SESSION_TYPE='' ove-oneliner)'"
 		fi
 		ws_name=$(instance_exec "bash -c 'find -mindepth 2 -maxdepth 2 -name .owel' | cut -d/ -f2")
 		ws_name=${ws_name//[$'\t\r\n']/}
