@@ -1333,12 +1333,11 @@ function expose_user {
 
 	# create user?
 	if ! instance_exec_no_exit "id -u ${OVE_INSTANCE_USER:?}" &> /dev/null; then
-		f=$(instance_exec "which bash" 2> /dev/null)
-		f=${f//[$'\t\r\n']/}
-		if [ "$f" = "" ]; then
-			f="/bin/bash"
+		if instance_exec_no_exit "command -v which > /dev/null"; then
+			f=$(instance_exec "which bash" 2> /dev/null)
+			f=${f//[$'\t\r\n']/}
 		fi
-		instance_exec "useradd --shell ${f:?} -m -d ${OVE_HOME:?} ${OVE_INSTANCE_USER:?}"
+		instance_exec "useradd --shell ${f:-/bin/bash} -m -d ${OVE_HOME:?} ${OVE_INSTANCE_USER:?}"
 	fi
 
 	if ! _uid=$(get_id "uid"); then

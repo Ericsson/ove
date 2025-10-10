@@ -811,7 +811,7 @@ OVE has been tested for the following Linux distributions:
 
 | Distribution        | Release(s)   |
 |---------------------|--------------|
-| AlmaLinux           | 9.1          |
+| AlmaLinux           | 9, 10        |
 | Alpine Linux        | 3.15..3.22   |
 | Arch Linux          | N/A          |
 | Debian              | 10..13       |

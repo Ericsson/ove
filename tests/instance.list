@@ -1,4 +1,5 @@
 images:almalinux/9
+images:almalinux/10
 images:alpine/3.19
 images:alpine/3.20
 images:alpine/3.21

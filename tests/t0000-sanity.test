@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 
 test_sh() {
+	local a
+	local b
+
+	a=$(readlink -f $(command -v sh))
+	b=$(readlink -f $(command -v bash))
+	if [ "$a" = "$b" ]; then
+		return 0
+	fi
 	sh -i -c '. ./ove'
 	assertEquals "1" "$?"
 }
