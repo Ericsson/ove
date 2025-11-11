@@ -434,10 +434,10 @@ if ! sed -i \
 fi
 EOF
 	if [[ ${image} == *alpine* ]]; then
-		echo "rc-update add sshd >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
-		echo "/etc/init.d/sshd start >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
+		echo "rc-update add sshd >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-restart-ssh-daemon.sh"
+		echo "/etc/init.d/sshd start >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-restart-ssh-daemon.sh"
 	elif [[ ${image} == *devuan* ]]; then
-		echo "service ssh restart" >> "${OVE_TMP}/${tag}-services.sh"
+		echo "service ssh restart" >> "${OVE_TMP}/${tag}-restart-ssh-daemon.sh"
 	elif [[ ${image} == *openwrt* ]]; then
 		{
 			echo "uci set dropbear.@dropbear[0].Port=2222"
@@ -447,13 +447,17 @@ EOF
 			echo "/etc/init.d/firewall disable"
 			echo "/etc/init.d/sshd enable"
 			echo "/etc/init.d/sshd start"
-		} >> "${OVE_TMP}/${tag}-services.sh"
+		} >> "${OVE_TMP}/${tag}-restart-ssh-daemon.sh"
 	else
 		for s in ssh sshd; do
-			echo "systemctl -q restart $s >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
-			echo "systemctl -q enable $s >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-services.sh"
+			echo "systemctl -q restart $s >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-restart-ssh-daemon.sh"
+			echo "systemctl -q enable $s >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-restart-ssh-daemon.sh"
 		done
 	fi
+	echo "sh ${tag}-restart-ssh-daemon.sh" >> "${OVE_TMP}/${tag}-services.sh"
+	instance_file_push_root \
+		"${OVE_TMP}/${tag}-restart-ssh-daemon.sh" \
+		"${instance_name}/root/${tag}-restart-ssh-daemon.sh"
 
 	cat >> "${OVE_TMP}/${tag}-services.sh" <<EOF
 i=0
@@ -462,6 +466,8 @@ while true; do
 	if [ \$i -gt 100 ]; then
 		echo "error: sshd did not start"
 		exit 1
+	elif [ \$(( i % 10 )) -eq 0 ]; then
+		sh /root/${tag}-restart-ssh-daemon.sh
 	elif pgrep -f sshd >/dev/null 2>&1; then
 		sleep 1
 		break
@@ -1277,7 +1283,7 @@ function restart_instance {
 	run_bootcheck
 
 	if [[ ${OVE_INSTANCE_STEPS} == *ssh* ]]; then
-		cat > "${OVE_TMP}/${tag}-wait-for-sshd.sh" <<EOF
+		cat > "${OVE_TMP}/${tag}-wait-for-ssh-daemon.sh" <<EOF
 #!/usr/bin/env sh
 
 i=0
@@ -1286,6 +1292,8 @@ i=\$((i+1))
 if [ \$i -gt 100 ]; then
 	echo "error: sshd did not start"
 	exit 1
+elif [ \$(( i % 10 )) -eq 0 ]; then
+	sh /root/${tag}-restart-ssh-daemon.sh
 elif pgrep -f sshd > /dev/null 2>&1; then
 	sleep 1
 	break
@@ -1296,13 +1304,13 @@ done
 EOF
 
 		if [[ ${OVE_INSTANCE_STEPS} == *verbose* ]]; then
-			sed -i -e "2iset -x" "${OVE_TMP}/${tag}-wait-for-sshd.sh"
+			sed -i -e "2iset -x" "${OVE_TMP}/${tag}-wait-for-ssh-daemon.sh"
 		fi
 
 		instance_file_push_root \
-			"${OVE_TMP}/${tag}-wait-for-sshd.sh" \
-			"${instance_name}/root/${tag}-wait-for-sshd.sh"
-		instance_exec_as_root "sh /root/${tag}-wait-for-sshd.sh"
+			"${OVE_TMP}/${tag}-wait-for-ssh-daemon.sh" \
+			"${instance_name}/root/${tag}-wait-for-ssh-daemon.sh"
+		instance_exec_as_root "sh /root/${tag}-wait-for-ssh-daemon.sh"
 	fi
 }
 
@@ -1402,6 +1410,7 @@ function expose_user {
 
 function prepare_ove {
 	local ove_packs
+	local re
 
 	if [[ ${OVE_INSTANCE_STEPS} != *ove* ]]; then
 		return 0
@@ -1460,7 +1469,8 @@ function prepare_ove {
 		make install || true'"
 	else
 		ove_packs+=" util-linux"
-		if [[ ${image} == *fedora*42* ]]; then
+		re="fedora.*(42|43)"
+		if [[ ${image} =~ ${re} ]]; then
 			ove_packs+=" util-linux-script"
 		fi
 	fi

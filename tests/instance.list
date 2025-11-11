@@ -13,6 +13,7 @@ images:devuan/chimaera
 images:devuan/daedalus
 images:fedora/41
 images:fedora/42
+images:fedora/43
 images:kali
 images:mint/uma
 images:mint/una
