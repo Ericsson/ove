@@ -1434,11 +1434,13 @@ function prepare_ove {
 		ove_packs+=" coreutils-tsort"
 		ove_packs+=" diffutils"
 		ove_packs+=" findutils"
+		ove_packs+=" git-http"
 		ove_packs+=" less"
 		ove_packs+=" script-utils"
 		ove_packs+=" sed"
 
 		instance_exec_as_root "sh -c '
+		set -x
 		opkg update
 		opkg install gcc grep make libtool-bin
 		wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.40/util-linux-2.40-rc1.tar.gz
@@ -1465,7 +1467,7 @@ function prepare_ove {
 		cd util-linux-2.40-rc1
 		opkg install flex bison automake
 		./configure
-		make -j
+		make
 		make install || true'"
 	else
 		ove_packs+=" util-linux"
