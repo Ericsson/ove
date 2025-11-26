@@ -1650,6 +1650,40 @@ function run_unittest {
 	instance_exec_as_user "bash ${bash_opt} -c '${prefix}; ove-unittest $OVE_UNITTEST_TC'"
 }
 
+function pre_entry {
+	if [ "${entry}" = "" ]; then
+		return 0
+	fi
+
+	OVE_INSTANCE_NAME="${instance_name}"
+	export OVE_INSTANCE_NAME
+
+	if [ -x "${OVE_OWEL_DIR:?}/projects/common/pre-entry" ]; then
+		"${OVE_OWEL_DIR:?}/projects/common/pre-entry"
+	fi
+
+	if [ -x "${OVE_OWEL_DIR:?}/projects/${entry}/pre-entry" ]; then
+		"${OVE_OWEL_DIR:?}/projects/${entry}/pre-entry"
+	fi
+}
+
+function post_entry {
+	if [ "${entry}" = "" ]; then
+		return 0
+	fi
+
+	OVE_INSTANCE_NAME="${instance_name}"
+	export OVE_INSTANCE_NAME
+
+	if [ -x "${OVE_OWEL_DIR:?}/projects/common/post-entry" ]; then
+		"${OVE_OWEL_DIR:?}/projects/common/post-entry"
+	fi
+
+	if [ -x "${OVE_OWEL_DIR:?}/projects/${entry}/post-entry" ]; then
+		"${OVE_OWEL_DIR:?}/projects/${entry}/post-entry"
+	fi
+}
+
 function run_entry_ove {
 	if [ "${entry}" = "" ]; then
 		return 0
@@ -1764,8 +1798,10 @@ function main {
 	prepare_unittest
 	run_unittest
 	push_files
+	pre_entry
 	run_entry_ove
 	run_entry_cmd
+	post_entry
 	wait_X
 }
 
