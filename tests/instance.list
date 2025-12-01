@@ -11,6 +11,7 @@ images:debian/12
 images:debian/13
 images:devuan/chimaera
 images:devuan/daedalus
+images:devuan/excalibur
 images:fedora/41
 images:fedora/42
 images:fedora/43
