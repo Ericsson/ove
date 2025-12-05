@@ -4,6 +4,7 @@ images:alpine/3.19
 images:alpine/3.20
 images:alpine/3.21
 images:alpine/3.22
+images:alpine/3.23
 images:alpine/edge
 images:archlinux
 images:debian/11
