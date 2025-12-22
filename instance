@@ -92,9 +92,11 @@ function init {
 	fi
 
 	if [[ ${OVE_INSTANCE_STEPS} == *X* ]]; then
-		if ! command -v xpra > /dev/null; then
-			echo "error: command 'xpra' not found" 1>&2
-			exit 1
+		if [ "${OVE_INSTANCE_XPRA_CLIENT_ARGS}" != "" ]; then
+			if ! command -v xpra > /dev/null; then
+				echo "error: command 'xpra' not found" 1>&2
+				exit 1
+			fi
 		fi
 		OVE_INSTANCE_STEPS+=" ssh"
 		OVE_INSTANCE_STEPS+=" ssh_config"
