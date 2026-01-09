@@ -1953,8 +1953,7 @@ function ove-loop-close {
 		ove_command_usage
 		return 1
 	fi
-
-	ove_kill_procs 1 0.2 $(${ove_cmd2pathname["pgrep"]:?} -f ove_loop_command)
+	ove_kill_procs 1 0.2 $(${ove_cmd2pathname["pgrep"]:?} -f "${OVE_BASE_DIR}/ove;.*ove_loop_command")
 	ove_kill_procs 1 0.2 $(${ove_cmd2pathname["pgrep"]:?} -f "inotifywait.*${OVE_OWEL_TMP_DIR}")
 }
 
