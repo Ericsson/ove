@@ -76,14 +76,19 @@ function pre {
 		fi
 	done
 
-	deps=" adduser"
-	deps+=" usermod"
-	for c in ${deps}; do
-		if ! ${prefix} bash -c "command -v ${c}" > /dev/null; then
-			echo "error: command '${c}' is missing" 1>&2
-			exit 1
-		fi
-	done
+	incus_admin=0
+	if id -nG "${OVE_USER}" | tr ' ' '\n' | grep -xq incus-admin; then
+		incus_admin=1
+	else
+		deps=" adduser"
+		deps+=" usermod"
+		for c in ${deps}; do
+			if ! ${prefix} bash -c "command -v ${c}" > /dev/null; then
+				echo "error: command '${c}' is missing" 1>&2
+				exit 1
+			fi
+		done
+	fi
 }
 
 function verify {
@@ -136,33 +141,27 @@ function install {
 		install \
 		incus
 	incus --version
-	${prefix} adduser --quiet "${OVE_USER:?}" incus-admin
+	if [ "${incus_admin:?}" -eq 0 ]; then
+		${prefix} adduser --quiet "${OVE_USER:?}" incus-admin
+	fi
 }
 
 function init {
-	local ret
-
-	ret=0
-
-	set +x
-	set +e
-	read \
-		-p "minimal incus installation? (this dialog will timeout in 30 seconds) (Y/n) " \
-		-r \
-		-t 30
-	ret=$?
-	set -x
-	if [ "${REPLY,}" = "y" ] || [ "${ret}" -gt 128 ]; then
-		suffix="--minimal"
+	if [ $# -eq 0 ]; then
+		args=("--minimal")
+	else
+		args=("$@")
 	fi
-	sg incus-admin -c "incus admin init ${suffix}"
-	${prefix} usermod -aG incus-admin "${OVE_USER:?}"
+	sg incus-admin -c "incus admin init ${args[*]}"
+	if [ "${incus_admin:?}" -eq 0 ]; then
+		${prefix} usermod -aG incus-admin "${OVE_USER:?}"
+	fi
 	if ! sg incus-admin -c "incus list" > /dev/null; then
 		echo "error: not possible to run 'incus list'" 1>&2
 		exit 1
+	elif [ "${incus_admin:?}" -eq 1 ]; then
+		exit 0
 	fi
-	set +x
-
 	echo "---"
 	echo "incus is now installed. To proceed, you have two options:"
 	echo
@@ -175,7 +174,6 @@ function init {
 }
 
 pre
-set -x
 verify
 key
 sources
@@ -183,4 +181,4 @@ install
 if [[ "$*" == *--no-init* ]]; then
 	exit 0
 fi
-init
+init "$@"
