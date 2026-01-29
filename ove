@@ -1455,6 +1455,10 @@ function ove_loop_command {
 			ove_echo_cyan_error_noprefix "$(${ove_cmd2pathname["date"]:?} '+%Y-%m-%d %H:%M:%S'):ove-${*}"
 		elif [ "${OVE_TMUX_PANE_HEADER}" = "off" ]; then
 			:
+		elif [ "${OVE_TMUX_PANE_HEADER}" = "tmux" ]; then
+			if ove_sanity_check_tmux 2> /dev/null && [ "${TMUX_PANE}" != "" ]; then
+				${ove_cmd2pathname["tmux"]:?} set-option -p -t "${TMUX_PANE}" pane-border-format "${OVE_TMUX_PANE_HEADER_STYLE}${*}"
+			fi
 		fi
 
 		# inotify: first iteration?
@@ -1841,6 +1845,8 @@ function ove-run {
 			header="ove_echo_cyan_error ${OVE_OWEL_NAME}:${cmd} [t:${_timeout}]"
 		elif [ "${OVE_TMUX_PANE_HEADER}" = "short" ]; then
 			header="ove_echo_cyan_error_noprefix $(${ove_cmd2pathname["date"]:?} '+%Y-%m-%d %H:%M:%S'):${cmd}"
+		elif [ "${OVE_TMUX_PANE_HEADER}" = "tmux" ]; then
+			header="true"
 		elif [ "${OVE_TMUX_PANE_HEADER}" = "off" ]; then
 			header="true"
 		fi
@@ -1891,6 +1897,9 @@ function ove-run {
 			tmux_opt="-t ${target_window}"
 		fi
 		${ove_cmd2pathname["tmux"]:?} select-layout ${tmux_opt} ${OVE_TMUX_LAYOUT}
+		if [ "${OVE_TMUX_PANE_HEADER}" = "tmux" ]; then
+			${ove_cmd2pathname["tmux"]:?} set-option -p pane-border-format "${OVE_TMUX_PANE_HEADER_STYLE}${cmd}"
+		fi
 		if [ "$target_window" = "" ]; then
 			${ove_cmd2pathname["tmux"]:?} select-pane -t ${TMUX_PANE}
 		fi
@@ -13542,9 +13551,14 @@ function ove_config_builtins_init {
 		export OVE_TMUX_LAYOUT="tiled"
 	fi
 
-	# OVE_TMUX_PANE_HEADER:string:wide|short|off:fzf loop run :header style for tmux panes
+	# OVE_TMUX_PANE_HEADER:string:tmux|wide|short|off:fzf loop run:header style for tmux panes
 	if [ -z "${OVE_TMUX_PANE_HEADER+x}" ]; then
-		export OVE_TMUX_PANE_HEADER="short"
+		export OVE_TMUX_PANE_HEADER="tmux"
+	fi
+
+	# OVE_TMUX_PANE_HEADER_STYLE:string::fzf loop run:tmux pane style
+	if [ -z "${OVE_TMUX_PANE_HEADER_STYLE+x}" ]; then
+		export OVE_TMUX_PANE_HEADER_STYLE="#[fg=lightgreen,bold bg=black align=centre]"
 	fi
 
 	# OVE_TMUX_PANE_PER_WINDOW:int::run run-parallel:max number of tmux panes within one tmux window, no limit (=0)

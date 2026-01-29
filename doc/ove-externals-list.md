@@ -76,7 +76,7 @@
 | task          | 2         |
 | tee           | 11        |
 | timeout       | 4         |
-| tmux          | 13        |
+| tmux          | 15        |
 | touch         | 5         |
 | tr            | 23        |
 | tsort         | 2         |
@@ -91,4 +91,4 @@
 | xclip         | 2         |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1383__  |
+| __sum__       | __1385__  |
