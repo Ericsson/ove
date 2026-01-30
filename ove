@@ -9358,12 +9358,12 @@ function ove-env {
 	fi
 
 	for e in ${v}; do
-		str+="${e}#${!e/\\/\\\\}\n"
+		str+="${e}¶${!e/\\/\\\\}\n"
 	done
 
 	printf "${str}" | \
 		LC_ALL="C" ${ove_cmd2pathname["sort"]:?} | \
-		${ove_cmd2pathname["column"]:?} -t -s'#'
+		${ove_cmd2pathname["column"]:?} -t -s'¶'
 }
 
 function ove_entry {
