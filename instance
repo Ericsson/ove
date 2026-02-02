@@ -384,6 +384,8 @@ EOF
 		package_manager="opkg install"
 	elif [ "${packman}" = "nix-env" ]; then
 		package_manager="nix-env -iA"
+	elif [ "${packman}" = "slackpkg" ]; then
+		package_manager="slackpkg -dialog=off -default_answer=yes -batch=on install"
 	else
 		echo "error: unknown package manager for '${image}'" 1>&2
 		exit 1
@@ -440,6 +442,8 @@ EOF
 		echo "/etc/init.d/sshd start >/dev/null 2>&1" >> "${OVE_TMP}/${tag}-restart-ssh-daemon.sh"
 	elif [[ ${image} == *devuan* ]]; then
 		echo "service ssh restart" >> "${OVE_TMP}/${tag}-restart-ssh-daemon.sh"
+	elif [[ ${image} == *slackware* ]]; then
+		echo "/etc/rc.d/rc.sshd start" >> "${OVE_TMP}/${tag}-restart-ssh-daemon.sh"
 	elif [[ ${image} == *openwrt* ]]; then
 		{
 			echo "uci set dropbear.@dropbear[0].Port=2222"
@@ -926,6 +930,8 @@ if [ ! -s /root/${tag}-packman ]; then
 		packman="opkg"
 	elif command -v nix-env > /dev/null; then
 		packman="nix-env"
+	elif command -v slackpkg > /dev/null; then
+		packman="slackpkg"
 	else
 		echo "bootcheck: unknown package manager for ${image}"
 		packman="unknown"
@@ -933,6 +939,7 @@ if [ ! -s /root/${tag}-packman ]; then
 	echo "\$packman" > /root/${tag}-packman
 fi
 
+exq=""
 if command -v systemctl > /dev/null; then
 	cmd="systemctl is-system-running"
 	exp="running"
@@ -945,6 +952,7 @@ elif command -v sv > /dev/null; then
 elif command -v runlevel > /dev/null; then
 	cmd="runlevel"
 	exp="N 2"
+	exq="N 3"
 elif command -v procd > /dev/null; then
 	cmd="sleep 1"
 	exp=""
@@ -960,6 +968,8 @@ while true; do
 	fi
 	s=\$(\$cmd 2> /dev/null);
 	if [ "\$s" = "\$exp" ]; then
+		break
+	elif [ "\$s" = "\$exq" ]; then
 		break
 	fi
 	sleep 0.1
@@ -1139,6 +1149,8 @@ function update_package_manager {
 			args+=" -y"
 		elif [ "${packman}" = "pacman" ]; then
 			args="-Syu --noconfirm"
+		elif [ "${packman}" = "slackpkg" ]; then
+			args+=" -batch=on"
 		fi
 
 		if ! instance_exec_no_exit_as_root "${package_manager%% *} $args"; then
@@ -1280,7 +1292,12 @@ function prepare_ssh {
 }
 
 function restart_instance {
-	run "$(instance_runtime)${instance_global_flags} restart ${instance_name}"
+	local args
+
+	if [[ ${image} = *slackware* ]]; then
+		args="-f"
+	fi
+	run "$(instance_runtime)${instance_global_flags} restart ${args} ${instance_name}"
 	wait_for_instance
 	run_bootcheck
 
@@ -1423,6 +1440,12 @@ function prepare_ove {
 	ove_packs+="bash bzip2 git curl file binutils coreutils tar make"
 	if [[ ${image} = *nixos* ]]; then
 		ove_packs="nixos.bash nixos.bzip2 nixos.git nixos.curl nixos.file nixos.binutils nixos.coreutils nixos.gnumake"
+	elif [[ ${image} = *slackware* ]]; then
+		ove_packs+=" brotli"
+		ove_packs+=" gc"
+		ove_packs+=" guile"
+		ove_packs+=" less"
+		ove_packs+=" nghttp3"
 	elif [[ ${image} = *openwrt* ]]; then
 		ove_packs+=" coreutils-comm"
 		ove_packs+=" coreutils-du"
