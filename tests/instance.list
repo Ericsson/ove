@@ -23,7 +23,7 @@ images:mint/vera
 images:mint/victoria
 images:mint/virginia
 images:mint/wilma
-images:nixos/25.05
+images:nixos/25.11
 images:opensuse/tumbleweed
 images:ubuntu/22.04
 images:ubuntu/24.04

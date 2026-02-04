@@ -1046,7 +1046,7 @@ function run_X {
 
 	# running as user => enable-linger (for Xpra)
 	if [[ ${OVE_INSTANCE_STEPS} = *user* ]]; then
-		instance_exec_no_exit "command -v loginctl > /dev/null && loginctl enable-linger ${OVE_INSTANCE_USER:?}"
+		instance_exec_no_exit "sh -c 'command -v loginctl > /dev/null && loginctl enable-linger ${OVE_INSTANCE_USER:?}'"
 	fi
 
 	# restart
@@ -1360,8 +1360,8 @@ function expose_user {
 
 	# create user?
 	if ! instance_exec_no_exit "id -u ${OVE_INSTANCE_USER:?}" &> /dev/null; then
-		if instance_exec_no_exit "command -v which > /dev/null"; then
-			f=$(instance_exec "which bash" 2> /dev/null)
+		if instance_exec_no_exit "sh -c 'command -v which > /dev/null'"; then
+			f=$(instance_exec "sh -c 'which bash'" 2> /dev/null)
 			f=${f//[$'\t\r\n']/}
 		fi
 		instance_exec "useradd --shell ${f:-/bin/bash} -m -d ${OVE_HOME:?} ${OVE_INSTANCE_USER:?}"

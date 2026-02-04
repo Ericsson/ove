@@ -819,7 +819,7 @@ OVE has been tested for the following Linux distributions:
 | Fedora              | 36..43       |
 | Kali                | N/A          |
 | Linux Mint          | Uma..Wilma   |
-| NixOS               | 25.05        |
+| NixOS               | 25.05..25.11 |
 | openSUSE Tumbleweed | N/A          |
 | Slackware           | 15.0         |
 | Ubuntu              | 16.04..24.04 |
