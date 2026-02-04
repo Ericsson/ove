@@ -17244,7 +17244,7 @@ function ove_instance_helper {
 
 	if [ $# -lt 2 ]; then
 		return 1
-	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/instance.list ] && ! ove-refresh-image; then
+	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/instance.list ] && ! ove-refresh-images; then
 		return 1
 	fi
 
@@ -17402,7 +17402,7 @@ function ove-list-images {
 
 	if ! c=$(ove_instance_runtime); then
 		return 1
-	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/instance.list ] && ! ove-refresh-image; then
+	elif [ ! -s ${OVE_GLOBAL_STATE_DIR:?}/instance.list ] && ! ove-refresh-images; then
 		return 1
 	fi
 
@@ -17414,8 +17414,8 @@ function ove-list-images {
 	} | LC_ALL="C" ${ove_cmd2pathname["sort"]:?}
 }
 
-# refresh-image: :refresh list of available images (incus):INSTANCE
-function ove-refresh-image {
+# refresh-images: :refresh list of available images (incus):INSTANCE
+function ove-refresh-images {
 	ove_entry || return
 
 	local arch
@@ -17569,7 +17569,7 @@ function ove-post-push {
 
 	if [ ! -s "${OVE_DIR}/tests/instance.list" ]; then
 		return 1
-	elif ! ove-refresh-image; then
+	elif ! ove-refresh-images; then
 		return 1
 	fi
 
@@ -17595,7 +17595,7 @@ function ove-post-push-parallel {
 	elif ! ove_sanity_check_tmux; then
 		ove_command_usage
 		return 1
-	elif ! ove-refresh-image; then
+	elif ! ove-refresh-images; then
 		return 1
 	fi
 
