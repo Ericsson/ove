@@ -4,7 +4,6 @@ function test_built_ins_without_args() {
 	ignore+=" digraph"
 	ignore+=" export-logs"
 	ignore+=" generate-doc"
-	ignore+=" image-refresh"
 	ignore+=" list-images"
 	ignore+=" locate-all"
 	ignore+=" logo"
@@ -14,7 +13,7 @@ function test_built_ins_without_args() {
 	ignore+=" pre-push"
 	ignore+=" ps"
 	ignore+=" refresh"
-	ignore+=" refresh-image"
+	ignore+=" refresh-images"
 	ignore+=" shell-check"
 	ignore+=" unsource"
 
