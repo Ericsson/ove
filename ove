@@ -3559,7 +3559,7 @@ function ove_projects_cmd_execute {
 
 	if [ "${ret}" -ne 0 ]; then
 		ove_echo_error "${proj_name}: ${proj_command}"
-	elif [ ${OVE_LOGLEVEL} -ne 0 ]; then
+	else
 		ove_echo_cyan_error "${proj_name}: ${proj_command}: done"
 	fi
 
@@ -3622,9 +3622,7 @@ function ove_projects_cmd {
 		return 1
 	fi
 
-	if [ ${OVE_LOGLEVEL} -ne 0 ]; then
-		ove_echo_cyan_error "${proj_name}: ${proj_command}"
-	fi
+	ove_echo_cyan_error "${proj_name}: ${proj_command}"
 
 	if [ "${OVE_FORCE_SERIALIZE_COMMANDS}" != "" ]; then
 		re=\\b${proj_command}\\b
@@ -5974,6 +5972,10 @@ function ove_echo {
 	local now_f
 	local now_s
 
+	if [ ${OVE_LOGLEVEL} -eq 0 ]; then
+		return
+	fi
+
 	ove_time_diff "${OVE_PREV_S}" "${OVE_PREV_F}"
 	ove_time_pad "${now_f}" a
 	ove_time_pad "${diff_f}" b
@@ -6005,7 +6007,7 @@ function ove_time {
 	printf "%s:%s\n" "$diff" "$b"
 }
 
-# echo:[green|cyan|yellow|red|error] txt:prefix echo with date and time diff:CORE
+# echo:[blue|cyan|error|green|red|yellow] txt:prefix echo with date and time diff:CORE
 function ove-echo {
 	ove_entry || return
 
