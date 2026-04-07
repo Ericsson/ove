@@ -12,7 +12,6 @@ images:debian/13
 images:devuan/chimaera
 images:devuan/daedalus
 images:devuan/excalibur
-images:fedora/41
 images:fedora/42
 images:fedora/43
 images:kali
@@ -23,6 +22,9 @@ images:mint/vera
 images:mint/victoria
 images:mint/virginia
 images:mint/wilma
+images:mint/xia
+images:mint/zara
+images:mint/zena
 images:nixos/25.11
 images:opensuse/tumbleweed
 images:ubuntu/22.04

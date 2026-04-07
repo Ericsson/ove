@@ -818,7 +818,7 @@ OVE has been tested for the following Linux distributions:
 | Devuan              | 3..6         |
 | Fedora              | 36..43       |
 | Kali                | N/A          |
-| Linux Mint          | Uma..Wilma   |
+| Linux Mint          | Uma..Zena    |
 | NixOS               | 25.05..25.11 |
 | openSUSE Tumbleweed | N/A          |
 | Slackware           | 15.0         |
