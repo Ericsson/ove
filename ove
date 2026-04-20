@@ -1712,8 +1712,8 @@ function ove_loop_command {
 	done
 }
 
-# ide:[close|reopen]:launch one or more 'loop'-commands specified by OVE_IDE_LOOP_ARGS (tmux):UTIL
-function ove-ide {
+# dashboard:[close|reopen]:launch one or more 'loop'-commands specified by OVE_DASHBOARD_LOOP_ARGS (tmux):UTIL
+function ove-dashboard {
 	ove_entry || return
 
 	local i
@@ -1731,25 +1731,25 @@ function ove-ide {
 			return 0
 		elif [ "$1" = "reopen" ]; then
 			ove-loop-close
-			ove-ide
+			ove-dashboard
 			return 0
 		fi
 		ove_command_usage
 		return 1
 	fi
 
-	if [ "${OVE_IDE_LOOP_ARGS}" = "" ]; then
-		ove_echo_error_noprefix "'OVE_IDE_LOOP_ARGS' is empty or not set"
+	if [ "${OVE_DASHBOARD_LOOP_ARGS}" = "" ]; then
+		ove_echo_error_noprefix "'OVE_dashboard_LOOP_ARGS' is empty or not set"
 		ove_command_usage
 		return 1
 	fi
 
-	mapfile -t loop_args <<<"$(echo -e "${OVE_IDE_LOOP_ARGS//;/\\n}")"
+	mapfile -t loop_args <<<"$(echo -e "${OVE_DASHBOARD_LOOP_ARGS//;/\\n}")"
 	i=0
 	while ((i < ${#loop_args[@]})); do
 		ove-loop ${loop_args[i]}
 		(( i+=1 ))
-		${ove_cmd2pathname["sleep"]:?} ${OVE_IDE_SLEEP_BETWEEN_COMMANDS:=0.5}
+		${ove_cmd2pathname["sleep"]:?} ${OVE_DASHBOARD_SLEEP_BETWEEN_COMMANDS:=0.5}
 	done
 }
 
@@ -10557,7 +10557,7 @@ ove clean projX && ove loop 0 1 0 build projX
 # now modify a file within projX in another tmux pane/terminal
 
 # open a few tmux panes that runs the following OVE commands: news, ahead, fetch
-ove ide
+ove dashboard
 
 $(ove_echo_cyan_noprefix "log commands")
 
@@ -12686,7 +12686,7 @@ function ove_bash_complete {
 		else
 			return
 		fi
-	elif [ "${subcommand}" = "ide" ]; then
+	elif [ "${subcommand}" = "dashboard" ]; then
 		if [ ${size} -eq 2 ]; then
 			wordlist="close reopen"
 		fi
@@ -13578,14 +13578,14 @@ function ove_config_builtins_init {
 		export OVE_EDIT_LIFESPAN_TIME_IN_SEC=30
 	fi
 
-	# OVE_IDE_LOOP_ARGS:string::ide:semi-colon separated list of arguments to 'ove-loop' to launch
-	if [ -z "${OVE_IDE_LOOP_ARGS+x}" ]; then
-		export OVE_IDE_LOOP_ARGS="3600 0 0 fetch;60 1 0 ahead;3600 0 0 news"
+	# OVE_DASHBOARD_LOOP_ARGS:string::dashboard:semi-colon separated list of arguments to 'ove-loop' to launch
+	if [ -z "${OVE_DASHBOARD_LOOP_ARGS+x}" ]; then
+		export OVE_DASHBOARD_LOOP_ARGS="3600 0 0 fetch;60 1 0 ahead;3600 0 0 news"
 	fi
 
-	# OVE_IDE_SLEEP_BETWEEN_COMMANDS:float::ide:sleep between each command
-	if [ -z "${OVE_IDE_SLEEP_BETWEEN_COMMANDS+x}" ]; then
-		export OVE_IDE_SLEEP_BETWEEN_COMMANDS=0.5
+	# OVE_DASHBOARD_SLEEP_BETWEEN_COMMANDS:float::dashboard:sleep between each command
+	if [ -z "${OVE_DASHBOARD_SLEEP_BETWEEN_COMMANDS+x}" ]; then
+		export OVE_DASHBOARD_SLEEP_BETWEEN_COMMANDS=0.5
 	fi
 
 	# OVE_ACCELERATE_BUILDS:int:0|1:all-build-commands:prefix build acceleration tools (ccache/icecream) to PATH

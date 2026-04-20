@@ -57,9 +57,9 @@ if ! command -v git > /dev/null; then
 	exit 1
 fi
 
-if [ "x${USER}" != "x" ]; then
+if [ "${USER}" != "" ]; then
 	OVE_USER="${USER}"
-elif [ "x${LOGNAME}" != "x" ]; then
+elif [ "${LOGNAME}" != "" ]; then
 	OVE_USER="${LOGNAME}"
 elif command -v whoami > /dev/null; then
 	OVE_USER="$(\whoami)"
