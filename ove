@@ -1450,14 +1450,14 @@ function ove_loop_command {
 		fi
 		clear
 		if [ "${OVE_TMUX_PANE_HEADER}" = "wide" ]; then
-			ove_echo_cyan_error "${OVE_OWEL_NAME}:ove-${*} [c:${i} t:${interval} i:${use_inotify} m:${max_count}]"
+			ove_echo_cyan_error "${OVE_OWEL_NAME}:${*#do * } [c:${i} t:${interval} i:${use_inotify} m:${max_count}]"
 		elif [ "${OVE_TMUX_PANE_HEADER}" = "short" ]; then
-			ove_echo_cyan_error_noprefix "$(${ove_cmd2pathname["date"]:?} '+%Y-%m-%d %H:%M:%S'):ove-${*}"
+			ove_echo_cyan_error_noprefix "$(${ove_cmd2pathname["date"]:?} '+%Y-%m-%d %H:%M:%S'):${*#do * }"
 		elif [ "${OVE_TMUX_PANE_HEADER}" = "off" ]; then
 			:
 		elif [ "${OVE_TMUX_PANE_HEADER}" = "tmux" ]; then
 			if ove_sanity_check_tmux 2> /dev/null && [ "${TMUX_PANE}" != "" ]; then
-				${ove_cmd2pathname["tmux"]:?} set-option -p -t "${TMUX_PANE}" pane-border-format "${OVE_TMUX_PANE_HEADER_STYLE}${*}"
+				${ove_cmd2pathname["tmux"]:?} set-option -p -t "${TMUX_PANE}" pane-border-format "${OVE_TMUX_PANE_HEADER_STYLE}${*#do * }"
 			fi
 		fi
 
