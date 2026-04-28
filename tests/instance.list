@@ -29,4 +29,5 @@ images:nixos/25.11
 images:opensuse/tumbleweed
 images:ubuntu/22.04
 images:ubuntu/24.04
+images:ubuntu/26.04
 images:voidlinux

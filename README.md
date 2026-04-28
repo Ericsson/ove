@@ -822,7 +822,7 @@ OVE has been tested for the following Linux distributions:
 | NixOS               | 25.05..25.11 |
 | openSUSE Tumbleweed | N/A          |
 | Slackware           | 15.0         |
-| Ubuntu              | 16.04..24.04 |
+| Ubuntu              | 16.04..26.04 |
 | Void Linux          | N/A          |
 
 Want to know more about OVE? Please check out the OVE
