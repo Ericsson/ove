@@ -395,10 +395,10 @@ EOF
 #!/usr/bin/env sh
 ${package_manager} "\$@"
 EOF
+	chmod +x "${OVE_TMP}/${tag}-packman"
 	instance_file_push_root \
 		"${OVE_TMP}/${tag}-packman" \
-		"${instance_name}/sbin/packman" \
-		"--mode 0755"
+		"${instance_name}/sbin/packman"
 }
 
 function is_cluster {
@@ -791,6 +791,8 @@ function instance_file_push_helper {
 		echo "fatal: instance_file_push_helper" 1>&2
 		exit 1
 	fi
+
+	_cmd+=" --mode $(stat -c '%04a' "$1")"
 	_cmd+=" $1"
 	_cmd+=" $2"
 
