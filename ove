@@ -1748,7 +1748,7 @@ function ove-dashboard {
 	done
 }
 
-# run-parallel:t0 c0 [t1 c1 t2 c2...]:run commands in parallel (tmux):UTIL
+# run-parallel:t0 cmdline0 [t1 cmdline1 t2 cmdline2...]:run commands in parallel (tmux):UTIL
 function ove-run-parallel {
 	ove_entry || return
 
@@ -1785,7 +1785,7 @@ function ove_validate_int_float {
 	return 0
 }
 
-# run:|t c:run one command 'c' and linger 't' seconds on output (0 = until keypress):UTIL
+# run:|t cmdline:run one 'cmdline' and linger 't' seconds on output (0 = until keypress):UTIL
 function ove-run {
 	ove_entry || return
 
@@ -1961,7 +1961,7 @@ function ove-loop-close {
 	ove_kill_procs 1 0.2 $(${ove_cmd2pathname["pgrep"]:?} -f "inotifywait.*${OVE_OWEL_TMP_DIR}")
 }
 
-# loop:|[interval|x] [inotify|x] [max-count|x] command]:repeatedly run a command with optional file watch:UTIL
+# loop:|[interval|x] [inotify|x] [max-count|x] ove-command]:repeatedly run an OVE command with optional file watch:UTIL
 function ove-loop {
 	ove_entry || return
 
@@ -2517,16 +2517,16 @@ function ove_rec_stop {
 }
 
 function ove_remote_helper {
-	local cmd
+	local ove_command
 	local host
 	local path
 
 	host="$1"
 	path="$2"
-	cmd="$3"
+	ove_command="$3"
 	shift 3
 
-	ove-run-remote "${host}" "${path}" "${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")"
+	ove-run-remote "${host}" "${path}" "${ove_command}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")"
 }
 
 function ove {
@@ -5562,7 +5562,7 @@ function ove-build-order {
 	echo ${autonomous_projs} ${topology}
 }
 
-# forowel:command:run 'command' for all OVE workspaces on this host:CORE
+# forowel:cmdline:run 'cmdline' for all OVE workspaces on this host:CORE
 function ove-forowel {
 	ove_entry || return
 
@@ -5589,7 +5589,7 @@ function ove-forowel {
 	eval "${cmd}"
 }
 
-# forowel-parallel:command:run 'command' in parallel for all OVE workspaces on this host:CORE
+# forowel-parallel:cmdline:run 'cmdline' in parallel for all OVE workspaces on this host:CORE
 function ove-forowel-parallel {
 	ove_entry || return
 
@@ -5618,7 +5618,7 @@ function ove-forowel-parallel {
 	wait
 }
 
-# forall:command:run 'command' for all git repositories:CORE
+# forall:cmdline:run 'cmdline' for all git repositories:CORE
 function ove-forall {
 	ove_entry || return
 
@@ -5630,7 +5630,7 @@ function ove-forall {
 	ove_revtab_forall "$*"
 }
 
-# forall-parallel:command:run 'command' in parallel for all git repositories:CORE
+# forall-parallel:cmdline:run 'cmdline' in parallel for all git repositories:CORE
 function ove-forall-parallel {
 	ove_entry || return
 
@@ -5642,7 +5642,7 @@ function ove-forall-parallel {
 	ove_revtab_forall_parallel "$*"
 }
 
-# forsome:command git...:run 'command' for specified git repositories:CORE
+# forsome:cmdline git...:run 'cmdline' for specified git repositories:CORE
 function ove-forsome {
 	ove_entry || return
 
@@ -17620,11 +17620,11 @@ function ove-logo {
 		${ove_cmd2pathname["jp2a"]:?} --colors --fill -
 }
 
-# run-remote:host path cmd:run a OVE command on remote host:REMOTE
+# run-remote:host path ove-command [args...]:run an OVE command on remote host:REMOTE
 function ove-run-remote {
 	ove_entry || return
 
-	local cmd
+	local ove_command
 	local host
 	local path
 
@@ -17636,7 +17636,7 @@ function ove-run-remote {
 	host="$1"
 	path="$2"
 	shift 2
-	cmd="$1"
+	ove_command="$1"
 
 	if ! ${ove_cmd2pathname["ssh"]:?} -o RemoteCommand=none -q ${host} exit 0; then
 		ove_echo_error_noprefix "'${host}' is not reachable via ssh"
@@ -17651,11 +17651,11 @@ function ove-run-remote {
 		"${host}" \
 		"cd ${path}|| exit 1
 			source ./ove hush || exit 1
-			if [ \"\$(type -t ove-${cmd%% *})\" != \"function\" ]; then
-				echo error: \'${cmd%% *}\' unknown command
+			if [ \"\$(type -t ove-${ove_command%% *})\" != \"function\" ]; then
+				echo error: \'${ove_command%% *}\' unknown command
 				exit 1
 			fi
-			OVE_REMOTE_IT=0 ove-${cmd}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")"
+			OVE_REMOTE_IT=0 ove-${ove_command}$([ $# -gt 1 ] && printf -- ' "%s"' "${@:2}")"
 }
 
 # ps: :list current OVE processes:DEBUG
