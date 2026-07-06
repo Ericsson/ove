@@ -4,14 +4,14 @@
 | awk           | 56        |
 | basename      | 1         |
 | bash          | 19        |
-| cat           | 52        |
+| cat           | 53        |
 | chmod         | 7         |
 | column        | 28        |
 | comm          | 18        |
 | convert       | 1         |
 | cp            | 5         |
 | csplit        | 1         |
-| cut           | 67        |
+| cut           | 65        |
 | date          | 20        |
 | diff          | 1         |
 | dig           | 1         |
@@ -26,6 +26,7 @@
 | fold          | 2         |
 | fzf           | 5         |
 | gcc           | 1         |
+| geoiplookup   | 1         |
 | getconf       | 1         |
 | getent        | 1         |
 | git           | 88        |
@@ -75,10 +76,10 @@
 | tar           | 8         |
 | task          | 2         |
 | tee           | 11        |
-| timeout       | 4         |
+| timeout       | 5         |
 | tmux          | 15        |
 | touch         | 5         |
-| tr            | 23        |
+| tr            | 24        |
 | tsort         | 2         |
 | tsp           | 4         |
 | uname         | 4         |
@@ -91,4 +92,4 @@
 | xclip         | 2         |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1384__  |
+| __sum__       | __1386__  |

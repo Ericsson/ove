@@ -621,6 +621,32 @@ function ove_ip2org {
 	printf "${org}"
 }
 
+# $1: IPv4 address
+function ove_ip2country {
+	local country
+	local ip
+
+	if ! ove_check_command "geoiplookup" &> /dev/null; then
+		return 1
+	fi
+
+	ip=${1}
+	if ! ove_ip_routable "${ip}"; then
+		country="NA"
+	else
+		country=$(${ove_cmd2pathname["timeout"]:?} 3 \
+			${ove_cmd2pathname["geoiplookup"]:?} ${ip} 2> /dev/null)
+		country="${country##*: }"
+		if [ "${country}" = "" ]; then
+			return
+		elif [ "${country}" = "IP Address not found" ]; then
+			return
+		fi
+	fi
+
+	printf "${country}"
+}
+
 # $1: port
 function ove_port2service {
 	local port
@@ -717,10 +743,12 @@ function ove_read_connect_cache {
 
 	unset ove_ip2host_db
 	unset ove_ip2org_db
+	unset ove_ip2country_db
 	unset ove_port2service_db
 
 	declare -A -g ove_ip2host_db
 	declare -A -g ove_ip2org_db
+	declare -A -g ove_ip2country_db
 	declare -A -g ove_port2service_db
 
 	if [ -e ${OVE_GLOBAL_STATE_DIR}/ip2host.cache ]; then
@@ -739,6 +767,12 @@ function ove_read_connect_cache {
 		while read -r line; do
 			ove_ip2org_db["${line%%:*}"]="$(${ove_cmd2pathname["tr"]:?} '@' '\n' <<<"${line#*:}")"
 		done < <(${ove_cmd2pathname["cat"]:?} ${OVE_GLOBAL_STATE_DIR}/ip2org.cache)
+	fi
+
+	if [ -e ${OVE_GLOBAL_STATE_DIR}/ip2country.cache ]; then
+		while read -r line; do
+			ove_ip2country_db["${line%%:*}"]="$(${ove_cmd2pathname["tr"]:?} '@' '\n' <<<"${line#*:}")"
+		done < <(${ove_cmd2pathname["cat"]:?} ${OVE_GLOBAL_STATE_DIR}/ip2country.cache)
 	fi
 }
 
@@ -791,6 +825,14 @@ function ove_update_connect_db {
 			if [ "${org}" != "" ]; then
 				ove_ip2org_db["${ip}"]="$(echo ${org} | ${ove_cmd2pathname["tr"]:?} '@' '\n')"
 				echo "${ip}:${org}" >> ${OVE_GLOBAL_STATE_DIR}/ip2org.cache
+			fi
+		fi
+
+		if ! test "${ove_ip2country_db["${ip}"]+isset}"; then
+			country="$(ove_ip2country ${ip})"
+			if [ "${country}" != "" ]; then
+				ove_ip2country_db["${ip}"]="${country}"
+				echo "${ip}:${country}" >> ${OVE_GLOBAL_STATE_DIR}/ip2country.cache
 			fi
 		fi
 
@@ -1113,13 +1155,14 @@ function ove_strace_one_pid {
 
 				ip_lookup=${ove_ip2host_db["${ip}"]}
 				ip_org=${ove_ip2org_db["${ip}"]}
+				ip_country=${ove_ip2country_db["${ip}"]}
 
 				org=$(${ove_cmd2pathname["sed"]:?} -e 's/$/ \\l/g' <<<"${ip_org}" | \
 					${ove_cmd2pathname["tr"]:?} -d '\n' | \
 					${ove_cmd2pathname["tr"]:?} \" \')
 
 				if ! test "${ip_hash["${ip}"]+isset}"; then
-					out_2+="\n    \"${ip}\" [label=\"\lIPv4: ${ip}\lhost: ${ip_lookup}\lorg: ${org}\l\" shape=box3d,fontsize=10,fontcolor=black,style=filled,fillcolor=\"yellow\"];"
+					out_2+="\n    \"${ip}\" [label=\"\lIPv4: ${ip}\lcountry: ${ip_country}\lhost: ${ip_lookup}\lorg: ${org}\l\" shape=box3d,fontsize=10,fontcolor=black,style=filled,fillcolor=\"yellow\"];"
 					ip_hash["${ip}"]=1
 				fi
 				if [ ${port} -eq 0 ]; then
@@ -15054,6 +15097,7 @@ function ove_deps {
 	optional+=('dot')
 	optional+=('ffmpeg')
 	optional+=('fzf')
+	optional+=('geoiplookup')
 	optional+=('graph-easy')
 	optional+=('inotifywait')
 	optional+=('jp2a')
@@ -16989,6 +17033,7 @@ function ove_externals_init {
 	cmds+=('fold')
 	cmds+=('fzf')
 	cmds+=('gcc')
+	cmds+=('geoiplookup')
 	cmds+=('getconf')
 	cmds+=('getent')
 	cmds+=('git')
