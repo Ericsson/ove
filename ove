@@ -551,6 +551,23 @@ function ove_line2ipv4 {
 	${ove_cmd2pathname["grep"]:?} -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' <<<"$@"
 }
 
+function ove_ip_routable {
+	local ip
+
+	ip=${1}
+	if [[ "$ip" =~ ^0\. ]] ||
+		[[ "$ip" =~ ^10\. ]] ||
+		[[ "$ip" =~ ^127\. ]] ||
+		[[ "$ip" =~ ^169\.254\. ]] ||
+		[[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[01])\. ]] ||
+		[[ "$ip" =~ ^192\.168\. ]] ||
+		[[ "$ip" =~ ^224\. ]] ||
+		[[ "$ip" =~ ^255\. ]]; then
+			return 1
+	fi
+	return 0
+}
+
 # $1: IPv4 address
 function ove_ip2host {
 	local ip
@@ -562,8 +579,8 @@ function ove_ip2host {
 
 	ip=${1}
 
-	if [[ ${ip} == 127* ]]; then
-		ip_lookup="localhost"
+	if ! ove_ip_routable "${ip}"; then
+		ip_lookup="NA"
 	else
 		ip_lookup=$(${ove_cmd2pathname["dig"]:?} +short -x ${ip} | \
 			${ove_cmd2pathname["tr"]:?} '\n' ' ' | \
@@ -589,7 +606,7 @@ function ove_ip2org {
 	fi
 
 	ip=${1}
-	if [[ ${ip} == 127* ]]; then
+	if ! ove_ip_routable "${ip}"; then
 		org="NA"
 	else
 		org=$(${ove_cmd2pathname["timeout"]:?} 3 \
