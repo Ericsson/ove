@@ -1343,6 +1343,7 @@ function ove_strace_create_graph {
 	# supported extensions
 	ext_list['ascii']=1
 	ext_list['boxart']=1
+	ext_list['dot']=1
 	ext_list['html']=1
 	ext_list['pdf']=1
 	ext_list['png']=1
@@ -5414,6 +5415,7 @@ function ove_graph_viewer_helper {
 	# supported extensions
 	ext_list['ascii']=1
 	ext_list['boxart']=1
+	ext_list['dot']=1
 	ext_list['html']=1
 	ext_list['pdf']=1
 	ext_list['png']=1
@@ -5424,6 +5426,7 @@ function ove_graph_viewer_helper {
 	else
 		ext_list['ascii']=0
 		ext_list['boxart']=0
+		ext_list['dot']=0
 		ext_list['html']=0
 		ext_list['pdf']=0
 		ext_list['png']=0
