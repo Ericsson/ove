@@ -1096,6 +1096,11 @@ function ove_strace_one_pid {
 			fi
 			out_2+="\n    ${pid} -> ${p} [label=${syscall} fontsize=10,fontcolor=black];"
 			continue
+		elif [[ "${syscall}" == open* ]]; then
+			p=${line#*\"}
+			p=${p%%\"*}
+			out_2+="\n    ${pid} -> \"${p}\" [label=${syscall} fontsize=10,fontcolor=black];"
+			continue
 		elif [ "${syscall}" = "execve" ]; then
 			if [[ "${line}" == *"ENOENT"* ]]; then
 				continue
@@ -2210,7 +2215,7 @@ function ove_config_sanitize_builtins {
 }
 
 function ove_trace_setup {
-	local strace_expression
+	local strace_filter
 
 	if [ ${OVE_LOGLEVEL} -lt 3 ]; then
 		unset OVE_TRACE_CMD
@@ -2222,14 +2227,16 @@ function ove_trace_setup {
 	fi
 	${ove_cmd2pathname["mkdir"]:?} -p ${OVE_OWEL_TMP_DIR}/trace-${cmd}
 
-	if [ ${OVE_LOGLEVEL} -eq 5 ]; then
-		strace_expression="connect,bind,execve"
+	if [ "${OVE_STRACE_FILTER}" != "" ]; then
+		strace_filter="${OVE_STRACE_FILTER}"
+	elif [ ${OVE_LOGLEVEL} -eq 5 ]; then
+		strace_filter="connect,bind,execve"
 	elif [ ${OVE_LOGLEVEL} -eq 6 ]; then
-		strace_expression="network,process"
+		strace_filter="network,process"
 	elif [ ${OVE_LOGLEVEL} -ge 7 ] || [ ${OVE_LOGLEVEL} -lt 10 ]; then
-		strace_expression="file"
+		strace_filter="file"
 	else
-		strace_expression="execve"
+		strace_filter="execve"
 	fi
 
 	OVE_TRACE_CMD="strace "
@@ -2239,7 +2246,7 @@ function ove_trace_setup {
 	OVE_TRACE_CMD+="-ff "
 	OVE_TRACE_CMD+="-T "
 	if [ ${OVE_LOGLEVEL} -ne 10 ]; then
-		OVE_TRACE_CMD+="-e ${strace_expression} "
+		OVE_TRACE_CMD+="-e ${strace_filter} "
 	fi
 	OVE_TRACE_CMD+="-ttt "
 	if [ ${OVE_LOGLEVEL} -eq 8 ]; then
@@ -13491,6 +13498,11 @@ function ove_config_builtins_init {
 	if [ -z "${OVE_LOGLEVEL+x}" ]; then
 		export OVE_LOGLEVEL=1
 		export OVE_REDIRECT_OUTPUT=""
+	fi
+
+	# OVE_STRACE_FILTER:string::all loglevel:override strace filter
+	if [ -z "${OVE_STRACE_FILTER+x}" ]; then
+		export OVE_STRACE_FILTER=""
 	fi
 
 	# OVE_TRACE_MODE:int:0|1:all loglevel:what to include in the trace, skip OVE internals (=0), include OVE internals (=1)
