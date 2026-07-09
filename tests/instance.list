@@ -1,9 +1,9 @@
 images:almalinux/9
 images:almalinux/10
-images:alpine/3.20
 images:alpine/3.21
 images:alpine/3.22
 images:alpine/3.23
+images:alpine/3.24
 images:alpine/edge
 images:archlinux
 images:debian/11
@@ -12,11 +12,9 @@ images:debian/13
 images:devuan/chimaera
 images:devuan/daedalus
 images:devuan/excalibur
-images:fedora/42
 images:fedora/43
+images:fedora/44
 images:kali
-images:mint/uma
-images:mint/una
 images:mint/vanessa
 images:mint/vera
 images:mint/victoria

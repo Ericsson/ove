@@ -812,11 +812,11 @@ OVE has been tested for the following Linux distributions:
 | Distribution        | Release(s)   |
 |---------------------|--------------|
 | AlmaLinux           | 9, 10        |
-| Alpine Linux        | 3.15..3.23   |
+| Alpine Linux        | 3.15..3.24   |
 | Arch Linux          | N/A          |
 | Debian              | 10..13       |
 | Devuan              | 3..6         |
-| Fedora              | 36..43       |
+| Fedora              | 36..44       |
 | Kali                | N/A          |
 | Linux Mint          | Uma..Zena    |
 | NixOS               | 25.05..25.11 |

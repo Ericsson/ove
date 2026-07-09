@@ -1498,7 +1498,7 @@ function prepare_ove {
 		make install || true'"
 	else
 		ove_packs+=" util-linux"
-		re="fedora.*(42|43)"
+		re="fedora.*(4[2-9]|[5-9][0-9])"
 		if [[ ${image} =~ ${re} ]]; then
 			ove_packs+=" util-linux-script"
 		fi
