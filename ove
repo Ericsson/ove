@@ -17248,6 +17248,7 @@ function ove-rename {
 			continue
 		fi
 
+		c=
 		if [ -d "${resolved}" ]; then
 			if [[ "${resolved}" = */tmp/* ]]; then
 				# special treatment for .ove.state and .ove.tmp
@@ -17262,6 +17263,8 @@ function ove-rename {
 				c="${resolved/${cur}/${new}}"
 			fi
 			${ove_cmd2pathname["mv"]:?} "${a}" "${b}"
+		else
+			c="${resolved/${cur}/${new}}"
 		fi
 		${ove_cmd2pathname["rm"]:?} "${link}"
 		${ove_cmd2pathname["ln"]:?} -s "${c}" "${link}"
