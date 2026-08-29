@@ -1026,7 +1026,7 @@ function wait_for_ip {
 		fi
 
 		# shellcheck disable=SC2086
-		instance_ip=$("$(instance_runtime)"${instance_global_flags} list -c4 --format csv ${instance_name})
+		instance_ip=$("$(instance_runtime)"${instance_global_flags} list -cn4 --format csv | grep "${instance_name}," | cut -d, -f2-)
 		instance_ip=${instance_ip% *}
 		if [ "${instance_ip}" = "" ]; then
 			_echo "waiting for IPv4 address for ${instance_name} ($i)"
