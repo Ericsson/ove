@@ -31,7 +31,7 @@ function supported {
 		return 1
 	elif [ "${OVE_OS_ID}" = "ubuntu" ]; then
 		case "${OVE_OS_VER:?}" in
-			20.04|22.04|24.04)
+			20.04|22.04|24.04|26.04)
 				return 0
 				;;
 		esac
