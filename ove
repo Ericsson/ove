@@ -17149,7 +17149,7 @@ function ove_external_version {
 	local ver
 
 	# special treatment
-	if [[ "$1" == *tmux ]] || [[ "$1" == *ssh ]]; then
+	if [[ "$1" == *tmux ]] || [[ "$1" == *ssh ]] || [[ "$1" == *dot ]]; then
 		ver=$(${ove_cmd2pathname["timeout"]:?} 1 $1 -V 2>&1 | ${ove_cmd2pathname["head"]:?} -1)
 		echo "$ver"
 		return
