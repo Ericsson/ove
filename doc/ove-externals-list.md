@@ -31,7 +31,7 @@
 | getent        | 1         |
 | git           | 88        |
 | graph-easy    | 1         |
-| grep          | 197       |
+| grep          | 198       |
 | head          | 22        |
 | incus         | 0         |
 | inotifywait   | 3         |
@@ -92,4 +92,4 @@
 | xclip         | 2         |
 | xdotool       | 1         |
 | yamllint      | 1         |
-| __sum__       | __1386__  |
+| __sum__       | __1387__  |

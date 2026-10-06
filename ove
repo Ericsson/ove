@@ -5725,7 +5725,8 @@ function ove-forsome {
 # list systest groups helper
 function ove_list_systests_groups {
 	if [ -e ${OVE_OWEL_DIR}/systests-groups ]; then
-		${ove_cmd2pathname["grep"]:?} : "${OVE_OWEL_DIR}"/systests-groups | \
+		${ove_cmd2pathname["grep"]:?} -E -v '^$|^\s*#' "${OVE_OWEL_DIR}"/systests-groups | \
+		${ove_cmd2pathname["grep"]:?} ':' | \
 			${ove_cmd2pathname["sed"]:?} -e 's,[[:space:]],,g' -e 's,^-,,g' -e 's,:$,,g'
 	fi
 }
